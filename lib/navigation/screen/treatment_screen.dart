@@ -138,7 +138,7 @@ class TreatmentScreen extends StatelessWidget {
                                 }
                               },
                       ),
-                      const SizedBox(height: AppSizes.space),
+                      const SizedBox(height: AppSizes.space/2),
                     ],
                   );
                 }),
