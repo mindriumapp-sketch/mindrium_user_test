@@ -56,6 +56,7 @@ class RelaxOrAlternativePage extends StatelessWidget {
               height: 60,
               child: ElevatedButton(
                 onPressed: () {
+                  debugPrint('[relax_or_alternative] abcId=$abcId, sud=$sud, diary=$diary');
                   Navigator.pushNamed(
                     context,
                     '/apply_alt_thought',

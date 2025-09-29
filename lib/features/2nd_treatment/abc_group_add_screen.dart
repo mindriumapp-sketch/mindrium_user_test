@@ -50,7 +50,7 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
         .get();
 
     final usedCharacterIds = usedCharacterDocs.docs
-        .map((doc) => int.tryParse('${doc['group_id']}' ?? '') ?? -1)
+        .map((doc) => int.tryParse('${doc['group_id']}') ?? -1)
         .toSet();
 
     final allCharacters = List.generate(

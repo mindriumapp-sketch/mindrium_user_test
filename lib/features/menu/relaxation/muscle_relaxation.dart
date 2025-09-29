@@ -136,7 +136,11 @@ class _MuscleRelaxationPageState extends State<MuscleRelaxationPage>
               Navigator.pushReplacementNamed(
                 context,
                 '/relaxation_score',
-                arguments: {'abcId': abcId}
+                arguments: {
+                  'abcId': abcId,
+                  'diary': args['diary'],
+                  'origin': args['origin'],
+                }
               );
             },
             child: const Text('확인'),

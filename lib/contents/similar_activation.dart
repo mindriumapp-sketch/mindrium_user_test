@@ -11,8 +11,10 @@ class SimilarActivationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId   = args['abcId'] as String?;
+    final String? groupId = args['groupId'] as String?;
     final int? sud   = args['sud'] as int?;
-    debugPrint('[diary_show] groupId=$abcId');
+    debugPrint('[diary_show] abcId=$abcId');
+    debugPrint('[diary_show] groupId=$groupId');
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {              

@@ -64,7 +64,8 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                     context, 
                     '/breath_muscle_relaxation',
                     arguments: {
-                      'sud': sud
+                      'sud': sud,
+                      'origin': 'apply',
                     }
                   );
                 },

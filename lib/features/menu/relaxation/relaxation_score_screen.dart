@@ -109,17 +109,32 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
 
                 // 3) completed_education >= 4 → 대체생각, else after_sud
                 if (!context.mounted) return;
-                if (completed >= 4) {
-                  Navigator.pushNamed(
-                    context,
-                    '/apply_alt_thought',
-                    arguments: {'abcId': abcId},
-                  );
+                if (args['origin'] == 'apply') {
+                  if (completed >= 4) {
+                    Navigator.pushNamed(
+                      context,
+                      '/apply_alt_thought',
+                      arguments: {
+                        'abcId': abcId,
+                        'diary': args['diary'],
+                      },
+                    );
+                  } else {
+                    Navigator.pushNamed(
+                      context,
+                      '/after_sud',
+                      arguments: {
+                        'abcId': abcId,
+                        'diary': args['diary'],
+                      },
+                    );
+                  }
+                  return;
                 } else {
-                  Navigator.pushNamed(
+                  Navigator.pushNamedAndRemoveUntil(
                     context,
-                    '/after_sud',
-                    arguments: {'abcId': abcId},
+                    '/home',
+                    (route) => false,
                   );
                 }
               }),

@@ -404,6 +404,7 @@ class _Week4AlternativeThoughtsScreenState
                           final routeArgs = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
                           final origin = (routeArgs['origin'] as String?) ?? 'etc';
                           final diary  = routeArgs['diary'];
+                          debugPrint('[alt_thought] origin=$origin, diary=$diary');
                           Navigator.pushNamed(
                             context,
                             '/alt_thought',

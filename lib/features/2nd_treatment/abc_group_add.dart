@@ -11,12 +11,16 @@ class AbcGroupAddScreen extends StatefulWidget {
   final String? label;
   final String? abcId;
   final String? origin;
+  final int? beforeSud;
+  final String? diary;
 
   const AbcGroupAddScreen({
     super.key,
     this.label,
     this.abcId,
     this.origin,
+    this.beforeSud,
+    this.diary,
   });
 
   @override
@@ -470,13 +474,23 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                 Navigator.pushNamed(
                   context,
                   '/relax_or_alternative',
-                  arguments: {'abcId': widget.abcId},
+                  arguments: {
+                    'abcId': widget.abcId,
+                    if (widget.beforeSud != null) 'beforeSud': widget.beforeSud,
+                    if (widget.beforeSud != null) 'sud': widget.beforeSud,
+                    'diary': widget.diary,
+                  },
                 );
               } else {
                 Navigator.pushNamed(
                   context,
                   '/relax_yes_or_no',
-                  arguments: {'abcId': widget.abcId},
+                  arguments: {
+                    'abcId': widget.abcId,
+                    if (widget.beforeSud != null) 'beforeSud': widget.beforeSud,
+                    if (widget.beforeSud != null) 'sud': widget.beforeSud,
+                    'diary': widget.diary,
+                  },
                 );
               }
             } else {

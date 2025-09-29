@@ -70,7 +70,7 @@ class RelaxationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId   = args['abcId'] as String?;
-    
+    debugPrint('RelaxationScreen - abcId: $abcId, diary: ${args['diary']}');
     return Scaffold(
       backgroundColor: AppColors.grey100,
       appBar: const CustomAppBar(title: '이완 활동'),
@@ -109,7 +109,11 @@ class RelaxationScreen extends StatelessWidget {
                       onPressed: () => Navigator.pushNamed(
                         context,
                         '/muscle_relaxation',
-                        arguments: {"abcId": abcId}
+                        arguments: {
+                          "abcId": abcId,
+                          'diary': args['diary'],
+                          'origin': args['origin']
+                        }
                       ),
                       text: '시작하기')
                   ),

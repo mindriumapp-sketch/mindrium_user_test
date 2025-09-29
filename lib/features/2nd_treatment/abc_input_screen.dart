@@ -2000,6 +2000,8 @@ class AbcVisualizationScreen extends StatefulWidget {
   final List<String> selectedEmotionChips;
   final List<String> selectedBehaviorChips;
   final String? origin;
+  final String? abcId;
+  final int? beforeSud;
 
   const AbcVisualizationScreen({
     super.key,
@@ -2012,6 +2014,8 @@ class AbcVisualizationScreen extends StatefulWidget {
     required this.selectedEmotionChips,
     required this.selectedBehaviorChips,
     this.origin,
+    this.abcId,
+    this.beforeSud,
   });
 
   @override
@@ -2290,14 +2294,7 @@ class AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
 
       final firestore = FirebaseFirestore.instance;
 
-      // 1. 사용자 문서에 임시 데이터 상태 저장
-      await firestore.collection('users').doc(userId).set({
-        'has_temporary_data': true,
-        'current_screen': 'abc_model',
-        'last_updated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
       // 현재 위치 얻기 (가능한 경우)
-
       Position? pos;
       try {
         LocationPermission perm = await Geolocator.checkPermission();
@@ -2317,27 +2314,79 @@ class AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
       }
 
       // 2. ABC 모델 데이터 저장
-      final data = {
-        'activatingEvent': widget.activatingEventChips
-            .map((e) => e.label)
-            .join(', '),
+      final bool createdNewDoc = widget.abcId == null || widget.abcId!.isEmpty;
+      final baseData = {
+        'activatingEvent': widget.activatingEventChips.map((e) => e.label).join(', '),
         'belief': widget.beliefChips.map((e) => e.label).join(', '),
         'consequence': widget.resultChips.map((e) => e.label).join(', '),
         'consequence_physical': widget.selectedPhysicalChips.join(', '),
         'consequence_emotion': widget.selectedEmotionChips.join(', '),
         'consequence_behavior': widget.selectedBehaviorChips.join(', '),
-        'createdAt': FieldValue.serverTimestamp(),
         if (pos != null) 'latitude': pos.latitude,
         if (pos != null) 'longitude': pos.longitude,
       };
 
-      final docRef = await firestore
+      final payload = {
+        ...baseData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      final userCollection = firestore
           .collection('users')
           .doc(userId)
-          .collection('abc_models')
-          .add(data);
+          .collection('abc_models');
 
-      debugPrint('ABC 모델 저장 성공 - 사용자 ID: $userId');
+      DocumentReference<Map<String, dynamic>> docRef;
+      if (createdNewDoc) {
+        docRef = await userCollection.add({
+          ...payload,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        docRef = userCollection.doc(widget.abcId);
+        await docRef.set(payload, SetOptions(merge: true));
+      }
+
+      if (widget.beforeSud != null) {
+        final sudCol = docRef.collection('sud_score');
+        if (createdNewDoc) {
+          await sudCol.add({
+            'before_sud': widget.beforeSud,
+            'after_sud': null,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            if (pos != null) 'latitude': pos.latitude,
+            if (pos != null) 'longitude': pos.longitude,
+          });
+        } else {
+          final latest = await sudCol
+              .orderBy('createdAt', descending: true)
+              .limit(1)
+              .get();
+          if (latest.docs.isEmpty) {
+            await sudCol.add({
+              'before_sud': widget.beforeSud,
+              'after_sud': null,
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+              if (pos != null) 'latitude': pos.latitude,
+              if (pos != null) 'longitude': pos.longitude,
+            });
+          } else {
+            final latestData = latest.docs.first.data();
+            if (latestData['before_sud'] is! num) {
+              await latest.docs.first.reference.set({
+                'before_sud': widget.beforeSud,
+                'updatedAt': FieldValue.serverTimestamp(),
+                if (pos != null) 'latitude': pos.latitude,
+                if (pos != null) 'longitude': pos.longitude,
+              }, SetOptions(merge: true));
+            }
+          }
+        }
+      }
+
+      debugPrint('ABC 모델 저장 성공 - 사용자 ID: $userId (abcId=${docRef.id})');
       if (!mounted) return;
 
       showDialog(
@@ -2350,27 +2399,58 @@ class AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
                 TextButton(
                   child: const Text('아니요'),
                   onPressed: () async {
-                    // Close the dialog with its own context
                     Navigator.of(dialogCtx).pop();
                     await docRef.update({
-                      'group_id': "1", // TODO: 그룹 기본값
+                      'group_id': '1', // 기본 그룹
                     });
-                    // After async gap, ensure the page is still mounted, then use State.context
                     if (!mounted) return;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => NotificationSelectionScreen(
-                              origin: widget.origin ?? 'etc',
-                              abcId: docRef.id,
-                              label:
-                                  widget.activatingEventChips.isNotEmpty
-                                      ? widget.activatingEventChips[0].label
-                                      : '',
-                            ),
-                      ),
-                    );
+
+                    final origin = widget.origin ?? 'etc';
+                    if (origin == 'apply') {
+                      int completed = 0;
+                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      if (uid != null) {
+                        try {
+                          final snap = await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(uid)
+                              .get();
+                          completed =
+                              (snap.data()?['completed_education'] ?? 0) as int;
+                        } catch (_) {
+                          completed = 0;
+                        }
+                      }
+
+                      final routeName = completed >= 4
+                          ? '/relax_or_alternative'
+                          : '/relax_yes_or_no';
+                      if (!mounted) return;
+                      Navigator.pushNamed(
+                        context,
+                        routeName,
+                        arguments: {
+                          'abcId': docRef.id,
+                          'diary': 'new',
+                          if (widget.beforeSud != null) 'beforeSud': widget.beforeSud,
+                          if (widget.beforeSud != null) 'sud': widget.beforeSud,
+                        },
+                      );
+                    } else {
+                      if (!mounted) return;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => NotificationSelectionScreen(
+                            origin: origin,
+                            abcId: docRef.id,
+                            label: widget.activatingEventChips.isNotEmpty
+                                ? widget.activatingEventChips[0].label
+                                : '',
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
                 TextButton(
@@ -2381,14 +2461,15 @@ class AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder:
+                      builder:
                             (_) => AbcGroupAddScreen(
                               origin: widget.origin ?? 'etc',
                               abcId: docRef.id,
-                              label:
-                                  widget.activatingEventChips.isNotEmpty
-                                      ? widget.activatingEventChips[0].label
-                                      : '',
+                              label: widget.activatingEventChips.isNotEmpty
+                                  ? widget.activatingEventChips[0].label
+                                  : '',
+                              beforeSud: widget.beforeSud,
+                              diary: 'new',
                             ),
                       ),
                     );

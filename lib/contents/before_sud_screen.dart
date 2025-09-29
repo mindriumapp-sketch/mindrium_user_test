@@ -126,6 +126,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
                   arguments: {
                     'origin': 'apply',
                     if (diary != null) 'diary': diary,
+                    'beforeSud': _sud,
                   },
                 );
                 return;
@@ -136,7 +137,11 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
                   Navigator.pushReplacementNamed(
                     context,
                     '/diary_yes_or_no',
-                    arguments: {'origin': 'apply'},
+                    arguments: {
+                      'origin': 'apply',
+                      if (diary != null) 'diary': diary,
+                      'beforeSud': _sud,
+                    },
                   );
                   return;
                 }
@@ -191,6 +196,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
                   'abcId': ensuredAbcId,
                   'groupId': groupId,
                   'sud': _sud,
+                  'origin': origin,
                 },
               );
             },

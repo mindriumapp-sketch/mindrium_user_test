@@ -175,6 +175,7 @@ class Week4ClassificationResultScreen extends StatelessWidget {
                                 height: 56,
                                 child: ElevatedButton(
                                   onPressed: () {
+                                    debugPrint('[alt_thought] abcId=$abcId_, diary=$diary');
                                     if (isFromApply) {
                                       // 적용하기 플로우: 선택 화면으로 돌아가 다른 생각을 다시 선택
                                       Navigator.pushReplacementNamed(
@@ -256,7 +257,7 @@ class Week4ClassificationResultScreen extends StatelessWidget {
                                             'abcId': abcId_,
                                             'origin': origin,
                                             // 적용하기 플로우에서는 명시적으로 'new'로 표기해 After SUD에서 알림 설정 분기로 사용
-                                            'diary': 'new',
+                                            'diary': diary,
                                           },
                                         );
                                         return;

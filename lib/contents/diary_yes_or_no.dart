@@ -39,7 +39,8 @@ class DiaryYesOrNo extends StatelessWidget {
                     arguments: {
                       'origin': 'apply',
                       'abcId': null,
-                      if (diary != null) 'diary': diary
+                      if (diary != null) 'diary': diary,
+                      'beforeSud': args['beforeSud'],
                     },
                   );
                 },
@@ -99,6 +100,19 @@ class DiaryYesOrNo extends StatelessWidget {
                       .doc(uid)
                       .collection('abc_models')
                       .add(data);
+                  
+                  final data2 = {
+                    'before_sud': args['beforeSud'] ?? 0,
+                    'createdAt': FieldValue.serverTimestamp(),
+                  };
+
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .collection('abc_models')
+                      .doc(docRef.id)
+                      .collection('sud_score')
+                      .add(data2);
 
                   if (!context.mounted) return;
 
@@ -108,6 +122,7 @@ class DiaryYesOrNo extends StatelessWidget {
                       builder: (_) => AbcGroupAddScreen(
                         origin: 'apply',
                         abcId: docRef.id,
+                        diary: diary,
                       ),
                     ),
                   );
