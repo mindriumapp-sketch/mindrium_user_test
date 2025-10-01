@@ -169,11 +169,19 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
                 return;
               }
 
+              // TODO: 이완 애니메이션을 넣었으나 확실치 않음...(세현님 도와주세요..)
+              // TODO: 일단 4주차 고정. 만약 주차별로 달라지는 이완이 필요한 거면 수정필요..
               if (abcId == null || abcId.isEmpty) {
                 Navigator.pushReplacementNamed(
                   context,
-                  '/relax',
-                  arguments: {'abcId': null},
+                  '/relaxation_noti',
+                  arguments: {
+                    'taskId': abcId,
+                    'weekNumber': 4,
+                    'mp3Asset': 'week4.mp3',
+                    'riveAsset': 'week4.riv',
+                    'nextPage': '/relaxation_score',
+                  },
                 );
                 return;
               }

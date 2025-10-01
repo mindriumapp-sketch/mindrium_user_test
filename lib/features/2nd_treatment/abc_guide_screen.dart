@@ -3,7 +3,7 @@ import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_input_screen.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
-import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
+import 'package:gad_app_team/features/2nd_treatment/abc_activate_screen.dart';
 
 class AbcGuideScreen extends StatefulWidget {
   const AbcGuideScreen({super.key});
@@ -58,7 +58,7 @@ class _AbcGuideScreenState extends State<AbcGuideScreen> {
                 Navigator.push(
                   context,
                   PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => const Week2Screen(),
+                    pageBuilder: (_, __, ___) => const AbcActivateScreen(),
                     transitionDuration: Duration.zero,
                     reverseTransitionDuration: Duration.zero,
                   ),

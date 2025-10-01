@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'week4_alternative_thoughts_display_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Week4AlternativeThoughtsScreen extends StatefulWidget {
   final List<String> previousChips;
@@ -41,6 +43,75 @@ class _Week4AlternativeThoughtsScreenState
     super.initState();
     // 사용자에게는 현재 작성하는 내용만 보여주기 위해 기존 대체 생각들은 표시하지 않음
     // 하지만 데이터는 계속 누적되어야 함
+  }
+
+  Future<void> _saveAlternativeThoughtsToFirebase() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('❌ 저장 실패: 사용자가 로그인하지 않았습니다.');
+        return;
+      }
+
+      debugPrint('✅ 저장 시작 - User ID: ${user.uid}');
+      debugPrint('✅ 현재 chips: $_chips');
+      debugPrint('✅ 기존 thoughts: ${widget.existingAlternativeThoughts}');
+
+      // 기존 대체 생각들과 새로 추가한 대체 생각들을 합침
+      final allAlternativeThoughts = [
+        ...?widget.existingAlternativeThoughts,
+        ..._chips,
+      ];
+
+      debugPrint('✅ 저장할 전체 thoughts: $allAlternativeThoughts');
+
+      String targetAbcId;
+
+      // abcId가 없으면 최신 ABC 모델 문서를 찾아서 사용
+      if (widget.abcId == null || widget.abcId!.isEmpty) {
+        debugPrint('⚠️ abcId가 없습니다. 최신 ABC 모델을 찾습니다...');
+
+        final snapshot =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('abc_models')
+                .orderBy('createdAt', descending: true)
+                .limit(1)
+                .get();
+
+        if (snapshot.docs.isEmpty) {
+          debugPrint('❌ ABC 모델이 없습니다. 저장을 중단합니다.');
+          return;
+        }
+
+        targetAbcId = snapshot.docs.first.id;
+        debugPrint('✅ 최신 ABC 모델을 찾았습니다: $targetAbcId');
+      } else {
+        targetAbcId = widget.abcId!;
+        debugPrint('✅ 전달받은 ABC ID 사용: $targetAbcId');
+      }
+
+      // ABC 모델 문서 업데이트 (set with merge: true를 사용하여 문서가 없어도 생성)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('abc_models')
+          .doc(targetAbcId)
+          .set({
+            'alternative_thoughts': allAlternativeThoughts,
+            'week4_completed': true,
+            'week4_completed_at': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      debugPrint('✅ 도움이 되는 생각이 Firebase에 저장되었습니다!');
+      debugPrint('   경로: users/${user.uid}/abc_models/$targetAbcId');
+      debugPrint('   필드: alternative_thoughts');
+      debugPrint('   내용: $allAlternativeThoughts');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Firebase 저장 오류: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+    }
   }
 
   void _showInputDialog() {
@@ -391,7 +462,10 @@ class _Week4AlternativeThoughtsScreenState
               onBack: () => Navigator.pop(context),
               onNext:
                   _chips.isNotEmpty
-                      ? () {
+                      ? () async {
+                        // Firebase에 저장
+                        await _saveAlternativeThoughtsToFirebase();
+
                         // 항상 현재 B(생각)을 명확히 전달
                         final bToShow =
                             widget.previousChips.isNotEmpty
@@ -401,17 +475,11 @@ class _Week4AlternativeThoughtsScreenState
                                     : '');
 
                         if (widget.abcId != null && widget.abcId!.isNotEmpty) {
-                          final routeArgs = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-                          final origin = (routeArgs['origin'] as String?) ?? 'etc';
-                          final diary  = routeArgs['diary'];
-                          debugPrint('[alt_thought] origin=$origin, diary=$diary');
                           Navigator.pushNamed(
                             context,
                             '/alt_thought',
                             arguments: {
                               'abcId': widget.abcId,
-                              'origin': origin,
-                              if (diary != null) 'diary': diary,
                               'loopCount': widget.loopCount,
                             },
                           );

@@ -9,12 +9,16 @@ class EducationPage extends StatefulWidget {
   final List<String> jsonPrefixes;
   final Widget Function()? nextPageBuilder;
   final String? title;
+  final bool isRelax;
+  final String? imagePath;
 
   const EducationPage({
     super.key,
     required this.jsonPrefixes,
     this.nextPageBuilder,
     this.title,
+    this.isRelax = false,
+    this.imagePath,
   });
 
   @override
@@ -96,31 +100,12 @@ class _EducationPageState extends State<EducationPage> {
 
   void _showNextDialog() {
     if (widget.nextPageBuilder == null) {
-      _showCompleteDialog();
+      if (!widget.isRelax) {_showCompleteDialog();}
+      else {_showStartDialog();}
     } else {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          title: const Text('완료'),
-          content: const Text('교육이 완료되었습니다. 다음 단계로 넘어가시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => widget.nextPageBuilder!()),
-                );
-              },
-              child: const Text('다음'),
-            ),
-          ],
-        ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => widget.nextPageBuilder!()),
       );
     }
   }
@@ -140,7 +125,10 @@ class _EducationPageState extends State<EducationPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pushReplacementNamed(
+                context,
+                '/week1_relaxation_text',
+              );
             },
             child: const Text('닫기'),
           ),
@@ -148,6 +136,35 @@ class _EducationPageState extends State<EducationPage> {
       ),
     );
   }
+
+    void _showStartDialog() {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: const Text('음성 안내 시작'),
+          content: const Text('잠시 후, 편안한 음성 안내가 시작됩니다. 주변 소리와 음량을 조절해보세요.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(
+                  context,
+                  '/relaxation_education',
+                  arguments: {
+                    'taskId': 'edu_0001',
+                    'weekNumber': 1,
+                    'mp3Asset': 'week1.mp3',
+                    'riveAsset': 'week1.riv'
+                  }
+                );
+              },
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+    }
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +197,6 @@ class _EducationPageState extends State<EducationPage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: AppSizes.space),
                             const SizedBox(height: AppSizes.space),
                             ...content.paragraphs.map(
                               (text) => Padding(

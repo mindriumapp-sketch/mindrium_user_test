@@ -60,12 +60,16 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
               height: 60,
               child: ElevatedButton(
                 onPressed: ()  {
+                  // TODO: 세현님 도움 필요.....일단 4주차 고정..
                   Navigator.pushNamed(
                     context, 
-                    '/breath_muscle_relaxation',
+                    '/relaxation_noti',
                     arguments: {
-                      'sud': sud,
-                      'origin': 'apply',
+                      'taskId': groupId, // 임시...
+                      'weekNumber': 4,
+                      'mp3Asset': 'week4.mp3',
+                      'riveAsset': 'week4.riv',
+                      'nextPage': '/relaxation_score',
                     }
                   );
                 },

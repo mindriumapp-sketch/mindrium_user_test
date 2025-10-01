@@ -8,18 +8,17 @@ import 'package:gad_app_team/contents/filtered_diary_show.dart';
 import 'package:gad_app_team/contents/relax_or_alternative.dart';
 import 'package:gad_app_team/contents/relax_yes_or_no.dart';
 import 'package:gad_app_team/contents/similar_activation.dart';
-import 'package:gad_app_team/contents/apply_alternative_thought.dart';
-import 'package:gad_app_team/features/2nd_treatment/abc_guide_screen.dart';
+import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_result_screen.dart';
-import 'package:gad_app_team/contents/training_select.dart';
+import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
 
 //notification
 import 'package:gad_app_team/features/menu/diary/diary_directory_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/notification_selection_screen.dart';
 
 //treatment
-import 'package:gad_app_team/features/1st_treatment/week1_screen.dart'; 
+import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_input_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_add.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group.dart';
@@ -46,14 +45,14 @@ import 'package:gad_app_team/features/menu/education/education6.dart';
 
 import 'package:gad_app_team/features/menu/relaxation/relaxation_screen.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_score_screen.dart';
-//import 'package:gad_app_team/features/menu/relaxation/breathing_meditation.dart';
-import 'package:gad_app_team/features/menu/relaxation/muscle_relaxation.dart';
+import 'package:gad_app_team/features/menu/relaxation/relaxation_education.dart';
+import 'package:gad_app_team/features/menu/relaxation/relaxation_noti.dart';
 import 'package:gad_app_team/contents/before_sud_screen.dart';
 import 'package:gad_app_team/contents/after_sud_screen.dart';
 
-
 // Navigation screen imports
 import 'package:gad_app_team/navigation/screen/home_screen.dart';
+//import 'package:gad_app_team/navigation/screen/mindrium_screen.dart';
 import 'package:gad_app_team/navigation/screen/myinfo_screen.dart';
 import 'package:gad_app_team/navigation/screen/report_screen.dart';
 import 'package:gad_app_team/navigation/screen/treatment_screen.dart';
@@ -61,9 +60,8 @@ import 'package:gad_app_team/navigation/screen/treatment_screen.dart';
 import 'features/menu/archive/character_battle.dart';
 import 'features/menu/archive/sea_archive_page.dart';
 
-
-
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 /// Mindrium 메인 앱 클래스
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -71,7 +69,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey, 
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Mindrium',
       theme: ThemeData(
@@ -101,12 +99,11 @@ class MyApp extends StatelessWidget {
         '/myinfo': (context) => const MyInfoScreen(),
         '/treatment': (context) => const TreatmentScreen(),
         '/report': (context) => const ReportScreen(),
+        //'/mindrium': (context) => const MindriumScreen(),
 
         // 메뉴
         '/contents': (context) => const ContentScreen(),
         '/settings': (context) => const SettingsScreen(),
-
-        '/training': (context) => const TrainingSelect(),
 
         '/education': (context) => const EducationScreen(),
         '/education1': (context) => const Education1Page(),
@@ -116,21 +113,48 @@ class MyApp extends StatelessWidget {
         '/education5': (context) => const Education5Page(),
         '/education6': (context) => const Education6Page(),
 
-        '/breath_muscle_relaxation': (context) => const RelaxationScreen(),
         '/relax': (context) => const RelaxationScreen(),
-        //'/breathing_meditation': (context) => const BreathingMeditationPage(), 
-        '/muscle_relaxation': (context) => const MuscleRelaxationPage(),
+        '/relaxation_education': (context) {
+          final args = (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
+          final taskId    = args['taskId']    as String? ?? 'wk01-pmr-breath';
+          final weekNumber= args['weekNumber']as int?    ?? 1;
+          final mp3Asset  = args['mp3Asset']  as String? ?? 'assets/audio/pmr_week1.mp3';
+          final riveAsset = args['riveAsset'] as String? ?? 'assets/rive/pmr_week1.riv';
+
+          return PracticePlayer(
+            taskId: taskId,
+            weekNumber: weekNumber,
+            mp3Asset: mp3Asset,
+            riveAsset: riveAsset,
+          );
+        },
+        '/relaxation_noti': (context) {
+          final args = (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
+          final taskId    = args['taskId']    as String? ?? 'wk01-pmr-breath';
+          final weekNumber= args['weekNumber']as int?    ?? 1;
+          final mp3Asset  = args['mp3Asset']  as String? ?? 'assets/audio/pmr_week1.mp3';
+          final riveAsset = args['riveAsset'] as String? ?? 'assets/rive/pmr_week1.riv';
+          final nextPage = args['nextPage'] as String? ?? '/home';
+
+          return NotiPlayer(
+            taskId: taskId,
+            weekNumber: weekNumber,
+            mp3Asset: mp3Asset,
+            riveAsset: riveAsset,
+            nextPage: nextPage,
+          );
+        },
         '/relaxation_score': (context) => const RelaxationScoreScreen(),
 
         '/before_sud': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map?;
           final abcId = args?['abcId'] as String?;
-          // if (abcId == null) {
-          //   WidgetsBinding.instance.addPostFrameCallback(
-          //     (_) => navigatorKey.currentState?.pushReplacementNamed('/home'),
-          //   );
-          //   return const SizedBox.shrink();
-          // }
+          if (abcId == null) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => navigatorKey.currentState?.pushReplacementNamed('/home'),
+            );
+            return const SizedBox.shrink();
+          }
           return BeforeSudRatingScreen(abcId: abcId);
         },
         '/after_sud': (context) => const AfterSudRatingScreen(),
@@ -148,22 +172,17 @@ class MyApp extends StatelessWidget {
 
         //treatment
         '/week1': (context) => const Week1Screen(),
-        '/week2': (context) => const AbcGuideScreen(),
-        '/abc': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map?;
-          final origin = args?['origin'] as String?;
-          return AbcInputScreen(showGuide: false, origin: origin);
-        },
+        '/week2': (context) => const Week2Screen(),
+        '/abc': (context) => const AbcInputScreen(showGuide: false),
         '/week4': (context) => const Week4Screen(),
+        '/week8': (context) => const Week8Screen(),
         '/alt_thought': (context) => const Week4ClassificationResultScreen(),
-        '/apply_alt_thought': (context) => const ApplyAlternativeThoughtScreen(),
 
         //notification
         '/noti_select': (context) => NotificationSelectionScreen(),
         '/diary_directory': (context) => NotificationDirectoryScreen(),
         '/battle': (context) => PokemonBattleDeletePage(),
         '/archive_sea': (context) => SeaArchivePage(),
-
       },
     );
   }

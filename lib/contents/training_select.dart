@@ -55,10 +55,11 @@ class TrainingSelect extends StatelessWidget {
               height: 60,
               child: ElevatedButton(
                 onPressed: () {
+                  // TODO: 이건 진짜 주차별로 달라져야 하는 내용이라... 수정 안하겠습니다..나중에 주차별로 연결하면서 같이 수정할게요.
                   Navigator.pushNamed(
                     context,
                     '/relax',
-                    arguments: {'origin': 'training'},
+                    arguments: {'abcId': null},
                   );
                 },
                 style: ElevatedButton.styleFrom(

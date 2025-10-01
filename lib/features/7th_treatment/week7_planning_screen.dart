@@ -5,6 +5,8 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_calendar_summary_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 
 // 캘린더 이벤트 모델
@@ -56,6 +58,8 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
   final List<String> _addedBehaviors = [];
   final List<String> _newBehaviors = [];
   final List<CalendarEvent> _savedEvents = [];
+  String? _userName;
+  String? _userCoreValue;
 
   @override
   void initState() {
@@ -64,6 +68,8 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
     _loadAddedBehaviors();
     // 저장된 캘린더 이벤트들을 로드
     _loadSavedEvents();
+    // 사용자 데이터 로드
+    _loadUserData();
   }
 
   @override
@@ -170,34 +176,236 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
     }
   }
 
+  // 사용자 데이터 로드
+  Future<void> _loadUserData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
+
+        if (doc.exists) {
+          final data = doc.data();
+          if (mounted) {
+            setState(() {
+              _userName = data?['name'] as String?;
+              _userCoreValue = data?['coreValue'] as String?;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('사용자 데이터 로드 실패: $e');
+    }
+  }
+
   void _addNewBehavior() {
     final behavior = _newBehaviorController.text.trim();
     if (behavior.isNotEmpty) {
-      // 새로운 전역 상태 생성
-      final newGlobalBehaviors = List<String>.from(_newBehaviors);
-      newGlobalBehaviors.add(behavior);
-
-      // 전역 상태 업데이트
-      Week7AddDisplayScreen.updateGlobalNewBehaviors(newGlobalBehaviors);
-
-      // 로컬 상태 업데이트
-      setState(() {
-        _newBehaviors.add(behavior);
-        _newBehaviorController.clear();
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('"$behavior"이(가) 추가되었습니다.'),
-          backgroundColor: const Color(0xFF4CAF50),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      _showAddBehaviorDialog(behavior);
     }
+  }
+
+  void _showAddBehaviorDialog(String behavior) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.health_and_safety,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                '건강한 생활 습관 추가',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D3748),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _userName != null
+                    ? '${_userName}님, 이 행동을 건강한 생활 습관으로서 실천하시고자 하시는군요.'
+                    : '이 행동을 건강한 생활 습관으로서 실천하시고자 하시는군요.',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF2D3748),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_userCoreValue != null) ...[
+                Text(
+                  _userName != null
+                      ? '${_userName}님께서 소중히 여기는 가치는 "${_userCoreValue}"입니다.'
+                      : '소중히 여기는 가치는 $_userCoreValue입니다.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF2D3748),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '이 가치를 실현하기 위해 추가하시는 행동이 도움이 될 것 같다면 추가해주세요.\n\n아니라면 가치에 더 맞도록 조금 바꿔봤을 때 어떤 행동이 더 나을지 생각해보아요.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF2D3748),
+                    height: 1.4,
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  '이 행동이 건강한 생활 습관으로 도움이 될 것 같다면 추가해주세요.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF2D3748),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.lightbulb_outline,
+                      color: Color(0xFF4CAF50),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '"$behavior"',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF2D3748),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _newBehaviorController.clear();
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(
+                          color: Color(0xFFE2E8F0),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: const Text(
+                      '추가하지 않을래요',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF718096),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _confirmAddBehavior(behavior);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      '추가할게요',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        );
+      },
+    );
+  }
+
+  void _confirmAddBehavior(String behavior) {
+    // 새로운 전역 상태 생성
+    final newGlobalBehaviors = List<String>.from(_newBehaviors);
+    newGlobalBehaviors.add(behavior);
+
+    // 전역 상태 업데이트
+    Week7AddDisplayScreen.updateGlobalNewBehaviors(newGlobalBehaviors);
+
+    // 로컬 상태 업데이트
+    setState(() {
+      _newBehaviors.add(behavior);
+      _newBehaviorController.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('"$behavior"이(가) 추가되었습니다.'),
+        backgroundColor: const Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   void _removeAddedBehavior(String behavior) {
@@ -729,9 +937,9 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                       const SizedBox(height: 16),
                     ],
 
-                    // 새로운 행동 추가
+                    // 건강한 행동 추가
                     const Text(
-                      '새로운 행동 추가',
+                      '건강한 행동 추가',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,

@@ -32,7 +32,7 @@ class RelaxYesOrNo extends StatelessWidget {
                   // TODO: 이완 페이지 이동
                   Navigator.pushNamed(
                     context,
-                    '/breath_muscle_relaxation',
+                    '/relaxation_noti',
                     arguments: {
                       'abcId': abcId,
                       if (diary != null) 'diary': diary

@@ -29,13 +29,16 @@ class RelaxOrAlternativePage extends StatelessWidget {
               height: 60,
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: 이완 페이지
+                  // TODO: ㅜㅜ 세현님..ㅜㅜ
                   Navigator.pushNamed(
                     context,
-                    '/breath_muscle_relaxation',
+                    '/relaxation_noti',
                     arguments: {
-                      'abcId': abcId,
-                      if (diary!=null) 'diary': diary
+                      'taskId': abcId,
+                      'weekNumber': 4,
+                      'mp3Asset': 'week4.mp3',
+                      'riveAsset': 'week4.riv',
+                      'nextPage': '/relaxation_score',
                     }
                   );
                 },

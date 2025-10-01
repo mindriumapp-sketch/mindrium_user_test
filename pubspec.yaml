@@ -38,11 +38,11 @@ dependencies:
 
   # 미디어
   audioplayers: ^6.4.0
-  camera: ^0.11.1
   image_picker: ^1.0.7
   cached_network_image: ^3.3.1
   path_provider: ^2.1.1
   path: ^1.8.3
+  rive: ^0.13.9
 
   # 지도 / 위치 / 지오펜스 / 정적 HTTP
   flutter_map: ^8.1.1
@@ -92,6 +92,11 @@ flutter:
     - assets/image/scenario_1.png
     - assets/image/scenario_2.png
     - assets/image/scenario_3.png
+
+    - assets/image/delete.png
+    - assets/image/attack.png
+    - assets/image/men.png
+
     - assets/image/character1.png
     - assets/image/character2.png
     - assets/image/character3.png
@@ -101,9 +106,12 @@ flutter:
     - assets/image/character7.png
     - assets/image/character8.png
     - assets/image/character9.png
-    - assets/image/delete.png
-    - assets/image/attack.png
-    - assets/image/men.png
+    - assets/image/character10.png
+    - assets/image/character11.png
+    - assets/image/character12.png
+    - assets/image/character13.png
+    - assets/image/character14.png
+    - assets/image/character15.png
 
     # 1주차 part1
     - assets/education_data/week1_part1_1.json
@@ -151,6 +159,25 @@ flutter:
     - assets/education_data/week1_part6_2.json
     - assets/education_data/week1_part6_3.json
     - assets/education_data/week1_part6_4.json
+
+    - assets/education_data/week1_relaxation_1.json
+    - assets/education_data/week1_relaxation_2.json
+    - assets/education_data/week1_relaxation_3.json
+    - assets/education_data/week1_relaxation_4.json
+    - assets/education_data/week1_relaxation_5.json
+
+    - assets/relaxation/week1.riv
+    - assets/relaxation/week1.mp3
+    - assets/relaxation/week2.riv
+    - assets/relaxation/week2.mp3
+    - assets/relaxation/week3.riv
+    - assets/relaxation/week3.mp3
+    - assets/relaxation/week4.riv
+    - assets/relaxation/week4.mp3
+    - assets/relaxation/week7.riv
+    - assets/relaxation/week7.mp3
+    - assets/relaxation/week8.riv
+    - assets/relaxation/week8.mp3
 
     - assets/image/alternative thoughts.png
     - assets/image/imagination.png
