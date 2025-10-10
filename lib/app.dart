@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:gad_app_team/contents/apply_alternative_thought.dart';
 import 'package:gad_app_team/contents/diary_or_relax_or_home.dart';
 import 'package:gad_app_team/contents/filtered_diary_select.dart';
 import 'package:gad_app_team/contents/diary_yes_or_no.dart';
@@ -8,6 +9,7 @@ import 'package:gad_app_team/contents/filtered_diary_show.dart';
 import 'package:gad_app_team/contents/relax_or_alternative.dart';
 import 'package:gad_app_team/contents/relax_yes_or_no.dart';
 import 'package:gad_app_team/contents/similar_activation.dart';
+import 'package:gad_app_team/contents/training_select.dart';
 import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_result_screen.dart';
@@ -118,8 +120,8 @@ class MyApp extends StatelessWidget {
           final args = (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
           final taskId    = args['taskId']    as String? ?? 'wk01-pmr-breath';
           final weekNumber= args['weekNumber']as int?    ?? 1;
-          final mp3Asset  = args['mp3Asset']  as String? ?? 'assets/audio/pmr_week1.mp3';
-          final riveAsset = args['riveAsset'] as String? ?? 'assets/rive/pmr_week1.riv';
+          final mp3Asset  = args['mp3Asset']  as String? ?? 'assets/relaxation/week1.mp3';
+          final riveAsset = args['riveAsset'] as String? ?? 'assets/relaxation/week1.riv';
 
           return PracticePlayer(
             taskId: taskId,
@@ -132,8 +134,8 @@ class MyApp extends StatelessWidget {
           final args = (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
           final taskId    = args['taskId']    as String? ?? 'wk01-pmr-breath';
           final weekNumber= args['weekNumber']as int?    ?? 1;
-          final mp3Asset  = args['mp3Asset']  as String? ?? 'assets/audio/pmr_week1.mp3';
-          final riveAsset = args['riveAsset'] as String? ?? 'assets/rive/pmr_week1.riv';
+          final mp3Asset  = args['mp3Asset']  as String? ?? 'assets/relaxation/week1.mp3';
+          final riveAsset = args['riveAsset'] as String? ?? 'assets/relaxation/week1.riv';
           final nextPage = args['nextPage'] as String? ?? '/home';
 
           return NotiPlayer(
@@ -145,18 +147,7 @@ class MyApp extends StatelessWidget {
           );
         },
         '/relaxation_score': (context) => const RelaxationScoreScreen(),
-
-        '/before_sud': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map?;
-          final abcId = args?['abcId'] as String?;
-          if (abcId == null) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => navigatorKey.currentState?.pushReplacementNamed('/home'),
-            );
-            return const SizedBox.shrink();
-          }
-          return BeforeSudRatingScreen(abcId: abcId);
-        },
+        '/before_sud': (context) => const BeforeSudRatingScreen(),
         '/after_sud': (context) => const AfterSudRatingScreen(),
         "/diary_relax_home": (context) => const DiaryOrRelaxOrHome(),
         '/diary_yes_or_no': (contxt) => const DiaryYesOrNo(),
@@ -165,6 +156,8 @@ class MyApp extends StatelessWidget {
         "/similar_activation": (context) => const SimilarActivationScreen(),
         "/relax_or_alternative": (context) => const RelaxOrAlternativePage(),
         "/relax_yes_or_no": (context) => const RelaxYesOrNo(),
+        "/training": (context) => const TrainingSelect(),
+        '/apply_alt_thought': (context) => const ApplyAlternativeThoughtScreen(),
 
         "/abc_group_add": (context) => const AbcGroupAddScreen(),
         '/diary_group': (context) => AbcGroupScreen(),

@@ -88,18 +88,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _homePage() {
+    final completedWeeksFuture = _completedWeeksFuture ??= _loadCompletedWeeks();
+
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.padding),
-        children: [
-          _buildHeader(),
-          const SizedBox(height: AppSizes.space),
-          _buildProgressSection(),
-          const SizedBox(height: AppSizes.space),
-          _buildTodayTasks(),
-          const SizedBox(height: AppSizes.space),
-          _buildMindriumSection(),
-        ],
+      child: FutureBuilder<int>(
+        future: completedWeeksFuture,
+        builder: (context, snapshot) {
+          return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.padding),
+            children: [
+              _buildHeader(),
+              const SizedBox(height: AppSizes.space),
+              _buildProgressSection(snapshot),
+              const SizedBox(height: AppSizes.space),
+              _buildTodayTasks(),
+              const SizedBox(height: AppSizes.space),
+              _buildMindriumSection(snapshot),
+            ],
+          );
+        },
       ),
     );
   }
@@ -134,38 +141,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProgressSection() {
+  Widget _buildProgressSection(AsyncSnapshot<int> snapshot) {
     final dayCounter = context.watch<UserDayCounter>();
     if (!dayCounter.isUserLoaded) return const SizedBox.shrink();
 
-    _completedWeeksFuture ??= _loadCompletedWeeks();
+    const title = '치료 진행 상황';
+    const errorMessage = '진행 정보를 불러오지 못했어요.';
 
-    return FutureBuilder<int>(
-      future: _completedWeeksFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CardContainer(
-            title: '치료 진행 상황',
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return const CardContainer(
-            title: '치료 진행 상황',
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Text('진행 정보를 불러오지 못했어요.'),
-            ),
-          );
-        }
-
-        final completedWeeks = snapshot.data ?? 0;
+    return _buildAsyncSection(
+      snapshot: snapshot,
+      title: title,
+      errorMessage: errorMessage,
+      onData: (completedWeeks) {
         final progress = (completedWeeks / _kTotalWeeks).clamp(0.0, 1.0);
         final percentLabel = '${(progress * 100).round()}%';
 
         return ProgressCard(
-          title: '치료 진행 상황',
+          title: title,
           progress: progress,
           progressLabel: percentLabel,
           footnote: '$completedWeeks / $_kTotalWeeks 주차 완료',
@@ -195,9 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(AppSizes.borderRadius),
-            boxShadow: enabled
-                ? const [BoxShadow(color: AppColors.black12, blurRadius: 8)]
-                : const [],
+            boxShadow: const [BoxShadow(color: AppColors.black12, blurRadius: 8)],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,14 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: secondaryText,
                     ),
                   ),
-                  if (!enabled)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: Text(
-                        '3주차 이상 완료 시 이용 가능',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                    ),
                 ],
               ),
             ],
@@ -262,16 +244,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: '적용하기',
                 description: '실제 상황에서 불안을 다뤄봅니다.',
                 icon: Icons.psychology,
-                onTap: canApply
-                    ? () => Navigator.pushNamed(
+                onTap: () => Navigator.pushNamed(
                           context,
                           '/before_sud',
                           arguments: const {
                             'origin': 'apply',
                             'diary': 'new',
                           },
-                        )
-                    : null,
+                        ),
                 enabled: canApply,
               ),
             ),
@@ -294,11 +274,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.check_box_outline_blank,
                 enabled: true,
                 onTap: () {},
-                margin: const EdgeInsets.all(0),
+                margin: EdgeInsets.zero,
                 showShadow: false,
               ),
               if (!isLast)
-                Divider(
+                const Divider(
                   height: 1,
                   thickness: 1,
                 ),
@@ -309,235 +289,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMindriumSection() {
-    return FutureBuilder<int>(
-      future: _completedWeeksFuture ??= _loadCompletedWeeks(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CardContainer(
-            title: 'Mindrium 빠른 실행',
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
+  Widget _buildAsyncSection({
+    required AsyncSnapshot<int> snapshot,
+    required String title,
+    required String errorMessage,
+    required Widget Function(int) onData,
+  }) {
+    if (snapshot.connectionState != ConnectionState.done) {
+      return CardContainer(
+        title: title,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-        if (snapshot.hasError) {
-          return const CardContainer(
-            title: 'Mindrium 빠른 실행',
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Text('Mindrium 정보를 불러오지 못했어요.'),
-            ),
-          );
-        }
+    if (snapshot.hasError) {
+      return CardContainer(
+        title: title,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Text(errorMessage),
+        ),
+      );
+    }
 
-        return _buildMindriumShortcuts(completedWeeks: snapshot.data ?? 0);
-      },
-    );
+    return onData(snapshot.data ?? 0);
   }
 
-  // Widget _buildReportSummary() {
-  //   return FutureBuilder<Map<String, List<_SudEntry>>>(
-  //     future: _fetchSudEntries(),
-  //     builder: (context, snapshot) {
-  //       if (snapshot.connectionState == ConnectionState.waiting) {
-  //         return const CardContainer(
-  //           title: '최근 불안감 변화',
-  //           child: Center(child: CircularProgressIndicator()),
-  //         );
-  //       }
+  Widget _buildMindriumSection(AsyncSnapshot<int> snapshot) {
+    final completedWeeks = snapshot.data ?? 0;
 
-  //       if (snapshot.hasError ||
-  //           !snapshot.hasData ||
-  //           (snapshot.data!['before']!.isEmpty && snapshot.data!['after']!.isEmpty)) {
-  //         return const CardContainer(
-  //           title: '최근 불안감 변화',
-  //           child: Center(child: Text('데이터가 없습니다')),
-  //         );
-  //       }
-
-  //       final beforeEntries = snapshot.data!['before']!;
-  //       final afterEntries  = snapshot.data!['after']!;
-
-  //       final latestBefore = beforeEntries.take(10).toList()
-  //         ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-  //       final latestAfter = afterEntries.take(10).toList()
-  //         ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-  //       final timeline = <DateTime>{
-  //         ...latestBefore.map((e) => e.createdAt),
-  //         ...latestAfter.map((e) => e.createdAt),
-  //       }.toList()
-  //         ..sort((a, b) => a.compareTo(b));
-
-  //       final beforeSpots = latestBefore
-  //           .map((e) => FlSpot(
-  //                 timeline.indexOf(e.createdAt).toDouble(),
-  //                 e.sud.toDouble(),
-  //               ))
-  //           .toList()
-  //         ..sort((a, b) => a.x.compareTo(b.x));
-
-  //       final afterSpots = latestAfter
-  //           .map((e) => FlSpot(
-  //                 timeline.indexOf(e.createdAt).toDouble(),
-  //                 e.sud.toDouble(),
-  //               ))
-  //           .toList()
-  //         ..sort((a, b) => a.x.compareTo(b.x));
-
-  //       return CardContainer(
-  //         title: '최근 불안감 변화 (before 10 / after 10)',
-  //         child: Column(
-  //           crossAxisAlignment: CrossAxisAlignment.start,
-  //           children: [
-  //             SizedBox(
-  //               height: 120,
-  //               child: LineChart(
-  //                 LineChartData(
-  //                   minY: -1,
-  //                   maxY: 11,
-  //                   gridData: FlGridData(
-  //                     show: true,
-  //                     drawVerticalLine: false,
-  //                     horizontalInterval: 2,
-  //                     getDrawingHorizontalLine: (value) => FlLine(
-  //                       color: AppColors.grey300,
-  //                       strokeWidth: 1,
-  //                     ),
-  //                   ),
-  //                   titlesData: FlTitlesData(
-  //                     leftTitles: AxisTitles(
-  //                       sideTitles: SideTitles(
-  //                         showTitles: true,
-  //                         interval: 2,
-  //                         getTitlesWidget: (value, meta) {
-  //                           // Hide 0 and any odd numbers
-  //                           if (value % 2 != 0) return const SizedBox.shrink();
-  //                           return Text(
-  //                             value.toInt().toString(),
-  //                             style: const TextStyle(fontSize: 8),
-  //                             textAlign: TextAlign.center,
-  //                           );
-  //                         },
-  //                       ),
-  //                     ),
-  //                     rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-  //                     topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-  //                     bottomTitles: AxisTitles(
-  //                       sideTitles: SideTitles(
-  //                         showTitles: true,
-  //                         interval: 1,
-  //                         getTitlesWidget: (value, meta) {
-  //                           final idx = value.toInt();
-  //                           if (idx < 0 || idx >= timeline.length) {
-  //                             return const SizedBox.shrink();
-  //                           }
-  //                           return Text(
-  //                             DateFormat('MM/dd\nHH:mm').format(timeline[idx]),
-  //                             style: const TextStyle(fontSize: 8),
-  //                           );
-  //                         },
-  //                       ),
-  //                     ),
-  //                   ),
-  //                   borderData: FlBorderData(show: false),
-  //                   lineBarsData: [
-  //                     LineChartBarData(
-  //                       spots: beforeSpots,
-  //                       isCurved: true,
-  //                       color: Colors.indigo,
-  //                       barWidth: 2,
-  //                       dotData: FlDotData(show: false),
-  //                       belowBarData: BarAreaData(show: false),
-  //                     ),
-  //                     LineChartBarData(
-  //                       spots: afterSpots,
-  //                       isCurved: true,
-  //                       color: Colors.redAccent,
-  //                       barWidth: 2,
-  //                       dotData: FlDotData(show: false),
-  //                       belowBarData: BarAreaData(show: false),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ),
-  //             const SizedBox(height: AppSizes.space),
-  //             if (timeline.isNotEmpty)
-  //               Text(
-  //                 '최근 평균 SUD: '
-  //                 '${(
-  //                   [...latestBefore, ...latestAfter]
-  //                       .map((e) => e.sud)
-  //                       .reduce((a, b) => a + b) /
-  //                   (latestBefore.length + latestAfter.length)
-  //                 ).toStringAsFixed(1)}점',
-  //                 style: const TextStyle(color: AppColors.grey),
-  //               ),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
-  /// Firestore에서 모든 ABC 문서 하위 before/after SUD 데이터를 모아
-  /// 각각 최신순 10개씩 가져와 반환.
-  // Future<Map<String, List<_SudEntry>>> _fetchSudEntries() async {
-  //   final uid = FirebaseAuth.instance.currentUser?.uid;
-  //   if (uid == null) return {'before': [], 'after': []};
-
-  //   // 사용자의 모든 ABC 문서 조회
-  //   final abcDocs = await FirebaseFirestore.instance
-  //       .collection('users')
-  //       .doc(uid)
-  //       .collection('abc_models')
-  //       .get();
-
-  //   final beforeEntries = <_SudEntry>[];
-  //   final afterEntries  = <_SudEntry>[];
-
-  //   // 각 ABC 문서 하위의 before_sud_result / after_sud_result 수집
-  //   for (final abcDoc in abcDocs.docs) {
-  //     final beforeSnap = await abcDoc.reference
-  //         .collection('before_sud_result')
-  //         .orderBy('createdAt', descending: true)
-  //         .limit(10)
-  //         .get();
-
-  //     final afterSnap = await abcDoc.reference
-  //         .collection('after_sud_result')
-  //         .orderBy('createdAt', descending: true)
-  //         .limit(10)
-  //         .get();
-
-  //     beforeEntries.addAll(beforeSnap.docs.map((d) => _SudEntry(
-  //           sud: (d.data()['sud'] ?? 0) as int,
-  //           createdAt:
-  //               (d.data()['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  //         )));
-
-  //     afterEntries.addAll(afterSnap.docs.map((d) => _SudEntry(
-  //           sud: (d.data()['sud'] ?? 0) as int,
-  //           createdAt:
-  //               (d.data()['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  //         )));
-  //   }
-
-  //   // 최신순 정렬 후 10개씩 제한
-  //   beforeEntries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-  //   afterEntries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-  //   return {
-  //     'before': beforeEntries.take(10).toList(),
-  //     'after' : afterEntries.take(10).toList(),
-  //   };
-  // }
+    return _buildMindriumShortcuts(completedWeeks: completedWeeks);
+  }
 }
-
-// /// 내부용 SUD 모델
-// class _SudEntry {
-//   final int sud;
-//   final DateTime createdAt;
-//   _SudEntry({required this.sud, required this.createdAt});
-// }

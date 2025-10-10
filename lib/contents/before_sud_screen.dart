@@ -119,18 +119,18 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
 
               final abcId = _abcId;
 
-              if ((abcId == null || abcId.isEmpty) && origin == 'apply') {
-                Navigator.pushReplacementNamed(
-                  context,
-                  '/diary_yes_or_no',
-                  arguments: {
-                    'origin': 'apply',
-                    if (diary != null) 'diary': diary,
-                    'beforeSud': _sud,
-                  },
-                );
-                return;
-              }
+              // if ((abcId == null || abcId.isEmpty) && origin == 'apply') {
+              //   Navigator.pushReplacementNamed(
+              //     context,
+              //     '/diary_yes_or_no',
+              //     arguments: {
+              //       'origin': 'apply',
+              //       if (diary != null) 'diary': diary,
+              //       'beforeSud': _sud,
+              //     },
+              //   );
+              //   return;
+              // }
 
               if (_sud > 2) {
                 if (abcId == null || abcId.isEmpty) {

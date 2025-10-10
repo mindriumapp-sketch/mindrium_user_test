@@ -65,7 +65,7 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                     context, 
                     '/relaxation_noti',
                     arguments: {
-                      'taskId': groupId, // 임시...
+                      'taskId': groupId, // 임시..
                       'weekNumber': 4,
                       'mp3Asset': 'week4.mp3',
                       'riveAsset': 'week4.riv',

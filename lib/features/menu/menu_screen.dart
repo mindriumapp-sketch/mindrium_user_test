@@ -37,7 +37,7 @@ class _ContentScreenState extends State<ContentScreen> {
               icon: Icons.self_improvement,
               title: '이완',
               enabled: true,
-              onTap: () => Navigator.pushNamed(context,'/breath_muscle_relaxation'),
+              onTap: () => Navigator.pushNamed(context,'/relaxation_noti'),
             ),
             const SizedBox(height: AppSizes.space),
 

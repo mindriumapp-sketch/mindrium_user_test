@@ -475,11 +475,17 @@ class _Week4AlternativeThoughtsScreenState
                                     : '');
 
                         if (widget.abcId != null && widget.abcId!.isNotEmpty) {
+                          final routeArgs = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
+                          final origin = (routeArgs['origin'] as String?) ?? 'etc';
+                          final diary  = routeArgs['diary'];
+                          debugPrint('[alt_thought] origin=$origin, diary=$diary');
                           Navigator.pushNamed(
                             context,
                             '/alt_thought',
                             arguments: {
                               'abcId': widget.abcId,
+                              'origin': origin,
+                              if (diary != null) 'diary': diary,
                               'loopCount': widget.loopCount,
                             },
                           );
