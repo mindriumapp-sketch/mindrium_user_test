@@ -24,18 +24,16 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
   @override
   void initState() {
     super.initState();
-    _abcId = widget.abcId; // may be null
-    debugPrint('[SUD] arguments = $_abcId');
+    debugPrint('[SUD] arguments = ${widget.abcId}');
   }
 
-  late final String? _abcId;
-  int _sud = 0; // 슬라이더 값 (0‒10)
+  int _sud = 5; // 슬라이더 값 (0‒10)
 
   // ────────────────────── Firestore 저장 ──────────────────────
-  Future<void> _saveSud() async {
+  Future<void> _saveSud(String? abcId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return; // 로그인하지 않은 경우
-    if (_abcId == null || _abcId.isEmpty) return; // abcId 없으면 저장 생략
+    if (abcId == null || abcId.isEmpty) return; // abcId 없으면 저장 생략
 
     final pos = await _getCurrentPosition(); // 위치 권한 없으면 null
 
@@ -43,7 +41,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
       .collection('users')
       .doc(uid)
       .collection('abc_models')
-      .doc(_abcId)
+      .doc(abcId)
       .collection('sud_score')
       .add({
         'before_sud': _sud,
@@ -95,10 +93,15 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
   // ────────────────────────── UI ──────────────────────────
   @override
   Widget build(BuildContext context) {
-    // 라우트 인자
-    final args = ModalRoute.of(context)?.settings.arguments as Map?;
-    final String? origin = args?['origin'] as String?;
-    final dynamic diary = args?['diary'];
+    final Object? rawArgs = ModalRoute.of(context)?.settings.arguments;
+    final Map<String, dynamic> args = rawArgs is Map
+        ? rawArgs.cast<String, dynamic>()
+        : <String, dynamic>{};
+    final String? origin = args['origin'] as String?;
+    final dynamic diary = args['diary'];
+    final String? routeAbcId = args['abcId'] as String?;
+    final String? abcId = widget.abcId ?? routeAbcId;
+    final bool hasAbcId = abcId?.isNotEmpty ?? false;
 
     // 슬라이더·숫자·아이콘과 동일한 색 계열
     final Color trackColor = _sud <= 2 ? Colors.green : Colors.red;
@@ -114,49 +117,42 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
             rightLabel: '저장',
             onBack: () => Navigator.pop(context),
             onNext: () async {
-              await _saveSud();
+              await _saveSud(abcId);
               if (!context.mounted) return;
 
-              final abcId = _abcId;
+              if (!hasAbcId && origin == 'apply') {
+                Navigator.pushReplacementNamed(
+                  context,
+                  '/diary_yes_or_no',
+                  arguments: {
+                    'origin': 'apply',
+                    if (diary != null) 'diary': diary,
+                    'beforeSud': _sud,
+                  },
+                );
+                return;
+              }
 
-              // if ((abcId == null || abcId.isEmpty) && origin == 'apply') {
-              //   Navigator.pushReplacementNamed(
-              //     context,
-              //     '/diary_yes_or_no',
-              //     arguments: {
-              //       'origin': 'apply',
-              //       if (diary != null) 'diary': diary,
-              //       'beforeSud': _sud,
-              //     },
-              //   );
-              //   return;
-              // }
+              final user = FirebaseAuth.instance.currentUser;
+              if (user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('로그인 정보가 없습니다.')),
+                );
+                return;
+              }
+
+              if (!hasAbcId) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('기록 정보를 찾을 수 없습니다. 다시 시도해 주세요.')),
+                );
+                return;
+              }
+
+              final String ensuredAbcId = abcId!;
+              final groupId = await _loadGroupId(user.uid, ensuredAbcId);
+              if (!context.mounted) return;
 
               if (_sud > 2) {
-                if (abcId == null || abcId.isEmpty) {
-                  Navigator.pushReplacementNamed(
-                    context,
-                    '/diary_yes_or_no',
-                    arguments: {
-                      'origin': 'apply',
-                      if (diary != null) 'diary': diary,
-                      'beforeSud': _sud,
-                    },
-                  );
-                  return;
-                }
-
-                final uid = FirebaseAuth.instance.currentUser?.uid;
-                if (uid == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('로그인 정보가 없습니다.')),
-                  );
-                  return;
-                }
-
-                final String ensuredAbcId = abcId;
-                final groupId = await _loadGroupId(uid, ensuredAbcId);
-                if (!context.mounted) return;
                 Navigator.pushReplacementNamed(
                   context,
                   '/similar_activation',
@@ -169,34 +165,6 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
                 return;
               }
 
-              // TODO: 이완 애니메이션을 넣었으나 확실치 않음...(세현님 도와주세요..)
-              // TODO: 일단 4주차 고정. 만약 주차별로 달라지는 이완이 필요한 거면 수정필요..
-              if (abcId == null || abcId.isEmpty) {
-                Navigator.pushReplacementNamed(
-                  context,
-                  '/relaxation_noti',
-                  arguments: {
-                    'taskId': abcId,
-                    'weekNumber': 4,
-                    'mp3Asset': 'week4.mp3',
-                    'riveAsset': 'week4.riv',
-                    'nextPage': '/relaxation_score',
-                  },
-                );
-                return;
-              }
-
-              final uid = FirebaseAuth.instance.currentUser?.uid;
-              if (uid == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('로그인 정보가 없습니다.')),
-                );
-                return;
-              }
-
-              final String ensuredAbcId = abcId;
-              final groupId = await _loadGroupId(uid, ensuredAbcId);
-              if (!context.mounted) return;
               Navigator.pushReplacementNamed(
                 context,
                 '/diary_relax_home',

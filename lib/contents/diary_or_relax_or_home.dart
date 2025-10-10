@@ -36,6 +36,7 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                     '/diary_select',
                     arguments: {
                       'groupId': groupId,
+                      'sud': sud,
                     }
                   );
                 },
