@@ -74,15 +74,14 @@ class _ContentScreenState extends State<ContentScreen> {
               onTap: () => Navigator.pushNamed(context,'/archive_sea'),
             ),
 
-            const SizedBox(height: AppSizes.space),
-
-            ActivityCard(
-              icon: Icons.edit_note,
-              title: '캐릭터 삭제',
-              enabled: true,
-              onTap: () => Navigator.pushNamed(context,'/battle'),
-            ),
-            const SizedBox(height: AppSizes.space)
+            // const SizedBox(height: AppSizes.space),
+            // ActivityCard(
+            //   icon: Icons.edit_note,
+            //   title: '캐릭터 삭제',
+            //   enabled: true,
+            //   onTap: () => Navigator.pushNamed(context,'/battle'),
+            // ),
+            // const SizedBox(height: AppSizes.space)
 
           ],
         ),

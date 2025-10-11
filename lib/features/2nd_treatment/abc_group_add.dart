@@ -282,161 +282,173 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
               ),
             ),
 
-            // ─── 상세 정보 (고정 높이로 오버플로 방지) ───────────────
-            if (_selectedGroupId != null) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 240, // 필요 시 200~320 사이로 조정
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: groupRef.snapshots(),
-                  builder: (ctx, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      return const SizedBox.shrink();
+// ─── 상세 정보 (고정 높이로 오버플로 방지) ───────────────
+if (_selectedGroupId != null) ...[
+  const SizedBox(height: 24),
+  SizedBox(
+    height: 240, // 필요 시 200~320 사이로 조정
+    child: StreamBuilder<QuerySnapshot>(
+      stream: groupRef.snapshots(),
+      builder: (ctx, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+        if (snap.hasError || snap.data == null) {
+          return const Center(
+              child: Text('그룹을 불러오는 중 오류가 발생했습니다.'));
+        }
+
+        // 동일한 정렬 로직
+        final sortedGroups = snap.data!.docs.toList()
+          ..sort((a, b) {
+            final aData = a.data()! as Map<String, dynamic>;
+            final bData = b.data()! as Map<String, dynamic>;
+            final aId = aData['group_id']?.toString() ?? '';
+            final bId = bData['group_id']?.toString() ?? '';
+            if (aId == '1' && bId != '1') return -1;
+            if (bId == '1' && aId != '1') return 1;
+            final aTime = aData['createdAt'] as Timestamp?;
+            final bTime = bData['createdAt'] as Timestamp?;
+            if (aTime != null && bTime != null) {
+              return aTime.compareTo(bTime);
+            } else if (aTime == null && bTime != null) {
+              return 1;
+            } else if (aTime != null && bTime == null) {
+              return -1;
+            }
+            return 0;
+          });
+
+        // ✅ firstWhere(orElse) 대신 where().toList()로 안전 처리
+        final matches = sortedGroups.where((d) {
+          final data = d.data()! as Map<String, dynamic>;
+          return (data['group_id']?.toString() ?? '') == _selectedGroupId;
+        }).toList();
+
+        if (matches.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final selectedDoc = matches.first;
+        final data = selectedDoc.data()! as Map<String, dynamic>;
+        final groupIdStr = data['group_id']?.toString() ?? '';
+
+        // ✅ 여기서만 수정됨 — 주관적 점수 계산 부분
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('abc_models')
+              .where('group_id', isEqualTo: groupIdStr)
+              .snapshots(),
+          builder: (ctx2, snap2) {
+            if (snap2.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap2.hasError || snap2.data == null) {
+              return const Text('일기를 불러오는 중 오류가 발생했습니다.');
+            }
+
+            final diaryDocs = snap2.data!.docs;
+            final count = diaryDocs.length;
+
+            // ✅ after_sud 기반 평균 계산으로 교체
+            return FutureBuilder<double>(
+              future: (() async {
+                double total = 0;
+                int validCount = 0;
+                for (final d in diaryDocs) {
+                  final subCol = await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(userId)
+                      .collection('abc_models')
+                      .doc(d.id)
+                      .collection('sud_score')
+                      .get();
+                  for (final sub in subCol.docs) {
+                    final data = sub.data();
+                    final after = data['after_sud'];
+                    if (after is num) {
+                      total += after.toDouble();
+                      validCount++;
                     }
-                    if (snap.hasError || snap.data == null) {
-                      return const Center(
-                          child: Text('그룹을 불러오는 중 오류가 발생했습니다.'));
-                    }
-
-                    // 동일한 정렬 로직
-                    final sortedGroups = snap.data!.docs.toList()
-                      ..sort((a, b) {
-                        final aData = a.data()! as Map<String, dynamic>;
-                        final bData = b.data()! as Map<String, dynamic>;
-                        final aId = aData['group_id']?.toString() ?? '';
-                        final bId = bData['group_id']?.toString() ?? '';
-                        if (aId == '1' && bId != '1') return -1;
-                        if (bId == '1' && aId != '1') return 1;
-                        final aTime = aData['createdAt'] as Timestamp?;
-                        final bTime = bData['createdAt'] as Timestamp?;
-                        if (aTime != null && bTime != null) {
-                          return aTime.compareTo(bTime);
-                        } else if (aTime == null && bTime != null) {
-                          return 1;
-                        } else if (aTime != null && bTime == null) {
-                          return -1;
-                        }
-                        return 0;
-                      });
-
-                    // ✅ firstWhere(orElse) 대신 where().toList()로 안전 처리
-                    final matches = sortedGroups.where((d) {
-                      final data = d.data()! as Map<String, dynamic>;
-                      return (data['group_id']?.toString() ?? '') ==
-                          _selectedGroupId;
-                    }).toList();
-
-                    if (matches.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-
-                    final selectedDoc = matches.first;
-                    final data =
-                    selectedDoc.data()! as Map<String, dynamic>;
-                    final groupIdStr = data['group_id']?.toString() ?? '';
-
-                    // 선택된 그룹의 일기만 필터링하여 count & avgScore 계산
-                    return StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(userId)
-                          .collection('abc_models')
-                          .where('group_id', isEqualTo: groupIdStr) // 문자열 기준
-                          .snapshots(),
-                      builder: (ctx2, snap2) {
-                        if (snap2.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-                        if (snap2.hasError || snap2.data == null) {
-                          return const Text('일기를 불러오는 중 오류가 발생했습니다.');
-                        }
-
-                        final diaryDocs = snap2.data!.docs;
-                        final count = diaryDocs.length;
-                        final totalScore = diaryDocs.fold<num>(
-                          0,
-                              (sum, d) {
-                            final m = (d.data()
-                            as Map<String, dynamic>)['sud_score'];
-                            return sum + (m is num ? m : 0);
-                          },
-                        );
-                        final avgScore =
-                        count > 0 ? totalScore / count : 0.0;
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                                color: Colors.indigo, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.25),
-                                blurRadius: 6,
-                                offset: const Offset(2, 4),
+                  }
+                }
+                return validCount > 0 ? total / validCount : 0.0;
+              })(),
+              builder: (ctx3, avgSnap) {
+                final avgScore = avgSnap.data ?? 0.0;
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.indigo, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.25),
+                        blurRadius: 6,
+                        offset: const Offset(2, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '<${data['group_title']}>',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
                               ),
-                            ],
+                            ),
                           ),
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '<${data['group_title']}>',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                      ),
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => _showEditDialog(
-                                      context,
-                                      data,
-                                      selectedDoc.reference,
-                                    ),
-                                    child: const Icon(Icons.more_vert,
-                                        size: 20),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                '주관적 점수: ${avgScore.toStringAsFixed(1)} /10',
-                                style: const TextStyle(fontSize: 15.5),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '일기 개수: $count개',
-                                style: const TextStyle(fontSize: 15.5),
-                              ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                height: 100,
-                                width: double.infinity,
-                                child: SingleChildScrollView(
-                                  child: Text(
-                                    data['group_contents'] ?? '',
-                                    style: const TextStyle(fontSize: 15.5),
-                                  ),
-                                ),
-                              ),
-                            ],
+                          GestureDetector(
+                            onTap: () => _showEditDialog(
+                              context,
+                              data,
+                              selectedDoc.reference,
+                            ),
+                            child: const Icon(Icons.more_vert, size: 20),
                           ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '주관적 점수: ${avgScore.toStringAsFixed(1)} /10',
+                        style: const TextStyle(fontSize: 15.5),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '일기 개수: $count개',
+                        style: const TextStyle(fontSize: 15.5),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 100,
+                        width: double.infinity,
+                        child: SingleChildScrollView(
+                          child: Text(
+                            data['group_contents'] ?? '',
+                            style: const TextStyle(fontSize: 15.5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    ),
+  ),
+],
+
           ],
         ),
       ),
