@@ -26,7 +26,7 @@ class PracticePlayer extends StatefulWidget {
 
 class _PracticePlayerState extends State<PracticePlayer> {
   Artboard? _artboard;
-  StateMachineController? _controller;
+  RiveAnimationController? _controller;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   bool _isPlaying = true;
@@ -50,39 +50,60 @@ class _PracticePlayerState extends State<PracticePlayer> {
 
   Future<void> _initRive() async {
     await RiveFile.initialize();
-    final data = await rootBundle.load(_resolveRiveAsset(widget.riveAsset));
-    final file = RiveFile.import(data);
-    final artboard = file.mainArtboard;
+    try {
+      final data = await rootBundle.load(_resolveRiveAsset(widget.riveAsset));
+      final file = RiveFile.import(data);
+      final artboard = file.mainArtboard;
 
-    final controller = StateMachineController.fromArtboard(artboard, 'StateMachine1');
-    if (controller != null) {
-      artboard.addController(controller);
+      RiveAnimationController? controller =
+          StateMachineController.fromArtboard(artboard, 'StateMachine1');
 
-      controller.isActiveChanged.addListener(() {
-        if (!controller.isActive) {
-          _isRiveFinished = true;
-          _logger.logEvent("rive_complete");
-          _checkIfBothFinished();
-        }
-      });
+      // Fallback: if there is no StateMachine named 'StateMachine1', start the first available animation.
+      if (controller == null && artboard.animations.isNotEmpty) {
+        controller = SimpleAnimation(artboard.animations.first.name);
+        _logger.logEvent("rive_controller_fallback_${artboard.animations.first.name}");
+      }
 
+      if (controller != null) {
+        artboard.addController(controller);
+        _controller = controller;
+      } else {
+        _logger.logEvent("rive_no_controller");
+      }
+
+      // Always set the artboard so UI stops showing the spinner even if no controller found.
       setState(() {
         _artboard = artboard;
-        _controller = controller;
+      });
+
+      if (_isPlaying) {
+        _controller?.isActive = true;
+      }
+    } catch (e) {
+      _logger.logEvent("rive_load_error:$e");
+      setState(() {
+        _artboard = null;
       });
     }
   }
 
   Future<void> _initAudio() async {
     await _audioPlayer.setSource(AssetSource(_resolveAudioAsset(widget.mp3Asset)));
-    await _audioPlayer.setVolume(0.8);
-    await _audioPlayer.resume();
+    await _audioPlayer.setVolume(1);
 
     _audioPlayer.onPlayerComplete.listen((event) {
       _isAudioFinished = true;
+      _isRiveFinished = true; // Tie Rive finish to audio end to avoid false positives from pauses
+      _controller?.isActive = false;
       _logger.logEvent("audio_complete");
+      _logger.logEvent("rive_complete");
       _checkIfBothFinished();
     });
+
+    await _audioPlayer.resume();
+    if (_isPlaying) {
+      _controller?.isActive = true;
+    }
   }
 
   void _togglePlay() {

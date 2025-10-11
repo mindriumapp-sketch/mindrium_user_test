@@ -34,9 +34,13 @@ class RelaxYesOrNo extends StatelessWidget {
                     context,
                     '/relaxation_noti',
                     arguments: {
-                      'abcId': abcId,
-                      if (diary != null) 'diary': diary
-                    },
+                      'taskId': abcId,
+                      'weekNumber': 4,
+                      'mp3Asset': 'week4.mp3',
+                      'riveAsset': 'week4.riv',
+                      'nextPage': '/relaxation_score',
+                      'diary': diary,
+                    }
                   );
                 },
                 style: ElevatedButton.styleFrom(

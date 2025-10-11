@@ -108,7 +108,7 @@ class RelaxationScreen extends StatelessWidget {
                     child: InternalActionButton(
                       onPressed: () => Navigator.pushNamed(
                         context,
-                        '/relaxation_noti',
+                        '',
                         arguments: {
                           "abcId": abcId,
                           'diary': args['diary'],

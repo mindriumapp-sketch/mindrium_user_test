@@ -37,7 +37,7 @@ class _ContentScreenState extends State<ContentScreen> {
               icon: Icons.self_improvement,
               title: '이완',
               enabled: true,
-              onTap: () => Navigator.pushNamed(context,'/relaxation_noti'),
+              onTap: () => Navigator.pushNamed(context,'/relaxation_education'),
             ),
             const SizedBox(height: AppSizes.space),
 
@@ -51,7 +51,7 @@ class _ContentScreenState extends State<ContentScreen> {
             const SizedBox(height: AppSizes.space),
 
             ActivityCard(
-              icon: Icons.edit_note,
+              icon: Icons.interests,
               title: '걱정 그룹',
               enabled: true,
               onTap: () => Navigator.pushNamed(context,'/diary_group'),
@@ -59,31 +59,11 @@ class _ContentScreenState extends State<ContentScreen> {
             const SizedBox(height: AppSizes.space),
 
             ActivityCard(
-              icon: Icons.edit_note,
+              icon: Icons.archive,
               title: '보관함',
               enabled: true,
               onTap: () => Navigator.pushNamed(context,'/archive'),
             ),
-
-            const SizedBox(height: AppSizes.space),
-
-            ActivityCard(
-              icon: Icons.edit_note,
-              title: '보관함(바다)',
-              enabled: true,
-              onTap: () => Navigator.pushNamed(context,'/archive_sea'),
-            ),
-
-            const SizedBox(height: AppSizes.space),
-
-            ActivityCard(
-              icon: Icons.edit_note,
-              title: '캐릭터 삭제',
-              enabled: true,
-              onTap: () => Navigator.pushNamed(context,'/battle'),
-            ),
-            const SizedBox(height: AppSizes.space)
-
           ],
         ),
       ),

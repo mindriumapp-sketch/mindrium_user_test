@@ -39,6 +39,7 @@ class RelaxOrAlternativePage extends StatelessWidget {
                       'mp3Asset': 'week4.mp3',
                       'riveAsset': 'week4.riv',
                       'nextPage': '/relaxation_score',
+                      'diary': diary,
                     }
                   );
                 },
