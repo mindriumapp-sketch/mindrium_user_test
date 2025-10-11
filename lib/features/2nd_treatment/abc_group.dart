@@ -505,17 +505,16 @@ class _GroupCard extends StatelessWidget {
                                   child: const Text('No'),
                                 ),
                                 TextButton(
-                                  onPressed: () async {
-                                    await docRef.update({
-                                      'archived': true,
-                                      'archived_at': FieldValue.serverTimestamp(),
-                                    });
-                                    if (context.mounted) {
-                                      Navigator.of(ctx).pop();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('"$title" 그룹이 삭제되었습니다.')),
-                                      );
-                                    }
+                                  onPressed: () {
+                                    Navigator.of(ctx).pop(); // 팝업 닫기
+                                    // ✅ 캐릭터 삭제 화면으로 이동
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/battle',
+                                      arguments: {
+                                        'groupId': groupId, // group_id 전달
+                                      },
+                                    );
                                   },
                                   child: const Text('Yes'),
                                 ),

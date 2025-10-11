@@ -142,10 +142,25 @@ class _SeaArchivePageState extends State<SeaArchivePage>
           ),
 
           Positioned.fill(child: _Bubbles(controller: controller, density: 14)),
-        ],
-      ),
-    );
-  }
+          Positioned(
+                  top: 40,
+                  right: 16,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.home_rounded, // 원하시면 Icons.arrow_back_ios_new 로 바꿔도 됨
+                      color: Colors.white70,
+                      size: 30,
+                    ),
+                    tooltip: '이전 화면으로 돌아가기',
+                    onPressed: () {
+                      Navigator.pop(context); // ✅ 현재 화면 종료 → 이전 화면으로 이동
+                    },
+                  ),
+                ),
+                        ],
+                      ),
+                    );
+                  }
 
   Future<void> _unarchive(QueryDocumentSnapshot<Map<String, dynamic>> doc) async {
     try {

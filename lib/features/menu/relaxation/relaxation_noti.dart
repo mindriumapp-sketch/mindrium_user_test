@@ -51,6 +51,7 @@ class _NotiPlayerState extends State<NotiPlayer> {
   }
 
   Future<void> _initRive() async {
+    await RiveFile.initialize();
     final data = await rootBundle.load(widget.riveAsset);
     final file = RiveFile.import(data);
     final artboard = file.mainArtboard;
@@ -71,11 +72,18 @@ class _NotiPlayerState extends State<NotiPlayer> {
         _artboard = artboard;
         _controller = controller;
       });
+
+      if (_isPlaying) {
+        _controller?.isActive = true;
+      }
     }
   }
 
   Future<void> _initAudio() async {
-    await _audioPlayer.setSource(AssetSource(widget.mp3Asset));
+    final mp3Path = widget.mp3Asset.startsWith('assets/')
+        ? widget.mp3Asset.substring(7)
+        : widget.mp3Asset;
+    await _audioPlayer.setSource(AssetSource(mp3Path));
     await _audioPlayer.setVolume(0.8);
     await _audioPlayer.resume();
 
@@ -147,4 +155,3 @@ class _NotiPlayerState extends State<NotiPlayer> {
     );
   }
 }
-

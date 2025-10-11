@@ -49,7 +49,8 @@ class _PracticePlayerState extends State<PracticePlayer> {
   }
 
   Future<void> _initRive() async {
-    final data = await rootBundle.load(widget.riveAsset);
+    await RiveFile.initialize();
+    final data = await rootBundle.load(_resolveRiveAsset(widget.riveAsset));
     final file = RiveFile.import(data);
     final artboard = file.mainArtboard;
 
@@ -73,7 +74,7 @@ class _PracticePlayerState extends State<PracticePlayer> {
   }
 
   Future<void> _initAudio() async {
-    await _audioPlayer.setSource(AssetSource(widget.mp3Asset));
+    await _audioPlayer.setSource(AssetSource(_resolveAudioAsset(widget.mp3Asset)));
     await _audioPlayer.setVolume(0.8);
     await _audioPlayer.resume();
 
@@ -106,6 +107,26 @@ class _PracticePlayerState extends State<PracticePlayer> {
       await _logger.saveLogs();  // DB 저장
 
     }
+  }
+
+  String _resolveRiveAsset(String asset) {
+    if (asset.startsWith('assets/')) {
+      return asset;
+    }
+    if (asset.contains('/')) {
+      return 'assets/$asset';
+    }
+    return 'assets/relaxation/$asset';
+  }
+
+  String _resolveAudioAsset(String asset) {
+    final normalized = asset.startsWith('assets/')
+        ? asset.substring('assets/'.length)
+        : asset;
+    if (normalized.contains('/')) {
+      return normalized;
+    }
+    return 'relaxation/$normalized';
   }
 
   @override
@@ -144,4 +165,3 @@ class _PracticePlayerState extends State<PracticePlayer> {
     );
   }
 }
-

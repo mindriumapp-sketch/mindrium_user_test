@@ -174,7 +174,11 @@ class MyApp extends StatelessWidget {
         //notification
         '/noti_select': (context) => NotificationSelectionScreen(),
         '/diary_directory': (context) => NotificationDirectoryScreen(),
-        '/battle': (context) => PokemonBattleDeletePage(),
+        '/battle': (context) {
+                  final args = ModalRoute.of(context)?.settings.arguments as Map?;
+                  final groupId = args?['groupId']?.toString() ?? '';
+                  return PokemonBattleDeletePage(groupId: groupId);
+                },
         '/archive_sea': (context) => SeaArchivePage(),
       },
     );
