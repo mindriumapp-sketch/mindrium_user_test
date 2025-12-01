@@ -7,7 +7,7 @@ import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/eduhome_bg.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/week7_api.dart';
+import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 /// 캘린더 이벤트 모델
@@ -61,7 +61,7 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
 
   // API 클라이언트
   late final ApiClient _apiClient;
-  late final Week7Api _week7Api;
+  late final ScheduleEventsApi _scheduleEventsApi;
 
   static const Color bluePrimary = Color(0xFF5DADEC);
   static const Color chipBorderBlue = Color(0xFF7EB9FF);
@@ -71,13 +71,13 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
   void initState() {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
-    _week7Api = Week7Api(_apiClient);
+    _scheduleEventsApi = ScheduleEventsApi(_apiClient);
     _loadSavedEvents();
   }
 
   Future<void> _loadSavedEvents() async {
     try {
-      final apiEvents = await _week7Api.listScheduleEvents();
+      final apiEvents = await _scheduleEventsApi.listScheduleEvents();
       final List<CalendarEvent> parsed = [];
       for (final eventData in apiEvents) {
         try {
@@ -102,7 +102,7 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
 
   Future<void> _deleteEvent(String id) async {
     try {
-      await _week7Api.deleteScheduleEvent(id);
+      await _scheduleEventsApi.deleteScheduleEvent(eventId: id);
       if (mounted) {
         setState(() => _savedEvents.removeWhere((e) => e.id == id));
         BlueBanner.show(context, '일정이 삭제되었습니다.');
@@ -136,10 +136,10 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
               })
           .toList();
 
-      final response = await _week7Api.createScheduleEvent(
+      final response = await _scheduleEventsApi.createScheduleEvent(
         startDate: start,
         endDate: end,
-        tasks: tasks,
+        actions: tasks,
       );
 
       // 응답에서 생성된 이벤트로 업데이트
@@ -150,7 +150,7 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
           context,
           '${chosenBehaviors.length}개의 행동이 '
               '${start.month}월 ${start.day}일부터 ${end.month}월 ${end.day}일까지 '
-              '(${duration}일간) 캘린더에 추가되었습니다.',
+              '$duration일간 캘린더에 추가되었습니다.',
           duration: const Duration(seconds: 4),
         );
       }
@@ -274,12 +274,12 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
                                 ),
                                 boxShadow: isOn
                                     ? [
-                                  BoxShadow(
-                                    color: const Color(0xFF8ED7FF)
-                                        .withOpacity(0.30),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
+                                      BoxShadow(
+                                        color: const Color(0xFF8ED7FF)
+                                            .withValues(alpha: 0.30),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
                                 ]
                                     : null,
                               ),
@@ -479,7 +479,7 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
                 border: Border.all(color: chipBorderBlue, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: chipBorderBlue.withOpacity(0.20),
+                    color: chipBorderBlue.withValues(alpha: 0.20),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -560,7 +560,7 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.08),
+                                        color: Colors.black.withValues(alpha: 0.08),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),

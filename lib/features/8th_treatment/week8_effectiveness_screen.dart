@@ -91,6 +91,7 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
   // API 클라이언트
   late final ApiClient _apiClient;
   late final Week8Api _week8Api;
+  String? _sessionId;
 
   @override
   void initState() {
@@ -213,7 +214,11 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
         };
       }).toList();
 
-      await _week8Api.updateEffectiveness(evaluations: evaluations);
+      final sessionId = await _ensureSessionId();
+      await _week8Api.updateEffectiveness(
+        sessionId: sessionId,
+        effectivenessEvaluations: evaluations,
+      );
       
       if (!mounted) return;
       _showDone();
@@ -251,6 +256,28 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
         },
       ),
     );
+  }
+
+  Future<String> _ensureSessionId() async {
+    if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
+
+    final existing = await _week8Api.fetchWeek8Session();
+    _sessionId =
+        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+    if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
+
+    final created = await _week8Api.createWeek8Session(
+      totalScreens: 1,
+      lastScreenIndex: 0,
+      startTime: DateTime.now(),
+      completed: false,
+    );
+    _sessionId =
+        created['session_id']?.toString() ?? created['sessionId']?.toString();
+    if (_sessionId == null || _sessionId!.isEmpty) {
+      throw Exception('8주차 세션 ID를 확인할 수 없습니다.');
+    }
+    return _sessionId!;
   }
 
   // ✅ 여기: 공통 진행바 위젯 (이 화면 버전)
@@ -468,9 +495,9 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+              boxShadow: [
+                BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 10,
                 spreadRadius: 1,
                 offset: const Offset(2, 4),
@@ -494,9 +521,9 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
                     color: removed ? Colors.grey[300] : checkedChipFill,
                     borderRadius: BorderRadius.circular(5),
                     border: Border.all(color: chipBorderBlue, width: 1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: chipBorderBlue.withOpacity(0.20),
+                      boxShadow: [
+                        BoxShadow(
+                        color: chipBorderBlue.withValues(alpha: 0.20),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),

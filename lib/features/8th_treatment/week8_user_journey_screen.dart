@@ -40,12 +40,14 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
   late final ApiClient _apiClient;
   late final Week8Api _week8Api;
   bool _isSaving = false;
+  String? _sessionId;
 
   @override
   void initState() {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
     _week8Api = Week8Api(_apiClient);
+    _ensureSessionId();
     for (var c in _controllers) {
       c.addListener(_onTextChanged);
     }
@@ -90,7 +92,11 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
         };
       });
 
-      await _week8Api.updateUserJourney(responses: responses);
+      final sessionId = await _ensureSessionId();
+      await _week8Api.updateUserJourney(
+        sessionId: sessionId,
+        userJourneyResponses: responses,
+      );
 
       if (!mounted) return;
       Navigator.push(
@@ -117,6 +123,28 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
     } else {
       Navigator.pop(context);
     }
+  }
+
+  Future<String> _ensureSessionId() async {
+    if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
+
+    final existing = await _week8Api.fetchWeek8Session();
+    _sessionId =
+        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+    if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
+
+    final created = await _week8Api.createWeek8Session(
+      totalScreens: 1,
+      lastScreenIndex: 0,
+      startTime: DateTime.now(),
+      completed: false,
+    );
+    _sessionId =
+        created['session_id']?.toString() ?? created['sessionId']?.toString();
+    if (_sessionId == null || _sessionId!.isEmpty) {
+      throw Exception('8주차 세션 ID를 확인할 수 없습니다.');
+    }
+    return _sessionId!;
   }
 
   // ✅ 여기 추가: 네가 준 진행바 버전
@@ -257,7 +285,7 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
                                   hintText: '여기에 답변을 작성해주세요...',
                                   hintStyle: TextStyle(
                                     color:
-                                    const Color(0xFF718096).withOpacity(0.6),
+                                    const Color(0xFF718096).withValues(alpha: 0.6),
                                     fontSize: 14,
                                   ),
                                   contentPadding: const EdgeInsets.all(16),

@@ -19,6 +19,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
   late final ApiClient _apiClient;
   late final Week8Api _week8Api;
   bool _isSavingCompletion = false;
+  String? _sessionId;
 
   @override
   void initState() {
@@ -133,8 +134,10 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
 
   /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
   void _showStartDialog(BuildContext context) {
+    final ctx = context;
+    final nav = Navigator.of(ctx);
     showDialog(
-      context: context,
+      context: ctx,
       barrierDismissible: false,
       builder: (_) => CustomPopupDesign(
         title: '이완 음성 안내 시작',
@@ -149,12 +152,18 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
           setState(() => _isSavingCompletion = true);
           
           try {
-            await _week8Api.updateCompletion(true);
-            if (!mounted) return;
+            final sessionId = await _ensureSessionId();
+            await _week8Api.updateCompletion(
+              sessionId: sessionId,
+              completed: true,
+              endTime: DateTime.now(),
+              lastScreenIndex: 0,
+              totalScreens: 1,
+            );
+            if (!mounted || !ctx.mounted) return;
             
-            Navigator.pop(context);
-            Navigator.pushReplacementNamed(
-              context,
+            nav.pop();
+            nav.pushReplacementNamed(
               '/relaxation_education',
               arguments: {
                 'taskId': 'week8_education',
@@ -164,12 +173,35 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
               },
             );
           } catch (e) {
-            if (!mounted) return;
-            BlueBanner.show(context, '8주차 완료 상태 저장에 실패했습니다: $e');
+            if (!mounted || !ctx.mounted) return;
+            BlueBanner.show(ctx, '8주차 완료 상태 저장에 실패했습니다: $e');
             setState(() => _isSavingCompletion = false);
           }
         },
       ),
     );
+  }
+
+  Future<String> _ensureSessionId() async {
+    if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
+
+    final existing = await _week8Api.fetchWeek8Session();
+    _sessionId =
+        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+    if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
+
+    final created = await _week8Api.createWeek8Session(
+      totalScreens: 1,
+      lastScreenIndex: 0,
+      startTime: DateTime.now(),
+      completed: false,
+    );
+    _sessionId =
+        created['session_id']?.toString() ?? created['sessionId']?.toString();
+
+    if (_sessionId == null || _sessionId!.isEmpty) {
+      throw Exception('8주차 세션 ID를 확인할 수 없습니다.');
+    }
+    return _sessionId!;
   }
 }

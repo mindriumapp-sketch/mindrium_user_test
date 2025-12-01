@@ -174,12 +174,12 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFB9EAFD)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF74D2FF).withOpacity(0.15),
+            color: const Color(0xFF74D2FF).withValues(alpha: 0.15),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -256,7 +256,7 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF74D2FF).withOpacity(0.25),
+                    color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -384,7 +384,7 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
 
     try {
       await _surveyApi.submitSurvey(
-        surveyType: 'before_survey',
+        type: 'before_survey',
         answers: {
           'phq9_answers': widget.phq9,
           'gad7_answers': gad7,
@@ -429,12 +429,12 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFB9EAFD)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF74D2FF).withOpacity(0.15),
+            color: const Color(0xFF74D2FF).withValues(alpha: 0.15),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -511,7 +511,7 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF74D2FF).withOpacity(0.25),
+                    color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),

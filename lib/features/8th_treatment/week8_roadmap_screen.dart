@@ -1,9 +1,10 @@
 // File: features/8th_treatment/week8_roadmap_screen.dart
 import 'package:flutter/material.dart';
-import 'package:gad_app_team/data/user_data_storage.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_planning_check_screen.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class Week8RoadmapScreen extends StatefulWidget {
   const Week8RoadmapScreen({super.key});
@@ -24,9 +25,9 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
 
   Future<void> _loadUserData() async {
     try {
-      final userName = await UserDataStorage.getUserName();
+      final userName = context.read<UserProvider>().userName;
       setState(() {
-        _userName = userName ?? '';
+        _userName = userName;
         _isLoading = false;
       });
     } catch (e) {
@@ -98,12 +99,12 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFB9EAFD), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF74D2FF).withOpacity(0.15),
+            color: const Color(0xFF74D2FF).withValues(alpha: 0.15),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -160,7 +161,7 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF74D2FF).withOpacity(0.3),
+            color: const Color(0xFF74D2FF).withValues(alpha: 0.3),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),

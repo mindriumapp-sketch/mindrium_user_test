@@ -7,7 +7,7 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/eduhome_bg.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/week7_api.dart';
+import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 const Color _postItBlue = Color(0xFF3690D9);
@@ -75,13 +75,13 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
 
   // API 클라이언트
   late final ApiClient _apiClient;
-  late final Week7Api _week7Api;
+  late final ScheduleEventsApi _scheduleEventsApi;
 
   @override
   void initState() {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
-    _week7Api = Week7Api(_apiClient);
+    _scheduleEventsApi = ScheduleEventsApi(_apiClient);
     _loadPlannedBehaviors();
   }
 
@@ -111,7 +111,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
   // 저장된 이벤트 다 불러오기 (백엔드에서 조회)
   Future<void> _loadSavedEvents() async {
     try {
-      final events = await _week7Api.listScheduleEvents();
+      final events = await _scheduleEventsApi.listScheduleEvents();
       if (!mounted) return;
 
       final List<CalendarEvent> parsed = [];
@@ -219,7 +219,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -241,11 +241,11 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F4FF).withOpacity(0.65),
+              color: const Color(0xFFF0F4FF).withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color:
-                const Color.fromARGB(255, 102, 146, 234).withOpacity(0.35),
+                const Color.fromARGB(255, 102, 146, 234).withValues(alpha: 0.35),
               ),
             ),
             child: const Text(
@@ -320,7 +320,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: _postItBlue.withOpacity(0.1),
+                        color: _postItBlue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: _postItBlue,
@@ -357,7 +357,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -379,11 +379,11 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 230, 245, 255).withOpacity(0.7),
+              color: const Color.fromARGB(255, 230, 245, 255).withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color:
-                const Color.fromARGB(255, 107, 140, 180).withOpacity(0.35),
+                const Color.fromARGB(255, 107, 140, 180).withValues(alpha: 0.35),
               ),
             ),
             child: const Text(
@@ -430,7 +430,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: const Color.fromARGB(255, 107, 140, 180)
-                              .withOpacity(0.1),
+                              .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -507,7 +507,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: _postItBlue.withOpacity(0.1),
+                                  color: _postItBlue.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
                                     color: _postItBlue,
