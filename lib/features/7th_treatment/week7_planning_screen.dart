@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
+import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
@@ -81,6 +82,8 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
   // API 클라이언트
   late final ApiClient _apiClient;
   late final Week7Api _week7Api;
+  late final ScheduleEventsApi _scheduleEventsApi;
+  String? _week7SessionId;
 
   static const Color _bluePrimary = Color(0xFF5DADEC);
   static const Color _chipBorderBlue = Color(0xFF7EB9FF);
@@ -91,6 +94,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
     _week7Api = Week7Api(_apiClient);
+    _scheduleEventsApi = ScheduleEventsApi(_apiClient);
     _loadAddedBehaviors();
     _loadSavedEvents();
     _loadUserData();
@@ -121,7 +125,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
 
   Future<void> _loadSavedEvents() async {
     try {
-      final events = await _week7Api.listScheduleEvents();
+      final events = await _scheduleEventsApi.listScheduleEvents();
       if (!mounted) return;
       setState(() {
         _savedEvents.clear();
@@ -144,7 +148,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
 
   Future<void> _deleteEvent(String eventId) async {
     try {
-      await _week7Api.deleteScheduleEvent(eventId);
+      await _scheduleEventsApi.deleteScheduleEvent(eventId: eventId);
       if (mounted) {
         setState(() => _savedEvents.removeWhere((e) => e.id == eventId));
       }
@@ -209,7 +213,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.35),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (_) {
         return BehaviorConfirmDialog(
           titleText: '건강한 생활 습관 추가',
@@ -252,7 +256,11 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
       
       if (chipId != null) {
         // 백엔드에서 삭제
-        await _week7Api.deleteClassificationItem(chipId);
+        final sessionId = await _ensureWeek7Session();
+        await _week7Api.deleteClassificationItem(
+          sessionId: sessionId,
+          chipId: chipId,
+        );
       }
 
       // 전역 상태 업데이트
@@ -280,6 +288,33 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
     });
 
     BlueBanner.show(context, '행동이 제거되었습니다.');
+  }
+
+  Future<String> _ensureWeek7Session() async {
+    if (_week7SessionId != null && _week7SessionId!.isNotEmpty) {
+      return _week7SessionId!;
+    }
+
+    final existing = await _week7Api.fetchWeek7Session();
+    _week7SessionId = existing?['session_id']?.toString() ??
+        existing?['sessionId']?.toString();
+    if (_week7SessionId != null && _week7SessionId!.isNotEmpty) {
+      return _week7SessionId!;
+    }
+
+    final created = await _week7Api.createWeek7Session(
+      totalScreens: 1,
+      lastScreenIndex: 0,
+      startTime: DateTime.now(),
+      completed: false,
+    );
+    _week7SessionId = created['session_id']?.toString() ??
+        created['sessionId']?.toString();
+
+    if (_week7SessionId == null || _week7SessionId!.isEmpty) {
+      throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
+    }
+    return _week7SessionId!;
   }
 
   // ───────────────── 캘린더 다이얼로그 (선택 가능하게 수정) ─────────────────
@@ -412,7 +447,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                                         ? [
                                       BoxShadow(
                                         color: const Color(0xFF8ED7FF)
-                                            .withOpacity(0.30),
+                                            .withValues(alpha: 0.30),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -568,7 +603,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                 border: Border.all(color: const Color(0xFF8ED7FF)),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF8ED7FF).withOpacity(0.30),
+                    color: const Color(0xFF8ED7FF).withValues(alpha: 0.30),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -622,10 +657,10 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
               })
           .toList();
 
-      final response = await _week7Api.createScheduleEvent(
+      final response = await _scheduleEventsApi.createScheduleEvent(
         startDate: startDate,
         endDate: endDate,
-        tasks: tasks,
+        actions: tasks,
       );
 
       // 응답에서 생성된 이벤트로 업데이트
@@ -636,7 +671,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
           context,
           '${behaviors.length}개의 행동이 '
               '${startDate.month}월 ${startDate.day}일부터 ${endDate.month}월 ${endDate.day}일까지 '
-              '(${duration}일간) 캘린더에 추가되었습니다.',
+              '($duration일간) 캘린더에 추가되었습니다.',
           duration: const Duration(seconds: 4),
         );
       }
@@ -702,7 +737,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -828,7 +863,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFA1CEDF).withOpacity(0.18),
+              color: const Color(0xFFA1CEDF).withValues(alpha: 0.18),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -867,7 +902,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -894,7 +929,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                           color: const Color.fromARGB(255, 234, 245, 252),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: const Color(0xFF33A4F0).withOpacity(0.28),
+                            color: const Color(0xFF33A4F0).withValues(alpha: 0.28),
                             width: 1,
                           ),
                         ),
@@ -1014,7 +1049,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                           color: const Color(0xF0F6FBFF),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: const Color(0xFF2196F3).withOpacity(0.28),
+                            color: const Color(0xFF2196F3).withValues(alpha: 0.28),
                             width: 1,
                           ),
                         ),
@@ -1107,7 +1142,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _chipBorderBlue.withOpacity(0.20),
+                    color: _chipBorderBlue.withValues(alpha: 0.20),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),

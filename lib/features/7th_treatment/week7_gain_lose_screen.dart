@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/top_btm_card.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
+import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class Week7GainLoseScreen extends StatefulWidget {
@@ -106,7 +106,9 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
     setState(() => _isSubmitting = true);
     try {
       final analysis = _buildAnalysisPayload();
+      final sessionId = await _ensureWeek7Session();
       await _week7Api.upsertClassificationItem(
+        sessionId: sessionId,
         chipId: widget.chipId,
         classification: 'avoid',
         reason: widget.reason,
@@ -137,6 +139,26 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
         _isNextEnabled = false;
       });
     }
+  }
+
+  Future<String> _ensureWeek7Session() async {
+    final existing = await _week7Api.fetchWeek7Session();
+    final existingId =
+        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+    if (existingId != null && existingId.isNotEmpty) return existingId;
+
+    final created = await _week7Api.createWeek7Session(
+      totalScreens: 1,
+      lastScreenIndex: 0,
+      startTime: DateTime.now(),
+      completed: false,
+    );
+    final createdId =
+        created['session_id']?.toString() ?? created['sessionId']?.toString();
+    if (createdId == null || createdId.isEmpty) {
+      throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
+    }
+    return createdId;
   }
 
   String _getStepTitle() {
@@ -244,7 +266,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
                   currentValue == true
                       ? [
                     BoxShadow(
-                      color: matrixBlue.withOpacity(0.35),
+                      color: matrixBlue.withValues(alpha: 0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -291,7 +313,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
                   currentValue == false
                       ? [
                     BoxShadow(
-                      color: matrixBlue.withOpacity(0.35),
+                      color: matrixBlue.withValues(alpha: 0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -336,7 +358,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
           hintText: '여기에 입력해주세요...',
           hintStyle: TextStyle(
             fontSize: 16,
-            color: const Color.fromARGB(255, 108, 119, 139).withOpacity(0.5),
+            color: const Color.fromARGB(255, 108, 119, 139).withValues(alpha: 0.5),
           ),
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,
@@ -354,7 +376,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
   void _showAddToHealthyHabitsDialog() {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.35),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (BuildContext context) {
         return CustomPopupDesign(
           title: '건강한 생활 습관 추가',
@@ -372,12 +394,12 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
             );
           },
           onPositivePressed: () async {
-            Navigator.of(context).pop();
+            final nav = Navigator.of(context);
+            nav.pop();
             try {
               await _persistAvoidBehavior();
               if (!mounted) return;
-              Navigator.pushReplacement(
-                context,
+              nav.pushReplacement(
                 PageRouteBuilder(
                   pageBuilder: (_, __, ___) => Week7AddDisplayScreen(
                     initialBehavior: widget.behavior,
@@ -415,7 +437,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
                     color:
                     index <= _currentStep
                         ? _getStepColor()
-                        : Colors.white.withOpacity(0.35),
+                        : Colors.white.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

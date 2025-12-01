@@ -171,6 +171,40 @@ class CustomTagsApi {
     );
   }
 
+  /// Category 로그 조회 (short_term: confront/avoid 포함)
+  Future<List<Map<String, dynamic>>> listCategoryLogs({
+    String? chipId,
+    String? diaryId,
+    DateTime? startCompletedAt,
+    DateTime? endCompletedAt,
+  }) async {
+    final res = await _client.dio.get(
+      '/custom-tags/logs/category',
+      queryParameters: {
+        if (chipId != null) 'chip_id': chipId,
+        if (diaryId != null) 'diary_id': diaryId,
+        if (startCompletedAt != null)
+          'start_completed_at': startCompletedAt.toUtc().toIso8601String(),
+        if (endCompletedAt != null)
+          'end_completed_at': endCompletedAt.toUtc().toIso8601String(),
+      },
+    );
+
+    final data = res.data;
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
+          .toList()
+          .cast<Map<String, dynamic>>();
+    }
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /custom-tags/logs/category response',
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Real Oddness Logs
   // ---------------------------------------------------------------------------
@@ -316,52 +350,4 @@ class CustomTagsApi {
     );
   }
 
-  /// Category 로그 조회
-  ///
-  /// GET /custom-tags/logs/category
-  ///
-  /// Query params:
-  /// - chip_id: String?
-  /// - diary_id: String?
-  /// - start_completed_at: DateTime?
-  /// - end_completed_at: DateTime?
-  Future<List<Map<String, dynamic>>> listCategoryLogs({
-    String? chipId,
-    String? diaryId,
-    DateTime? startCompletedAt,
-    DateTime? endCompletedAt,
-  }) async {
-    final query = <String, dynamic>{
-      if (chipId != null) 'chip_id': chipId,
-      if (diaryId != null) 'diary_id': diaryId,
-      if (startCompletedAt != null)
-        'start_completed_at': startCompletedAt.toUtc().toIso8601String(),
-      if (endCompletedAt != null)
-        'end_completed_at': endCompletedAt.toUtc().toIso8601String(),
-    };
-
-    final res = await _client.dio.get(
-      '/custom-tags/logs/category',
-      queryParameters: query,
-    );
-
-    final data = res.data;
-    if (data is List) {
-      return data
-          .whereType<Map>()
-          .map(
-            (raw) => raw.map(
-              (key, value) => MapEntry(key.toString(), value),
-        ),
-      )
-          .toList()
-          .cast<Map<String, dynamic>>();
-    }
-
-    throw DioException(
-      requestOptions: res.requestOptions,
-      message: 'Invalid /custom-tags/logs/category response',
-    );
-  }
 }
-

@@ -18,6 +18,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
   late final ApiClient _apiClient;
   late final Week7Api _week7Api;
   bool _isCompleting = false;
+  String? _sessionId;
 
   @override
   void initState() {
@@ -136,11 +137,21 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
 
   /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
   void _showStartDialog(BuildContext context) async {
+    final ctx = context;
+    final nav = Navigator.of(ctx);
+    final sessionId = await _ensureSessionId();
+
     // 완료 상태 저장
     if (!_isCompleting) {
       setState(() => _isCompleting = true);
       try {
-        await _week7Api.updateCompletion(true);
+        await _week7Api.updateCompletion(
+          sessionId: sessionId,
+          completed: true,
+          endTime: DateTime.now(),
+          lastScreenIndex: 0,
+          totalScreens: 1,
+        );
       } catch (e) {
         debugPrint('7주차 완료 상태 저장 실패: $e');
         // 에러가 발생해도 다음 화면으로 진행
@@ -151,10 +162,10 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted || !ctx.mounted) return;
 
     showDialog(
-      context: context,
+      context: ctx,
       barrierDismissible: false,
       builder: (_) => CustomPopupDesign(
         title: '이완 음성 안내 시작',
@@ -165,9 +176,8 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
         backgroundAsset: null,
         iconAsset: null,
         onPositivePressed: () {
-          Navigator.pop(context);
-          Navigator.pushReplacementNamed(
-            context,
+          nav.pop();
+          nav.pushReplacementNamed(
             '/relaxation_education',
             arguments: {
               'taskId': 'week7_education',
@@ -179,5 +189,31 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
         },
       ),
     );
+  }
+
+  Future<String> _ensureSessionId() async {
+    if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
+
+    final existing = await _week7Api.fetchWeek7Session();
+    final existingId =
+        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+    if (existingId != null && existingId.isNotEmpty) {
+      _sessionId = existingId;
+      return existingId;
+    }
+
+    final created = await _week7Api.createWeek7Session(
+      totalScreens: 1,
+      lastScreenIndex: 0,
+      startTime: DateTime.now(),
+      completed: false,
+    );
+    final createdId =
+        created['session_id']?.toString() ?? created['sessionId']?.toString();
+    if (createdId == null || createdId.isEmpty) {
+      throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
+    }
+    _sessionId = createdId;
+    return createdId;
   }
 }

@@ -5,7 +5,7 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/calendar_sheet.dart';
 import 'package:gad_app_team/widgets/eduhome_bg.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/week7_api.dart';
+import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 /// 캘린더 이벤트 모델 (백엔드 ScheduleEvent와 호환)
@@ -68,19 +68,19 @@ class _Week7CalendarSummaryScreenState
 
   // API 클라이언트
   late final ApiClient _apiClient;
-  late final Week7Api _week7Api;
+  late final ScheduleEventsApi _scheduleEventsApi;
 
   @override
   void initState() {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
-    _week7Api = Week7Api(_apiClient);
+    _scheduleEventsApi = ScheduleEventsApi(_apiClient);
     _loadSavedEvents();
   }
 
   Future<void> _loadSavedEvents() async {
     try {
-      final events = await _week7Api.listScheduleEvents();
+      final events = await _scheduleEventsApi.listScheduleEvents();
       if (!mounted) return;
       
       final List<CalendarEvent> parsed = [];
@@ -237,7 +237,7 @@ class _Week7CalendarSummaryScreenState
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: _matrixBadgeBlue.withOpacity(0.25),
+            color: _matrixBadgeBlue.withValues(alpha: 0.25),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -271,12 +271,12 @@ class _Week7CalendarSummaryScreenState
           border: Border.all(color: const Color(0xFFE2F0FF)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF3B82F6).withOpacity(0.18),
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.18),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -317,7 +317,7 @@ class _Week7CalendarSummaryScreenState
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1976D2).withOpacity(0.10),
+                          color: const Color(0xFF1976D2).withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Icon(
@@ -343,7 +343,7 @@ class _Week7CalendarSummaryScreenState
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1976D2).withOpacity(0.10),
+                          color: const Color(0xFF1976D2).withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -380,12 +380,12 @@ class _Week7CalendarSummaryScreenState
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 30,
               offset: const Offset(0, 12),
             ),
             BoxShadow(
-              color: _blueDeep.withOpacity(0.08),
+              color: _blueDeep.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
@@ -403,7 +403,7 @@ class _Week7CalendarSummaryScreenState
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF2196F3).withOpacity(0.1),
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -412,7 +412,7 @@ class _Week7CalendarSummaryScreenState
               child: Icon(
                 Icons.calendar_today_outlined,
                 size: 48,
-                color: const Color(0xFF1976D2).withOpacity(0.7),
+                color: const Color(0xFF1976D2).withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 24),

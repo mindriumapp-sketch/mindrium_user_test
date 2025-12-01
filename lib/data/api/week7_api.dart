@@ -64,6 +64,45 @@ class Week7Api {
     );
   }
 
+  /// 최신 7주차 세션 단일 조회 (alias)
+  Future<Map<String, dynamic>?> fetchWeek7Session() {
+    return fetchLatestWeek7Session();
+  }
+
+  Future<Map<String, dynamic>> upsertClassificationItem({
+    required String sessionId,
+    required String chipId,
+    required String classification, // "confront" or "avoid"
+    String? reason,
+    Map<String, dynamic>? analysis,
+  }) async {
+    final payload = <String, dynamic>{
+      'chip_id': chipId,
+      'category': classification,
+      if (reason != null) 'reason': reason,
+      if (analysis != null) 'analysis': analysis,
+    };
+
+    final res = await _client.dio.put(
+      '/edu-sessions/$sessionId/week7/items',
+      data: payload,
+    );
+    final data = res.data;
+    if (data is Map<String, dynamic>) return data;
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid week7 upsert classification response',
+    );
+  }
+
+  Future<void> deleteClassificationItem({
+    required String sessionId,
+    required String chipId,
+  }) async {
+    await _client.dio.delete('/edu-sessions/$sessionId/week7/items/$chipId');
+  }
+
   /// 최신 7주차 edu 세션 하나 가져오기 (없으면 null)
   Future<Map<String, dynamic>?> fetchLatestWeek7Session() async {
     final res = await _client.dio.get(
@@ -170,4 +209,3 @@ class Week7Api {
     );
   }
 }
-
