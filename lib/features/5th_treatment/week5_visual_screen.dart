@@ -4,7 +4,7 @@ import 'package:gad_app_team/widgets/top_btm_card.dart';
 import 'package:gad_app_team/widgets/thought_card.dart';
 import 'package:gad_app_team/widgets/detail_popup.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class Week5VisualScreen extends StatefulWidget {
@@ -27,14 +27,14 @@ class Week5VisualScreen extends StatefulWidget {
 
 class _Week5VisualScreenState extends State<Week5VisualScreen> {
   late final ApiClient _client;
-  late final UserDataApi _userDataApi;
+  late final EduSessionsApi _eduSessionsApi;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
-    _userDataApi = UserDataApi(_client);
+    _eduSessionsApi = EduSessionsApi(_client);
   }
 
   Future<void> _saveSession() async {
@@ -68,8 +68,13 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
         };
       }
 
-      await _userDataApi.createPracticeSession(
+      await _eduSessionsApi.createWeek3or5Session(
         weekNumber: 5,
+        totalScreens: 3,
+        lastScreenIndex: 3,
+        completed: true,
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
         negativeItems: widget.previousChips,
         positiveItems: widget.alternativeChips,
         classificationQuiz: classificationQuiz,
@@ -191,10 +196,10 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
       bottomChild: _buildBottomPanel(),
       onBack: () => Navigator.pop(context),
       onNext: () async {
+        final nav = Navigator.of(context);
         await _saveSession();
         if (!mounted) return;
-        Navigator.push(
-          context,
+        nav.push(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => Week5FinalScreen(),
             transitionDuration: Duration.zero,
