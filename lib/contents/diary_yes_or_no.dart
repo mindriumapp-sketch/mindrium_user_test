@@ -128,6 +128,7 @@ class DiaryYesOrNo extends StatelessWidget {
 
     final activationLabel =
         '자동 생성 일기 \n주소: ${addressKo ?? '확인되지 않음'}';
+    final activationChip = diariesApi.makeDiaryChip(label: activationLabel);
 
     int? beforeSud;
     final rawSud = args['beforeSud'];
@@ -143,7 +144,7 @@ class DiaryYesOrNo extends StatelessWidget {
       // 🔹 FastAPI + MongoDB에 빈 일기 생성
       final diaryRes = await diariesApi.createDiary(
         groupId: 1, // 그룹은 이후 화면에서 지정
-        activatingEvents: activationLabel,
+        activation: activationChip,
         belief: const [],
         consequenceP: const [],
         consequenceE: const [],
@@ -153,6 +154,7 @@ class DiaryYesOrNo extends StatelessWidget {
         alarms: const [],
         latitude: pos?.latitude,
         longitude: pos?.longitude,
+        addressName: addressKo,
       );
       final abcId = diaryRes['diaryId']?.toString();
       if (abcId == null || abcId.isEmpty) {

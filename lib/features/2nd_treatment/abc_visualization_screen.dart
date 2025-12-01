@@ -183,6 +183,30 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
       final emotionList = List<String>.from(widget.selectedEmotionChips);
       final physicalList = List<String>.from(widget.selectedPhysicalChips);
       final behaviorList = List<String>.from(widget.selectedBehaviorChips);
+      Map<String, dynamic> toChip(String label) =>
+          _diariesApi.makeDiaryChip(label: label.trim());
+
+      final activationChip = toChip(activatingEvents);
+      final beliefChips = beliefList
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .map(toChip)
+          .toList();
+      final emotionChips = emotionList
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .map(toChip)
+          .toList();
+      final physicalChips = physicalList
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .map(toChip)
+          .toList();
+      final behaviorChips = behaviorList
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .map(toChip)
+          .toList();
 
       final access = await _tokens.access;
       if (access == null) {
@@ -220,11 +244,11 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
 
       final diary = await _diariesApi.createDiary(
         groupId: 1, // 기본 그룹 (캐릭터 1)으로 할당
-        activatingEvents: activatingEvents,
-        belief: beliefList,
-        consequenceE: emotionList,
-        consequenceP: physicalList,
-        consequenceB: behaviorList,
+        activation: activationChip,
+        belief: beliefChips,
+        consequenceE: emotionChips,
+        consequenceP: physicalChips,
+        consequenceB: behaviorChips,
         sudScores: sudScorePayload,
         alternativeThoughts: const [],
         alarms: const [],

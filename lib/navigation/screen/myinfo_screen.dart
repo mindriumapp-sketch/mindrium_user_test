@@ -160,8 +160,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
 
       if (valueGoal.isNotEmpty) {
         await _userDataApi.updateValueGoal(valueGoal);
-      } else {
-        await _userDataApi.deleteValueGoal();
       }
 
       if (showPasswordFields && newPw.isNotEmpty) {

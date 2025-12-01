@@ -104,7 +104,7 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
+        color: Colors.white.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -125,7 +125,7 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
                   isActive
                       ? [
                         BoxShadow(
-                          color: const Color(0xFF5B9FD3).withOpacity(0.4),
+                          color: const Color(0xFF5B9FD3).withValues(alpha: 0.4),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -159,7 +159,6 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
 
     try {
       await _worryGroupsApi.createWorryGroup(
-        groupId: selectedCharacter['id'].toString(),
         groupTitle: titleController.text,
         groupContents: descriptionController.text,
         characterId: selectedCharacter['id'],
@@ -221,9 +220,8 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
                 ),
           );
 
-          if (shouldExit == true && mounted) {
-            Navigator.pop(context);
-          }
+          if (!context.mounted) return;
+          if (shouldExit == true) Navigator.pop(context);
         },
       ),
       body: Stack(
@@ -323,9 +321,9 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
                                               isSelected
                                                   ? const Color(
                                                     0xFF90CAF9,
-                                                  ).withOpacity(0.25)
-                                                  : Colors.black.withOpacity(
-                                                    0.04,
+                                                  ).withValues(alpha: 0.25)
+                                                  : Colors.black.withValues(
+                                                    alpha: 0.04,
                                                   ),
                                           blurRadius: isSelected ? 10 : 6,
                                           offset: const Offset(0, 3),
@@ -342,7 +340,7 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
                                           decoration: BoxDecoration(
                                             color: const Color(
                                               0xFFE3F2FD,
-                                            ).withOpacity(0.25),
+                                            ).withValues(alpha: 0.25),
                                             borderRadius: BorderRadius.circular(
                                               16,
                                             ),
@@ -491,7 +489,7 @@ class _AbcGroupAddScreen1State extends State<AbcGroupAddScreen1> {
                                 ),
                                 shadowColor: const Color(
                                   0xFF7BB8E8,
-                                ).withOpacity(0.4),
+                                ).withValues(alpha: 0.4),
                               ),
                               onPressed: _addGroupToFirebase,
                               child: const Text(
