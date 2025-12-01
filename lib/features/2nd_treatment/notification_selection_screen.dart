@@ -90,7 +90,7 @@ class _NotificationSelectionScreenState
 
     return NotificationSetting(
       id: alarm['alarmId']?.toString(),
-      abcId: alarm['diaryId']?.toString() ?? _abcId,
+      diaryId: alarm['diaryId']?.toString() ?? _abcId,
       time: tod,
       repeatOption: repeat,
       weekdays: weekDays,
@@ -581,16 +581,16 @@ class _NotificationSelectionScreenState
                         rightLabel: '완료',
                         onBack: () => Navigator.pop(ctx),
                         onNext: () {
-                          Navigator.pop(
-                            ctx,
-                            NotificationSetting(
-                              id: _draftTime?.id,
-                              abcId: _abcId,
-                              time: pickedTimeLocal,
-                              cause: widget.label,
-                              repeatOption: _repeatOption,
-                              weekdays: _selectedWeekdays.toList(),
-                              reminderMinutes: _draftTime?.reminderMinutes,
+                              Navigator.pop(
+                                ctx,
+                                NotificationSetting(
+                                  id: _draftTime?.id,
+                                  diaryId: _abcId,
+                                  time: pickedTimeLocal,
+                                  cause: widget.label,
+                                  repeatOption: _repeatOption,
+                                  weekdays: _selectedWeekdays.toList(),
+                                  reminderMinutes: _draftTime?.reminderMinutes,
                               notifyEnter: false,
                               notifyExit: false,
                             ),
@@ -643,7 +643,7 @@ class _NotificationSelectionScreenState
 
       final withId = withRepeat.copyWith(
         id: _draftLocation?.id,
-        abcId: _abcId,
+        diaryId: _abcId,
         cause: widget.label,
         reminderMinutes: _draftLocation?.reminderMinutes,
       );
