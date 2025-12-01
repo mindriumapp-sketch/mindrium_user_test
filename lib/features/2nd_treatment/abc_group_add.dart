@@ -8,7 +8,6 @@ import '../../data/storage/token_storage.dart';
 import '../../data/api/api_client.dart';
 import '../../data/api/worry_groups_api.dart';
 import '../../data/api/diaries_api.dart';
-import '../../data/api/user_data_api.dart';
 import 'abc_group_add_screen.dart';
 
 class AbcGroupAddScreen extends StatefulWidget {
@@ -36,7 +35,6 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final WorryGroupsApi _worryGroupsApi = WorryGroupsApi(_apiClient);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
-  late final UserDataApi _userDataApi = UserDataApi(_apiClient);
 
   String? _selectedGroupId;
   List<Map<String, dynamic>> _groups = [];
@@ -98,18 +96,6 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     final avgScore = validCount > 0 ? total / validCount : 0.0;
 
     return {'group': group, 'diaryCount': count, 'avgScore': avgScore};
-  }
-
-  Future<int> _getCurrentWeek() async {
-    try {
-      final progress = await _userDataApi.getProgress();
-      final currentWeek = progress['completed_week'];
-      if (currentWeek is int) return currentWeek;
-      if (currentWeek is num) return currentWeek.toInt();
-    } catch (e) {
-      debugPrint('❌ 현재 치료 주차 조회 실패: $e');
-    }
-    return 1;
   }
 
   bool get _shouldContinueTherapyFlow =>
@@ -300,11 +286,11 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         try {
-                          await _worryGroupsApi
-                              .updateWorryGroup(group['group_id'], {
-                                'group_title': titleCtrl.text,
-                                'group_contents': contentsCtrl.text,
-                              });
+                          await _worryGroupsApi.updateWorryGroup(
+                            group['group_id']?.toString() ?? '',
+                            groupTitle: titleCtrl.text,
+                            groupContents: contentsCtrl.text,
+                          );
                           if (ctx.mounted) {
                             Navigator.pop(ctx);
                             _loadGroups(); // Reload groups to show updated data

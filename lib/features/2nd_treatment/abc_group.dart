@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
@@ -50,9 +49,9 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
 
     try {
       final groups = await _worryGroupsApi.listWorryGroups();
-      print('🔍 API 응답 받은 그룹 수: ${groups.length}');
+      debugPrint('🔍 API 응답 받은 그룹 수: ${groups.length}');
       for (var g in groups) {
-        print(
+        debugPrint(
           '   - group_id: ${g['group_id']}, title: ${g['group_title']}, archived: ${g['archived']}',
         );
       }
@@ -97,7 +96,7 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -231,19 +230,16 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
                   const SizedBox(height: 24),
                   // 버튼
                   ElevatedButton(
-                    onPressed: () async {
-                      try {
-                        await _worryGroupsApi.updateWorryGroup(
-                          group['group_id']?.toString() ?? '',
-                          {
-                            'group_title': titleCtrl.text,
-                            'group_contents': contentsCtrl.text,
-                          },
-                        );
-                        if (mounted) {
+                      onPressed: () async {
+                        try {
+                          await _worryGroupsApi.updateWorryGroup(
+                            group['group_id']?.toString() ?? '',
+                            groupTitle: titleCtrl.text,
+                            groupContents: contentsCtrl.text,
+                          );
+                          if (!context.mounted) return;
                           Navigator.pop(context);
                           _loadGroups();
-                        }
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(
@@ -260,7 +256,7 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
-                      shadowColor: const Color(0xFF7BB8E8).withOpacity(0.4),
+                      shadowColor: const Color(0xFF7BB8E8).withValues(alpha: 0.4),
                     ),
                     child: const Text(
                       '수정 완료',
@@ -301,7 +297,7 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
           border: Border.all(color: const Color(0xFF5B9FD3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -334,7 +330,7 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
   }
 
   /// 드롭다운(펼침) 내용 위젯: 일기 개수/설명 전체/생성일/버튼들
-  Widget _ExpandedGroupBody({
+  Widget _expandedGroupBody({
     required String groupId,
     required String fullContents,
     required DateTime? createdAt,
@@ -385,12 +381,12 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: barColor.withOpacity(0.3),
+                        color: barColor.withValues(alpha: 0.3),
                         width: 2.0,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -418,10 +414,10 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
                                 vertical: 7,
                               ),
                               decoration: BoxDecoration(
-                                color: barColor.withOpacity(0.15),
+                                color: barColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: barColor.withOpacity(0.3),
+                                  color: barColor.withValues(alpha: 0.3),
                                   width: 1,
                                 ),
                               ),
@@ -762,8 +758,8 @@ hasScore && avg <= 2.0
             BoxShadow(
               color:
                   selected
-                      ? const Color(0xFF5B9FD3).withOpacity(0.25)
-                      : Colors.black.withOpacity(0.05),
+                      ? const Color(0xFF5B9FD3).withValues(alpha: 0.25)
+                      : Colors.black.withValues(alpha: 0.05),
               blurRadius: selected ? 12 : 8,
               offset: Offset(0, selected ? 6 : 4),
             ),
@@ -815,7 +811,7 @@ hasScore && avg <= 2.0
               onPressed: () => _showEditDialog(context, data),
             ),
             children: [
-              _ExpandedGroupBody(
+              _expandedGroupBody(
                 groupId: groupId,
                 fullContents: contents,
                 createdAt: createdAt,
@@ -951,14 +947,14 @@ hasScore && avg <= 2.0
     List<Map<String, dynamic>> diaries,
   ) async {
     if (diaries.isEmpty) {
-      print('📊 SUD 계산: 일기 없음');
+      debugPrint('📊 SUD 계산: 일기 없음');
       return null;
     }
 
-    print('📊 SUD 계산 시작: ${diaries.length}개 일기');
+    debugPrint('📊 SUD 계산 시작: ${diaries.length}개 일기');
     int sum = 0, cnt = 0;
 
-    int? _parseScore(dynamic raw) {
+    int? parseScore(dynamic raw) {
       if (raw is int) return raw;
       if (raw is num) return raw.toInt();
       if (raw is String) return int.tryParse(raw);
@@ -967,10 +963,10 @@ hasScore && avg <= 2.0
 
     for (final diary in diaries) {
       final sudScores = diary['sudScores'] as List?;
-      print('  일기 ${diary['diaryId']}: sudScores = $sudScores');
+      debugPrint('  일기 ${diary['diaryId']}: sudScores = $sudScores');
 
       if (sudScores == null || sudScores.isEmpty) {
-        print('    ❌ sudScores 없음');
+        debugPrint('    ❌ sudScores 없음');
         continue;
       }
 
@@ -988,25 +984,27 @@ hasScore && avg <= 2.0
       final latestScore = scores.last;
       final dynamic afterSud = latestScore['after_sud'] ?? latestScore['afterSud'];
       final dynamic beforeSud = latestScore['before_sud'] ?? latestScore['beforeSud'];
-      final int? scoreValue = _parseScore(afterSud) ?? _parseScore(beforeSud);
-      print('    최신 after_sud: $afterSud, before_sud: $beforeSud -> 사용점수: $scoreValue');
+      final int? scoreValue = parseScore(afterSud) ?? parseScore(beforeSud);
+      debugPrint(
+        '    최신 after_sud: $afterSud, before_sud: $beforeSud -> 사용점수: $scoreValue',
+      );
 
       if (scoreValue != null) {
         sum += scoreValue.clamp(0, 10);
         cnt++;
-        print('    ✅ 점수: $scoreValue');
+        debugPrint('    ✅ 점수: $scoreValue');
       } else {
-        print('    ❌ 점수 파싱 실패');
+        debugPrint('    ❌ 점수 파싱 실패');
       }
     }
 
     if (cnt == 0) {
-      print('📊 결과: 점수 없음 (0개 처리됨)');
+      debugPrint('📊 결과: 점수 없음 (0개 처리됨)');
       return null;
     }
 
     final avg = sum / cnt;
-    print('📊 결과: 평균 ${avg.toStringAsFixed(1)} (총 $cnt개)');
+    debugPrint('📊 결과: 평균 ${avg.toStringAsFixed(1)} (총 $cnt개)');
     return avg;
   }
 
