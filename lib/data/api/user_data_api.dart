@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
+import 'custom_tags_api.dart';
 
 class UserDataApi {
   final ApiClient _client;
@@ -42,6 +43,34 @@ class UserDataApi {
     throw DioException(
       requestOptions: res.requestOptions,
       message: 'Invalid /users/me/progress response',
+    );
+  }
+
+  // ----- Custom Tags (delegates to CustomTagsApi) -----
+  CustomTagsApi get _customTags => CustomTagsApi(_client);
+
+  Future<List<Map<String, dynamic>>> getCustomTags({
+    String? chipType,
+    bool includeDeleted = false,
+  }) {
+    return _customTags.listCustomTags(
+      chipType: chipType,
+      includeDeleted: includeDeleted,
+    );
+  }
+
+  Future<Map<String, dynamic>> createCustomTag({
+    required String text,
+    required String type,
+    bool isPreset = false,
+  }) async {
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final chipId = 'chip_$now';
+    return _customTags.createCustomTag(
+      chipId: chipId,
+      label: text,
+      type: type,
+      isPreset: isPreset,
     );
   }
 }
