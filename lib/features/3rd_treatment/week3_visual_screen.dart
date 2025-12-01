@@ -7,7 +7,7 @@ import 'package:gad_app_team/widgets/detail_popup.dart';        // 자세히 보
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class Week3VisualScreen extends StatefulWidget {
@@ -30,14 +30,14 @@ class Week3VisualScreen extends StatefulWidget {
 
 class _Week3VisualScreenState extends State<Week3VisualScreen> {
   late final ApiClient _client;
-  late final UserDataApi _userDataApi;
+  late final EduSessionsApi _eduSessionsApi;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
-    _userDataApi = UserDataApi(_client);
+    _eduSessionsApi = EduSessionsApi(_client);
   }
 
   Future<void> _saveSession() async {
@@ -71,8 +71,13 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
         };
       }
 
-      await _userDataApi.createPracticeSession(
+      await _eduSessionsApi.createWeek3or5Session(
         weekNumber: 3,
+        totalScreens: 3,
+        lastScreenIndex: 3,
+        completed: true,
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
         negativeItems: widget.previousChips,
         positiveItems: widget.alternativeChips,
         classificationQuiz: classificationQuiz,
@@ -248,7 +253,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                             boxShadow: [
                               BoxShadow(
                                 color:
-                                Colors.black.withOpacity(0.08),
+                                Colors.black.withValues(alpha: 0.08),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -270,7 +275,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                             boxShadow: [
                               BoxShadow(
                                 color:
-                                Colors.black.withOpacity(0.08),
+                                Colors.black.withValues(alpha: 0.08),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -301,10 +306,10 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
               rightLabel: '다음',
               onBack: () => Navigator.pop(context),
               onNext: () async {
+                final nav = Navigator.of(context);
                 await _saveSession();
                 if (!mounted) return;
-                Navigator.push(
-                  context,
+                nav.push(
                   PageRouteBuilder(
                     pageBuilder: (_, __, ___) => Week3FinalScreen(),
                     transitionDuration: Duration.zero,

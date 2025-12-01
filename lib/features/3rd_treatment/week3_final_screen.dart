@@ -3,7 +3,6 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
-import 'package:gad_app_team/utils/edu_progress.dart';
 
 class Week3FinalScreen extends StatelessWidget {
   const Week3FinalScreen({super.key,});
