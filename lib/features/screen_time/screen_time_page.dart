@@ -93,8 +93,7 @@ class _SessionTile extends StatelessWidget {
     final start = entry.startTime.toLocal();
     final end = entry.endTime.toLocal();
     final dateFmt = DateFormat('yyyy.MM.dd HH:mm');
-    final duration = entry.durationMinutes;
-    final totalSeconds = (duration * 60).round();
+    final totalSeconds = entry.durationSeconds;
     final mins = totalSeconds ~/ 60;
     final secs = totalSeconds % 60;
     final durationLabel = mins > 0 && secs > 0

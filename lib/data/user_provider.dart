@@ -31,9 +31,12 @@ class UserProvider extends ChangeNotifier {
           ? (me['name'] as String)
           : '사용자';
       _userEmail = (me['email'] as String?) ?? '';
-      _uid = (me['id'] as String?) ?? (me['_id'] as String? ?? '');
+      _uid = (me['user_id'] as String?) ?? (me['_id'] as String? ?? '');
 
-      final createdAtRaw = me['createdAt'] ?? me['created_at'];
+      //// ✅ 먼저 로컬 정리/준비
+      // await EduLocalProgress.clearLocalIfUserSwitched(_uid);
+
+      final createdAtRaw = me['created_at'];
       DateTime? parsedCreatedAt;
       if (createdAtRaw is String) {
         parsedCreatedAt = DateTime.tryParse(createdAtRaw);

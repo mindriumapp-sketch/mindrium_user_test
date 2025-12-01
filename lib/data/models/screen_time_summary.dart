@@ -36,7 +36,7 @@ class ScreenTimeEntry {
   final String id;
   final DateTime startTime;
   final DateTime endTime;
-  final double durationMinutes;
+  final int durationSeconds;
   final DateTime createdAt;
   final String? platform;
 
@@ -44,17 +44,17 @@ class ScreenTimeEntry {
     required this.id,
     required this.startTime,
     required this.endTime,
-    required this.durationMinutes,
+    required this.durationSeconds,
     required this.createdAt,
     this.platform,
   });
 
   factory ScreenTimeEntry.fromJson(Map<String, dynamic> json) {
     return ScreenTimeEntry(
-      id: json['id']?.toString() ?? '',
+      id: json['screen_id']?.toString() ?? '',
       startTime: DateTime.parse(json['start_time'] as String).toUtc(),
       endTime: DateTime.parse(json['end_time'] as String).toUtc(),
-      durationMinutes: (json['duration_minutes'] as num?)?.toDouble() ?? 0,
+      durationSeconds: (json['duration_seconds'] as num?)?.toInt() ?? 0,
       createdAt: _parseDate(json['created_at']) ?? DateTime.now().toUtc(),
       platform: json['platform'] as String?,
     );

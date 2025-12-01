@@ -1,10 +1,10 @@
 // ─────────────────────────  FLUTTER  ─────────────────────────
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-
-// ────────────────────────  PACKAGES  ────────────────────────
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/relaxation_api.dart';
+import 'package:gad_app_team/data/api/user_data_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
 
 // ───────────────────────────  LOCAL  ────────────────────────
 import 'package:gad_app_team/common/constants.dart';
@@ -22,48 +22,35 @@ class RelaxationScoreScreen extends StatefulWidget {
 }
 
 class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
-  int _relax = 10; // 슬라이더 값 (0‒10)
+  int _relax = 10; // 슬라이더 값 (1‒10)
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final UserDataApi _userDataApi = UserDataApi(_apiClient);
+  late final RelaxationApi _relaxationApi = RelaxationApi(_apiClient);
 
-  // ────────────────────── Firestore 저장 ──────────────────────
+
+  // ────────────────────── Mongo 저장 ──────────────────────
   Future<void> _saveRelax() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final String? abcId   = args['abcId'] as String?;
-    if (uid == null) return; // 로그인하지 않은 경우
+    final route = ModalRoute.of(context);
+    final Object? rawArgs = route?.settings.arguments;
 
-    final pos = await _getCurrentPosition(); // 위치 권한 없으면 null
-    await FirebaseFirestore.instance
-      .collection('users')
-      .doc(uid)
-      .collection('abc_models')
-      .doc(abcId)
-      .collection('relax_score')
-      .add({
-        'relax_score': _relax,
-        'createdAt': FieldValue.serverTimestamp(),
-        if (pos != null) 'latitude': pos.latitude,
-        if (pos != null) 'longitude': pos.longitude,
-      });
-  }
-
-  /// 현재 위치 가져오기 (권한 거부 시 null)
-  Future<Position?> _getCurrentPosition() async {
-    try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.always ||
-          perm == LocationPermission.whileInUse) {
-        return Geolocator.getCurrentPosition(
-          locationSettings:
-              const LocationSettings(accuracy: LocationAccuracy.low),
-        );
-      }
-    } catch (_) {
-      // 위치를 얻지 못해도 무시
+    if (rawArgs is! Map) {
+      debugPrint('[relaxation_score] arguments is not a Map: $rawArgs');
+      return;
     }
-    return null;
+
+    final args = rawArgs;
+    final relaxId = args['relaxId'] as String?;
+
+    if (relaxId == null || relaxId.isEmpty) {
+      debugPrint('[relaxation_score] relaxId is null or empty, skip save');
+      return;
+    }
+
+    await _relaxationApi.updateRelaxationScore(
+      relaxId: relaxId,
+      relaxationScore: _relax.toDouble(),
+    );
   }
 
   // ────────────────────────── UI ──────────────────────────
@@ -95,17 +82,20 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
 
                 if (!context.mounted) return;
                 // 2) 사용자 completed_education 읽기
-                final uid = FirebaseAuth.instance.currentUser?.uid;
-                int completed = 0;
-                if (uid != null) {
-                  final snap = await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(uid)
-                      .get();
-                  completed = (snap.data()?['completed_education'] ?? 0) as int;
+                Map<String, dynamic> progress;
+                try {
+                  progress = await _userDataApi.getProgress();
+                } on DioException catch (e) {
+                  debugPrint('[relaxation_score] getProgress Dio error: $e');
+                  // 실패하면 0으로 보고 그냥 기존(초기) 플로우 태우기
+                  progress = const {};
+                } catch (e) {
+                  debugPrint('[relaxation_score] getProgress error: $e');
+                  progress = const {};
                 }
 
-                debugPrint('[relaxation_score] completed_education=$completed (abcId=$abcId)');
+                final completed =
+                    (progress['last_completed_week'] as int?) ?? 0;
 
                 // 3) completed_education >= 4 → 대체생각, else after_sud
                 if (!context.mounted) return;

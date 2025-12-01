@@ -10,10 +10,10 @@ class ScreenTimeCreate(BaseModel):
 
 
 class ScreenTimeEntry(BaseModel):
-    id: str = Field(..., description="Document identifier")
+    screen_id: str = Field(..., description="Document identifier")
     start_time: datetime
     end_time: datetime
-    duration_minutes: float
+    duration_seconds: int
     created_at: datetime
     platform: Optional[str] = None
 

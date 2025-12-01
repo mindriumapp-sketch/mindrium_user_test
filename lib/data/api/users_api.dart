@@ -14,7 +14,7 @@ class UsersApi {
       message: 'Invalid /users/me response',
     );
   }
-
+  // TODO: 스키마 확정 후 Future<Map<String, dynamic>> -> Future<UserMe>
   Future<Map<String, dynamic>> updateMe(Map<String, dynamic> body) async {
     final res = await _client.dio.put('/users/me', data: body);
     final data = res.data;

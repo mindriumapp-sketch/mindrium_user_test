@@ -1,114 +1,87 @@
-// lib/utils/edu_progress.dart
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-class EduProgress {
-  static const _nsPrefix = 'edu'; // namespace prefix
+class EduLocalProgress {
+  static const _nsPrefix = 'edu';
+  static const _lastUidKey = 'edu.__last_uid';
 
-  // ──────────────────────────
-  // 🔐 유저별 네임스페이스 키 생성기
-  // ──────────────────────────
-  static Future<String> _nsKey(String raw) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'anon';
-    return '$_nsPrefix.$uid.$raw';
-  }
+  static String _nsKey(String userId, String raw) =>
+      '$_nsPrefix.$userId.$raw';
 
-  // (이전 공개용 단순 키 함수는 더이상 외부에서 쓰지 않도록 내부화)
-  static Future<String> _readKey(String routeOrKey) async =>
-      _nsKey('read.$routeOrKey');
+  static String _readKey(String userId, String routeOrKey) =>
+      _nsKey(userId, 'read.$routeOrKey');
 
-  static Future<String> _lastKey() async => _nsKey('last_route');
+  static String _lastRouteKey(String userId) =>
+      _nsKey(userId, 'last_route');
 
-  // ✅ 주차 완료 중복 방지용 로컬 키 (user-scoped)
-  static Future<String> _weekDoneKey(int weekNo) async =>
-      _nsKey('week.done.$weekNo');
-
-  static Future<void> markWeekDone(int weekNo) async {
-    debugPrint("🔄 [EduProgress] markWeekDone($weekNo) 호출됨");
-
-    final user = FirebaseAuth.instance.currentUser;
-    final uid = user?.uid;
-    if (uid == null) return;
-
-    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-    final nextWeek = weekNo + 1;
-
-    // ✅ Firestore 업데이트 (completed + unlocked 분리)
-    await userRef.set({
-      'completed_education': FieldValue.increment(1),
-      'completed_weeks': {'$weekNo': true},
-    }, SetOptions(merge: true));
-
-    if (nextWeek <= 8) {
-      await userRef.set({
-        'unlocked_weeks': {'$nextWeek': true},
-      }, SetOptions(merge: true));
-      debugPrint("🟩 [EduProgress] 다음 주차($nextWeek) unlock 완료");
-    }
-
-    // ✅ 로컬 기록
+  // ─────────────────────────────
+  // 진행도 저장/조회
+  // ─────────────────────────────
+  static Future<void> saveRead(
+      String userId,
+      String routeOrKey,
+      int read,
+      ) async {
     final p = await SharedPreferences.getInstance();
-    final key = await _weekDoneKey(weekNo);
-    await p.setBool(key, true);
-    debugPrint("📍 [EduProgress] 로컬 완료 플래그 저장: $key = true");
-  }
-
-
-
-  // ──────────────────────────
-  // 진행률(읽은 페이지) 저장/조회 — user-scoped
-  // ──────────────────────────
-  static Future<void> save(String routeOrKey, int read) async {
-    final p = await SharedPreferences.getInstance();
-    final key = await _readKey(routeOrKey);
+    final key = _readKey(userId, routeOrKey);
     await p.setInt(key, read);
-    debugPrint("📝 [EduProgress] save read: $key = $read");
   }
 
-  static Future<int> getRead(String routeOrKey) async {
+  static Future<int> getRead(
+      String userId,
+      String routeOrKey,
+      ) async {
     final p = await SharedPreferences.getInstance();
-    final key = await _readKey(routeOrKey);
-    final v = p.getInt(key) ?? 0;
-    debugPrint("📖 [EduProgress] getRead: $key → $v");
-    return v;
+    final key = _readKey(userId, routeOrKey);
+    return p.getInt(key) ?? 0;
   }
 
-  // ──────────────────────────
-  // 마지막 라우트 저장/조회 — user-scoped
-  // ──────────────────────────
-  static Future<void> setLastRoute(String route) async {
+  static Future<void> setLastRoute(
+      String userId,
+      String route,
+      ) async {
     final p = await SharedPreferences.getInstance();
-    final key = await _lastKey();
+    final key = _lastRouteKey(userId);
     await p.setString(key, route);
-    debugPrint("🧭 [EduProgress] setLastRoute: $key = $route");
   }
 
-  static Future<String?> getLastRoute() async {
+  static Future<String?> getLastRoute(String userId) async {
     final p = await SharedPreferences.getInstance();
-    final key = await _lastKey();
-    final v = p.getString(key);
-    debugPrint("🧭 [EduProgress] getLastRoute: $key → $v");
-    return v;
+    final key = _lastRouteKey(userId);
+    return p.getString(key);
   }
 
-  // ──────────────────────────
-  // (선택) 유저 전환 감지 시 로컬 초기화 헬퍼
-  // ──────────────────────────
-  /// 로그인 전환 시 호출하면, 이전 유저의 로컬 키와 섞이는 문제를 원천 차단.
-  /// 보수적으로 네임스페이스 전체를 날리지 않고, 필요 필드만 초기화하려면 여기서 처리.
-  static Future<void> clearLocalIfUserSwitched() async {
+  // ─────────────────────────────
+  // ✅ 유저 전환 감지 + 로컬 초기화 (선택)
+  // ─────────────────────────────
+  static Future<void> clearLocalIfUserSwitched(String currentUserId) async {
     final p = await SharedPreferences.getInstance();
-    const lastUidKey = '$_nsPrefix.__last_uid';
-    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? 'anon';
-    final lastUid = p.getString(lastUidKey);
+    final lastUid = p.getString(_lastUidKey);
 
-    if (lastUid != currentUid) {
-      // 💡 같은 네임스페이스를 쓰므로 굳이 전체를 비우지 않아도 됨.
-      // 필요하면 특정 키(예: 캐시된 진행도)를 초기화하는 로직을 넣을 수 있음.
-      await p.setString(lastUidKey, currentUid);
-      debugPrint("🔁 [EduProgress] user switched: $lastUid → $currentUid (로컬 네임스페이스 분리로 안전)");
+    // 최초 실행: 그냥 현재 uid만 기록
+    if (lastUid == null) {
+      await p.setString(_lastUidKey, currentUserId);
+      return;
     }
+
+    if (lastUid == currentUserId) {
+      // 같은 유저 → 아무 것도 안 함
+      return;
+    }
+
+    // 🔁 여기까지 왔으면 유저가 바뀐 것
+    // 정책 1: 데이터는 네임스페이스로 이미 분리돼 있으니,
+    //         그냥 last_uid만 업데이트(정합성에는 문제 없음)
+    // await p.setString(_lastUidKey, currentUserId);
+
+    // 정책 2: 이전 유저의 edu.* 데이터는 아예 지우고 싶다 → 아래 같이 prefix로 삭제
+    final keys = p.getKeys();
+    for (final key in keys) {
+      if (key.startsWith('$_nsPrefix.$lastUid.')) {
+        await p.remove(key);
+      }
+    }
+
+    // 마지막으로 현재 uid 기록
+    await p.setString(_lastUidKey, currentUserId);
   }
 }

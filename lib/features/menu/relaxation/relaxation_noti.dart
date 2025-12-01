@@ -73,8 +73,6 @@ class _NotiPlayerState extends State<NotiPlayer>
   Timer? _autosaveTimer;
   bool _audioStartedOnce = false;
 
-  // ✅ 순수 활성 시간을 누적하는 변수
-  Duration _netActiveDuration = Duration.zero;
 // ✅ 현재 활성 상태가 시작된 시점
   DateTime? _lastActivityTime;
 
@@ -95,20 +93,10 @@ class _NotiPlayerState extends State<NotiPlayer>
     _startAutosaveTimer();
   }
 
-  // ✅ 현재까지 누적된 순수 활성 시간을 초 단위로 계산하는 함수
-  int _calculateCurrentNetDurationSeconds() {
-    Duration currentDuration = _netActiveDuration;
-    if (_isPlaying && _lastActivityTime != null) {
-      currentDuration += DateTime.now().difference(_lastActivityTime!);
-    }
-    return currentDuration.inSeconds.clamp(0, double.maxFinite.toInt());
-  }
 
   void _startAutosaveTimer() {
     _autosaveTimer?.cancel();
     _autosaveTimer = Timer.periodic(_kAutosaveInterval, (_) async {
-      final int netTime = _calculateCurrentNetDurationSeconds();
-      _logger.updateNetDuration(netDurationSeconds: netTime);
       _logger.logEvent("autosave_tick");
       try {
         await _logger.saveLogs();
@@ -122,6 +110,12 @@ class _NotiPlayerState extends State<NotiPlayer>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
+      // 재생 중이었다면 재생 중지
+      if (_isPlaying) {
+        _audioPlayer.pause();
+        _riveController?.active = false;
+        _isPlaying = false;
+      }
       _saveOnce(reason: 'app_paused');
     } else if (state == AppLifecycleState.resumed) {
       _startAutosaveTimer();
@@ -154,10 +148,6 @@ class _NotiPlayerState extends State<NotiPlayer>
 
   void _togglePlay() {
     if (_isPlaying) {
-      // ✅ Pause 직전까지의 활성 시간을 누적하고 측정 중지
-      if (_lastActivityTime != null) {
-        _netActiveDuration += DateTime.now().difference(_lastActivityTime!);
-      }
       _lastActivityTime = null; // 활성 시간 측정 중지
       _audioPlayer.pause();
       _riveController?.active = false;
@@ -173,17 +163,12 @@ class _NotiPlayerState extends State<NotiPlayer>
 
   Future<void> _saveOnce({required String reason}) async {
     if (_finalSaved) return;
-    // 최종 세이브 전 남은 시간 누적 및 측정 중지 (Pause와 동일 로직)
+    // 최종 세이브 전 측정 중지 (Pause와 동일 로직)
     if (_isPlaying && _lastActivityTime != null) {
-      _netActiveDuration += DateTime.now().difference(_lastActivityTime!);
       _lastActivityTime = null;
     }
 
     _finalSaved = true;
-
-    // 최종 순수 시간 계산 및 로거 업데이트
-    final int netTime = _netActiveDuration.inSeconds.clamp(0, double.maxFinite.toInt());
-    _logger.updateNetDuration(netDurationSeconds: netTime);
 
     try {
       _logger.logEvent("final_save_$reason");
@@ -196,15 +181,22 @@ class _NotiPlayerState extends State<NotiPlayer>
   void _checkIfBothFinished() async {
     if (_isAudioFinished && _isRiveFinished) {
       // ✅ 완주 플래그 먼저 세움
-      final int finalNetTime = _calculateCurrentNetDurationSeconds();
-      _logger.setFullyCompleted(netDurationSeconds: finalNetTime);
+      _logger.setFullyCompleted();
       _logger.logEvent("session_complete");
 
       await _saveOnce(reason: 'complete');
       if (!mounted) return;
 
-      //await EduProgress.markWeekDone(1);
-      Navigator.pushNamedAndRemoveUntil(context, widget.nextPage, (_) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        widget.nextPage,
+            (_) => false,
+        arguments: {
+          'taskId': widget.taskId,
+          'weekNumber': widget.weekNumber,
+          'relaxId': _logger.relaxId, // logger가 서버에서 받은 세션 id
+        },
+      );
     }
   }
 
@@ -230,7 +222,7 @@ class _NotiPlayerState extends State<NotiPlayer>
         child: Scaffold(
           backgroundColor: AppColors.white,
           appBar: CustomAppBar(
-            title: relaxationTitleForWeek(widget.weekNumber),
+            title: notiTitle(widget.taskId, widget.weekNumber),
             showHome: true,
             confirmOnBack: true,
           ),

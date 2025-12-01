@@ -14,8 +14,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 /// - saveLogs()  → 한 세션당 한 도큐먼트 upsert
 ///
 /// ✅ 바뀐 것들
-/// - Firestore → FastAPI + Mongo (`RelaxationApi.saveRelaxationTask`)
-/// - endTime / durationTime 은 **완주(_fullyCompleted=true)**일 때만 기록
+/// - endTime은 **완주(_fullyCompleted=true)**일 때만 기록
 /// - 완주 전 saveLogs: realLogs + autosave_checkpoint 1개만 추가
 class RelaxationLogger {
   final String taskId;
@@ -28,7 +27,6 @@ class RelaxationLogger {
   final List<Map<String, dynamic>> _logEntries = [];
   // 완주 여부(오디오+Rive 모두 끝났을 때만 endTime 기록)
   bool _fullyCompleted = false;
-  int? _netDurationSeconds;
 
   // REST API 클라이언트
   late final ApiClient _client;
@@ -50,18 +48,10 @@ class RelaxationLogger {
     _api = api ?? RelaxationApi(_client);
   }
 
-  // ✅ 중간에 순수 지속 시간만 업데이트
-  void updateNetDuration({required int netDurationSeconds}) {
-    _netDurationSeconds = netDurationSeconds;
-    // debugPrint('RelaxationLogger: Partial net duration updated to $netDurationSeconds s');
-  }
-
   /// 외부(플레이어)에서 오디오+Rive 모두 끝났을 때 호출
   /// (기존 구현 그대로 유지)
-  void setFullyCompleted({required int netDurationSeconds}) {
+  void setFullyCompleted() {
     _fullyCompleted = true;
-    updateNetDuration(netDurationSeconds: netDurationSeconds);
-    debugPrint('RelaxationLogger: Session fully completed. Net duration: $netDurationSeconds s');
   }
 
   /// 공통 이벤트 로깅
@@ -100,10 +90,7 @@ class RelaxationLogger {
   /// 실제 DB 저장 (기존 saveLogs 이름 유지)
   ///
   /// - autosave_* action 은 realLogs에서 제거
-  /// - _fullyCompleted == false:
-  ///     realLogs + 마지막 autosave_checkpoint 1개
-  /// - _fullyCompleted == true:
-  ///     realLogs만 저장 + endTime / durationTime 기록
+  /// - realLogs만 저장 + endTime 기록
   Future<void> saveLogs() async {
     if (_logEntries.isEmpty) return;
 
@@ -122,31 +109,12 @@ class RelaxationLogger {
       return !a.startsWith("autosave");
     }).toList();
 
-    // 완주 전: realLogs + 마지막 autosave_checkpoint (endTime 기록 X)
-    // 완주 시: autosave 모두 제거(realLogs만) + endTime 기록
+    // autosave 모두 제거(realLogs만) + endTime 기록
     final List<Map<String, dynamic>> logsForDb;
-    if (_fullyCompleted) {
-      logsForDb = realLogs;
-    } else {
-      logsForDb = [
-        ...realLogs,
-        {
-          "action": "autosave_checkpoint",
-          "timestamp": now.toUtc().toIso8601String(),
-          "elapsed_seconds": now.difference(_sessionStart).inSeconds,
-        },
-      ];
-    }
+    logsForDb = realLogs;
 
-    // 완주시에만 endTime / durationTime 채움
+    // 완주시에만 endTime 채움
     final DateTime? endTime = _fullyCompleted ? now : null;
-    final int? durationTime = _netDurationSeconds;
-
-    /// TODO: 5초 미만 저장할지 말지 정하기..
-    // if (durationTime != null && durationTime < 5) {
-    //  debugPrint('RelaxationLogger: Session duration is less than 5 seconds ($durationTime s). Skipping save.');
-    //  return;
-    //}
 
     try {
       // 🔥 서버에 현재 relaxId를 같이 보냄 (처음엔 null → 새로 생성)
@@ -160,7 +128,6 @@ class RelaxationLogger {
         latitude: _latitude,
         longitude: _longitude,
         addressName: _addressName,
-        durationTime: durationTime,
       );
 
       // 🔥 응답에서 relax_id 받아서 내부에 캐싱

@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 // ─────────────────────────  Flutter  ──────────────────────────
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 
@@ -20,9 +19,6 @@ import 'package:http/http.dart' as http;
 // ─────────────────────────  Local  ────────────────────────────
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/app.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/notification_api.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 
 /// ───────────────────────── MODELS ─────────────────────────
 enum RepeatOption { none, daily, weekly }
@@ -37,7 +33,7 @@ class NotificationSetting {
   final int? reminderMinutes;
   final String? description;
   final String? id;
-  final String? abcId;
+  final String? diaryId;
   final DateTime savedAt;
   final String? cause;
   final bool notifyEnter;
@@ -54,7 +50,7 @@ class NotificationSetting {
     this.description,
     this.reminderMinutes,
     this.id,
-    this.abcId,
+    this.diaryId,
     DateTime? savedAt,
     required this.notifyEnter,
     required this.notifyExit,
@@ -68,8 +64,8 @@ class NotificationSetting {
       'notify_enter': notifyEnter,
       'notify_exit': notifyExit,
     };
-    if (abcId != null) {
-      map['abc_id'] = abcId;
+    if (diaryId != null) {
+      map['diary_id'] = diaryId;
     }
     if (includeSavedAt) {
       map['saved_at'] = savedAt.toIso8601String();
@@ -123,10 +119,10 @@ class NotificationSetting {
           json['id']?.toString() ??
           json['_id']?.toString() ??
           json['settingId']?.toString(),
-      abcId: json['abc_id']?.toString() ?? json['abcId']?.toString(),
+      diaryId: json['diary_id']?.toString(),
       time: _timeOfDayFrom(json['time']),
       repeatOption: _repeatOptionFrom(repeatName),
-      weekdays: _weekdaysFrom(json['weekdays'] ?? json['weekDays']),
+      weekdays: _weekdaysFrom(json['weekdays']),
       latitude: _doubleFrom(json['latitude']),
       longitude: _doubleFrom(json['longitude']),
       location: json['location']?.toString(),
@@ -209,14 +205,9 @@ class NotificationProvider extends ChangeNotifier {
   static final NotificationProvider _inst = NotificationProvider._internal();
   factory NotificationProvider() => _inst;
   NotificationProvider._internal() {
-    _apiClient = ApiClient(tokens: _tokens);
-    _notificationApi = NotificationApi(_apiClient);
     _ready = _init();
   }
 
-  final TokenStorage _tokens = TokenStorage();
-  late final ApiClient _apiClient;
-  late final NotificationApi _notificationApi;
   late final Future<void> _ready;
   NotificationSetting? _current;
   NotificationSetting? get current => _current;
@@ -245,20 +236,6 @@ class NotificationProvider extends ChangeNotifier {
       return RepeatOption.daily;
     }
     return s.repeatOption;
-  }
-
-  /// Returns a stable deduplication key for time-based schedules.
-  /// Format: t=HH:MM|rep=daily|wd=1,3,5 (weekdays sorted, only if weekly)
-  String? _timeKeyOf(NotificationSetting s) {
-    if (s.time == null) return null;
-    final rep = _effectiveRepeatOption(s);
-    final hh = s.time!.hour.toString().padLeft(2, '0');
-    final mm = s.time!.minute.toString().padLeft(2, '0');
-    final normalizedWeekdays = (rep == RepeatOption.weekly && s.weekdays.isNotEmpty)
-        ? (s.weekdays.toSet().toList()..sort())
-        : <int>[];
-    final wdCsv = normalizedWeekdays.join(',');
-    return 't=$hh:$mm|rep=${rep.name}|wd=$wdCsv';
   }
 
   /* ─────────── 초기화 ─────────── */
@@ -303,20 +280,6 @@ class NotificationProvider extends ChangeNotifier {
         );
       });
     }
-
-    // await Geolocator.requestPermission();
-
-    try {
-      final latest = await _notificationApi.fetchLatest();
-      if (latest != null) {
-        _current = NotificationSetting.fromJson(latest);
-        await _applySetting(_current!);
-      }
-    } on DioException catch (e) {
-      debugPrint('[NOTI] preload failed: ${e.message}');
-    } catch (e) {
-      debugPrint('[NOTI] preload failed: $e');
-    }
     notifyListeners();
   }
 
@@ -348,148 +311,6 @@ class NotificationProvider extends ChangeNotifier {
     _scheduledNotificationIds.clear();
   }
 
-  Future<List<NotificationSetting>> fetchSettings({
-    String? abcId,
-    bool locationOnly = false,
-  }) async {
-    await _ready;
-    try {
-      final docs = await _notificationApi.list(
-        abcId: abcId,
-        locationOnly: locationOnly,
-      );
-      return docs.map(NotificationSetting.fromJson).toList();
-    } on DioException catch (e) {
-      debugPrint('[NOTI] fetchSettings failed: ${e.message}');
-      return const [];
-    } catch (e) {
-      debugPrint('[NOTI] fetchSettings failed: $e');
-      return const [];
-    }
-  }
-
-  Future<NotificationSetting> _persistRemoteSetting(NotificationSetting setting) async {
-    final abcId = setting.abcId;
-    if (abcId == null || abcId.isEmpty) {
-      throw StateError('abcId is required to persist notification settings');
-    }
-    final saved = await _notificationApi.upsert(
-      abcId: abcId,
-      body: setting.toJson(includeSavedAt: false),
-      id: setting.id,
-    );
-    return NotificationSetting.fromJson(saved);
-  }
-
-  /* ─────────── 새 알림 생성 ─────────── */
-  Future<NotificationSetting?> createAndSchedule(NotificationSetting setting, {required String abcId}) async {
-    await _ready;
-    if (!await _ensure(Permission.notification)) return null;
-
-    final NotificationSetting s = setting.copyWith(abcId: abcId);
-
-    try {
-      final saved = await _persistRemoteSetting(s);
-      _current = saved;
-      await _reSchedule(_current!);
-      notifyListeners();
-      return saved;
-    } on DioException catch (e) {
-      debugPrint('[NOTI] createAndSchedule failed: ${e.message}');
-    } catch (e) {
-      debugPrint('[NOTI] createAndSchedule failed: $e');
-    }
-    return null;
-  }
-
-  /// 외부(UI)에서 새 알림을 저장 + 스케줄링할 때 사용
-  Future<NotificationSetting?> createSchedule(NotificationSetting setting, {required String abcId}) =>
-      createAndSchedule(setting, abcId: abcId);
-// ───────────────────────── 기존 알림 업데이트 + 재스케줄 ─────────────────────────
-  Future<NotificationSetting?> updateAndSchedule(NotificationSetting setting, {required String abcId}) async {
-    await _ready;                               // 초기화 보장
-
-    // 1) 문서 ID가 없으면 새로 추가
-    if (setting.id == null) {
-      return await createAndSchedule(setting, abcId: abcId);
-    }
-
-    try {
-      final saved = await _persistRemoteSetting(setting.copyWith(abcId: abcId));
-      _current = saved;
-      await _reSchedule(_current!);
-      notifyListeners();
-      return saved;
-    } on DioException catch (e) {
-      debugPrint('[NOTI] updateAndSchedule failed: ${e.message}');
-    } catch (e) {
-      debugPrint('[NOTI] updateAndSchedule failed: $e');
-    }
-    return null;
-  }
-
-  /// 외부(UI)에서 기존 알림을 갱신 + 재스케줄 할 때 사용
-  Future<NotificationSetting?> updateSchedule(NotificationSetting setting, {required String abcId}) =>
-      updateAndSchedule(setting, abcId: abcId);
-
-  /// ★ 시간만 수정
-  Future<void> updateTimeOfDay(String abcId, String docId, TimeOfDay t) async {
-    await _ready;
-    final hh = t.hour.toString().padLeft(2, '0');
-    final mm = t.minute.toString().padLeft(2, '0');
-    final payload = <String, dynamic>{
-      'time': '$hh:$mm',
-    };
-    final currentForKey = (_current != null && _current!.id == docId) ? _current : null;
-    if (currentForKey != null) {
-      final updated = currentForKey.copyWith(time: t);
-      final timeKey = _timeKeyOf(updated);
-      if (timeKey != null) {
-        payload['time_key'] = timeKey;
-      }
-      payload['repeat_option'] = updated.repeatOption.name;
-      if (updated.repeatOption == RepeatOption.weekly && updated.weekdays.isNotEmpty) {
-        payload['weekdays'] = (updated.weekdays.toSet().toList()..sort());
-      }
-    }
-    try {
-      await _notificationApi.updateTime(
-        abcId: abcId,
-        settingId: docId,
-        body: payload,
-      );
-      if (_current != null && _current!.id == docId) {
-        _current = _current!.copyWith(time: t);
-        await _reSchedule(_current!);
-      }
-      notifyListeners();
-    } on DioException catch (e) {
-      debugPrint('[NOTI] updateTimeOfDay failed: ${e.message}');
-    } catch (e) {
-      debugPrint('[NOTI] updateTimeOfDay failed: $e');
-    }
-  }
-
-  /// ★ 위치 알림 설명만 수정
-  Future<void> updateLocationDescription(String abcId, String docId, String desc) async {
-    await _ready;
-    try {
-      await _notificationApi.updateDescription(
-        abcId: abcId,
-        settingId: docId,
-        description: desc,
-      );
-      if (_current != null && _current!.id == docId) {
-        _current = _current!.copyWith(description: desc);
-        notifyListeners();
-      }
-    } on DioException catch (e) {
-      debugPrint('[NOTI] updateLocationDescription failed: ${e.message}');
-    } catch (e) {
-      debugPrint('[NOTI] updateLocationDescription failed: $e');
-    }
-  }
-
   /// Applies a diary-derived notification without touching the remote API.
   Future<void> applyDiarySetting(NotificationSetting? setting) async {
     await _ready;
@@ -502,12 +323,6 @@ class NotificationProvider extends ChangeNotifier {
     _current = setting;
     await _applySetting(setting);
     notifyListeners();
-  }
-
-  // ───────────────────────── 스케줄 적용/갱신 ─────────────────────────
-  Future<void> _reSchedule(NotificationSetting s) async {
-    await _cancelAll();
-    await _applySetting(s);
   }
 
   /// Applies a [NotificationSetting] by scheduling the appropriate notification(s)
@@ -604,7 +419,7 @@ class NotificationProvider extends ChangeNotifier {
       iOS: DarwinNotificationDetails(),
     );
 
-    final payload = '/before_sud?abcId=${setting.abcId ?? ''}';
+    final payload = '/before_sud?diaryId=${setting.diaryId ?? ''}';
 
     Future<void> schedule(AndroidScheduleMode mode) => _fln.zonedSchedule(
           id,
@@ -770,7 +585,7 @@ class NotificationProvider extends ChangeNotifier {
           title: _titleFor(setting),
           body: _bodyFor(setting),
           reminderMinutes: setting.reminderMinutes,
-          abcId: setting.abcId,
+          diaryId: setting.diaryId,
         );
       }
     } catch (_) {
@@ -809,7 +624,7 @@ class NotificationProvider extends ChangeNotifier {
           title: _titleFor(s),
           body: _bodyFor(s),
           reminderMinutes: s.reminderMinutes,
-          abcId: s.abcId,
+          diaryId: s.diaryId,
         );
       }
       if (status == gf.GeofenceStatus.EXIT && s.notifyExit) {
@@ -817,7 +632,7 @@ class NotificationProvider extends ChangeNotifier {
           title: _titleFor(s),
           body: _bodyFor(s),
           reminderMinutes: s.reminderMinutes,
-          abcId: s.abcId,
+          diaryId: s.diaryId,
         );
       }
     });
@@ -930,9 +745,9 @@ class NotificationProvider extends ChangeNotifier {
     required String title, 
     required String body, 
     int? reminderMinutes,
-    String? abcId,
+    String? diaryId,
   }) async {
-    final route = '/before_sud?abcId=${abcId ?? _current?.abcId ?? ''}';
+    final route = '/before_sud?diaryId=${diaryId ?? _current?.diaryId ?? ''}';
     debugPrint('[NOTI] payload=$route'); 
     await _fln.show(
       DateTime.now().millisecondsSinceEpoch % 1000000,
@@ -983,46 +798,27 @@ class NotificationProvider extends ChangeNotifier {
   }
   /* ─────────── 단일 스케줄 취소 ─────────── */
   /// 특정 알림 문서(id) 하나만 취소합니다.
-  /// 🔹 [id]      : Firestore notification_settings 문서 ID  
-  /// 🔹 [abcId]   : 상위 ABC 모델 ID (사용하지 않더라도 시그니처 유지)
+  /// 🔹 [id]      : Firestore notification_settings 문서 ID
+  /// 🔹 [diaryId]   : 상위 diary 모델 ID (사용하지 않더라도 시그니처 유지)
   Future<void> cancelSchedule({
     required String id,
-    required String abcId,
+    required String diaryId,
   }) async {
     await _ready;
-    try {
-      await _notificationApi.deleteSetting(abcId: abcId, settingId: id);
-    } catch (e) {
-      debugPrint('[NOTI] cancelSchedule remote delete failed: $e');
-    }
     await _cancelRecordedIds(id);
     _geoRegionByDocId.remove(id);
     _geoSettingByDocId.remove(id);
     await _restartGeofenceService();
     _clearLocationTimersForDoc(id);
-    if (_current?.id == id && _current?.abcId == abcId) {
+    if (_current?.id == id && _current?.diaryId == diaryId) {
       _current = null;
       notifyListeners();
     }
   }
   // ───────────────────────── 모든 스케줄 취소 ─────────────────────────
-  /// ABC 상세 화면에서 “알림을 설정하지 않을래요” 체크 시 호출
-  Future<void> cancelAllSchedules({required String abcId}) async {
+  /// diary 상세 화면에서 “알림을 설정하지 않을래요” 체크 시 호출
+  Future<void> cancelAllSchedules({required String diaryId}) async {
     await _ready;          // 초기화 보장
-    try {
-      final docs = await _notificationApi.list(abcId: abcId);
-      for (final doc in docs) {
-        final id = doc['id']?.toString() ?? doc['_id']?.toString();
-        if (id == null) continue;
-        try {
-          await _notificationApi.deleteSetting(abcId: abcId, settingId: id);
-        } catch (e) {
-          debugPrint('[NOTI] cancelAllSchedules delete failed: $e');
-        }
-      }
-    } catch (e) {
-      debugPrint('[NOTI] cancelAllSchedules list failed: $e');
-    }
     await _cancelAll();
     _current = null;
     notifyListeners();
@@ -1039,7 +835,7 @@ class _LocationSchedule {
 extension NotificationSettingCopyExt on NotificationSetting {
   NotificationSetting copyWith({
     String? id,
-    String? abcId,
+    String? diaryId,
     TimeOfDay? time,
     // DateTime? startDate,
     RepeatOption? repeatOption,
@@ -1056,7 +852,7 @@ extension NotificationSettingCopyExt on NotificationSetting {
   }) {
     return NotificationSetting(
       id: id ?? this.id,
-      abcId: abcId ?? this.abcId,
+      diaryId: diaryId ?? this.diaryId,
       time: time ?? this.time,
       // startDate: startDate ?? this.startDate,
       repeatOption: repeatOption ?? this.repeatOption,

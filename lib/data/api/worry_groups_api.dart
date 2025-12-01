@@ -5,14 +5,30 @@ class WorryGroupsApi {
   final ApiClient _client;
   WorryGroupsApi(this._client);
 
-  /// 모든 걱정 그룹 조회 (아카이브되지 않은 것만)
+  // 공통: client_timestamp 붙이기
+  Map<String, dynamic> _withClientTimestamp(
+      Map<String, dynamic> body, {
+        DateTime? clientTimestamp,
+      }) {
+    return {
+      ...body,
+      'client_timestamp':
+      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
+    };
+  }
+
+  /// 모든 걱정 그룹 조회
+  /// - includeArchived = true 이면 archived 포함
   Future<List<Map<String, dynamic>>> listWorryGroups({
     bool includeArchived = false,
   }) async {
     final res = await _client.dio.get(
-      '/users/me/worry-groups',
-      queryParameters: {if (includeArchived) 'include_archived': true},
+      '/worry-groups',
+      queryParameters: {
+        if (includeArchived) 'include_archived': true,
+      },
     );
+
     final data = res.data;
     if (data is List) {
       return data
@@ -20,79 +36,127 @@ class WorryGroupsApi {
           .map((e) => e.cast<String, dynamic>())
           .toList();
     }
+
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /users/me/worry-groups response',
+      message: 'Invalid /worry-groups response',
     );
   }
 
   /// 특정 걱정 그룹 조회
   Future<Map<String, dynamic>> getWorryGroup(String groupId) async {
-    final res = await _client.dio.get('/users/me/worry-groups/$groupId');
+    final res = await _client.dio.get('/worry-groups/$groupId');
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
+
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /users/me/worry-groups/{id} response',
+      message: 'Invalid /worry-groups/{id} response',
     );
   }
 
   /// 새 걱정 그룹 생성
+  ///
+  /// ⚠️ group_id는 서버에서 생성하므로 여기서 안 보냄.
+  /// - group_title: 필수
+  /// - character_id: 필수 (1~20, 백엔드에서 검증)
   Future<Map<String, dynamic>> createWorryGroup({
-    required String groupId,
     required String groupTitle,
     String groupContents = '',
-    int? characterId,
+    required int characterId,
+    DateTime? clientTimestamp,
   }) async {
-    final payload = {
-      'group_id': groupId,
+    final base = <String, dynamic>{
       'group_title': groupTitle,
       'group_contents': groupContents,
-      if (characterId != null) 'character_id': characterId,
+      'character_id': characterId,
     };
 
-    final res = await _client.dio.post('/users/me/worry-groups', data: payload);
+    final payload = _withClientTimestamp(
+      base,
+      clientTimestamp: clientTimestamp,
+    );
+
+    final res = await _client.dio.post('/worry-groups', data: payload);
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
+
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /users/me/worry-groups create response',
+      message: 'Invalid /worry-groups create response',
     );
   }
 
   /// 걱정 그룹 업데이트
+  ///
+  /// 백엔드 WorryGroupUpdate:
+  /// - group_title?, group_contents?, character_id?, client_timestamp (필수)
   Future<Map<String, dynamic>> updateWorryGroup(
-    String groupId,
-    Map<String, dynamic> updates,
-  ) async {
+      String groupId, {
+        String? groupTitle,
+        String? groupContents,
+        int? characterId,
+        DateTime? clientTimestamp,
+      }) async {
+    final base = <String, dynamic>{
+      if (groupTitle != null) 'group_title': groupTitle,
+      if (groupContents != null) 'group_contents': groupContents,
+      if (characterId != null) 'character_id': characterId,
+    };
+
+    // 아무것도 안 보내면 백엔드에서 400("수정할 필드가 없습니다")
+    if (base.isEmpty) {
+      throw ArgumentError('updateWorryGroup: 업데이트할 필드가 없습니다.');
+    }
+
+    final payload = _withClientTimestamp(
+      base,
+      clientTimestamp: clientTimestamp,
+    );
+
     final res = await _client.dio.put(
-      '/users/me/worry-groups/$groupId',
-      data: updates,
+      '/worry-groups/$groupId',
+      data: payload,
     );
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
+
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /users/me/worry-groups/{id} update response',
+      message: 'Invalid /worry-groups/{id} update response',
     );
   }
 
   /// 걱정 그룹 아카이브 (소프트 삭제)
-  Future<Map<String, dynamic>> archiveWorryGroup(String groupId) async {
-    final res = await _client.dio.post(
-      '/users/me/worry-groups/$groupId/archive',
+  ///
+  /// POST /worry-groups/{group_id}/archive
+  /// body: { client_timestamp }
+  Future<Map<String, dynamic>> archiveWorryGroup(
+      String groupId, {
+        DateTime? clientTimestamp,
+      }) async {
+    final payload = _withClientTimestamp(
+      <String, dynamic>{},
+      clientTimestamp: clientTimestamp,
     );
+
+    final res = await _client.dio.post(
+      '/worry-groups/$groupId/archive',
+      data: payload,
+    );
+
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
+
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /users/me/worry-groups/{id}/archive response',
+      message: 'Invalid /worry-groups/{id}/archive response',
     );
   }
 
   /// 아카이브된 걱정 그룹 목록 조회
   Future<List<Map<String, dynamic>>> getArchivedGroups() async {
-    final res = await _client.dio.get('/users/me/worry-groups/archived');
+    final res = await _client.dio.get('/worry-groups/archived');
     final data = res.data;
     if (data is List) {
       return data
@@ -100,14 +164,37 @@ class WorryGroupsApi {
           .map((e) => e.cast<String, dynamic>())
           .toList();
     }
+
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /users/me/worry-groups/archived response',
+      message: 'Invalid /worry-groups/archived response',
     );
   }
 
   /// 걱정 그룹 완전 삭제 (하드 삭제)
-  Future<void> deleteWorryGroup(String groupId) async {
-    await _client.dio.delete('/users/me/worry-groups/$groupId');
+  ///
+  /// DELETE /worry-groups/{group_id}
+  /// body: { client_timestamp }
+  Future<Map<String, dynamic>> deleteWorryGroup(
+      String groupId, {
+        DateTime? clientTimestamp,
+      }) async {
+    final payload = _withClientTimestamp(
+      <String, dynamic>{},
+      clientTimestamp: clientTimestamp,
+    );
+
+    final res = await _client.dio.delete(
+      '/worry-groups/$groupId',
+      data: payload,
+    );
+
+    final data = res.data;
+    if (data is Map<String, dynamic>) return data;
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /worry-groups/{id} delete response',
+    );
   }
 }

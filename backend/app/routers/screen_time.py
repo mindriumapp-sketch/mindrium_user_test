@@ -1,72 +1,28 @@
 from datetime import datetime, timezone, timedelta
-try:
-    from zoneinfo import ZoneInfo
-except ModuleNotFoundError:  # pragma: no cover
-    ZoneInfo = None
 from typing import Tuple
+from core.security import get_current_user_id
+from core.utils import parse_datetime_value, ensure_utc, kst_midnight
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends,  HTTPException, Query
 
-from core.security import decode_token
 from db.mongo import get_db
 from schemas.screen_time import ScreenTimeCreate, ScreenTimeEntry, ScreenTimeSummary
 
-router = APIRouter(prefix="/users/me/screen-time", tags=["screen-time"])
+router = APIRouter(prefix="/screen-time", tags=["screen-time"])
 
-COLLECTION = "screen_time"
-
-def _get_kst_tz():
-    if ZoneInfo is not None:
-        try:
-            return ZoneInfo("Asia/Seoul")
-        except Exception:
-            pass
-    return timezone(timedelta(hours=9))
-
-
-KST = _get_kst_tz()
-
-
-async def get_current_user_id(authorization: str | None = Header(default=None)) -> str:
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-    token = authorization.split(" ", 1)[1].strip()
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "access":
-        raise HTTPException(status_code=401, detail="Invalid access token")
-    return payload.get("sub")
-
-
-def _ensure_utc(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
-def _coerce_datetime(dt: datetime | None) -> datetime | None:
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
+SCREEN_COLLECTION = "screen_time"
 
 def _serialize_entry(doc: dict) -> dict:
     return {
-        "id": str(doc.get("_id")),
-        "start_time": _coerce_datetime(doc.get("start_time")),
-        "end_time": _coerce_datetime(doc.get("end_time")),
-        "duration_minutes": float(doc.get("duration_minutes", 0)),
-        "created_at": _coerce_datetime(doc.get("created_at")),
+        "screen_id": str(doc.get("_id")),
+        "start_time": parse_datetime_value(doc.get("start_time")),
+        "end_time": parse_datetime_value(doc.get("end_time")),
+        "duration_seconds": int(doc.get("duration_seconds")),
+        "created_at": parse_datetime_value(doc.get("created_at")),
         "platform": doc.get("platform"),
     }
 
-
-def _kst_midnight(now_utc: datetime) -> datetime:
-    now_kst = now_utc.astimezone(KST)
-    return datetime(now_kst.year, now_kst.month, now_kst.day, tzinfo=KST)
-
-
+# TODO: Aggregate pipeline? ....
 async def _window_minutes(collection, user_id: str, start_utc: datetime, end_utc: datetime) -> Tuple[float, int]:
     total = 0.0
     sessions = 0
@@ -78,8 +34,8 @@ async def _window_minutes(collection, user_id: str, start_utc: datetime, end_utc
         }
     )
     async for doc in cursor:
-        st = _coerce_datetime(doc.get("start_time"))
-        et = _coerce_datetime(doc.get("end_time"))
+        st = ensure_utc(doc.get("start_time"))
+        et = ensure_utc(doc.get("end_time"))
         if not isinstance(st, datetime) or not isinstance(et, datetime):
             continue
         overlap_start = max(st, start_utc)
@@ -90,19 +46,19 @@ async def _window_minutes(collection, user_id: str, start_utc: datetime, end_utc
         sessions += 1
     return total, sessions
 
-
 @router.post("", response_model=ScreenTimeEntry)
 async def create_screen_time_entry(
     payload: ScreenTimeCreate,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    start = _ensure_utc(payload.start_time)
-    end = _ensure_utc(payload.end_time)
+    now = datetime.now(timezone.utc)
+    start = ensure_utc(payload.start_time)
+    end = ensure_utc(payload.end_time)
     if end <= start:
         raise HTTPException(status_code=400, detail="end_time must be after start_time")
 
-    duration = (end - start).total_seconds() / 60
+    duration = int((end - start).total_seconds())
     if duration <= 0:
         raise HTTPException(status_code=400, detail="duration must be positive")
 
@@ -110,15 +66,21 @@ async def create_screen_time_entry(
         "user_id": user_id,
         "start_time": start,
         "end_time": end,
-        "duration_minutes": round(duration, 2),
+        "duration_seconds": duration,
         "platform": payload.platform,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": now,
     }
-    result = await db[COLLECTION].insert_one(doc)
+    result = await db[SCREEN_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
+
+    await db["users"].update_one(
+        {"user_id": user_id},
+        {"$set": {"last_active_at": now}},
+    )
     return _serialize_entry(doc)
 
 
+# TODO: 앱에 쓰지 말고 플랫폼팀에 넘길까용 그 '스크린타임 보러 가기' 버튼만 빼고 router 경로 바꾸면 될거같은데
 @router.get("", response_model=list[ScreenTimeEntry])
 async def list_screen_time_entries(
     limit: int = Query(20, ge=1, le=200),
@@ -126,7 +88,7 @@ async def list_screen_time_entries(
     user_id: str = Depends(get_current_user_id),
 ):
     cursor = (
-        db[COLLECTION]
+        db[SCREEN_COLLECTION]
         .find({"user_id": user_id})
         .sort("end_time", -1)
         .limit(limit)
@@ -136,15 +98,15 @@ async def list_screen_time_entries(
         entries.append(_serialize_entry(doc))
     return entries
 
-
+# TODO: 플랫폼팀에 넘겨야 함
 @router.get("/summary", response_model=ScreenTimeSummary)
 async def get_screen_time_summary(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    collection = db[COLLECTION]
+    collection = db[SCREEN_COLLECTION]
     now_utc = datetime.now(timezone.utc)
-    today_start_kst = _kst_midnight(now_utc)
+    today_start_kst = kst_midnight(now_utc)
     today_end_kst = today_start_kst + timedelta(days=1)
     week_start_kst = today_start_kst - timedelta(days=6)
 
@@ -157,13 +119,13 @@ async def get_screen_time_summary(
 
     total_pipeline = [
         {"$match": {"user_id": user_id}},
-        {"$group": {"_id": None, "sum": {"$sum": "$duration_minutes"}}},
+        {"$group": {"_id": None, "sum": {"$sum": "$duration_seconds"}}},
     ]
     total_docs = await collection.aggregate(total_pipeline).to_list(length=1)
-    total_minutes = float(total_docs[0]["sum"]) if total_docs else 0.0
+    total_minutes = total_docs[0]["sum"] / 60 if total_docs else 0.0
 
     last_entry = await collection.find_one({"user_id": user_id}, sort=[("end_time", -1)])
-    last_entry_at = _coerce_datetime(last_entry.get("end_time")) if last_entry else None
+    last_entry_at = ensure_utc(last_entry.get("end_time")) if last_entry else None
 
     return ScreenTimeSummary(
         totalMinutes=round(total_minutes, 2),

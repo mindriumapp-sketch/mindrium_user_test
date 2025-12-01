@@ -1,225 +1,283 @@
 from datetime import datetime, timezone
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 import uuid
+from core.security import get_current_user_id
+from core.utils import parse_datetime_value, ensure_utc
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from db.mongo import get_db
-from core.security import decode_token
+from pymongo import ReturnDocument
+from routers.worry_groups import adjust_group_metrics
+from routers.sud_scores import parse_sud_value, serialize_sud, normalize_sud_scores
+from schemas.sud import SudScoreResponse
 from schemas.diary import (
+    # DiaryChip,
     DiaryCreate,
-    DiaryResponse,
     DiaryUpdate,
+    DiaryResponse,
+    DiarySummaryResponse,
     AlarmCreate,
-    AlarmResponse,
     AlarmUpdate,
+    AlarmDelete,
+    AlarmResponse,
 )
 
 router = APIRouter(prefix="/diaries", tags=["diaries"])
 
-USERS_COLLECTION = "users"
+DIARY_COLLECTION = "diaries"
 
 
-def _ensure_tz(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt
+# ---------- 공통 헬퍼 ----------
+async def update_diary_chip_category(
+    db,
+    user_id: str,
+    diary_id: str,
+    chip_id: str,
+    category: str,  # "anxious" / "healthy"
+) -> None:
+    """
+    특정 diary 안에서 chip_id에 해당하는 칩들의 category를 업데이트.
+    - belief[]
+    - consequence_physical[]
+    - consequence_emotion[]
+    - consequence_action[]
+    (activation은 여기선 안 건드린다고 가정)
+    """
+    now_utc = datetime.now(timezone.utc)
+
+    collection = db[DIARY_COLLECTION]
+
+    result = await collection.update_one(
+        {
+            "user_id": user_id,
+            "diary_id": diary_id,
+        },
+        {
+            "$set": {
+                "belief.$[b].category": category,
+                "consequence_physical.$[cp].category": category,
+                "consequence_emotion.$[ce].category": category,
+                "consequence_action.$[ca].category": category,
+                "updated_at": now_utc,
+            }
+        },
+        array_filters=[
+            {"b.chip_id": chip_id},
+            {"cp.chip_id": chip_id},
+            {"ce.chip_id": chip_id},
+            {"ca.chip_id": chip_id},
+        ],
+    )
+
+    if result.matched_count == 0:
+        print(f"[WARN] diary not found or chip_id not present: {diary_id}, {chip_id}")
 
 
-def _parse_datetime_value(value, fallback=None):
-    if isinstance(value, datetime):
-        return _ensure_tz(value)
-    if isinstance(value, str):
-        try:
-            return _ensure_tz(datetime.fromisoformat(value))
-        except Exception:
-            pass
-    if fallback is not None:
-        return fallback
-    return datetime.now(timezone.utc)
+def _build_diary_query(user_id: str, group_id: Optional[str] = None) -> Dict[str, Any]:
+    query: Dict[str, Any] = {"user_id": user_id}
+    if group_id is not None:
+        query["group_id"] = group_id
+    return query
 
 
-async def get_current_user_id(authorization: str | None = Header(default=None)) -> str:
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-    token = authorization.split(" ", 1)[1].strip()
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "access":
-        raise HTTPException(status_code=401, detail="Invalid access token")
-    return payload.get("sub")
+def _merge_unique_str_list(
+    existing_raw: Optional[List[Any]],
+    incoming_raw: Optional[List[Any]],
+) -> List[str]:
+    """
+    문자열 리스트 2개를 병합하면서:
+    - 기존 순서 유지
+    - 중복 제거
+    - None / 비문자 타입은 str()로 캐스팅해서 처리
+    """
+    result: List[str] = []
+    seen: set[str] = set()
+
+    # 기존 값 먼저
+    if existing_raw:
+        for item in existing_raw:
+            if item is None:
+                continue
+            s = str(item)
+            if s not in seen:
+                seen.add(s)
+                result.append(s)
+
+    # 새 값 뒤에
+    if incoming_raw:
+        for item in incoming_raw:
+            if item is None:
+                continue
+            s = str(item)
+            if s not in seen:
+                seen.add(s)
+                result.append(s)
+
+    return result
 
 
-def _parse_group(value):
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        return int(value)
-    if value is None:
-        return 0
-    try:
-        return int(value)
-    except Exception:
-        return 0
+# ---------- DiaryChip 직렬화 ----------
 
+def _serialize_chip(raw: Any) -> Optional[dict]:
+    """
+    DB에 저장된 activation 같은 chip 필드를
+    DiaryChip에 맞는 dict로 정리.
+    (이미 dict로 저장돼 있다고 가정하되, 혹시 string 들어오면 label로 처리)
+    """
+    if raw is None:
+        return None
+
+    if isinstance(raw, dict):
+        label = raw.get("label") or ""
+        if not label:
+            return None
+        return {
+            "label": label,
+            "chip_id": raw.get("chip_id"),
+            "category": raw.get("category"),
+        }
+
+    # 혹시 string 등으로 들어온 이전 데이터 대비 (마이그레이션 신경 최소화)
+    label = str(raw)
+    if not label:
+        return None
+    return {"label": label, "chip_id": None, "category": None}
+
+
+def _serialize_chip_list(raw: Any) -> List[dict]:
+    items = raw or []
+    out: List[dict] = []
+    if not isinstance(items, list):
+        # 혹시 단일 값 들어오면 리스트로 감싸기
+        items = [items]
+
+    for item in items:
+        chip = _serialize_chip(item)
+        if chip is not None:
+            out.append(chip)
+    return out
+
+
+# ---------- 알람 직렬화/정규화 ----------
 
 def _serialize_alarm(doc: dict) -> dict:
     return {
-        "alarmId": doc.get("alarm_id") or f"alarm_{uuid.uuid4().hex[:6]}",
+        "alarm_id": doc.get("alarm_id"),
         "time": doc.get("time", ""),
         "location_desc": doc.get("location_desc"),
         "repeat_option": doc.get("repeat_option"),
-        "weekDays": doc.get("weekDays", []),
+        "weekdays": doc.get("weekdays", []),
         "reminder_minutes": doc.get("reminder_minutes"),
         "enter": doc.get("enter", False),
         "exit": doc.get("exit", False),
-        "createdAt": _parse_datetime_value(doc.get("createdAt")),
-        "updatedAt": _parse_datetime_value(
-            doc.get("updatedAt"), fallback=_parse_datetime_value(doc.get("createdAt"))
-        ),
+        "created_at": parse_datetime_value(doc.get("created_at")),
+        "updated_at": parse_datetime_value(doc.get("updated_at")),
     }
+
+
+def _normalize_single_alarm(value: Any, now_utc: datetime) -> Optional[dict]:
+    """
+    개별 alarm 엔트리 하나를 정규화.
+    - dict가 아니면 무시
+    - alarm_id / created_at / updated_at 채워 넣기
+    """
+    if not isinstance(value, dict):
+        return None
+
+    doc = dict(value or {})
+    doc["alarm_id"] = doc.get("alarm_id") or f"alarm_{uuid.uuid4().hex[:6]}"
+
+    created_raw = doc.get("created_at") or doc.get("updated_at")
+    doc["created_at"] = parse_datetime_value(created_raw, fallback=now_utc)
+    doc["updated_at"] = parse_datetime_value(doc.get("updated_at"), fallback=now_utc)
+    return doc
 
 
 def _normalize_alarms(raw) -> List[dict]:
+    """
+    - dict 또는 list 형태로 들어오는 알람 배열을
+      내부적으로 일관된 리스트[dict]로 정규화.
+    """
     normalized: List[dict] = []
+    now_utc = datetime.now(timezone.utc)
+
     if isinstance(raw, dict):
-        iterable = raw.items()
-        for key, value in iterable:
-            if not isinstance(value, dict):
-                continue
-            doc = dict(value or {})
-            alarm_id = doc.get("alarm_id") or doc.get("alarmId") or key or f"alarm_{uuid.uuid4().hex[:6]}"
-            doc["alarm_id"] = alarm_id
-            created = doc.get("createdAt") or doc.get("created_at")
-            doc["createdAt"] = _parse_datetime_value(created)
-            doc["updatedAt"] = _parse_datetime_value(doc.get("updatedAt") or doc.get("createdAt"))
-            normalized.append(doc)
+        iterable = raw.values()
     elif isinstance(raw, list):
-        for value in raw:
-            if not isinstance(value, dict):
-                continue
-            doc = dict(value or {})
-            alarm_id = doc.get("alarm_id") or doc.get("alarmId") or f"alarm_{uuid.uuid4().hex[:6]}"
-            doc["alarm_id"] = alarm_id
-            created = doc.get("createdAt") or doc.get("created_at")
-            doc["createdAt"] = _parse_datetime_value(created)
-            doc["updatedAt"] = _parse_datetime_value(doc.get("updatedAt") or doc.get("createdAt"))
+        iterable = raw
+    else:
+        iterable = []
+
+    for value in iterable:
+        doc = _normalize_single_alarm(value, now_utc)
+        if doc is not None:
             normalized.append(doc)
-    normalized.sort(key=lambda d: d["createdAt"])
+
+    normalized.sort(key=lambda d: d["created_at"])
     return normalized
 
 
-def _parse_sud_value(value):
-    if isinstance(value, (int, float)):
-        return max(0, min(10, int(value)))
-    if isinstance(value, str):
-        try:
-            return max(0, min(10, int(float(value))))
-        except Exception:
-            return 0
-    return 0
+# ---------- 직렬화 (Diary) ----------
 
+def _serialize_diary(doc: dict) -> dict:
+    diary_id = doc.get("diary_id")
 
-def _normalize_sud_scores(raw) -> List[dict]:
-    if not isinstance(raw, list):
-        return []
+    return {
+        "diary_id": diary_id,
+        "group_id": doc.get("group_id"),
 
-    normalized: List[dict] = []
-    for item in raw:
-        if isinstance(item, dict):
-            before = _parse_sud_value(item.get("before_sud") or item.get("beforeSud"))
-            after = item.get("after_sud") or item.get("afterSud")
-            after = None if after is None else _parse_sud_value(after)
-            created_at = _parse_datetime_value(item.get("created_at") or item.get("createdAt"))
-            updated_at = _parse_datetime_value(
-                item.get("updated_at") or item.get("updatedAt"), fallback=created_at
+        # DiaryChip 구조 필드들
+        "activation": _serialize_chip(doc.get("activation")),
+        "belief": _serialize_chip_list(doc.get("belief")),
+        "consequence_physical": _serialize_chip_list(doc.get("consequence_physical")),
+        "consequence_emotion": _serialize_chip_list(doc.get("consequence_emotion")),
+        "consequence_action": _serialize_chip_list(doc.get("consequence_action")),
+
+        "latest_sud": parse_sud_value(doc.get("latest_sud")),
+
+        # SUD 리스트 -> SudScoreResponse 리스트
+        "sud_scores": [
+            SudScoreResponse(
+                **serialize_sud(entry, diary_id=diary_id)
             )
-        else:
-            before = _parse_sud_value(item)
-            after = before
-            created_at = datetime.now(timezone.utc)
-            updated_at = created_at
+            for entry in (doc.get("sud_scores", []))
+            if isinstance(entry, dict)
+        ],
 
-        entry = {
-            "sud_id": (item.get("sud_id") if isinstance(item, dict) else None)
-            or f"sud_{uuid.uuid4().hex[:8]}",
-            "before_sud": before,
-            "after_sud": after,
-            "created_at": created_at,
-            "updated_at": updated_at,
-        }
-        normalized.append(entry)
+        "alternative_thoughts": doc.get("alternative_thoughts", []),
 
-    normalized.sort(key=lambda e: e["created_at"])
-    return normalized
+        # 알람 리스트 -> AlarmResponse 리스트
+        "alarms": [
+            AlarmResponse(**_serialize_alarm(entry))
+            for entry in (doc.get("alarms") or [])
+            if isinstance(entry, dict)
+        ],
 
-
-def _serialize_sud_entry(doc: dict) -> dict:
-    return {
-        "sud_id": doc.get("sud_id"),
-        "before_sud": doc.get("before_sud"),
-        "after_sud": doc.get("after_sud"),
-        "created_at": _parse_datetime_value(doc.get("created_at")),
-        "updated_at": _parse_datetime_value(doc.get("updated_at") or doc.get("created_at")),
-    }
-
-
-def _serialize_diary(doc: dict, *, array_index: int | None = None) -> dict:
-    alarms_raw = _normalize_alarms(doc.get("alarms", []))
-    doc["alarms"] = alarms_raw
-    sud_entries = _normalize_sud_scores(doc.get("sudScores", []))
-    doc["sudScores"] = sud_entries
-
-    return {
-        "diaryId": doc.get("diary_id") or doc.get("_id") or f"diary_{uuid.uuid4().hex[:8]}",
-        "group_Id": _parse_group(doc.get("group_Id")),
-        "activating_events": doc.get("activating_events", ""),
-        "belief": doc.get("belief", []),
-        "consequence_p": doc.get("consequence_p", []),
-        "consequence_e": doc.get("consequence_e", []),
-        "consequence_b": doc.get("consequence_b", []),
-        "sudScores": [_serialize_sud_entry(entry) for entry in sud_entries],
-        "alternativeThoughts": doc.get("alternativeThoughts", []),
-        "realOddness": doc.get("realOddness", []),
-        "confrontAvoidLogs": doc.get("confrontAvoidLogs", []),
-        "alarms": [AlarmResponse(**_serialize_alarm(alarm_doc)) for alarm_doc in alarms_raw],
         "latitude": doc.get("latitude"),
         "longitude": doc.get("longitude"),
-        "addressName": doc.get("addressName"),
-        "createdAt": _parse_datetime_value(doc.get("createdAt")),
-        "updatedAt": _parse_datetime_value(
-            doc.get("updatedAt"), fallback=_parse_datetime_value(doc.get("createdAt"))
-        ),
-        "arrayIndex": array_index,
+        "address_name": doc.get("address_name"),
+        "created_at": parse_datetime_value(doc.get("created_at")),
+        "updated_at": parse_datetime_value(doc.get("updated_at")),
     }
 
 
-async def _get_user_or_404(db, user_id: str) -> dict:
-    user = await db[USERS_COLLECTION].find_one({"_id": user_id})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+def _serialize_diary_summary(doc: dict) -> dict:
+    return {
+        "diary_id": doc.get("diary_id"),
+        "group_id": doc.get("group_id"),
+        "activation": _serialize_chip(doc.get("activation")),
+        "belief": _serialize_chip_list(doc.get("belief")),
+        "consequence_physical": _serialize_chip_list(doc.get("consequence_physical")),
+        "consequence_emotion": _serialize_chip_list(doc.get("consequence_emotion")),
+        "consequence_action": _serialize_chip_list(doc.get("consequence_action")),
+        "latest_sud": parse_sud_value(doc.get("latest_sud")),
+        "created_at": parse_datetime_value(doc.get("created_at")),
+        "updated_at": parse_datetime_value(doc.get("updated_at")),
+    }
 
 
-def _find_diary_in_user(user: dict, diary_id: str) -> Optional[dict]:
-    for diary in user.get("diaries", []):
-        if diary.get("diary_id") == diary_id:
-            return diary
-    return None
-
-
-def _find_diary_index(diaries: List[dict], diary_id: str) -> int:
-    for idx, diary in enumerate(diaries):
-        if diary.get("diary_id") == diary_id:
-            return idx
-    return -1
-
-
-def _find_alarm_index(alarms: List[dict], alarm_id: str) -> int:
-    for idx, alarm in enumerate(alarms):
-        if alarm.get("alarm_id") == alarm_id:
-            return idx
-    return -1
-
+# ---------- 엔드포인트 ----------
 
 @router.post("", response_model=DiaryResponse, status_code=status.HTTP_201_CREATED)
 async def create_diary(
@@ -227,132 +285,141 @@ async def create_diary(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    now = datetime.now(timezone.utc)
-    diary_id = f"diary_{uuid.uuid4().hex[:8]}"
+    collection = db[DIARY_COLLECTION]
+    now_utc = datetime.now(timezone.utc)
+    client_ts_utc = ensure_utc(payload.client_timestamp)
+    group_id = payload.group_id
 
+    # 1) SUD 리스트 정규화
+    sud_entries = normalize_sud_scores(payload.sud_scores)
+    latest_sud = None
+    if sud_entries:
+        last = sud_entries[-1]
+        latest_sud = parse_sud_value(
+            last.get("after_sud")
+            if last.get("after_sud") is not None
+            else last.get("before_sud")
+        )
+
+    # 2) 대체생각 생성 시점에 중복 제거 (문자열로 통일)
+    alternative_thoughts = _merge_unique_str_list(
+        existing_raw=[],
+        incoming_raw=payload.alternative_thoughts,
+    )
+
+    # 3) DiaryChip 필드들은 dict로 저장
     diary_doc = {
-        "diary_id": diary_id,
-        "group_Id": payload.group_id,
-        "activating_events": payload.activating_events,
-        "belief": payload.belief,
-        "consequence_p": payload.consequence_p,
-        "consequence_e": payload.consequence_e,
-        "consequence_b": payload.consequence_b,
-        "sudScores": _normalize_sud_scores(payload.sud_scores),
-        "alternativeThoughts": payload.alternative_thoughts,
-        "realOddness": payload.real_oddness,
-        "confrontAvoidLogs": payload.confront_avoid_logs,
+        "user_id": user_id,
+        "diary_id": f"diary_{uuid.uuid4().hex[:8]}",
+        "group_id": group_id,
+
+        "activation": payload.activation.model_dump(),
+        "belief": [chip.model_dump() for chip in payload.belief],
+        "consequence_physical": [chip.model_dump() for chip in payload.consequence_physical],
+        "consequence_emotion": [chip.model_dump() for chip in payload.consequence_emotion],
+        "consequence_action": [chip.model_dump() for chip in payload.consequence_action],
+
+        "sud_scores": sud_entries,
+        "latest_sud": latest_sud,
+        "alternative_thoughts": alternative_thoughts,
         "alarms": _normalize_alarms(payload.alarms),
         "latitude": payload.latitude,
         "longitude": payload.longitude,
-        "addressName": payload.address_name,
-        "createdAt": now,
-        "updatedAt": now,
+        "address_name": payload.address_name,
+        "created_at": now_utc,
+        "updated_at": now_utc,
+        "client_timestamp": client_ts_utc,
     }
 
-    user = await db[USERS_COLLECTION].find_one({"_id": user_id}, {"diaries": 1})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    await collection.insert_one(diary_doc)
 
-    diaries = list(user.get("diaries", []))
-    diaries.append(diary_doc)
-
-    await db[USERS_COLLECTION].update_one(
-        {"_id": user_id},
-        {"$set": {"diaries": diaries}},
-    )
+    # 4) 그룹 카운터 반영
+    if group_id:
+        await adjust_group_metrics(
+            db=db,
+            user_id=user_id,
+            group_id=group_id,
+            diary_delta=1,
+            sud_delta=float(latest_sud or 0.0),
+        )
 
     return DiaryResponse(**_serialize_diary(diary_doc))
 
 
 @router.get("", response_model=List[DiaryResponse])
 async def list_diaries(
-    group_id: Optional[int] = None,
+    group_id: Optional[str] = None,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    user = await _get_user_or_404(db, user_id)
-    diaries = user.get("diaries", [])
+    """
+    전체 일기 목록 (풀 데이터) 반환.
+    sud_scores / alarms / alternative_thoughts 포함.
+    """
+    collection = db[DIARY_COLLECTION]
+    query = _build_diary_query(user_id=user_id, group_id=group_id)
 
-    filtered = []
-    for idx, diary in enumerate(diaries):
-        if group_id is not None and diary.get("group_Id") != group_id:
-            continue
-        filtered.append(DiaryResponse(**_serialize_diary(diary, array_index=idx)))
+    cursor = collection.find(query).sort("created_at", -1)
 
-    filtered.sort(key=lambda d: d.created_at or datetime.now(timezone.utc), reverse=True)
-    return filtered
+    diaries: List[DiaryResponse] = []
+    async for doc in cursor:
+        diaries.append(DiaryResponse(**_serialize_diary(doc)))
+    return diaries
+
+
+@router.get("/summaries", response_model=List[DiarySummaryResponse])
+async def list_diary_summaries(
+    group_id: Optional[str] = None,
+    db=Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    일기 목록 요약용 엔드포인트.
+    - 리스트 화면 / 히스토리 타일 등에서 사용.
+    - sud_scores / alarms 등 무거운 배열은 가져오지 않고,
+      latest_sud, 주요 텍스트/칩 필드만 포함.
+    """
+    collection = db[DIARY_COLLECTION]
+    query = _build_diary_query(user_id=user_id, group_id=group_id)
+
+    projection = {
+        "diary_id": 1,
+        "group_id": 1,
+        "activation": 1,
+        "belief": 1,
+        "consequence_physical": 1,
+        "consequence_emotion": 1,
+        "consequence_action": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "latest_sud": 1,
+    }
+
+    cursor = collection.find(query, projection=projection).sort("created_at", -1)
+
+    diaries: List[DiarySummaryResponse] = []
+    async for doc in cursor:
+        diaries.append(DiarySummaryResponse(**_serialize_diary_summary(doc)))
+    return diaries
 
 
 @router.get("/latest", response_model=DiaryResponse)
 async def get_latest_diary(
+    group_id: Optional[str] = None,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
     """
-    사용자의 일기 배열에서 '마지막 요소'를 최신으로 간주하여 반환합니다.
-    정렬/타임스탬프와 무관하게 항상 배열 끝의 요소를 돌려줍니다.
+    최신(가장 최근 created_at) 일기 반환
     """
-    user = await _get_user_or_404(db, user_id)
-    diaries = user.get("diaries", [])
-    if not diaries:
+    collection = db[DIARY_COLLECTION]
+    query = _build_diary_query(user_id=user_id, group_id=group_id)
+
+    doc = await collection.find_one(query, sort=[("created_at", -1)])
+    if not doc:
         raise HTTPException(status_code=404, detail="No diaries")
-    latest = diaries[-1]
-    return DiaryResponse(**_serialize_diary(latest, array_index=len(diaries) - 1))
 
-
-@router.get("/confront-avoid-logs", response_model=List[Dict])
-async def get_all_confront_avoid_logs(
-    db=Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
-):
-    """
-    모든 일기에서 confrontAvoidLogs를 수집하여 반환합니다.
-    7주차에서 사용자가 분류한 모든 행동(직면/회피)을 조회할 때 사용됩니다.
-    
-    반환 형식:
-    [
-        {
-            "type": "confronted" | "avoided",
-            "comment": "행동 내용",
-            "created_at": "2025-07-15T10:20:00Z",
-            "diary_id": "diary_xxx"  // 어느 일기에서 온 것인지
-        },
-        ...
-    ]
-    """
-    user = await _get_user_or_404(db, user_id)
-    diaries = user.get("diaries", [])
-    
-    all_logs = []
-    for diary in diaries:
-        diary_id = diary.get("diary_id")
-        logs = diary.get("confrontAvoidLogs", [])
-        if isinstance(logs, list):
-            for log in logs:
-                if isinstance(log, dict):
-                    # diary_id 추가하여 어느 일기에서 온 것인지 표시
-                    log_with_diary = dict(log)
-                    log_with_diary["diary_id"] = diary_id
-                    all_logs.append(log_with_diary)
-    
-    # created_at 기준으로 최신순 정렬
-    def _parse_date(v):
-        if isinstance(v, datetime):
-            return _ensure_tz(v)
-        if isinstance(v, str):
-            try:
-                return datetime.fromisoformat(v.replace('Z', '+00:00'))
-            except Exception:
-                pass
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
-    
-    all_logs.sort(
-        key=lambda log: _parse_date(log.get("created_at") or log.get("createdAt")),
-        reverse=True
-    )
-    
-    return all_logs
+    return DiaryResponse(**_serialize_diary(doc))
 
 
 @router.get("/{diary_id}", response_model=DiaryResponse)
@@ -361,8 +428,8 @@ async def get_diary(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    user = await _get_user_or_404(db, user_id)
-    diary = _find_diary_in_user(user, diary_id)
+    collection = db[DIARY_COLLECTION]
+    diary = await collection.find_one({"diary_id": diary_id, "user_id": user_id})
     if not diary:
         raise HTTPException(status_code=404, detail="Diary not found")
     return DiaryResponse(**_serialize_diary(diary))
@@ -375,101 +442,88 @@ async def update_diary(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    update_data = payload.dict(exclude_unset=True, by_alias=True)
+    update_data = payload.model_dump(
+        exclude_unset=True,
+        by_alias=True,
+        exclude={"client_timestamp"},
+    )
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    now = datetime.now(timezone.utc)
-    update_data["updatedAt"] = now
-    if "alarms" in update_data:
-        update_data["alarms"] = _normalize_alarms(update_data["alarms"])
-    if "sudScores" in update_data:
-        update_data["sudScores"] = _normalize_sud_scores(update_data["sudScores"])
+    collection = db[DIARY_COLLECTION]
 
-    user = await _get_user_or_404(db, user_id)
-    diaries = list(user.get("diaries", []))
-    updated = False
-    updated_diary = None
-    for idx, diary in enumerate(diaries):
-        if diary.get("diary_id") == diary_id:
-            # alternativeThoughts는 배열에 누적
-            if "alternativeThoughts" in update_data:
-                incoming = update_data.pop("alternativeThoughts") or []
-                existing = list(diary.get("alternativeThoughts", []))
-                # 중복 제거를 위해 set 사용 (문자열인 경우)
-                if isinstance(incoming, list):
-                    for item in incoming:
-                        if item not in existing:
-                            existing.append(item)
-                diary["alternativeThoughts"] = existing
-                diary["updatedAt"] = now
-            
-            # realOddness는 belief 기준 병합
-            if "realOddness" in update_data:
-                incoming = update_data.pop("realOddness") or []
-                existing = list(diary.get("realOddness", []))
-                by_belief: Dict[str, dict] = {}
-                for e in existing:
-                    if isinstance(e, dict) and e.get("belief"):
-                        by_belief[str(e.get("belief")).strip()] = dict(e)
-                for e in incoming:
-                    if isinstance(e, dict) and e.get("belief"):
-                        key = str(e.get("belief")).strip()
-                        prev = by_belief.get(key, {"belief": key})
-                        # before/after 각각 개별 필드만 갱신
-                        if "before" in e and e.get("before") is not None:
-                            prev["before"] = int(e.get("before"))
-                        if "after" in e and e.get("after") is not None:
-                            prev["after"] = int(e.get("after"))
-                        by_belief[key] = prev
-                merged_real = list(by_belief.values())
-                diary["realOddness"] = merged_real
-                diary["updatedAt"] = now
-            
-            # confrontAvoidLogs는 comment 기준으로 업데이트/추가 (옵션 B)
-            if "confrontAvoidLogs" in update_data:
-                incoming = update_data.pop("confrontAvoidLogs") or []
-                existing = list(diary.get("confrontAvoidLogs", []))
-                by_comment: Dict[str, dict] = {}
-                # 기존 로그를 comment 기준으로 인덱싱
-                for e in existing:
-                    if isinstance(e, dict) and e.get("comment"):
-                        comment_key = str(e.get("comment")).strip()
-                        by_comment[comment_key] = dict(e)
-                # 새로운 로그 처리: 같은 comment가 있으면 업데이트, 없으면 추가
-                for e in incoming:
-                    if isinstance(e, dict) and e.get("comment"):
-                        comment_key = str(e.get("comment")).strip()
-                        # 같은 comment가 있으면 type과 created_at 업데이트
-                        if comment_key in by_comment:
-                            by_comment[comment_key]["type"] = e.get("type")
-                            by_comment[comment_key]["created_at"] = e.get("created_at", now)
-                        else:
-                            # 새로운 comment는 추가
-                            by_comment[comment_key] = {
-                                "type": e.get("type"),
-                                "comment": comment_key,
-                                "created_at": e.get("created_at", now)
-                            }
-                diary["confrontAvoidLogs"] = list(by_comment.values())
-                diary["updatedAt"] = now
-            
-            # 나머지 필드(있다면) 평범 병합
-            diaries[idx] = {**diary, **update_data}
-            updated_diary = diaries[idx]
-            updated = True
-            break
-
-    if not updated or updated_diary is None:
+    diary = await collection.find_one(
+        {"diary_id": diary_id, "user_id": user_id},
+        {
+            "alternative_thoughts": 1,
+            "alarms": 1,
+            "group_id": 1,
+            "latest_sud": 1,
+        },
+    )
+    if not diary:
         raise HTTPException(status_code=404, detail="Diary not found")
 
-    await db[USERS_COLLECTION].update_one(
-        {"_id": user_id},
-        {"$set": {"diaries": diaries}},
+    now_utc = datetime.now(timezone.utc)
+    client_ts_utc = ensure_utc(payload.client_timestamp)
+
+    old_group_id = diary.get("group_id")
+    latest_sud = parse_sud_value(diary.get("latest_sud")) or 0
+
+    new_group_id = update_data.get("group_id", old_group_id)
+
+    set_fields: Dict[str, Any] = {}
+
+    # 1) 알람 들어오면 normalize 후 전체 교체
+    if "alarms" in update_data:
+        set_fields["alarms"] = _normalize_alarms(update_data.pop("alarms"))
+
+    # 2) 대체생각: 기존 + 신규 누적 (중복 제거, 순서 유지)
+    if "alternative_thoughts" in update_data:
+        incoming = update_data.pop("alternative_thoughts") or []
+        existing = diary.get("alternative_thoughts", [])
+        set_fields["alternative_thoughts"] = _merge_unique_str_list(existing, incoming)
+
+    # 3) 나머지 필드(activation, belief, consequence_*, 좌표 등)는
+    #    이미 model_dump 된 dict/list[dict]라 그대로 덮어쓰기
+    set_fields.update(update_data)
+
+    # group_id 고정
+    set_fields["group_id"] = new_group_id
+    set_fields["updated_at"] = now_utc
+    set_fields["client_timestamp"] = client_ts_utc
+
+    updated_doc = await collection.find_one_and_update(
+        {"diary_id": diary_id, "user_id": user_id},
+        {"$set": set_fields},
+        return_document=ReturnDocument.AFTER,
     )
 
-    return DiaryResponse(**_serialize_diary(updated_diary))
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Diary not found (race condition)")
 
+    if old_group_id != new_group_id:
+        if old_group_id:
+            await adjust_group_metrics(
+                db=db,
+                user_id=user_id,
+                group_id=old_group_id,
+                diary_delta=-1,
+                sud_delta=-float(latest_sud),
+            )
+        if new_group_id:
+            await adjust_group_metrics(
+                db=db,
+                user_id=user_id,
+                group_id=new_group_id,
+                diary_delta=1,
+                sud_delta=float(latest_sud),
+            )
+
+    return DiaryResponse(**_serialize_diary(updated_doc))
+
+
+# ---------- 알람 서브엔드포인트 ----------
 
 @router.get("/{diary_id}/alarms", response_model=List[AlarmResponse])
 async def list_alarms(
@@ -477,50 +531,61 @@ async def list_alarms(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    user = await _get_user_or_404(db, user_id)
-    diary = _find_diary_in_user(user, diary_id)
+    collection = db[DIARY_COLLECTION]
+    diary = await collection.find_one(
+        {"diary_id": diary_id, "user_id": user_id},
+        {"alarms": 1},
+    )
     if not diary:
         raise HTTPException(status_code=404, detail="Diary not found")
+
     alarms = _normalize_alarms(diary.get("alarms", []))
     return [AlarmResponse(**_serialize_alarm(a)) for a in alarms]
 
 
-@router.post("/{diary_id}/alarms", response_model=AlarmResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{diary_id}/alarms",
+    response_model=AlarmResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_alarm(
     diary_id: str,
     payload: AlarmCreate,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    user = await _get_user_or_404(db, user_id)
-    diaries = list(user.get("diaries", []))
-    diary_idx = _find_diary_index(diaries, diary_id)
-    if diary_idx == -1:
-        raise HTTPException(status_code=404, detail="Diary not found")
+    collection = db[DIARY_COLLECTION]
 
-    now = datetime.now(timezone.utc)
+    now_utc = datetime.now(timezone.utc)
+    client_ts_utc = ensure_utc(payload.client_timestamp)
+
     alarm_id = f"alarm_{uuid.uuid4().hex[:6]}"
     alarm_doc = {
         "alarm_id": alarm_id,
         "time": payload.time,
         "location_desc": payload.location_desc,
         "repeat_option": payload.repeat_option,
-        "weekDays": payload.weekdays,
+        "weekdays": payload.weekdays,
         "reminder_minutes": payload.reminder_minutes,
         "enter": payload.enter,
         "exit": payload.exit,
-        "createdAt": now,
-        "updatedAt": now,
+        "created_at": now_utc,
+        "updated_at": now_utc,
     }
 
-    alarms = _normalize_alarms(diaries[diary_idx].get("alarms", []))
-    alarms.append(alarm_doc)
-    diaries[diary_idx]["alarms"] = alarms
-
-    await db[USERS_COLLECTION].update_one(
-        {"_id": user_id},
-        {"$set": {"diaries": diaries}},
+    result = await collection.update_one(
+        {"diary_id": diary_id, "user_id": user_id},
+        {
+            "$push": {"alarms": alarm_doc},
+            "$set": {
+                "updated_at": now_utc,
+                "client_timestamp": client_ts_utc,
+            },
+        },
     )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Diary not found")
 
     return AlarmResponse(**_serialize_alarm(alarm_doc))
 
@@ -533,60 +598,77 @@ async def update_alarm(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    update_data = payload.dict(exclude_unset=True, by_alias=True)
+    update_data = payload.model_dump(
+        exclude_unset=True,
+        by_alias=True,
+        exclude={"client_timestamp"},
+    )
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    user = await _get_user_or_404(db, user_id)
-    diaries = list(user.get("diaries", []))
-    diary_idx = _find_diary_index(diaries, diary_id)
-    if diary_idx == -1:
-        raise HTTPException(status_code=404, detail="Diary not found")
+    collection = db[DIARY_COLLECTION]
+    now_utc = datetime.now(timezone.utc)
+    client_ts_utc = ensure_utc(payload.client_timestamp)
 
-    alarms = _normalize_alarms(diaries[diary_idx].get("alarms", []))
-    alarm_idx = _find_alarm_index(alarms, alarm_id)
-    if alarm_idx == -1:
-        raise HTTPException(status_code=404, detail="Alarm not found")
-
-    alarms[alarm_idx] = {
-        **alarms[alarm_idx],
-        **update_data,
-        "updatedAt": datetime.now(timezone.utc),
+    # $set dot notation으로 업데이트할 필드 맵 생성
+    set_fields = {
+        f"alarms.$.{key}": value for key, value in update_data.items()
     }
-    diaries[diary_idx]["alarms"] = alarms
+    set_fields["alarms.$.updated_at"] = now_utc
+    set_fields["updated_at"] = now_utc
+    set_fields["client_timestamp"] = client_ts_utc
 
-    await db[USERS_COLLECTION].update_one(
-        {"_id": user_id},
-        {"$set": {"diaries": diaries}},
+    updated_doc = await collection.find_one_and_update(
+        {
+            "diary_id": diary_id,
+            "user_id": user_id,
+            "alarms.alarm_id": alarm_id,
+        },
+        {"$set": set_fields},
+        return_document=ReturnDocument.AFTER,
     )
 
-    return AlarmResponse(**_serialize_alarm(alarms[alarm_idx]))
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Diary or Alarm not found")
+
+    updated_alarm = next(
+        (a for a in updated_doc.get("alarms", []) if a.get("alarm_id") == alarm_id),
+        None,
+    )
+
+    if updated_alarm is None:
+        raise HTTPException(status_code=500, detail="Updated alarm not found in document")
+
+    return AlarmResponse(**_serialize_alarm(updated_alarm))
 
 
-@router.delete("/{diary_id}/alarms/{alarm_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{diary_id}/alarms/{alarm_id}", status_code=status.HTTP_200_OK)
 async def delete_alarm(
     diary_id: str,
     alarm_id: str,
+    payload: AlarmDelete,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    user = await _get_user_or_404(db, user_id)
-    diaries = list(user.get("diaries", []))
-    diary_idx = _find_diary_index(diaries, diary_id)
-    if diary_idx == -1:
-        raise HTTPException(status_code=404, detail="Diary not found")
+    collection = db[DIARY_COLLECTION]
+    now_utc = datetime.now(timezone.utc)
+    client_ts_utc = ensure_utc(payload.client_timestamp)
 
-    alarms = _normalize_alarms(diaries[diary_idx].get("alarms", []))
-    alarm_idx = _find_alarm_index(alarms, alarm_id)
-    if alarm_idx == -1:
-        raise HTTPException(status_code=404, detail="Alarm not found")
-
-    alarms.pop(alarm_idx)
-    diaries[diary_idx]["alarms"] = alarms
-
-    await db[USERS_COLLECTION].update_one(
-        {"_id": user_id},
-        {"$set": {"diaries": diaries}},
+    result = await collection.update_one(
+        {"diary_id": diary_id, "user_id": user_id},
+        {
+            "$pull": {"alarms": {"alarm_id": alarm_id}},
+            "$set": {
+                "updated_at": now_utc,
+                "client_timestamp": client_ts_utc,
+            },
+        },
     )
 
-    return None
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Diary not found")
+
+    return {
+        "client_timestamp": client_ts_utc,
+        "deleted_at": now_utc,
+    }

@@ -3,19 +3,21 @@ import 'package:dio/dio.dart';
 import 'api_client.dart';
 
 /// 이완(점진적 이완 등) 관련 로그 전용 API 래퍼.
-/// MongoDB + FastAPI의 /relaxation_tasks 계열 엔드포인트를 감싼다.
+/// FastAPI의 /relaxation_tasks 계열 엔드포인트를 감싼다.
 class RelaxationApi {
   final ApiClient _client;
   RelaxationApi(this._client);
 
-  /// 이완 세션 로그 저장/업데이트
+  String _encodeDateTime(DateTime dt) => dt.toUtc().toIso8601String();
+
+  /// 이완 세션 로그 저장
   ///
-  /// - 같은 [relax_id]로 여러 번 호출하면 서버에서 해당 세션 도큐먼트를 덮어쓴다(upsert).
-  /// - [start_time], [end_time] 은 ISO8601(UTC) 문자열로 직렬화된다.
-  /// - [logs] 는 `{ action, timestamp, elapsed_seconds }` 형태의 맵 리스트여야 한다.
-  /// - [latitude], [longitude], [address_name], [duration_time] 은 nullable.
+  /// - relaxId가 없으면: POST /relaxation_tasks → 새 도큐먼트 생성
+  /// - relaxId가 있으면: PUT  /relaxation_tasks/{relax_id} → 같은 세션 도큐먼트 덮어쓰기
+  /// - [startTime], [endTime] 은 ISO8601(UTC) 문자열로 전송.
+  /// - [logs] 는 `{ action, timestamp, elapsed_seconds }` 형태 리스트.
   Future<Map<String, dynamic>> saveRelaxationTask({
-    String? relaxId,
+    String? relaxId,        // 🔥 추가: 서버 relax_id (없으면 create, 있으면 update)
     required String taskId,
     int? weekNumber,
     required DateTime startTime,
@@ -24,48 +26,62 @@ class RelaxationApi {
     double? latitude,
     double? longitude,
     String? addressName,
-    int? durationTime,
   }) async {
     final payload = <String, dynamic>{
-      if (relaxId != null) 'relax_id': relaxId,
       'task_id': taskId,
-      if (weekNumber != null) 'week_number': weekNumber,
-      'start_time': startTime.toUtc().toIso8601String(),
+      'week_number': weekNumber,
+      'start_time': _encodeDateTime(startTime),
+      if (endTime != null) 'end_time': _encodeDateTime(endTime),
       'logs': logs,
-      if (endTime != null) 'end_time': endTime.toUtc().toIso8601String(),
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (addressName != null) 'address_name': addressName,
-      if (durationTime != null) 'duration_time': durationTime,
     };
 
-    final res = await _client.dio.post(
-      '/relaxation_tasks',
-      data: payload,
-    );
+    final Response res;
+    if (relaxId == null) {
+      // 최초 저장 → create
+      res = await _client.dio.post(
+        '/relaxation_tasks',
+        data: payload,
+      );
+    } else {
+      // 이후 저장 → update
+      res = await _client.dio.put(
+        '/relaxation_tasks/$relaxId',
+        data: payload,
+      );
+    }
+
     final data = res.data;
     if (data is Map<String, dynamic>) {
-      return data;
+      return Map<String, dynamic>.from(data);
     }
+
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /relaxation_tasks response',
+      message: 'Invalid relaxation_tasks response',
     );
   }
 
-  /// 이완 세션 로그 목록 조회
-  ///
-  /// - [week_number] 가 주어지면 해당 주차의 로그만 필터링.
+  /// 조건에 해당하는 이완 세션 로그 목록 조회
   Future<List<Map<String, dynamic>>> listRelaxationTasks({
     int? weekNumber,
-    String? taskId,   // ✅ 추가
+    String? taskId,
+    DateTime? dateKst,
   }) async {
     final query = <String, dynamic>{};
     if (weekNumber != null) {
       query['week_number'] = weekNumber;
     }
     if (taskId != null) {
-      query['task_id'] = taskId;  // ✅ 서버 쿼리 파라미터 이름
+      query['task_id'] = taskId;
+    }
+    if (dateKst != null) {
+      final y = dateKst.year.toString().padLeft(4, '0');
+      final m = dateKst.month.toString().padLeft(2, '0');
+      final d = dateKst.day.toString().padLeft(2, '0');
+      query['date_kst'] = '$y-$m-$d'; // FastAPI date 파싱용
     }
 
     final res = await _client.dio.get(
@@ -86,14 +102,13 @@ class RelaxationApi {
     );
   }
 
-  /// 특정 주차(또는 전체)에서 가장 최근 이완 세션 로그 1개 조회
+  /// 특정 조건에 해당하는 가장 최근 이완 세션 로그 1개 조회
   ///
-  /// - [week_number] 가 지정되면 해당 주차의 로그 중 최신 1개,
-  ///   없으면 전체 로그 중 최신 1개를 반환.
-  /// - 로그가 전혀 없으면 `null` 반환.
+  /// - 백엔드: GET /relaxation_tasks/latest
+  ///   + week_number, task_id만 사용
   Future<Map<String, dynamic>?> getLatestRelaxationTask({
     int? weekNumber,
-    String? taskId,   // ✅ 추가
+    String? taskId,
   }) async {
     final query = <String, dynamic>{};
     if (weekNumber != null) {
@@ -120,16 +135,20 @@ class RelaxationApi {
 
   /// 이완 점수(relaxation_score)만 업데이트
   ///
-  /// - 다른 화면에서 점수 측정 후 호출.
   /// - 서버 라우터: PATCH /relaxation_tasks/{relax_id}/score
   Future<Map<String, dynamic>> updateRelaxationScore({
     required String relaxId,
     required double relaxationScore,
   }) async {
+    // 1) 소수로 들어와도 정수로 변환
+    // 2) 1~10 범위 밖이면 클램핑
+    final intScore =
+    relaxationScore.round().clamp(1, 10).toInt();
+
     final res = await _client.dio.patch(
       '/relaxation_tasks/$relaxId/score',
       data: {
-        'relaxation_score': relaxationScore,
+        'relaxation_score': intScore,
       },
     );
 
@@ -139,7 +158,68 @@ class RelaxationApi {
     }
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /relaxation_tasks/{relaxId}/score response',
+      message:
+      'Invalid /relaxation_tasks/{relaxId}/score response',
+    );
+  }
+
+  /// 전체 이완 시간 요약
+  /// - 백엔드: GET /relaxation_tasks/summary
+  /// - 응답 키:
+  ///   totalMinutes, todayMinutes, weekMinutes,
+  ///   weekSessions, completedSessions, completedMinutes, lastEntryAt
+  Future<Map<String, dynamic>> getRelaxationSummary() async {
+    final res = await _client.dio.get('/relaxation_tasks/summary');
+    final data = res.data;
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /relaxation_tasks/summary response',
+    );
+  }
+
+
+  /// 특정 조건(week/task/date)에 해당하는 이완 시간 요약
+  /// - 백엔드: GET /relaxation_tasks/task-summary
+  /// - 쿼리:
+  ///   week_number, task_id, date_kst(YYYY-MM-DD, KST 기준)
+  /// - 응답 키:
+  ///   taskId, weekNumber, queryDate,
+  ///   totalMinutes, totalSessions, completedSessions, completedMinutes, lastEntryAt
+  Future<Map<String, dynamic>> getRelaxationTaskSummary({
+    int? weekNumber,
+    String? taskId,
+    DateTime? dateKst,
+  }) async {
+    final query = <String, dynamic>{};
+
+    if (weekNumber != null) {
+      query['week_number'] = weekNumber;
+    }
+    if (taskId != null) {
+      query['task_id'] = taskId;
+    }
+    if (dateKst != null) {
+      final y = dateKst.year.toString().padLeft(4, '0');
+      final m = dateKst.month.toString().padLeft(2, '0');
+      final d = dateKst.day.toString().padLeft(2, '0');
+      query['date_kst'] = '$y-$m-$d';
+    }
+
+    final res = await _client.dio.get(
+      '/relaxation_tasks/task-summary',
+      queryParameters: query.isEmpty ? null : query,
+    );
+
+    final data = res.data;
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /relaxation_tasks/task-summary response',
     );
   }
 }

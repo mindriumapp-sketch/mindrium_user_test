@@ -6,18 +6,40 @@ class SudApi {
   final ApiClient _client;
   SudApi(this._client);
 
+  // 공통: body에 client_timestamp 붙이는 헬퍼
+  Map<String, dynamic> _withClientTimestamp(
+      Map<String, dynamic> body, {
+        DateTime? clientTimestamp,
+      }) {
+    return {
+      ...body,
+      'client_timestamp':
+      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
+    };
+  }
+
   Future<Map<String, dynamic>> createSudScore({
     required String diaryId,
     required int beforeScore,
     int? afterScore,
+    DateTime? clientTimestamp,
   }) async {
-    final payload = <String, dynamic>{
-      'diaryId': diaryId,
+    final base = <String, dynamic>{
       'before_sud': beforeScore,
       if (afterScore != null) 'after_sud': afterScore,
     };
 
-    final res = await _client.dio.post('/sud-scores', data: payload);
+    final payload = _withClientTimestamp(
+      base,
+      clientTimestamp: clientTimestamp,
+    );
+
+    final res = await _client.dio.post(
+      '/sud-scores',
+      queryParameters: {'diary_id': diaryId},
+      data: payload,
+    );
+
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
@@ -47,17 +69,23 @@ class SudApi {
     required String sudId,
     int? beforeScore,
     int? afterScore,
-    double? latitude,
-    double? longitude,
+    DateTime? clientTimestamp,
   }) async {
-    final payload = <String, dynamic>{
+    final base = <String, dynamic>{
       if (beforeScore != null) 'before_sud': beforeScore,
       if (afterScore != null) 'after_sud': afterScore,
-      if (latitude != null) 'latitude': latitude,
-      if (longitude != null) 'longitude': longitude,
     };
 
-    final res = await _client.dio.put('/sud-scores/$diaryId/$sudId', data: payload);
+    final payload = _withClientTimestamp(
+      base,
+      clientTimestamp: clientTimestamp,
+    );
+
+    final res = await _client.dio.put(
+      '/sud-scores/$diaryId/$sudId',
+      data: payload,
+    );
+
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
@@ -65,4 +93,110 @@ class SudApi {
       message: 'Invalid /sud-scores update response',
     );
   }
+
+// ---------------------------------------------------------------------------
+// (추후 사용용) SUD 주차별 / 일별 통계 API
+// 주석만 풀면 바로 사용 가능
+// ---------------------------------------------------------------------------
+
+/*
+  /// 주차별 평균 SUD 통계 조회
+  ///
+  /// GET /sud-scores/stats/weekly
+  ///
+  /// 백엔드 쿼리 파라미터:
+  /// - start: DateTime? (ISO8601, UTC)
+  /// - end: DateTime? (ISO8601, UTC)
+  /// - target_user_id: String? (없으면 전체)
+  ///
+  /// 응답 예시 (List):
+  /// [
+  ///   {
+  ///     "weekStart": "2025-01-06T00:00:00Z",
+  ///     "avgBefore": 5.3,
+  ///     "avgAfter": 3.1,
+  ///     "count": 12
+  ///   },
+  ///   ...
+  /// ]
+  Future<List<Map<String, dynamic>>> getWeeklySudStats({
+    DateTime? start,
+    DateTime? end,
+    String? targetUserId,
+  }) async {
+    final query = <String, dynamic>{
+      if (start != null) 'start': start.toUtc().toIso8601String(),
+      if (end != null) 'end': end.toUtc().toIso8601String(),
+      if (targetUserId != null) 'target_user_id': targetUserId,
+    };
+
+    final res = await _client.dio.get(
+      '/sud-scores/stats/weekly',
+      queryParameters: query,
+    );
+
+    final data = res.data;
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((raw) => Map<String, dynamic>.from(
+                raw.map((k, v) => MapEntry(k.toString(), v)),
+              ))
+          .toList();
+    }
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /sud-scores/stats/weekly response',
+    );
+  }
+
+  /// 특정 주차의 일자별 평균 SUD 통계 조회
+  ///
+  /// GET /sud-scores/stats/daily
+  ///
+  /// 백엔드 쿼리 파라미터:
+  /// - week_start_date: "yyyy-MM-dd" (KST 기준 주 시작 날짜)
+  /// - target_user_id: String? (옵션)
+  ///
+  /// 응답 예시 (List):
+  /// [
+  ///   {
+  ///     "date": "2025-01-06T00:00:00Z",
+  ///     "avgBefore": 5.0,
+  ///     "avgAfter": 3.0,
+  ///     "count": 4
+  ///   },
+  ///   ...
+  /// ]
+  Future<List<Map<String, dynamic>>> getDailySudStats({
+    required DateTime weekStartDate,
+    String? targetUserId,
+  }) async {
+    final query = <String, dynamic>{
+      'week_start_date': _formatDate(weekStartDate),
+      if (targetUserId != null) 'target_user_id': targetUserId,
+    };
+
+    final res = await _client.dio.get(
+      '/sud-scores/stats/daily',
+      queryParameters: query,
+    );
+
+    final data = res.data;
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((raw) => Map<String, dynamic>.from(
+                raw.map((k, v) => MapEntry(k.toString(), v)),
+              ))
+          .toList();
+    }
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /sud-scores/stats/daily response',
+    );
+  }
+  */
 }

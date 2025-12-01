@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# TODO: 테스트/운영 서버에서는 default 값들 무조건 바꿔야 함
 class Settings(BaseModel):
     mongo_uri: str = os.getenv("MONGO_URI", "mongodb://115.145.134.180:9013/")
     mongo_db: str = os.getenv("DB_NAME", "flutter_test")
