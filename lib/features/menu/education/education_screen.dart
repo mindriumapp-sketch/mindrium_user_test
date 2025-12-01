@@ -117,17 +117,15 @@ class _EducationScreenState extends State<EducationScreen> {
     final row1 = widget.isRelax? _items.sublist(0, 2): _items.sublist(0, 3);
     final row2 = widget.isRelax? _items.sublist(2, 4): _items.sublist(3, 6);
 
-    return WillPopScope(
-      // ✅ 물리적 뒤로가기 → '/contents'
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
         if (widget.isRelax) {
-          // ✅ 이완 모드일 때: /treatment까지 돌아가기
           Navigator.pushNamedAndRemoveUntil(context, '/treatment', (_)=>false);
         } else {
-          // ✅ 일반 모드일 때: 기존대로 /contents
           Navigator.pushNamedAndRemoveUntil(context, '/contents', (_)=>false);
         }
-        return false; // 뒤로가기 기본 동작 막기
       },
       child: ScrollConfiguration(
         behavior: const _NoScrollbarBehavior(),

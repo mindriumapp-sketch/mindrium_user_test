@@ -85,3 +85,30 @@ class EduLocalProgress {
     await p.setString(_lastUidKey, currentUserId);
   }
 }
+
+/// Backwards-compatible wrapper used across education screens.
+class EduProgress {
+  static const _nsPrefix = 'edu.global';
+  static const _readPrefix = '$_nsPrefix.read.';
+  static const _lastRouteKey = '$_nsPrefix.last_route';
+
+  static Future<void> save(String key, int read) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setInt('$_readPrefix$key', read);
+  }
+
+  static Future<int> getRead(String key) async {
+    final p = await SharedPreferences.getInstance();
+    return p.getInt('$_readPrefix$key') ?? 0;
+  }
+
+  static Future<void> setLastRoute(String route) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_lastRouteKey, route);
+  }
+
+  static Future<String?> getLastRoute() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_lastRouteKey);
+  }
+}

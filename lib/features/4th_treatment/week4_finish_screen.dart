@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gad_app_team/utils/edu_progress.dart';
 
 // ✅ 튜토리얼 공용 디자인: 배경/카드/네비게이션 포함
 import 'package:gad_app_team/widgets/tutorial_design.dart';
@@ -70,6 +69,7 @@ class Week4FinishScreen extends StatelessWidget {
           ),
         );
 
+        if (!context.mounted) return;
         Navigator.pushReplacementNamed(
           context,
           '/relaxation_education',

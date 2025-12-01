@@ -73,15 +73,6 @@ class _Week6BehaviorReflectionScreenState
     bool isShortTermHigh = widget.shortTermValue == 10;
     bool isLongTermHigh = widget.longTermValue == 10;
 
-    String actualResult;
-    if (isShortTermHigh && !isLongTermHigh) {
-      actualResult = '불안을 회피하는 행동';
-    } else if (!isShortTermHigh && isLongTermHigh) {
-      actualResult = '불안을 직면하는 행동';
-    } else {
-      actualResult = '중립적인 행동';
-    }
-
     String userChoice =
         widget.behaviorType == 'face' ? '불안을 직면하는 행동' : '불안을 회피하는 행동';
 

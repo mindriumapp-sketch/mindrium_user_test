@@ -52,7 +52,7 @@ class _Week4ImaginationScreenState extends State<Week4ImaginationScreen> {
   @override
   Widget build(BuildContext context) {
     final userName =
-        Provider.of<UserProvider>(context, listen: false).userName ?? 'USER';
+        Provider.of<UserProvider>(context, listen: false).userName;
     // BlueWhiteCard에서 쓰던 밑줄 길이를 그대로 사용
     const double kRuleWidth = 220;
 

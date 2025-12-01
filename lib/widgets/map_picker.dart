@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/data/notification_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/notification_api.dart';
+import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/widgets/map_picker_design.dart';
 
@@ -31,7 +31,7 @@ class _MapPickerState extends State<MapPicker> {
   final TextEditingController _searchController = TextEditingController();
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
-  late final NotificationApi _notificationApi = NotificationApi(_apiClient);
+  late final ScheduleEventsApi _scheduleEventsApi = ScheduleEventsApi(_apiClient);
 
   LatLng? _picked;
   LatLng? _current;
@@ -58,7 +58,7 @@ class _MapPickerState extends State<MapPicker> {
   // ───────────── 저장된 위치 알림 마커 불러오기 ─────────────
   Future<void> _loadSavedMarkers() async {
     try {
-      final docs = await _notificationApi.list(locationOnly: true);
+      final docs = await _scheduleEventsApi.listScheduleEvents();
       final markers = <Marker>[];
       for (final doc in docs) {
         final lat = (doc['latitude'] as num?)?.toDouble();
