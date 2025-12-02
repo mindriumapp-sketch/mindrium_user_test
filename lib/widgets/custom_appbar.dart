@@ -21,6 +21,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final TextStyle? titleTextStyle; // ← 추가 (null이면 기존 스타일)
   final double? toolbarHeight; // ← 추가 (null이면 kToolbarHeight)
   final PreferredSizeWidget? bottom; // ← 선택: 필요하면 하단 영역도 추가 가능
+  final int maxTitleLines; // 긴 제목 줄바꿈 제어
+  final TextAlign titleAlign; // 제목 정렬
 
   const CustomAppBar({
     super.key,
@@ -37,6 +39,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.titleTextStyle, // ← 추가
     this.toolbarHeight, // ← 추가
     this.bottom, // ← 추가
+    this.maxTitleLines = 1,
+    this.titleAlign = TextAlign.start,
   }) : assert(
          extraRoute == null || onExtraPressed == null,
          'extraRoute와 onExtraPressed는 둘 중 하나만 지정하세요.',
@@ -105,6 +109,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       title: Text(
         title,
+        maxLines: maxTitleLines,
+        softWrap: maxTitleLines > 1,
+        overflow: maxTitleLines > 1 ? TextOverflow.visible : TextOverflow.ellipsis,
+        textAlign: titleAlign,
+        textWidthBasis: TextWidthBasis.parent,
         style:
             titleTextStyle ??
             const TextStyle(

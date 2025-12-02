@@ -15,6 +15,8 @@ class MemoFullDesign extends StatelessWidget {
   final String rightLabel;
   final EdgeInsetsGeometry contentPadding;
   final double? memoHeight;
+  final int appBarTitleMaxLines;
+  final TextAlign appBarTitleAlign;
 
   const MemoFullDesign({
     super.key,
@@ -28,6 +30,8 @@ class MemoFullDesign extends StatelessWidget {
       vertical: 32,
     ),
     this.memoHeight,
+    this.appBarTitleMaxLines = 2,
+    this.appBarTitleAlign = TextAlign.start,
   });
 
   @override
@@ -38,7 +42,11 @@ class MemoFullDesign extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
-      appBar: CustomAppBar(title: appBarTitle),
+      appBar: CustomAppBar(
+        title: appBarTitle,
+        maxTitleLines: appBarTitleMaxLines,
+        titleAlign: appBarTitleAlign,
+      ),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -185,6 +193,7 @@ class HighlightText extends StatelessWidget {
   final double verticalPadding;
   final double horizontalPadding;
   final double borderRadius;
+  final TextAlign textAlign;
 
   const HighlightText({
     super.key,
@@ -194,6 +203,7 @@ class HighlightText extends StatelessWidget {
     this.verticalPadding = 4,
     this.horizontalPadding = 2,
     this.borderRadius = 6,
+    this.textAlign = TextAlign.start,
   });
 
   @override
@@ -217,6 +227,9 @@ class HighlightText extends StatelessWidget {
         plainText,
         style: baseStyle,
         softWrap: true,
+        overflow: TextOverflow.visible,
+        textAlign: textAlign,
+        textWidthBasis: TextWidthBasis.parent,
       );
     }
 
@@ -266,12 +279,16 @@ class HighlightText extends StatelessWidget {
             borderRadius: borderRadius,
             maxWidth: maxWidth,
             ranges: ranges,
+            textAlign: textAlign,
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: RichText(
               text: TextSpan(children: spans),
               softWrap: true,
+              overflow: TextOverflow.visible,
+              textAlign: textAlign,
+              textWidthBasis: TextWidthBasis.parent,
             ),
           ),
         );
@@ -343,6 +360,7 @@ class _InlineHighlightPainter extends CustomPainter {
   final double borderRadius;
   final double maxWidth;
   final List<_HighlightRange> ranges;
+  final TextAlign textAlign;
 
   _InlineHighlightPainter({
     required this.plainText,
@@ -353,6 +371,7 @@ class _InlineHighlightPainter extends CustomPainter {
     required this.borderRadius,
     required this.maxWidth,
     required this.ranges,
+    required this.textAlign,
   });
 
   @override
@@ -361,8 +380,10 @@ class _InlineHighlightPainter extends CustomPainter {
 
     final textPainter = TextPainter(
       text: TextSpan(text: plainText, style: textStyle),
+      textAlign: textAlign,
       textDirection: TextDirection.ltr,
       maxLines: null,
+      textWidthBasis: TextWidthBasis.parent,
     )..layout(maxWidth: maxWidth);
 
     final paint = Paint()..color = highlightColor.withOpacity(0.8);

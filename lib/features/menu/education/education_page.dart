@@ -50,6 +50,36 @@ class _EducationPageState extends State<EducationPage> {
   bool isLoading = true;
   int currentIndex = 0;
 
+  /// 단어(공백 기준) 안에서는 줄바꿈이 일어나지 않도록
+  /// 각 글자 사이에 WORD JOINER (U+2060)를 삽입해주는 함수
+  String _protectKoreanWords(String text) {
+    if (text.isEmpty) return text;
+
+    final buffer = StringBuffer();
+    final words = text.split(' ');
+
+    for (int i = 0; i < words.length; i++) {
+      final word = words[i];
+
+      for (int j = 0; j < word.length; j++) {
+        final ch = word[j];
+        buffer.write(ch);
+
+        // 하이라이트/마크다운 마커([[ ]], **텍스트**)를 깨지 않기 위해
+        // 대괄호와 별표, 밑줄 뒤에는 WORD JOINER를 넣지 않는다
+        if (ch != '[' && ch != ']' && ch != '*' && ch != '_') {
+          buffer.write('\u2060');
+        }
+      }
+
+      if (i != words.length - 1) {
+        buffer.write(' ');
+      }
+    }
+
+    return buffer.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -221,7 +251,7 @@ class _EducationPageState extends State<EducationPage> {
       children: [
         for (final line in lines)
           HighlightText(
-            text: line,
+            text: _protectKoreanWords(line),
             style: baseStyle,
           ),
       ],
@@ -238,7 +268,7 @@ class _EducationPageState extends State<EducationPage> {
       height: 1.4,
     );
     return HighlightText(
-      text: text,
+      text: _protectKoreanWords(text),
       style: titleStyle,
     );
   }

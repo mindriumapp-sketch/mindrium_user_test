@@ -148,6 +148,8 @@ class _EducationScreenState extends State<EducationScreen> {
                     /// ✅ CustomAppBar (뒤로가기 → /contents)
                     CustomAppBar(
                       title: widget.isRelax? '1주차 - 불안에 대한 교육': '불안에 대한 교육',
+                      maxTitleLines: 2,
+                      titleAlign: TextAlign.start,
                       showHome: true,
                       confirmOnHome: true,
                       confirmOnBack: false,
