@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_gain_lose_screen.dart';
 import 'package:gad_app_team/widgets/top_btm_card.dart';
 

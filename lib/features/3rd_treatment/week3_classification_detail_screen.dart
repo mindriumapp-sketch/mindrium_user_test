@@ -1,6 +1,6 @@
 // lib/features/3rd_treatment/week3_classification_detail_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 class Week3ClassificationDetailScreen extends StatelessWidget {
   final List<Map<String, dynamic>> quizResults;

@@ -1,6 +1,6 @@
 // 🪸 Mindrium TreatmentDesign — UI + AppBar 포함 완전 리팩터링
 // import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class TreatmentDesign extends StatelessWidget {

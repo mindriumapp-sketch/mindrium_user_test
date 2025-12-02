@@ -5,7 +5,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/data/notification_provider.dart';

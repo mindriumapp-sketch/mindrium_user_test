@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'daycounter.dart';
 import 'api/users_api.dart';
 import 'api/api_client.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 🌊 Mindrium 스타일 공용 배경 위젯
 /// - 흰색 배경 위에 eduhome 이미지를 0.35 투명도로 덮음

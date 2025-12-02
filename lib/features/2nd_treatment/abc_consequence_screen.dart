@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutor_design.dart'; // ✅ 방금 주신 디자인 파일
 import 'package:gad_app_team/features/2nd_treatment/abc_practice_screen.dart';
 

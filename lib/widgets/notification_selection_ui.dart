@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 import '../../data/notification_provider.dart'; // NotificationSetting, RepeatOption
 // import 'package:gad_app_team/utils/edu_progress.dart';

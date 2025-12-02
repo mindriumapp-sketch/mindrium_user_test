@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/data/user_progress.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';

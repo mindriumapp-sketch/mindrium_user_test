@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ✅ ApplyDesign
 import 'package:gad_app_team/features/4th_treatment/week4_skip_choice_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/notification_selection_screen.dart';
@@ -6,6 +6,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 
 class AfterSudRatingScreen extends StatefulWidget {
   const AfterSudRatingScreen({super.key});
@@ -160,7 +161,7 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            _caption,
+            protectKoreanWords(_caption),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

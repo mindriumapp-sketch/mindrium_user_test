@@ -1,5 +1,5 @@
 // 🪸 Mindrium ContentScreen — AppBar 제거 + 기능/라우팅 그대로 유지
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tap_design.dart'; // ✅ 공통 디자인 위젯 (AppBar 포함, 하지만 여기선 숨김 처리)
 
 class ContentScreen extends StatelessWidget {

@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 // import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/blue_white_card.dart';
@@ -333,7 +334,7 @@ class _WelcomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 80),
                 Text(
-                  weekDescription,
+                  protectKoreanWords(weekDescription),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: navy, fontSize: 14, height: 1.5),
                 ),
@@ -397,7 +398,7 @@ class _GuidePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  subtitle,
+                  protectKoreanWords(subtitle),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: navy,

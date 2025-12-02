@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -61,7 +62,7 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
       child: Column(
         children: [
           Text(
-            "👏 \n $userName님,\n말씀해주셔서 감사합니다.",
+            protectKoreanWords("👏 \n $userName님,\n말씀해주셔서 감사합니다."),
             style: const TextStyle(
               fontSize: 18,
               height: 1.6
@@ -79,10 +80,10 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
           ),
           const SizedBox(height: 48),
           Text(
-            "$userName님께서는 ‘$situation’ 상황에서 ‘$thought’ 생각을 하셨고,\n"
+            protectKoreanWords("$userName님께서는 ‘$situation’ 상황에서 ‘$thought’ 생각을 하셨고,\n"
             "'$emotions’ 감정을 느끼셨습니다.\n\n"
             "그 결과 신체적으로 ‘$physical’ 증상이 나타났으며,\n"
-            "‘$behavior’ 행동을 하셨습니다.\n\n",
+            "‘$behavior’ 행동을 하셨습니다.\n\n"),
             style: const TextStyle(
               fontSize: 16.5,
               color: Colors.black,

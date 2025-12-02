@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 문자열 내의 **텍스트** 부분을 형광펜 스타일(형광 밑줄 느낌)로 표시
 List<TextSpan> parseBoldText(String text) {

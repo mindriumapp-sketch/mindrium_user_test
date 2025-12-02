@@ -1,6 +1,6 @@
 // 🪸 Mindrium NotificationSelectionDesign — TreatmentDesign 구조 호환 버전
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 import 'package:gad_app_team/widgets/tap_design.dart';
 

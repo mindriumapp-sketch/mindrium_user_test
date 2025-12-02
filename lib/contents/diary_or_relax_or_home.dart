@@ -9,7 +9,7 @@
 //   flutter/material.dart               → 기본 Flutter 위젯
 //   gad_app_team/widgets/custom_appbar.dart → 상단 공용 CustomAppBar 사용
 
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 
 class DiaryOrRelaxOrHome extends StatelessWidget {

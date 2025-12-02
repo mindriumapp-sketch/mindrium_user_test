@@ -1,5 +1,5 @@
 // 📘 week6_classification_screen.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/data/user_provider.dart';

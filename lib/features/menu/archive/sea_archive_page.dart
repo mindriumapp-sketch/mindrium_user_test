@@ -2,7 +2,7 @@
 // 🌊 Mindrium SeaArchivePage — Immersive Aquarium with following speech bubble
 import 'dart:math';
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';

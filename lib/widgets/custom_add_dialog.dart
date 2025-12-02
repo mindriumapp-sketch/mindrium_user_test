@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 🌊 Mindrium-style 팝업 다이얼로그 (popup1/popup2 이미지 반영)
 class CustomAddDialog extends StatelessWidget {

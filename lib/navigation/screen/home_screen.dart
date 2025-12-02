@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +10,7 @@ import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'treatment_screen.dart';
 import 'myinfo_screen.dart';
 
@@ -493,7 +494,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    description,
+                    protectKoreanWords(description),
                     style: const TextStyle(
                       fontSize: 15,
                       color: Colors.black87,

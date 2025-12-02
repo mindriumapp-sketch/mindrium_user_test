@@ -1,5 +1,6 @@
 // lib/ui/chat_bubble.dart (final patched)
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 
 class ChatBubble extends StatelessWidget {
   const ChatBubble({
@@ -50,7 +51,7 @@ class ChatBubble extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
-                label!,
+                protectKoreanWords(label!),
                 style: TextStyle(
                   fontSize: 11,
                   color: Colors.grey[600],
@@ -59,7 +60,7 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           Text(
-            displayText,
+            protectKoreanWords(displayText),
             style: const TextStyle(
               fontSize: 15,
               height: 1.35,

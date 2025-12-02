@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 🌊 Mindrium 메뉴 디자인 (의미적 색상 시스템 적용)
 class TreatmentDesign extends StatelessWidget {

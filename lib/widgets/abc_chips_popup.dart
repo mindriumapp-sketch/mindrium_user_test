@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// AbcChipsDesign 스타일 기반의 팝업 칩 리스트
 /// 클릭 시 색상 즉시 변하고 부드러운 애니메이션 포함

@@ -11,7 +11,8 @@
 //   gad_app_team/widgets/inner_btn_card.dart → 카드형 2버튼 UI 위젯
 
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 
 class RelaxYesOrNo extends StatelessWidget {
@@ -60,8 +61,8 @@ class RelaxYesOrNo extends StatelessWidget {
             fit: BoxFit.contain,
           ),
           const SizedBox(height: 8),
-          const Text(
-            '예를 누르면 이완 활동 페이지로 넘어가요!\n 아니오를 누르면 홈으로 돌아가요!',
+          Text(
+            protectKoreanWords('예를 누르면 이완 활동 페이지로 넘어가요!\n 아니오를 누르면 홈으로 돌아가요!'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import '../../common/constants.dart';
 
 /// 💬 ABC 입력 단계 공용 다이얼로그 유틸

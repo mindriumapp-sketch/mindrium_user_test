@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/top_btm_card.dart';
 import 'package:gad_app_team/widgets/chips_editor.dart';
 import 'week4_next_thought_screen.dart';

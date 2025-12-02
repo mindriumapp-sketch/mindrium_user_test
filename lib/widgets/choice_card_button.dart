@@ -1,6 +1,6 @@
 // lib/widgets/choice_card_button.dart
 
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 enum ChoiceType {
   healthy,

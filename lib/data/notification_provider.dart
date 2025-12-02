@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 // ─────────────────────────  Flutter  ──────────────────────────
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 
 // ─────────────────────  3rd‑party Packages  ───────────────────

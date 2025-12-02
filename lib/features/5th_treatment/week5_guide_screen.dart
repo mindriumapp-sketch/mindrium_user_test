@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/5th_treatment/week5_belief_screen.dart';
 import 'package:gad_app_team/widgets/tutor_design.dart'; // ✅ AbcActivateDesign import
 

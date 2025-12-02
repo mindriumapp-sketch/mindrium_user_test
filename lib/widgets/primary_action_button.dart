@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 
 /// 🌊 Mindrium 공통 Primary Action Button

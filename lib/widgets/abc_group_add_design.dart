@@ -1,6 +1,6 @@
 // 🪸 Mindrium AbcGroupAddDesign — TreatmentDesign 새 구조 완전 호환 버전
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gad_app_team/widgets/tap_design.dart'; // ✅ 새 구조로 교체
 

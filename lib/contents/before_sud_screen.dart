@@ -3,7 +3,7 @@
 // Mindrium 공통 ApplyDesign 사용 (튜토리얼 카드형 레이아웃)
 
 // ─────────────────────────  FLUTTER  ─────────────────────────
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 // ────────────────────────  PACKAGES  ────────────────────────
 import 'package:dio/dio.dart';
@@ -14,6 +14,8 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
+
+import 'package:gad_app_team/utils/text_line_utils.dart';
 
 /// SUD(0‒10)을 입력받아 저장하고, 점수에 따라 후속 행동을 안내하는 화면
 class BeforeSudRatingScreen extends StatefulWidget {
@@ -213,7 +215,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
 
           // 캡션
           Text(
-            _caption,
+            protectKoreanWords(_caption),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

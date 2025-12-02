@@ -1,5 +1,5 @@
 // File: week5_practice_screen.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/5th_treatment/week5_classification_screen.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ✅ ApplyDesign 사용
 

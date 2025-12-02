@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/value_start.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_belief_screen.dart';
 

@@ -1,5 +1,5 @@
 // lib/widgets/thought_card.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 피그마 말풍선 타입
 enum ThoughtType { helpful, unhelpful }

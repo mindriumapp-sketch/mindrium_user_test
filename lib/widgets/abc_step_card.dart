@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 // import 'package:gad_app_team/widgets/detail_popup.dart';
 // import 'package:gad_app_team/widgets/thought_card.dart'; // ThoughtBubble
 // import 'package:gad_app_team/widgets/jellyfish_notice.dart'; // 안 쓰면 지워도 됨

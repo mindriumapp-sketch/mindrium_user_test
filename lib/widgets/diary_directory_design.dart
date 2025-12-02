@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 💧 Mindrium 스타일 디자인 구성요소 모음
 class DiaryArchiveDropdown extends StatelessWidget {

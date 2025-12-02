@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_alternative_thoughts.dart';
@@ -7,6 +7,7 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 
 /// 💡 Firestore의 'belief' 필드(B 리스트)를 불러와 선택 후 다음 단계로 이동하는 화면
 class ApplyAlternativeThoughtScreen extends StatefulWidget {
@@ -190,15 +191,15 @@ class _ApplyAlternativeThoughtScreenState
               : _error != null
               ? Center(
                 child: Text(
-                  _error!,
+                  protectKoreanWords(_error!),
                   style: const TextStyle(color: Colors.red, fontSize: 16),
                 ),
               )
               : _bList.isEmpty
-              ? const Padding(
+              ? Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
-                  '일기/그룹에서 불러올 생각이 없습니다.',
+                  protectKoreanWords('일기/그룹에서 불러올 생각이 없습니다.'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.black54,
@@ -242,7 +243,7 @@ class _ApplyAlternativeThoughtScreenState
                           ),
                         ),
                         child: Text(
-                          b,
+                          protectKoreanWords(b),
                           style: TextStyle(
                             fontSize: 15.5,
                             color:

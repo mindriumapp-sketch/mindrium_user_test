@@ -1,5 +1,5 @@
 // lib/features/4th_treatment/week4_after_agreement_screen.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/widgets/top_btm_card.dart'; // ✅ 두 패널 레이아웃

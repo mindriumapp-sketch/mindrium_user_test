@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 // ✅ 튜토리얼 공용 디자인: 배경/카드/네비게이션 포함
 import 'package:gad_app_team/widgets/tutorial_design.dart';

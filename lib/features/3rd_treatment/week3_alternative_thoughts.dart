@@ -1,6 +1,7 @@
 // lib/features/3rd_treatment/week3_alternative_thoughts.dart
 
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:gad_app_team/widgets/chips_editor.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_visual_screen.dart';
 
@@ -40,7 +41,7 @@ class _Week3AlternativeThoughtsScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           Text(
             '도움이 되는 생각으로 바꿔보세요',
             style: TextStyle(
@@ -53,7 +54,7 @@ class _Week3AlternativeThoughtsScreenState
           ),
           SizedBox(height: 12),
           Text(
-            '앞에서 떠올린 불안한 생각들을 기반으로,\n도움이 되는 생각을 자유롭게 적어보세요.',
+            protectKoreanWords('앞에서 떠올린 불안한 생각들을 기반으로,\n도움이 되는 생각을 자유롭게 적어보세요.'),
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w200,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutor_design.dart'; // ✅ AbcActivateDesign == TutorDesign
 import 'package:gad_app_team/features/2nd_treatment/abc_consequence_screen.dart';
 

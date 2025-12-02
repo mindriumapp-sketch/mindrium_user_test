@@ -1,5 +1,5 @@
 // File: features/8th_treatment/week8_survey_screen.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_final_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';

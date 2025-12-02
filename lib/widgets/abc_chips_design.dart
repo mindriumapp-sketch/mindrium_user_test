@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:flutter/foundation.dart';
 
 /// 🌊 ABC 칩 디자인 공용 위젯 (Mindrium 공통 스타일)

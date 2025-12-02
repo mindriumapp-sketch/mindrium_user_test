@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
@@ -136,9 +137,9 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
           ),
           const SizedBox(height: 48),
           Text(
-            '$userName님, \n말씀해주셔서 감사합니다 👏\n\n'
+            protectKoreanWords('$userName님, \n말씀해주셔서 감사합니다 👏\n\n'
             "‘$situation’ 상황에서 \n‘$thought’ 생각을 하셨고,\n‘$emotion’ 감정을 느끼셨습니다.\n\n"
-            "그 결과 신체적으로 ‘$physical’ 증상이 나타났고,\n‘$behavior’ 행동을 하셨습니다.",
+            "그 결과 신체적으로 ‘$physical’ 증상이 나타났고,\n‘$behavior’ 행동을 하셨습니다."),
             style: const TextStyle(
               height: 1.6,
               fontSize: 16,

@@ -1,5 +1,5 @@
 // File: features/8th_treatment/week8_maintenance_suggestions_screen.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_gad7_screen.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 

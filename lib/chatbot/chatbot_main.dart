@@ -2,7 +2,7 @@
 // Stage-based emotion + spike + streak relief + GPT logs + RAG
 import 'dart:io' if (dart.library.html) 'utils/file_stub.dart' show Platform, File, Directory;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:async';

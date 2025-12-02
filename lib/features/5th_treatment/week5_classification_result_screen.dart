@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/features/5th_treatment/week5_classification_detail_screen.dart';

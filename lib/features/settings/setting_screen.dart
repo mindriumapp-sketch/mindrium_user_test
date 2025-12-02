@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 🫧 마인드리움 스타일 설정 화면
 /// - 배경: eduhome.png

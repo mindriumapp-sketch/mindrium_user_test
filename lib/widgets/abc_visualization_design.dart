@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import '../widgets/memo_sheet_design.dart'; // ✅ 기존 유지
 
 class DesignPalette {

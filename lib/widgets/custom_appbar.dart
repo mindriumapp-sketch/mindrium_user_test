@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 
 /// 🌊 Mindrium 완전 투명 CustomAppBar

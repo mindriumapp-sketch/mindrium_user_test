@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' hide Text;
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 

@@ -1,6 +1,6 @@
 
 // lib/features/4th_treatment/week4_skip_choice_screen.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'week4_concentration_screen.dart';

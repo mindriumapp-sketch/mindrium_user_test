@@ -1,5 +1,5 @@
 // lib/widgets/mindrium_title.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'dart:math' as math;
 
 /// 🫧 3D Mindrium 타이틀 + 버블 효과 (서브텍스트 없음)

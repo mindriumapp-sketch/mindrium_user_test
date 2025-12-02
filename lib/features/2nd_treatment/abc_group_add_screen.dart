@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import '../../widgets/custom_appbar.dart';
 import '../../widgets/custom_popup_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';

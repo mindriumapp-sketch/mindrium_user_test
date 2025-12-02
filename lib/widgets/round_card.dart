@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 단순한 둥근 모서리와 그림자 효과를 가진 카드 위젯입니다.
 /// (기존 Notebook-style 기능인 스프링과 스텁이 제거되었습니다.)

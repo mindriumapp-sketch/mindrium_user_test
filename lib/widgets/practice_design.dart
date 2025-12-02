@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 🎨 디자인 전용 위젯 (텍스트, 폰트, 색상, 레이아웃만 담당)
 class AbcPracticeDesign extends StatelessWidget {

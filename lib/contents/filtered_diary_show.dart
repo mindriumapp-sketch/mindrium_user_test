@@ -17,11 +17,12 @@
 //   gad_app_team/widgets/custom_appbar.dart → 공통 상단바
 //   gad_app_team/widgets/primary_action_button.dart → 하단 버튼 UI
 
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 
 /// 🌊 Mindrium 스타일: 걱정 일기 알림 목록 화면
 /// - 오션 톤 그라데이션 + eduhome 반투명 오버레이
@@ -215,10 +216,10 @@ class DiaryShowScreen extends StatelessWidget {
           padding: const EdgeInsets.only(top: 20, bottom: 80),
           child: Column(
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 10),
                 child: Text(
-                  '아직 해결되지 않은 불안이 남아있어요 🐚\n아래 일기들을 다시 살펴보세요.',
+                  protectKoreanWords('아직 해결되지 않은 불안이 남아있어요 🐚\n아래 일기들을 다시 살펴보세요.'),
                   style: TextStyle(
                     fontFamily: 'Noto Sans KR',
                     fontSize: 17,

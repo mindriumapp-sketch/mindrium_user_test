@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 🎨 알림 관련 팝업/바텀시트의 시각적 디자인 전용 위젯
 class NotificationAlertDesign {

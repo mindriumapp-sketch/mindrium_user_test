@@ -1,6 +1,6 @@
 // lib/features/3rd_treatment/week3_imagination.dart
 
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/chips_editor.dart';
 import 'week3_explain_alternative_thoughts.dart';
 

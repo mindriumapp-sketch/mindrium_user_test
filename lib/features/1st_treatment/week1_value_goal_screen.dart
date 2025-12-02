@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/menu/education/education_screen.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
@@ -76,8 +77,8 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '이 프로그램을 통해 불안을 관리하고 \n더 나은 삶을 만들어가시길 바랍니다.',
+            Text(
+              protectKoreanWords('이 프로그램을 통해 불안을 관리하고 \n더 나은 삶을 만들어가시길 바랍니다.'),
               style: TextStyle(
                 fontSize: 14.5,
                 color: Color(0xFF333333),
@@ -86,7 +87,7 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
             ),
             const SizedBox(height: 30),
             Text(
-              '$name님, 삶에서 가장 중요하게\n생각하는 가치는 무엇인가요?',
+              protectKoreanWords('$name님, 삶에서 가장 중요하게\n생각하는 가치는 무엇인가요?'),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

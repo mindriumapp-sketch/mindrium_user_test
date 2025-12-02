@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 뒤 파란 카드(outer) + 앞 컬러 카드(inner)가 겹치는 카드.
 /// - 제목을 상단에서 살짝 띄우는 옵션(titleTopGap)

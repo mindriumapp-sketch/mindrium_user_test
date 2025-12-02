@@ -1,6 +1,6 @@
 // lib/features/3rd_treatment/week3_visual_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_final_screen.dart';
 import 'package:gad_app_team/widgets/thought_card.dart';        // ThoughtCard / ThoughtType
 import 'package:gad_app_team/widgets/detail_popup.dart';        // 자세히 보기 팝업

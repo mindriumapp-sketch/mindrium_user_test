@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 💬 Mindrium ABC 튜토리얼 인라인 안내 메시지
 ///

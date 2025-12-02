@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 
 /// 하단 네비게이션 바 커스텀 위젯 (위쪽 둥근 모서리 적용)

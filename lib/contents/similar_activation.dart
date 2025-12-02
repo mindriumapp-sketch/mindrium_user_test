@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -238,7 +239,7 @@ class SimilarActivationVisualizer extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              content.isNotEmpty ? content : '내용이 없습니다.',
+              protectKoreanWords(content.isNotEmpty ? content : '내용이 없습니다.'),
               style: const TextStyle(
                 fontFamily: 'Noto Sans KR',
                 fontSize: 14.5,

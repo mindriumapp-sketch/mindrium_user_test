@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 // ✅ 공용 카드 레이아웃
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ApplyDesign

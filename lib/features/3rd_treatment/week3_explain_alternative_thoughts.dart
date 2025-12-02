@@ -1,9 +1,10 @@
 // lib/features/3rd_treatment/week3_explain_alternative_thoughts.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // <-- ApplyDesign
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_alternative_thoughts.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 
 class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
   final List<String> chips;
@@ -39,6 +40,13 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    const mainTextStyle = TextStyle(
+      fontSize: 15.5,
+      color: Colors.black87,
+      fontWeight: FontWeight.w500,
+      fontFamily: 'Noto Sans KR',
+      height: 1.6,
+    );
 
     /// ApplyDesign 이 전체 레이아웃(배경/앱바/카드/네비)을 처리
     return ApplyDesign(
@@ -55,8 +63,8 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
               children: [
                 Image.asset('assets/image/question_icon.png', width: 36, height: 36),
                 const SizedBox(height: 16),
-                const Text(
-                  '추가로 작성하신 불안한 상황을 보면서\n대체 생각이 무엇인지 배워 볼까요?',
+                Text(
+                  protectKoreanWords('추가로 작성하신 불안한 상황을 보면서\n대체 생각이 무엇인지 배워 볼까요?'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -70,33 +78,40 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
           const SizedBox(height: 28),
 
           /// 🧠 사용자 입력 강조 문장
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: "$userName님은 "),
-                if (chips.isNotEmpty)
-                  ...chips.map(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 4,
+            children: [
+              if (chips.isEmpty)
+                TextLine(
+                  "$userName님은 (이)라는 일이 일어날 것 같다고 상상했습니다.\n이제 이런 불안한 생각을 조금 더 도움이 되는 생각으로 바꿔볼 수 있을까요?",
+                  style: mainTextStyle,
+                )
+              else ...[
+                TextLine.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: '$userName님은 '),
+                      ...chips.map(
                         (e) => WidgetSpan(
-                      alignment: PlaceholderAlignment.middle,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 4.0, bottom: 2.0),
-                        child: highlightedText("'$e'"),
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.only(right: 4.0, bottom: 2.0),
+                            child: highlightedText("'$e'"),
+                          ),
+                        ),
                       ),
-                    ),
+                      const TextSpan(
+                        text:
+                            " (이)라는 일이 일어날 것 같다고 상상했습니다.\n이제 이런 불안한 생각을 조금 더 도움이 되는 생각으로 바꿔볼 수 있을까요?",
+                      ),
+                    ],
+                    style: mainTextStyle,
                   ),
-                const TextSpan(
-                  text:
-                  "(이)라는 일이 일어날 것 같다고 상상했습니다.\n이제 이런 불안한 생각을 조금 더 도움이 되는 생각으로 바꿔볼 수 있을까요?",
                 ),
               ],
-              style: const TextStyle(
-                fontSize: 15.5,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Noto Sans KR',
-                height: 1.6,
-              ),
-            ),
+            ],
           ),
           const SizedBox(height: 28),
 
@@ -105,7 +120,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
             TextSpan(
               children: [
                 const TextSpan(
-                  text: "예를 들어, 이런 불안한 생각이 있을 수 있어요:\n",
+                  text: "예를 들어, \n이런 불안한 생각이 있을 수 있어요:\n",
                   style: TextStyle(
                     fontSize: 15.5,
                     color: Colors.black87,
@@ -120,9 +135,6 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
                     child: Text.rich(
                       TextSpan(
                         children: [
-                          const WidgetSpan(
-                            child: Icon(Icons.format_quote, size: 18, color: Colors.indigo),
-                          ),
                           WidgetSpan(
                             child: highlightedText("'말을 버벅거려서 회의를 망칠 것 같다.'"),
                           ),
@@ -160,7 +172,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
           ),
           Center(
             child: Text(
-              "\n이제 위의 예시를 참고해서\n당신만의 대체 생각을 적어볼까요?",
+              protectKoreanWords("\n이제 위의 예시를 참고해서\n당신만의 대체 생각을 적어볼까요?"),
               style: TextStyle(
                 fontSize: 15.5,
                 color: Colors.indigo,

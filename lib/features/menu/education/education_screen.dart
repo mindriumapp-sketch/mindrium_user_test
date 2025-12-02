@@ -1,6 +1,6 @@
 // 📄 education_screen.dart (최종 확정본)
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/utils/edu_progress.dart';
 import 'package:gad_app_team/widgets/edu_progress_section.dart';

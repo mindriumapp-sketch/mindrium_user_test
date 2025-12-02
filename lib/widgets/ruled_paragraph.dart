@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 줄노트 스타일 문단: 각 줄 아래에 고정 폭(lineWidth)의 밑줄을 가운데 정렬로 그림
 /// 4주차 등등 상상해 보세요/생각해 보세요/떠올려 보세요 같은 카드 본문 내용에 들어가는 디자인 요소 (선택)

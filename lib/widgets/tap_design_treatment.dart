@@ -1,5 +1,5 @@
 // 🪸 Mindrium TreatmentDesign — 앱바 제거 + 깔끔한 배경 + 완료/잠금 스티커 & 단일 오픈 주차 대응
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 class TreatmentDesign extends StatelessWidget {
   final String appBarTitle;

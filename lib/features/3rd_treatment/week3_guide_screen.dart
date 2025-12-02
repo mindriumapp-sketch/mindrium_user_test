@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/top_btm_card.dart'; // ApplyDoubleCard, PanelHeader
 import 'package:gad_app_team/widgets/chips_editor.dart'; // 칩 입력 위젯
 import 'package:gad_app_team/features/3rd_treatment/week3_explain_alternative_thoughts.dart';

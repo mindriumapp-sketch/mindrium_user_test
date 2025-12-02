@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/abc_chips_design.dart';
 import 'package:gad_app_team/widgets/abc_step_card.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';

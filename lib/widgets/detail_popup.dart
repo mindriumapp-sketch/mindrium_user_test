@@ -1,5 +1,5 @@
 // lib/widgets/detail_popup.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 class DetailPopup extends StatelessWidget {
   final String title;

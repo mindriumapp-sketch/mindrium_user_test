@@ -1,5 +1,5 @@
 // card_injector.dart
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// 🩵 카드 스타일을 통일하고, 기능 코드와 분리하기 위한 디자인 래퍼 위젯.
 /// 기능은 외부에서 child 로 전달받음.

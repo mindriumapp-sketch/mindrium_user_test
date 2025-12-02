@@ -11,7 +11,7 @@
 //   gad_app_team/widgets/inner_btn_card.dart → 카드형 2버튼 UI(InnerBtnCardScreen) 사용
 
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 
 class RelaxOrAlternativePage extends StatelessWidget {

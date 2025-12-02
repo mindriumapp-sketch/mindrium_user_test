@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 class CustomPopupDesign extends StatefulWidget {
   final String title;
@@ -74,7 +74,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                TextLine(
                   widget.title,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -136,16 +136,14 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                     ),
                   )
                 else
-                  RichText(
+                  TextLine(
+                    widget.message,
                     textAlign: TextAlign.center,
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontFamily: 'NotoSansKR',
-                        fontSize: 15,
-                        color: Color(0xFF356D91),
-                        height: 1.5,
-                      ),
-                      children: [TextSpan(text: widget.message)],
+                    style: const TextStyle(
+                      fontFamily: 'NotoSansKR',
+                      fontSize: 15,
+                      color: Color(0xFF356D91),
+                      height: 1.5,
                     ),
                   ),
 
@@ -251,7 +249,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                   : const BorderSide(color: Color(0xFF74D2FF), width: 1.2),
         ),
       ),
-      child: Text(
+      child: TextLine(
         label,
         style: const TextStyle(
           fontFamily: 'NotoSansKR',
@@ -295,7 +293,7 @@ class _FoldedMemoTag extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
+            child: TextLine(
               text!,
               textAlign: TextAlign.center,
               style: const TextStyle(

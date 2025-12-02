@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// ✅ 칩 데이터 구조 (디자인에서 자체 정의)
 class GridItem {

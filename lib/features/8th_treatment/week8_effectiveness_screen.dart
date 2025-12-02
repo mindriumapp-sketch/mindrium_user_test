@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_schedule_screen.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';

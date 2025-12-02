@@ -12,7 +12,7 @@
 // //   gad_app_team/widgets/inner_btn_card.dart → 카드형 2버튼 UI 위젯 (InnerBtnCardScreen)
 
 // import 'dart:math' as math;
-// import 'package:flutter/material.dart';
+// import 'package:gad_app_team/utils/text_line_material.dart';
 // import 'package:gad_app_team/widgets/inner_btn_card.dart'; // ← 네가 만든 위젯 import
 
 // class TrainingSelect extends StatelessWidget {

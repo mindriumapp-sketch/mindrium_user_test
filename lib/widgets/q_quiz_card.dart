@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 
 // 퀴즈 부분에 쓰이는 위젯입니당!
 

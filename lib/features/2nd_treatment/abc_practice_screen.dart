@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_input_screen.dart';
+import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/common/constants.dart';
 
@@ -33,11 +34,11 @@ class AbcPracticeScreen extends StatelessWidget {
       onNext: () => _goNext(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
+        children: [
           Icon(Icons.psychology_alt, size: 64, color: AppColors.indigo),
           SizedBox(height: 28),
           Text(
-            descriptionText,
+            protectKoreanWords(descriptionText),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Noto Sans KR',
