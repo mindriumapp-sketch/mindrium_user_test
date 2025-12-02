@@ -273,8 +273,10 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
                           _behaviorList[_currentIdx];
                         });
                       } else {
+                        final navigator = Navigator.of(context);
                         // 🔥 마지막일 때만 저장하고 → 시각화 화면으로 이동
                         await _saveBehaviorClassifications();
+                        if (!mounted) return;
 
                         // 시각화용 리스트 만들기
                         final List<String> avoidList = [];
@@ -290,8 +292,7 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
 
                         if (!mounted) return;
 
-                        Navigator.push(
-                          context,
+                        navigator.push(
                           PageRouteBuilder(
                             pageBuilder: (_, __, ___) =>
                                 Week6VisualScreen(

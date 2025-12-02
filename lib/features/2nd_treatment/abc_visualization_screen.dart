@@ -67,12 +67,6 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   Widget build(BuildContext context) {
     return MemoFullDesign(
       appBarTitle: '2주차 - ABC 모델',
-      child: Column(
-        children: [
-          if (_showFeedback) _buildFeedbackCard(context),
-          if (!_showFeedback) _buildAbcFlowDiagram(),
-        ],
-      ),
       onBack: () {
         if (!_showFeedback) {
           setState(() => _showFeedback = true);
@@ -97,6 +91,12 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
               ? '저장 중...'
               : '저장',
       memoHeight: MediaQuery.of(context).size.height * 0.67,
+      child: Column(
+        children: [
+          if (_showFeedback) _buildFeedbackCard(context),
+          if (!_showFeedback) _buildAbcFlowDiagram(),
+        ],
+      ),
     );
   }
 
@@ -131,7 +131,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
             width: 200,
             height: 2,
             decoration: BoxDecoration(
-              color: Colors.black26.withOpacity(0.2),
+              color: Colors.black26.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -175,6 +175,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   // 🔹 FastAPI 기반 저장 로직
   // ──────────────────────────────────────────────
   Future<void> _handleSave(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
     if (_isSaving) return;
     setState(() => _isSaving = true);
 
@@ -215,7 +216,8 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
       }
 
       // 🗺️ 위치 동의 받기
-      final bool consent = await _requestLocationConsent(context);
+      final bool consent = await _requestLocationConsent();
+      if (!mounted) return;
 
       Position? pos;
       if (consent) {
@@ -262,16 +264,12 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
 
       if (!mounted) return;
       _showSavedPopup(
-        context,
         diaryId: createdDiaryId,
         label: activatingEvents,
       );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("저장 실패: $e")));
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text("저장 실패: $e")));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -280,7 +278,8 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   // ──────────────────────────────────────────────
   // 📍 위치 정보 동의 팝업 (Mindrium 스타일)
   // ──────────────────────────────────────────────
-  Future<bool> _requestLocationConsent(BuildContext context) async {
+  Future<bool> _requestLocationConsent() async {
+    if (!mounted) return false;
     bool consent = false;
 
     await showDialog(
@@ -314,7 +313,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   // ──────────────────────────────────────────────
   // ✅ 저장 완료 안내 팝업
   // ──────────────────────────────────────────────
-  void _showSavedPopup(BuildContext context, {String? diaryId, String? label}) {
+  void _showSavedPopup({String? diaryId, String? label}) {
     final resolvedDiaryId = diaryId ?? widget.abcId;
     final resolvedLabel =
         label ?? widget.activatingEventChips.map((e) => e.label).join(', ');

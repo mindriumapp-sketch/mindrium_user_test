@@ -97,10 +97,10 @@ class _SessionTile extends StatelessWidget {
     final mins = totalSeconds ~/ 60;
     final secs = totalSeconds % 60;
     final durationLabel = mins > 0 && secs > 0
-        ? '${mins}분 ${secs}초'
+        ? '$mins분 $secs초'
         : mins > 0
-            ? '${mins}분'
-            : '${secs}초';
+            ? '$mins분'
+            : '$secs초';
 
     return Container(
       padding: const EdgeInsets.all(16),

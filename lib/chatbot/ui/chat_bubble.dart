@@ -24,8 +24,8 @@ class ChatBubble extends StatelessWidget {
 
     // 🎨 배경색 구분 강화
     final Color bg = isNotice
-        ? scheme.surfaceVariant
-        : (isAi ? scheme.surfaceVariant : scheme.primaryContainer.withOpacity(0.9));
+        ? scheme.surfaceContainerHighest
+        : (isAi ? scheme.surfaceContainerHighest : scheme.primaryContainer.withValues(alpha: 0.9));
 
     // 헤더 제거 로직 가드: 해당 문자열로 "시작하는 경우"에만 제거
     final String displayText = text.startsWith('--- 세션 요약 ---')

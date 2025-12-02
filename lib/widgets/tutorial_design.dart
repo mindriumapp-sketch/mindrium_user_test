@@ -38,61 +38,63 @@ class ApplyDesign extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           /// 🌊 배경 이미지
-          Opacity(opacity: 0.35,
+          Opacity(
+            opacity: 0.35,
             child: Image.asset(
               'assets/image/eduhome.png',
               fit: BoxFit.cover,
               filterQuality: FilterQuality.high,
-            ),),
+            ),
+          ),
 
-      /// 💠 본문 (로그인 스타일 구조)
-      SafeArea(
-        child: Column(
-          children: [
-            // 위쪽: 남은 공간 전부 차지
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 34,
-                    vertical: 24,
-                  ),
-                  child: BlueWhiteCard(
-                    maxWidth: maxCardWidth,
-                    title: cardTitle,
-                    titleStyle: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF263C69),
+          /// 💠 본문 (로그인 스타일 구조)
+          SafeArea(
+            child: Column(
+              children: [
+                // 위쪽: 남은 공간 전부 차지
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 34,
+                        vertical: 24,
+                      ),
+                      child: BlueWhiteCard(
+                        maxWidth: maxCardWidth,
+                        title: cardTitle,
+                        titleStyle: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF263C69),
+                        ),
+                        outerColor: Colors.transparent,
+                        outerRadius: 22,
+                        outerExpand: EdgeInsets.zero,
+                        innerColor: Colors.white,
+                        innerRadius: 20,
+                        innerPadding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
+                        dividerColor: const Color(0xFFE8EDF4),
+                        dividerWidth: 240,
+                        titleTopGap: 10,
+                        child: child,
+                      ),
                     ),
-                    outerColor: Colors.transparent,
-                    outerRadius: 22,
-                    outerExpand: EdgeInsets.zero,
-                    innerColor: Colors.white,
-                    innerRadius: 20,
-                    innerPadding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
-                    dividerColor: const Color(0xFFE8EDF4),
-                    dividerWidth: 240,
-                    titleTopGap: 10,
-                    child: child,
                   ),
                 ),
-              ),
-            ),
 
-            // 아래: 항상 바닥에 붙는 네비게이션
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-              child: NavigationButtons(
-                onBack: onBack,
-                onNext: onNext,
-                rightLabel: rightLabel,
-              ),
+                // 아래: 항상 바닥에 붙는 네비게이션
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: NavigationButtons(
+                    onBack: onBack,
+                    onNext: onNext,
+                    rightLabel: rightLabel,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      ],
+          ),
+        ],
       ),
     );
   }
@@ -110,7 +112,7 @@ Widget buildRelieveResultCard({
   return Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const SizedBox(height: 8,),
+      const SizedBox(height: 8),
       Image.asset(
         'assets/image/think_blue.png',
         height: 160,
@@ -123,7 +125,7 @@ Widget buildRelieveResultCard({
         duration: const Duration(milliseconds: 400),
         child: RuledParagraph(
           key: ValueKey(showMainText),
-          text: showMainText ? userName + '님, ' + mainText : subText,
+          text: showMainText ? '$userName님, $mainText' : subText,
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w500,
@@ -148,7 +150,7 @@ Widget buildRelieveResultCard({
       //   height: 72,
       //   decoration: BoxDecoration(
       //     shape: BoxShape.circle,
-      //     color: const Color(0xFF5B3EFF).withOpacity(0.1),
+      //     color: const Color(0xFF5B3EFF).withValues(alpha: 0.1),
       //   ),
       //   child: const Icon(
       //     Icons.psychology_alt_rounded,

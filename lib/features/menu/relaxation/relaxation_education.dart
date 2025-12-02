@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:rive/rive.dart' as rive;
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';

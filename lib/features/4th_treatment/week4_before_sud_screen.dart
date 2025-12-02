@@ -60,21 +60,25 @@ class _Week4BeforeSudScreenState extends State<Week4BeforeSudScreen> {
       cardTitle: '지금 느끼는 불안 정도를\n선택해 주세요',
       onBack: () => Navigator.pop(context),
       onNext: () async {
+        final navigator = Navigator.of(context);
+        final messenger = ScaffoldMessenger.of(context);
         setState(() => _isLoading = true);
         final beforeSudValue = _sud;
         try {
           // 4주차는 Before SUD를 저장하지 않고, After SUD에서만 저장
           final actualBList = await _fetchBList();
+          if (!mounted) return;
+
           if (actualBList.isEmpty) {
             setState(() => _isLoading = false);
             if (!mounted) return;
-            BlueBanner.show(context, 'B(생각) 데이터가 없습니다.');
+            BlueBanner.show(messenger.context, 'B(생각) 데이터가 없습니다.');
             return;
           }
+
           setState(() => _isLoading = false);
           if (!mounted) return;
-          Navigator.push(
-            context,
+          navigator.push(
             PageRouteBuilder(
               pageBuilder: (_, __, ___) => Week4ConcentrationScreen(
                 bListInput: actualBList,
@@ -86,9 +90,9 @@ class _Week4BeforeSudScreenState extends State<Week4BeforeSudScreen> {
             ),
           );
         } catch (e) {
-          setState(() => _isLoading = false);
           if (!mounted) return;
-          BlueBanner.show(context, 'B(생각) 불러오기 실패 : ${e.toString()}');
+          setState(() => _isLoading = false);
+          BlueBanner.show(messenger.context, 'B(생각) 불러오기 실패 : ${e.toString()}');
         }
       },
 
@@ -141,9 +145,9 @@ class _Week4BeforeSudScreenState extends State<Week4BeforeSudScreen> {
               activeTickMarkColor: Colors.transparent,
               inactiveTickMarkColor: Colors.transparent,
               activeTrackColor: _trackColor,
-              inactiveTrackColor: _trackColor.withOpacity(0.25),
+              inactiveTrackColor: _trackColor.withValues(alpha: 0.25),
               thumbColor: _trackColor,
-              overlayColor: _trackColor.withOpacity(0.18),
+              overlayColor: _trackColor.withValues(alpha: 0.18),
               showValueIndicator: ShowValueIndicator.never,
             ),
             child: Slider(

@@ -1,6 +1,7 @@
 // lib/services/gpt_api.dart
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// ⚠️ 개발용 키는 코드에 직접 포함하지 말고,
@@ -89,14 +90,14 @@ class GptApi {
         }
         return [];
       } else {
-        print('❌ 임베딩 API 오류: ${response.statusCode} ${response.body}');
+        debugPrint('❌ 임베딩 API 오류: ${response.statusCode} ${response.body}');
         return [];
       }
     } on TimeoutException {
-      print('❌ 임베딩 요청 시간 초과');
+      debugPrint('❌ 임베딩 요청 시간 초과');
       return [];
     } catch (e) {
-      print('❌ 임베딩 요청 중 오류: $e');
+      debugPrint('❌ 임베딩 요청 중 오류: $e');
       return [];
     }
   }

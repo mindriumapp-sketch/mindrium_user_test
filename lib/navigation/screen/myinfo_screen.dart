@@ -88,12 +88,14 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
         valueGoalController.text = '';
       }
     } on DioException catch (e) {
+      if (!mounted) return;
       final message =
           e.response?.data is Map
               ? e.response?.data['detail']?.toString()
               : e.message;
       BlueBanner.show(context, message ?? '내 정보를 불러오지 못했어요.');
     } catch (e) {
+      if (!mounted) return;
       BlueBanner.show(context, '내 정보를 불러오지 못했어요.');
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -152,10 +154,10 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
     }
 
     try {
+      final userProvider = context.read<UserProvider>();
       if (trimmedName.isNotEmpty) {
         await _usersApi.updateMe({'name': trimmedName});
-        final provider = context.read<UserProvider>();
-        provider.updateUserName(trimmedName);
+        userProvider.updateUserName(trimmedName);
       }
 
       if (valueGoal.isNotEmpty) {
@@ -167,6 +169,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
           currentPassword: currentPw,
           newPassword: newPw,
         );
+        if (!mounted) return;
         _showSnack('비밀번호가 변경되었습니다. 다시 로그인해주세요.');
         await _authApi.logout();
         if (!mounted) return;
@@ -180,12 +183,14 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
         showPasswordFields = false;
       });
     } on DioException catch (e) {
+      if (!mounted) return;
       final message =
           e.response?.data is Map
               ? e.response?.data['detail']?.toString()
               : e.message;
       _showSnack('업데이트 실패: ${message ?? '오류가 발생했습니다.'}');
     } catch (e) {
+      if (!mounted) return;
       _showSnack('업데이트 실패: $e');
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -193,6 +198,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
   }
 
   void _showSnack(String text) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
@@ -233,7 +239,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
             fontFamily: 'Noto Sans KR',
           ),
         ),
-        backgroundColor: Colors.white.withOpacity(0.8),
+        backgroundColor: Colors.white.withValues(alpha: 0.8),
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: deepNavy),
@@ -528,12 +534,12 @@ class _MyInfoScreenState extends State<MyInfoScreen> with WidgetsBindingObserver
     final mins = totalSeconds ~/ 60;
     final secs = totalSeconds % 60;
     if (mins > 0 && secs > 0) {
-      return '${mins}분 ${secs}초';
+      return '$mins분 $secs초';
     }
     if (mins > 0) {
-      return '${mins}분';
+      return '$mins분';
     }
-    return '${secs}초';
+    return '$secs초';
   }
 
   Widget _buildTextField({

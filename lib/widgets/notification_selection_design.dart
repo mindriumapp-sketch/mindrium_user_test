@@ -1,5 +1,4 @@
 // 🪸 Mindrium NotificationSelectionDesign — TreatmentDesign 구조 호환 버전
-import 'dart:ui';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 import 'package:gad_app_team/widgets/tap_design.dart';
@@ -187,12 +186,12 @@ class _NotificationSelectionBody extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.25),
+          color: Colors.white.withValues(alpha: 0.25),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white24, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 6),
             ),

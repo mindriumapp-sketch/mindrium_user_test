@@ -180,6 +180,7 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
           setState(() => _showSituation = false);
           return;
         }
+        final navigator = Navigator.of(context);
         // 1) 새로 입력한 불안 생각을 일기 belief에 누적 + 커스텀 태그 저장
         try {
           final newThoughts = widget.isFromAnxietyScreen ? widget.addedAnxietyThoughts : <String>[];
@@ -208,8 +209,8 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
         } catch (_) {}
 
         // 2) 다음 화면 이동
-        Navigator.push(
-          context,
+        if (!mounted) return;
+        navigator.push(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => Week4ClassificationScreen(
               bListInput: widget.isFromAnxietyScreen

@@ -84,7 +84,7 @@ class MemoFullDesign extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
+                              color: Colors.black.withValues(alpha: 0.08),
                               blurRadius: 8,
                               offset: const Offset(0, 6),
                             ),
@@ -144,7 +144,7 @@ class MemoImageWithText extends StatelessWidget {
         Container(
           height: 1,
           width: double.infinity,
-          color: Colors.black.withOpacity(0.1),
+          color: Colors.black.withValues(alpha: 0.1),
           margin: const EdgeInsets.symmetric(vertical: 12),
         ),
 
@@ -386,7 +386,7 @@ class _InlineHighlightPainter extends CustomPainter {
       textWidthBasis: TextWidthBasis.parent,
     )..layout(maxWidth: maxWidth);
 
-    final paint = Paint()..color = highlightColor.withOpacity(0.8);
+    final paint = Paint()..color = highlightColor.withValues(alpha: 0.8);
 
     // 🔹 줄(line)별로 left/right를 합치기 위한 맵
     final Map<double, Rect> lineRects = {};

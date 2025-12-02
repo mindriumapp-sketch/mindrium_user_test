@@ -12,7 +12,7 @@ class PokemonBattleDeletePage extends StatefulWidget {
   final String? characterDescription;
   final VoidCallback? onGoArchive;
 
-  PokemonBattleDeletePage({
+  const PokemonBattleDeletePage({
     super.key,
     required this.groupId,
     this.characterName,
@@ -21,8 +21,7 @@ class PokemonBattleDeletePage extends StatefulWidget {
   });
 
   @override
-  _PokemonBattleDeletePageState createState() =>
-      _PokemonBattleDeletePageState();
+  State<PokemonBattleDeletePage> createState() => _PokemonBattleDeletePageState();
 }
 
 class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
@@ -56,7 +55,6 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
   // ========== 음성인식 ==========
   late final CharacterBattleAsr _voice;
   bool _listening = false;
-  String _recognized = '';
   DateTime? _listenStartedAt;
 
   // ========== 말풍선 ==========
@@ -307,7 +305,6 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     // 바로 listening 시작
     setState(() {
       _listening = true;
-      _recognized = '';
     });
 
     _listenStartedAt = DateTime.now();
@@ -318,16 +315,12 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         localeId: 'ko_KR',
         listenFor: const Duration(seconds: 30),
         pauseFor: const Duration(seconds: 5),
-        onPartial: (t) {
+        onPartial: (_) {
           if (!mounted) return;
-          setState(() => _recognized = t);
         },
         onFinal: (t) async {
           if (!mounted) return;
-          setState(() {
-            _recognized = t;
-            _listening = false;
-          });
+          setState(() => _listening = false);
 
           final trimmed = t.trim();
           if (trimmed.isNotEmpty) {
@@ -371,7 +364,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         SnackBar(
           content: Text('❌ "$text"와(과) 일치하는 스킬을 찾지 못했습니다'),
           duration: const Duration(seconds: 2),
-          backgroundColor: Colors.redAccent.withOpacity(0.9),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.9),
         ),
       );
       return;
@@ -400,7 +393,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
-        backgroundColor: Colors.black.withOpacity(0.85),
+        backgroundColor: Colors.black.withValues(alpha: 0.85),
       ),
     );
   }
@@ -463,7 +456,6 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
 
     const bgImage = 'assets/image/battle_scene_bg.png';
     final myChar = 'assets/image/men.png';
-    final target = 'assets/image/character${widget.groupId}.png';
 
     return Scaffold(
       appBar: AppBar(
@@ -486,7 +478,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
           if (_isDefeated)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.92),
+                color: Colors.black.withValues(alpha: 0.92),
                 child: _buildVictoryScene(),
               ),
             ),
@@ -504,7 +496,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 65, 79, 79).withOpacity(0.4),
+          color: const Color.fromARGB(255, 65, 79, 79).withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -529,7 +521,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         width: 150,
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E).withOpacity(0.85),
+          color: const Color(0xFF1E1E1E).withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -561,7 +553,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     return Container(
       height: 12,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
+        color: Colors.white.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(10),
       ),
       child: FractionallySizedBox(
@@ -648,13 +640,13 @@ String _getCharacterImage() {
   final id = widget.groupId;
 
   if (_maxHp == 0) {
-    return 'assets/image/character${id}.png';
+    return 'assets/image/character$id.png';
   }
 
   double ratio = _targetHp / _maxHp;
 
   if (ratio > 2 / 3) {
-    return 'assets/image/character${id}.png';          // 기본 표정
+    return 'assets/image/character$id.png';          // 기본 표정
   } else if (ratio > 1 / 3) {
     return 'assets/image/character${id}_mid.png';      // 중간 데미지
   } else {
@@ -671,7 +663,7 @@ String _getCharacterImage() {
       child: ClipOval(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-          color: (backgroundColor ?? Colors.white).withOpacity(0.95),
+          color: (backgroundColor ?? Colors.white).withValues(alpha: 0.95),
           child: Text(
             text,
             textAlign: TextAlign.center,
@@ -708,8 +700,8 @@ String _getCharacterImage() {
           height: 120,
           decoration: BoxDecoration(
             color: _listening
-                ? const Color(0xFF56E0C6).withOpacity(0.9)
-                : const Color.fromARGB(255, 65, 79, 79).withOpacity(0.8),
+                ? const Color(0xFF56E0C6).withValues(alpha: 0.9)
+                : const Color.fromARGB(255, 65, 79, 79).withValues(alpha: 0.8),
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white30),
           ),
@@ -746,7 +738,7 @@ String _getCharacterImage() {
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 65, 79, 79).withOpacity(0.4),
+          color: const Color.fromARGB(255, 65, 79, 79).withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(

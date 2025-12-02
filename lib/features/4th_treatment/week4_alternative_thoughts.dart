@@ -105,6 +105,7 @@ class _Week4AlternativeThoughtsScreenState
         onBack: () => Navigator.pop(context),
         onNext: _chips.isNotEmpty
             ? () async {
+                final navigator = Navigator.of(context);
                 final routeArgs =
                     ModalRoute.of(context)?.settings.arguments as Map? ?? {};
                 final String? originArg =
@@ -134,8 +135,8 @@ class _Week4AlternativeThoughtsScreenState
                         : '');
 
                 if (originArg == 'apply') {
-                  Navigator.pushReplacement(
-                    context,
+                  if (!mounted) return;
+                  navigator.pushReplacement(
                     PageRouteBuilder(
                       pageBuilder: (_, __, ___) =>
                           Week4ClassificationResultScreen(
@@ -166,8 +167,8 @@ class _Week4AlternativeThoughtsScreenState
                 }
 
                 // 기본 흐름: 표시 화면
-                Navigator.push(
-                  context,
+                if (!mounted) return;
+                navigator.push(
                   PageRouteBuilder(
                     pageBuilder: (_, __, ___) =>
                         Week4AlternativeThoughtsDisplayScreen(
@@ -227,7 +228,7 @@ class _Week4AlternativeThoughtsScreenState
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -271,7 +272,7 @@ class _Week4AlternativeThoughtsScreenState
         ),
 
         // 하단 패널 배경 톤
-        btmcardColor: const Color(0xFF7DD9E8).withOpacity(0.35),
+        btmcardColor: const Color(0xFF7DD9E8).withValues(alpha: 0.35),
       ),
     );
   }

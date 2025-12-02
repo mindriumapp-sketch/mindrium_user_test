@@ -4,7 +4,6 @@ import 'package:gad_app_team/widgets/inner_btn_card.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
 
 /// 💡 Mindrium 스타일: 비슷한 상황 확인 화면
 /// 앞쪽은 InnerBtnCardScreen 구조로 감싸고,
@@ -23,7 +22,6 @@ class SimilarActivationScreen extends StatelessWidget {
     final tokens = TokenStorage();
     final apiClient = ApiClient(tokens: tokens);
     final diariesApi = DiariesApi(apiClient);
-    final userDataApi = UserDataApi(apiClient);
 
     return InnerBtnCardScreen(
       appBarTitle: '비슷한 상황 확인',
