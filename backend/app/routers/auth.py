@@ -7,6 +7,8 @@ from pymongo.errors import DuplicateKeyError
 
 from core.config import get_settings
 from db.mongo import get_db
+from routers.custom_tags import ensure_default_custom_tags
+from routers.worry_groups import ensure_default_worry_group
 from schemas.auth import (
     TokenPair,
     SignupRequest,
@@ -34,7 +36,7 @@ from core.security import (
 
 settings = get_settings()
 # NOTE: codes 컬렉션과 기본 그룹 생성을 signup에서 처리하여 Flutter 쪽 로직 단순화.
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth")
 
 
 @router.post("/signup", response_model=TokenPair)
@@ -59,7 +61,6 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
         "password_hash": hash_password(payload.password),
         "survey_completed": False,
         "surveys": [],
-        "week_progress": [],
         "email_verified": False,
         "created_at": now,
     }
@@ -70,6 +71,9 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
     except DuplicateKeyError:
         # 동시 가입 등으로 유니크 인덱스에 걸린 경우
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    await ensure_default_custom_tags(db, user_id)
+    await ensure_default_worry_group(db, user_id)
 
     # Refresh token 저장 (hash)
     sub = str(obj_id)

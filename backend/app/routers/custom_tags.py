@@ -8,7 +8,7 @@ from core.security import get_current_user_id
 from core.utils import parse_datetime_value, ensure_utc
 from db.mongo import get_db
 from pymongo import ReturnDocument
-from routers.diaries import update_diary_chip_category  # 일기 컬렉션 category 업데이트용
+from routers.diaries import update_diary_chip_category, merge_unique_str_list  # 일기 컬렉션 업데이트용
 
 from schemas.custom_tag import (
     CustomTagCreate,
@@ -23,12 +23,62 @@ from schemas.custom_tag import (
 
 router = APIRouter(prefix="/custom-tags", tags=["custom-tags"])
 CUSTOM_TAG_COLLECTION = "custom_tags"
+DIARY_COLLECTION = "diaries"
 
+
+PRESET_TAGS = [
+    {"type": "A", "label": "회의"},
+    {"type": "A", "label": "수업"},
+    {"type": "A", "label": "모임"},
+    {"type": "B", "label": "사람들이 나를 안 좋게 볼 거야"},
+    {"type": "B", "label": "실수하면 큰일 나"},
+    {"type": "B", "label": "비난받을까 봐 두려워"},
+    {"type": "CP", "label": "두근거림"},
+    {"type": "CP", "label": "메스꺼움"},
+    {"type": "CP", "label": "식은땀"},
+    {"type": "CP", "label": "불면"},
+    {"type": "CE", "label": "불안"},
+    {"type": "CE", "label": "분노"},
+    {"type": "CE", "label": "슬픔"},
+    {"type": "CE", "label": "두려움"},
+    {"type": "CA", "label": "결석"},
+    {"type": "CA", "label": "전화 안 받기"},
+    {"type": "CA", "label": "약속 피하기"},
+    {"type": "CA", "label": "시선 피하기"},
+]
+
+async def ensure_default_custom_tags(db, user_id: str):
+  collection = db[CUSTOM_TAG_COLLECTION]
+  now_utc = datetime.now(timezone.utc)
+
+  for p in PRESET_TAGS:
+    exists = await collection.find_one({
+      "user_id": user_id,
+      "type": p["type"],
+      "label": p["label"],
+      "is_preset": True,
+    })
+
+    if exists:
+      continue
+
+    doc = {
+      "user_id": user_id,
+      "chip_id": f"preset_{p['type']}_{uuid.uuid4().hex[:8]}",
+      "label": p["label"],
+      "type": p["type"],
+      "is_preset": True,
+      "deleted": False,
+      "created_at": now_utc,
+      "updated_at": now_utc,
+      "client_timestamp": now_utc,
+    }
+    await collection.insert_one(doc)
 
 # ---------- 공통 직렬화 ----------
 
-def _serialize_tag(doc: dict) -> dict:
-    return {
+def _serialize_tag(doc: dict, include_logs: bool = True) -> dict:
+    base = {
         "chip_id": doc.get("chip_id"),
         "label": doc.get("label", ""),
         "type": doc.get("type"),
@@ -38,6 +88,20 @@ def _serialize_tag(doc: dict) -> dict:
         "updated_at": parse_datetime_value(doc.get("updated_at")),
     }
 
+    # summary_flag == True일 땐 이 부분 스킵
+    if include_logs:
+        base["real_oddness_logs"] = [
+            RealOddnessLogResponse(**_serialize_real_oddness_log(raw))
+            for raw in (doc.get("real_oddness_logs") or [])
+            if isinstance(raw, dict)
+        ]
+        base["category_logs"] = [
+            CategoryLogResponse(**_serialize_category_log(raw))
+            for raw in (doc.get("category_logs") or [])
+            if isinstance(raw, dict)
+        ]
+
+    return base
 
 def _serialize_real_oddness_log(raw: dict) -> dict:
     return {
@@ -84,10 +148,9 @@ async def create_custom_tag(
     now_utc = datetime.now(timezone.utc)
     client_ts_utc = ensure_utc(payload.client_timestamp)
 
-    # chip_id는 클라에서 생성해 온다고 가정
     doc = {
         "user_id": user_id,
-        "chip_id": payload.chip_id,
+        "chip_id": f"chip_{uuid.uuid4().hex[:8]}",
         "label": payload.label,
         "type": payload.type,
         "is_preset": payload.is_preset,
@@ -115,6 +178,10 @@ async def list_custom_tags(
         default=False,
         description="삭제된 태그까지 포함할지 여부",
     ),
+    summary_flag: bool = Query(
+        default=False,
+        description="요약용 플래그. true면 real_oddness_logs / category_logs 를 응답에서 제외",
+    ),
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
@@ -126,10 +193,21 @@ async def list_custom_tags(
     if not include_deleted:
         query["deleted"] = False
 
-    cursor = collection.find(query).sort("created_at", 1)
+    # summary_flag면 아예 Mongo에서부터 로그 필드 빼고 가져오기 (payload 줄이기)
+    projection = None
+    if summary_flag:
+        projection = {
+            "real_oddness_logs": 0,
+            "category_logs": 0,
+        }
+
+    cursor = collection.find(query, projection=projection).sort("created_at", 1)
     docs = await cursor.to_list(length=None)
 
-    return [CustomTagResponse(**_serialize_tag(d)) for d in docs]
+    return [
+        CustomTagResponse(**_serialize_tag(d, include_logs=not summary_flag))
+        for d in docs
+    ]
 
 
 @router.get(
@@ -259,6 +337,8 @@ async def create_real_oddness_log(
         raise HTTPException(status_code=400, detail="chip_id가 일치하지 않습니다")
 
     collection = db[CUSTOM_TAG_COLLECTION]
+    diaries = db[DIARY_COLLECTION]
+
     now_utc = datetime.now(timezone.utc)
 
     log_id = f"ro_{uuid.uuid4().hex[:8]}"
@@ -284,6 +364,26 @@ async def create_real_oddness_log(
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="태그를 찾을 수 없습니다")
+
+    # 2) diaries.alternative_thoughts 누적 (중복 제거 + 순서 유지)
+    if payload.alternative_thought:
+        diary = await diaries.find_one(
+            {"user_id": user_id, "diary_id": payload.diary_id},
+            {"alternative_thoughts": 1},
+        )
+        if diary:
+            existing = diary.get("alternative_thoughts", [])
+            merged = merge_unique_str_list(existing, [payload.alternative_thought])
+
+            await diaries.update_one(
+                {"user_id": user_id, "diary_id": payload.diary_id},
+                {
+                    "$set": {
+                        "alternative_thoughts": merged,
+                        "updated_at": now_utc,
+                    }
+                },
+            )
 
     return RealOddnessLogResponse(**_serialize_real_oddness_log(log_doc))
 

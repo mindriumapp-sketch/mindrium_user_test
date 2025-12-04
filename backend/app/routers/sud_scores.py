@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from pymongo import ReturnDocument
 
 from core.security import get_current_user_id
@@ -17,7 +17,7 @@ from schemas.sud import (
     DailySUDStats,
 )
 
-router = APIRouter(prefix="/sud-scores", tags=["sud_scores"])
+router = APIRouter(prefix="/sud-scores")
 
 DIARY_COLLECTION = "diaries"
 
@@ -294,6 +294,101 @@ async def update_sud_score(
         raise HTTPException(status_code=500, detail="Updated SUD entry not found in document")
 
     return SudScoreResponse(**serialize_sud(updated_sud_entry, diary_id=diary_id))
+
+
+@router.delete("/{diary_id}/{sud_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sud_score(
+        diary_id: str,
+        sud_id: str,
+        db=Depends(get_db),
+        user_id: str = Depends(get_current_user_id),
+):
+    """
+    SUD 기록 하드 삭제.
+    - **마지막 SUD 항목만 삭제 가능**
+    - 삭제 후 latest_sud 재계산
+    - worry_group.sud_sum 에도 delta 반영
+    """
+    collection = db[DIARY_COLLECTION]
+
+    # 마지막 2개만 가져와서:
+    #   - 진짜 마지막 sud_id가 맞는지 확인
+    #   - 삭제 후 latest_sud가 될 값(두 번째 마지막) 계산
+    diary = await collection.find_one(
+        {"user_id": user_id, "diary_id": diary_id},
+        {
+            "sud_scores": {"$slice": -2},  # 마지막 2개만
+            "group_id": 1,
+            "latest_sud": 1,
+        },
+    )
+    if not diary:
+        raise HTTPException(status_code=404, detail="Diary not found")
+
+    sud_scores = diary.get("sud_scores") or []
+    if not sud_scores:
+        raise HTTPException(status_code=404, detail="SUD record not found")
+
+    # 마지막 엔트리
+    last_entry = sud_scores[-1]
+    if last_entry.get("sud_id") != sud_id:
+        # 중간/과거 SUD는 삭제 막기
+        raise HTTPException(
+            status_code=400,
+            detail="마지막 SUD 항목만 삭제할 수 있습니다.",
+        )
+
+    now_utc = datetime.now(timezone.utc)
+
+    # 삭제 전 latest_sud 값
+    old_latest = parse_sud_value(diary.get("latest_sud")) or 0
+
+    # 삭제 후 latest_sud 값 = 두 번째 마지막 엔트리(or 0)
+    if len(sud_scores) >= 2:
+        prev_entry = sud_scores[-2]
+        new_latest = _compute_new_sud_value(
+            before=prev_entry.get("before_sud"),
+            after=prev_entry.get("after_sud"),
+        )
+    else:
+        # 삭제하면 sud_scores가 비게 되는 경우
+        new_latest = 0
+
+    delta = new_latest - old_latest
+
+    # 실제 삭제: 배열의 마지막 원소 pop + latest_sud/updated_at 갱신
+    updated_doc = await collection.find_one_and_update(
+        {
+            "user_id": user_id,
+            "diary_id": diary_id,
+            "sud_scores.sud_id": sud_id,  # 안전장치
+        },
+        {
+            "$pop": {"sud_scores": 1},  # 마지막 요소 제거
+            "$set": {
+                "latest_sud": new_latest,
+                "updated_at": now_utc,
+                # client_timestamp는 굳이 건드리지 않고 둔다
+            },
+        },
+        projection={"group_id": 1},
+        return_document=ReturnDocument.AFTER,
+    )
+
+    if not updated_doc:
+        # 거의 race condition일 때만 발생
+        raise HTTPException(status_code=404, detail="Diary not found after delete")
+
+    group_id = updated_doc.get("group_id")
+    if group_id and delta != 0:
+        await adjust_group_metrics(
+            db=db,
+            user_id=user_id,
+            group_id=group_id,
+            sud_delta=delta,
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

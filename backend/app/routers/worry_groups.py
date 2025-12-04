@@ -18,7 +18,39 @@ from schemas.worry_group import (
 router = APIRouter(prefix="/worry-groups", tags=["worry_groups"])
 
 WORRY_GROUP_COLLECTION = "worry_groups"
+DEFAULT_GROUP_ID = "group_example"  # 🔵 고정 기본 그룹 ID
 
+async def ensure_default_worry_group(db, user_id: str) -> None:
+    """
+    각 user별로 기본 걱정 그룹(삭제/아카이브 불가)을 1개 보장한다.
+    - 스키마는 기존 worry_groups 문서 스키마 그대로 사용
+    - 기본 그룹 여부는 group_id == DEFAULT_GROUP_ID 로만 판단
+    """
+    collection = db[WORRY_GROUP_COLLECTION]
+    now_utc = datetime.now(timezone.utc)
+
+    # 이미 있으면 아무 것도 안 함
+    exists = await collection.find_one(
+        {"user_id": user_id, "group_id": DEFAULT_GROUP_ID}
+    )
+    if exists:
+        return
+
+    doc = {
+        "user_id": user_id,
+        "group_id": DEFAULT_GROUP_ID,           # 🔵 고정 ID
+        "group_title": "기본 그룹",
+        "group_contents": "걱정 그룹을 추가하지 않으면 이 그룹에 포함됩니다.",
+        "character_id": 1,                      # 1번 캐릭터 고정
+        "created_at": now_utc,
+        "updated_at": now_utc,
+        "archived": False,
+        "diary_count": 0,
+        "sud_sum": 0.0,
+        "client_timestamp": now_utc,
+    }
+
+    await collection.insert_one(doc)
 
 # =========================================================
 # 헬퍼: 그룹 메트릭 조정 (일기/점수 라우터에서 사용)
@@ -290,6 +322,13 @@ async def archive_worry_group(
     """
     걱정 그룹을 아카이브합니다 (소프트 삭제).
     """
+    # 🔴 기본 그룹은 아카이브 불가
+    if group_id == DEFAULT_GROUP_ID:
+        raise HTTPException(
+            status_code=400,
+            detail="기본 걱정 그룹은 보관함으로 옮길 수 없습니다.",
+        )
+
     collection = db[WORRY_GROUP_COLLECTION]
 
     now_utc = datetime.now(timezone.utc)
@@ -329,6 +368,13 @@ async def delete_worry_group(
     - 기존 일기(diaries)는 그대로 남고 group_id만 고아 상태가 될 수 있음.
       (필요하면 별도 마이그레이션/정리 루틴에서 처리)
     """
+    # 🔴 기본 그룹은 삭제 불가
+    if group_id == DEFAULT_GROUP_ID:
+        raise HTTPException(
+            status_code=400,
+            detail="기본 걱정 그룹은 삭제할 수 없습니다.",
+        )
+
     collection = db[WORRY_GROUP_COLLECTION]
 
     result = await collection.delete_one({"group_id": group_id, "user_id": user_id})
@@ -344,16 +390,26 @@ async def delete_worry_group(
 # =========================================================
 # 관리자용: group stats 재계산 (diaries 쪽 구조와 호환)
 # =========================================================
+from datetime import datetime, timezone
+from typing import Dict, Any
+
+WORRY_GROUP_COLLECTION = "worry_groups"
+
+# =========================================================
+# 관리자용: group stats 재계산 (diaries 쪽 구조와 호환)
+# =========================================================
 async def recompute_group_stats(
-    db,
-    user_id: str,
-    group_id: str,
+        db,
+        user_id: str,
+        group_id: str,
 ) -> Dict[str, Any]:
     """
     diaries 컬렉션을 풀스캔(aggregation)해서
     - 해당 group_id의 일기 개수(diary_count)
     - latest_sud 합(sud_sum)
     을 다시 계산해서 worry_groups에 반영.
+
+    👉 '자동 생성' 일기는 activation.label에 이 문구가 들어간 애로 판단해서 제외.
 
     avg_sud는 sud_sum / diary_count 기준으로 맞춤.
     """
@@ -364,6 +420,10 @@ async def recompute_group_stats(
             "$match": {
                 "user_id": user_id,
                 "group_id": group_id,
+                # activation.label 에 "자동 생성" 포함된 건 제외
+                "activation.label": {
+                    "$not": {"$regex": "자동 생성"}
+                },
             }
         },
         {

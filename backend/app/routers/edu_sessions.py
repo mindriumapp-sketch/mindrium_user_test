@@ -524,8 +524,8 @@ async def update_week8_effectiveness(
         {
             "$set": {
                 "effectiveness_evaluations": [
-                    eval.model_dump(exclude_none=True)
-                    for eval in payload.evaluations
+                    evaluation.model_dump(exclude_none=True)
+                    for evaluation in payload.evaluations
                 ],
                 "updated_at": now_utc,
             }
@@ -574,5 +574,3 @@ async def update_week8_user_journey(
     )
 
     return EduSessionResponse(**_serialize_session(updated_doc))
-
-

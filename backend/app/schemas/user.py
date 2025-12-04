@@ -45,7 +45,7 @@ class UserDataResponse(BaseModel):
     """종합 사용자 데이터 응답"""
     value_goal: Optional[str] = None
     survey_completed: bool = False
-    current_week: int = 1 # 계산된 현재 주차 (DB에 저장 안 해도 됨, 응답에서만 사용)
+    current_week: int = 1  # 계산된 현재 주차 (DB에 저장 안 해도 됨, 응답에서만 사용)
     last_completed_week: int = Field(
         0, ge=0, le=8, description="마지막으로 완료한 주차 (1~8, 없으면 0)"
     )
@@ -62,3 +62,10 @@ class WeeklyUserStats(BaseModel):
     activeUsers: int = Field(0, ge=0)       # 그 주에 last_active_at 찍힌 유저 수
     newUsers: int = Field(0, ge=0)          # 그 주에 가입한 유저 수
 
+
+class TodayTaskResponse(BaseModel):
+    date: date
+    has_diary_today: bool
+    has_relaxation_today: bool
+    has_education_this_week: bool
+    last_education_at: Optional[datetime] = None

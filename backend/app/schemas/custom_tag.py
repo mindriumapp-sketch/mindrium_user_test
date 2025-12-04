@@ -8,7 +8,6 @@ class CustomTagBase(BaseModel):
     type: Literal["A", "B", "CP", "CE", "CA"]
 
 class CustomTagCreate(CustomTagBase):
-    chip_id: str
     client_timestamp: datetime
 
 class CustomTagUpdate(BaseModel):

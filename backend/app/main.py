@@ -173,8 +173,12 @@ async def lifespan(app: FastAPI):
         screen_time = db["screen_time"]
 
         await screen_time.create_index(
-            [("user_id", 1), ("date", 1)],
-            name="idx_screen_time_user_date",
+            [("user_id", 1), ("start_time", 1), ("end_time", 1)],
+            name="idx_screen_time_user_start_end",
+        )
+        await screen_time.create_index(
+            [("user_id", 1), ("end_time", -1)],
+            name="idx_screen_time_user_last_end",
         )
         print("✅ screen_time 인덱스 생성 완료")
     except Exception as e:
@@ -215,10 +219,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ edu_sessions 인덱스 생성 중 오류: {e}")
 
-    # ---------- user_data 컬렉션 ----------
+    # ---------- user_data ----------
     # 설문/프로파일 등 Key-Value 형태 데이터 (지금은 안 써도 무해)
     try:
-        user_data = db["user_data"]
+        user_data = db["users"]
 
         await user_data.create_index(
             [("user_id", 1)],

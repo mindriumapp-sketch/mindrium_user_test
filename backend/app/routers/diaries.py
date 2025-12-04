@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 import uuid
@@ -26,7 +27,7 @@ from schemas.diary import (
 router = APIRouter(prefix="/diaries", tags=["diaries"])
 
 DIARY_COLLECTION = "diaries"
-
+DEFAULT_GROUP_ID = "group_example"
 
 # ---------- 공통 헬퍼 ----------
 async def update_diary_chip_category(
@@ -74,14 +75,36 @@ async def update_diary_chip_category(
         print(f"[WARN] diary not found or chip_id not present: {diary_id}, {chip_id}")
 
 
-def _build_diary_query(user_id: str, group_id: Optional[str] = None) -> Dict[str, Any]:
+def _build_diary_query(
+        user_id: str,
+        group_id: Optional[str] = None,
+        exclude_auto: bool = False,
+) -> Dict[str, Any]:
     query: Dict[str, Any] = {"user_id": user_id}
     if group_id is not None:
         query["group_id"] = group_id
+
+    if exclude_auto:
+        # activation.label 에 "자동 생성" 이 포함된 문서는 제외
+        pattern = re.compile("자동 생성")
+        query["activation.label"] = {"$not": pattern}
+
     return query
 
+def _is_auto_generated_from_activation(payload: DiaryCreate) -> bool:
+    """
+    별도 플래그 없이 activation.label 안에 '자동 생성' 문구로만 판단.
+    """
+    activation = getattr(payload, "activation", None)
+    if activation is None:
+        return False
 
-def _merge_unique_str_list(
+    # Pydantic 모델일 테니까 .label 접근
+    label = getattr(activation, "label", "") or ""
+    return "자동 생성" in label  # 포함 여부만 체크
+
+
+def merge_unique_str_list(
     existing_raw: Optional[List[Any]],
     incoming_raw: Optional[List[Any]],
 ) -> List[str]:
@@ -288,7 +311,9 @@ async def create_diary(
     collection = db[DIARY_COLLECTION]
     now_utc = datetime.now(timezone.utc)
     client_ts_utc = ensure_utc(payload.client_timestamp)
-    group_id = payload.group_id
+    group_id = payload.group_id or DEFAULT_GROUP_ID
+
+    is_auto_generated = _is_auto_generated_from_activation(payload)
 
     # 1) SUD 리스트 정규화
     sud_entries = normalize_sud_scores(payload.sud_scores)
@@ -301,13 +326,7 @@ async def create_diary(
             else last.get("before_sud")
         )
 
-    # 2) 대체생각 생성 시점에 중복 제거 (문자열로 통일)
-    alternative_thoughts = _merge_unique_str_list(
-        existing_raw=[],
-        incoming_raw=payload.alternative_thoughts,
-    )
-
-    # 3) DiaryChip 필드들은 dict로 저장
+    # 2) DiaryChip 필드들은 dict로 저장
     diary_doc = {
         "user_id": user_id,
         "diary_id": f"diary_{uuid.uuid4().hex[:8]}",
@@ -321,7 +340,6 @@ async def create_diary(
 
         "sud_scores": sud_entries,
         "latest_sud": latest_sud,
-        "alternative_thoughts": alternative_thoughts,
         "alarms": _normalize_alarms(payload.alarms),
         "latitude": payload.latitude,
         "longitude": payload.longitude,
@@ -334,7 +352,7 @@ async def create_diary(
     await collection.insert_one(diary_doc)
 
     # 4) 그룹 카운터 반영
-    if group_id:
+    if group_id and not is_auto_generated:
         await adjust_group_metrics(
             db=db,
             user_id=user_id,
@@ -351,13 +369,18 @@ async def list_diaries(
     group_id: Optional[str] = None,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
+    include_auto: bool = False,
 ):
     """
     전체 일기 목록 (풀 데이터) 반환.
     sud_scores / alarms / alternative_thoughts 포함.
     """
     collection = db[DIARY_COLLECTION]
-    query = _build_diary_query(user_id=user_id, group_id=group_id)
+    query = _build_diary_query(
+        user_id=user_id,
+        group_id=group_id,
+        exclude_auto=not include_auto,
+    )
 
     cursor = collection.find(query).sort("created_at", -1)
 
@@ -372,6 +395,7 @@ async def list_diary_summaries(
     group_id: Optional[str] = None,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
+    include_auto: bool = False,
 ):
     """
     일기 목록 요약용 엔드포인트.
@@ -380,7 +404,11 @@ async def list_diary_summaries(
       latest_sud, 주요 텍스트/칩 필드만 포함.
     """
     collection = db[DIARY_COLLECTION]
-    query = _build_diary_query(user_id=user_id, group_id=group_id)
+    query = _build_diary_query(
+        user_id=user_id,
+        group_id=group_id,
+        exclude_auto=not include_auto,
+    )
 
     projection = {
         "diary_id": 1,
@@ -408,18 +436,36 @@ async def get_latest_diary(
     group_id: Optional[str] = None,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
+    summary_flag: bool = True,
 ):
     """
     최신(가장 최근 created_at) 일기 반환
     """
     collection = db[DIARY_COLLECTION]
-    query = _build_diary_query(user_id=user_id, group_id=group_id)
+    query = _build_diary_query(
+        user_id=user_id,
+        group_id=group_id,
+        exclude_auto=not include_auto,
+    )
 
-    doc = await collection.find_one(query, sort=[("created_at", -1)])
+    projection = {
+        "diary_id": 1,
+        "group_id": 1,
+        "activation": 1,
+        "belief": 1,
+        "consequence_physical": 1,
+        "consequence_emotion": 1,
+        "consequence_action": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "latest_sud": 1,
+    }
+
+    doc = await collection.find_one(query, projection=projection, sort=[("created_at", -1)])
     if not doc:
         raise HTTPException(status_code=404, detail="No diaries")
 
-    return DiaryResponse(**_serialize_diary(doc))
+    return DiarySummaryResponse(**_serialize_diary(doc))
 
 
 @router.get("/{diary_id}", response_model=DiaryResponse)
@@ -478,13 +524,7 @@ async def update_diary(
     if "alarms" in update_data:
         set_fields["alarms"] = _normalize_alarms(update_data.pop("alarms"))
 
-    # 2) 대체생각: 기존 + 신규 누적 (중복 제거, 순서 유지)
-    if "alternative_thoughts" in update_data:
-        incoming = update_data.pop("alternative_thoughts") or []
-        existing = diary.get("alternative_thoughts", [])
-        set_fields["alternative_thoughts"] = _merge_unique_str_list(existing, incoming)
-
-    # 3) 나머지 필드(activation, belief, consequence_*, 좌표 등)는
+    # 2) 나머지 필드(activation, belief, consequence_*, 좌표 등)는
     #    이미 model_dump 된 dict/list[dict]라 그대로 덮어쓰기
     set_fields.update(update_data)
 
@@ -659,6 +699,36 @@ async def delete_alarm(
         {
             "$pull": {"alarms": {"alarm_id": alarm_id}},
             "$set": {
+                "updated_at": now_utc,
+                "client_timestamp": client_ts_utc,
+            },
+        },
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Diary not found")
+
+    return {
+        "client_timestamp": client_ts_utc,
+        "deleted_at": now_utc,
+    }
+
+@router.delete("/{diary_id}/alarms", status_code=status.HTTP_200_OK)
+async def delete_alarms(
+        diary_id: str,
+        payload: AlarmDelete,
+        db=Depends(get_db),
+        user_id: str = Depends(get_current_user_id),
+):
+    collection = db[DIARY_COLLECTION]
+    now_utc = datetime.now(timezone.utc)
+    client_ts_utc = ensure_utc(payload.client_timestamp)
+
+    result = await collection.update_one(
+        {"diary_id": diary_id, "user_id": user_id},
+        {
+            "$set": {
+                "alarms": [],
                 "updated_at": now_utc,
                 "client_timestamp": client_ts_utc,
             },

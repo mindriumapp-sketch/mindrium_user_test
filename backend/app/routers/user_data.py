@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from pymongo import ReturnDocument
 
 from core.security import get_current_user
-from core.utils import parse_datetime_value, ensure_utc
+from core.utils import parse_datetime_value, ensure_utc, get_week_range_kst, kst_midnight
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from db.mongo import get_db
@@ -21,9 +21,10 @@ from schemas.user import (
     SurveyCreate,
     SurveyResponse,
     UserDataResponse,
+    TodayTaskResponse,
 )
 
-router = APIRouter(prefix="/users/me", tags=["user-data"])
+router = APIRouter(prefix="/users/me")
 
 USER_COLLECTION = "users"
 
@@ -200,37 +201,63 @@ async def get_user_progress(
     """
     사용자의 전체 진행 상황을 조회합니다.
 
-    - **value_goal**: 핵심 가치
-    - **survey_completed**: 사전 설문 완료 여부
-    - **current_week**: 현재 주차
-    - **last_completed_week**
-    - **last_completed_at**
-    - **total_diaries**: 작성한 다이어리 수
-    - **total_relaxations**: 완료한 이완 훈련 수
+    - value_goal: 핵심 가치
+    - survey_completed: 사전 설문 완료 여부
+    - current_week: 현재 주차 (이번 주 안에 완료한 주차는 다음 주부터 열림)
+    - last_completed_week
+    - last_completed_at
+    - total_diaries: 작성한 다이어리 수
+    - total_relaxations: 완료한 이완 훈련 수
     """
     raw_last_week = current_user.get("last_completed_week")
     last_completed_week = raw_last_week if raw_last_week is not None else 0
     last_completed_at = parse_datetime_value(current_user.get("last_completed_at"))
 
-    # 현재 주차 계산 (가장 최근 미완료 주차)
     MAX_WEEK = 8
-    if last_completed_week == 0:
-        current_week = 1
-    else:
-        current_week = min(last_completed_week + 1, MAX_WEEK)
 
-    # 다이어리 및 이완 훈련 카운트
+    # ---- current_week 계산 ----
+    if last_completed_week <= 0:
+        # 아무 주차도 완료 안 했으면 무조건 1주차
+        current_week = 1
+    elif last_completed_week >= MAX_WEEK:
+        # 8주차까지 다 끝냈으면 계속 8 고정
+        current_week = MAX_WEEK
+    else:
+        # 1~7주차 사이에서 완료 기록이 있는 경우
+        if last_completed_at is None:
+            # 날짜 정보가 없으면 기존처럼 +1
+            current_week = min(last_completed_week + 1, MAX_WEEK)
+        else:
+            # 오늘(KST) 기준 이번 주 범위 계산
+            now_utc = datetime.now(timezone.utc)
+            today_start_kst = kst_midnight(now_utc)
+            today_date = today_start_kst.date()
+
+            week_start_kst, week_end_kst = get_week_range_kst(today_date)
+            week_start_utc = week_start_kst.astimezone(timezone.utc)
+            week_end_utc = week_end_kst.astimezone(timezone.utc)
+
+            # last_completed_at 이 "이번 주" 안이면 → 아직 다음 주차 오픈 X
+            if week_start_utc <= last_completed_at < week_end_utc:
+                current_week = last_completed_week
+            else:
+                # 지난주(이전 주)에 완료한 거면 → 다음 주차 오픈
+                current_week = min(last_completed_week + 1, MAX_WEEK)
+
+    # ---- 다이어리 및 이완 카운트 ----
     diary_collection = db["diaries"]
     total_diaries = await diary_collection.count_documents(
-        {"user_id": current_user.get("user_id")}
+        {
+            "user_id": current_user.get("user_id"),
+            "activation.label": {"$not": {"$regex": "자동 생성"}},
+        }
     )
 
     relaxation_collection = db["relaxation_tasks"]
     total_relaxations = await relaxation_collection.count_documents(
         {
             "user_id": current_user.get("user_id"),
-            # ✅ end_time이 None이 아닌 것만 "완료된 이완 세션"으로 간주
-            "end_time": {"$ne": None},
+            "end_time": {"$ne": None},  # 완료된 이완만 카운트
         }
     )
 
@@ -246,3 +273,91 @@ async def get_user_progress(
         total_relaxations=total_relaxations,
     )
 
+# ============= today task =============
+DIARY_COLLECTION = "diaries"
+RELAX_COLLECTION = "relaxation_tasks"
+
+@router.get(
+    "/todaytask",
+    response_model=TodayTaskResponse,
+    summary="홈 화면용: 오늘 일기/이완/주차 교육 완료 여부",
+)
+async def get_today_task(
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    홈 화면 '오늘의 할 일' 체크용 상태 요약.
+
+    - has_diary_today:
+        오늘(KST 기준) 작성된 일기가 1개 이상이면 True
+    - has_relaxation_today:
+        오늘(KST 기준) 시작한 이완 세션 중 duration_seconds > 0
+        이면서 end_time != None 인 세션이 1개 이상이면 True
+    - has_education_this_week:
+        users.last_completed_at 이 이번 주(월~일, KST 기준) 안에 있으면 True
+    """
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise RuntimeError("current_user에 user_id가 없습니다.")
+
+    # ---- 1) 오늘(KST) 날짜 계산 ----
+    now_utc = datetime.now(timezone.utc)
+    today_start_kst = kst_midnight(now_utc)          # 오늘 00:00 KST
+    today_end_kst = today_start_kst + timedelta(days=1)
+
+    today_start_utc = today_start_kst.astimezone(timezone.utc)
+    today_end_utc = today_end_kst.astimezone(timezone.utc)
+
+    today_date = today_start_kst.date()
+
+    # ---- 2) 오늘 일기 작성 여부 (diaries.created_at 기준) ----
+    diary_count_today = await db[DIARY_COLLECTION].count_documents(
+        {
+            "user_id": user_id,
+            "created_at": {
+                "$gte": today_start_utc,
+                "$lt": today_end_utc,
+            },
+            # 🔹 자동생성 label 포함된 애들 제외
+            "activation.label": {"$not": {"$regex": "자동 생성"}},
+        }
+    )
+    has_diary_today = diary_count_today > 0
+
+    # ---- 3) 오늘 이완 여부 (relaxation_tasks.start_time 기준) ----
+    relax_collection = db[RELAX_COLLECTION]
+    relax_count_today = await relax_collection.count_documents(
+        {
+            "user_id": user_id,
+            "duration_seconds": {"$gt": 0},
+            "end_time": {"$ne": None},  # 완료된 이완만 '했다'로 간주
+            "start_time": {
+                "$gte": today_start_utc,
+                "$lt": today_end_utc,
+            },
+        }
+    )
+    has_relaxation_today = relax_count_today > 0
+
+    # ---- 4) 이번 주 교육 완료 여부 (users.last_completed_at 기준) ----
+    # 기존 /users/me/progress 에서 쓰는 필드 그대로 사용
+    last_completed_at = parse_datetime_value(current_user.get("last_completed_at"))
+
+    week_start_kst, week_end_kst = get_week_range_kst(today_date)
+    week_start_utc = week_start_kst.astimezone(timezone.utc)
+    week_end_utc = week_end_kst.astimezone(timezone.utc)
+
+    if last_completed_at is not None:
+        # last_completed_at 이 timezone-aware 라는 가정 (parse_datetime_value 사용)
+        has_education_this_week = week_start_utc <= last_completed_at < week_end_utc
+    else:
+        has_education_this_week = False
+
+    return TodayTaskResponse(
+        date=today_date,
+        has_diary_today=has_diary_today,
+        has_relaxation_today=has_relaxation_today,
+        has_education_this_week=has_education_this_week,
+        last_education_at=last_completed_at,
+    )

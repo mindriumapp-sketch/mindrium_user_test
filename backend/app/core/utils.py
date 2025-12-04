@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, date, timezone, timedelta
 from typing import Optional, Any
 
 from bson import ObjectId
@@ -91,6 +91,21 @@ def kst_midnight(now_utc: datetime) -> datetime:
         tzinfo=KST,
     )
 
+def get_week_range_kst(target: Optional[date] = None):
+    """
+    KST 기준으로 '이번 주(월~다음주 월 직전까지)' 범위를 반환.
+    - week_start_kst: 월요일 00:00 KST
+    - week_end_kst: 다음주 월요일 00:00 KST
+    """
+    if target is None:
+        target = datetime.now(KST).date()
+
+    weekday = target.weekday()  # 0=월요일
+    week_start_kst = datetime(target.year, target.month, target.day, tzinfo=KST) - timedelta(
+        days=weekday
+    )
+    week_end_kst = week_start_kst + timedelta(days=7)
+    return week_start_kst, week_end_kst
 
 # ========= ObjectID 관련 공통 유틸 =========
 

@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta, timezone, date
+from datetime import datetime, timezone, date
 from bson import ObjectId
 from pymongo import ReturnDocument
 
 from core.security import get_user_obj_id, get_current_user
-from core.utils import parse_datetime_value, KST
+from core.utils import parse_datetime_value, get_week_range_kst
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from db.mongo import get_db
@@ -77,20 +77,6 @@ async def update_me(
     }
 
 
-def _get_week_range_kst(target: date | None = None):
-    if target is None:
-        target = datetime.now(KST).date()
-    weekday = target.weekday()  # 0=월
-    week_start_kst = datetime(
-        target.year,
-        target.month,
-        target.day,
-        tzinfo=KST,
-    ) - timedelta(days=weekday)
-    week_end_kst = week_start_kst + timedelta(days=7)
-    return week_start_kst, week_end_kst
-
-
 @router.get("/stats/week", response_model=WeeklyUserStats)
 async def get_weekly_user_stats(
     week_date: date | None = Query(None),
@@ -99,7 +85,7 @@ async def get_weekly_user_stats(
 ):
     collection = db[USER_COLLECTION]
 
-    week_start_kst, week_end_kst = _get_week_range_kst(week_date)
+    week_start_kst, week_end_kst = get_week_range_kst(week_date)
     week_start_utc = week_start_kst.astimezone(timezone.utc)
     week_end_utc = week_end_kst.astimezone(timezone.utc)
 
@@ -134,4 +120,3 @@ async def get_weekly_user_stats(
         activeUsers=active_users,
         newUsers=new_users,
     )
-

@@ -11,6 +11,7 @@ from schemas.screen_time import ScreenTimeCreate, ScreenTimeEntry, ScreenTimeSum
 router = APIRouter(prefix="/screen-time", tags=["screen-time"])
 
 SCREEN_COLLECTION = "screen_time"
+USER_COLLECTION = "users"
 
 def _serialize_entry(doc: dict) -> dict:
     return {
@@ -73,7 +74,7 @@ async def create_screen_time_entry(
     result = await db[SCREEN_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
 
-    await db["users"].update_one(
+    await db[USER_COLLECTION].update_one(
         {"user_id": user_id},
         {"$set": {"last_active_at": now}},
     )

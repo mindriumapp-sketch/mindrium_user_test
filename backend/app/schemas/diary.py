@@ -78,7 +78,6 @@ class DiaryUpdate(BaseModel):
     consequence_physical: Optional[List[DiaryChip]] = None
     consequence_emotion: Optional[List[DiaryChip]] = None
     consequence_action: Optional[List[DiaryChip]] = None
-    alternative_thoughts: Optional[List[str]] = None
 
     alarms: Optional[List[Any]] = None
     latitude: Optional[float] = None
