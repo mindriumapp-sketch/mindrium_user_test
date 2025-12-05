@@ -107,8 +107,8 @@ class TreatmentDesign extends StatelessWidget {
     bool isDone = false,
   }) {
     // ✅ 완료되었거나 잠겨있으면 클릭 불가 + 흐리게
-    final bool isEnabled = enabled && !isDone;
-    final bool isLocked = !enabled && !isDone; // 미래 주차
+    final bool isEnabled = enabled;
+    final bool isLocked = !enabled; // 미래 주차
 
     // 부제목 분리(한/영)
     final parts = subtitle.split(' / ');

@@ -8,17 +8,15 @@ import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class Week5VisualScreen extends StatefulWidget {
+  final String? sessionId;
   final List<String> previousChips;     // 불안을 회피하는 행동
   final List<String> alternativeChips;  // 불안을 직면하는 행동
-  final List<Map<String, dynamic>>? quizResults; // 퀴즈 결과
-  final int? correctCount; // 정답 개수
 
   const Week5VisualScreen({
     super.key,
+    required this.sessionId,
     required this.previousChips,
     required this.alternativeChips,
-    this.quizResults,
-    this.correctCount,
   });
 
   @override
@@ -38,50 +36,41 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
   }
 
   Future<void> _saveSession() async {
-    if (_isSaving) return;
-    
-    setState(() => _isSaving = true);
-    
-    try {
-      // 퀴즈 결과 변환
-      Map<String, dynamic>? classificationQuiz;
-      if (widget.quizResults != null && widget.quizResults!.isNotEmpty && widget.correctCount != null) {
-        final wrongList = widget.quizResults!
-            .where((item) => item['isCorrect'] == false)
-            .map((item) => {
-                  'text': item['text'],
-                  'user_choice': item['userChoice'],
-                  'correct_type': item['correctType'],
-                })
-            .toList();
-        
-        classificationQuiz = {
-          'correct_count': widget.correctCount,
-          'total_count': widget.quizResults!.length,
-          'results': widget.quizResults!.map((r) => {
-                'text': r['text'],
-                'correct_type': r['correctType'],
-                'user_choice': r['userChoice'],
-                'is_correct': r['isCorrect'],
-              }).toList(),
-          'wrong_list': wrongList,
-        };
-      }
+    // 1) 이미 저장 중이면 바로 리턴
+    if (_isSaving) {
+      debugPrint('[Week5VisualScreen] 이미 저장 중입니다. 중복 저장 스킵');
+      return;
+    }
 
-      await _eduSessionsApi.createWeek3or5Session(
-        weekNumber: 5,
-        totalScreens: 3,
-        lastScreenIndex: 3,
-        completed: true,
-        startTime: DateTime.now(),
-        endTime: DateTime.now(),
+    // 2) sessionId 방어
+    final sessionId = widget.sessionId?.trim();
+    if (sessionId == null || sessionId.isEmpty) {
+      debugPrint(
+        '[Week5VisualScreen] sessionId 없음 → edu-sessions 업데이트 스킵',
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      await _eduSessionsApi.updateEduSession(
+        sessionId: sessionId,
         negativeItems: widget.previousChips,
         positiveItems: widget.alternativeChips,
-        classificationQuiz: classificationQuiz,
       );
-    } catch (e) {
-      // 에러 발생 시에도 팝업은 표시
-      debugPrint('세션 저장 실패: $e');
+      debugPrint(
+        '[Week5VisualScreen] edu-sessions 업데이트 완료 (sessionId=$sessionId)',
+      );
+    } catch (e, st) {
+      debugPrint('[Week5VisualScreen] 세션 저장 실패: $e\n$st');
+      // 실패해도 화면 흐름은 막지 않되, 유저에게만 알려주고 싶으면 여기서 BlueBanner 추가 가능
+      // if (mounted) {
+      //   BlueBanner.show(
+      //     context,
+      //     '세션 저장 중 문제가 발생했어요.\n나중에 다시 시도해 주세요.',
+      //   );
+      // }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -201,7 +190,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
         if (!mounted) return;
         nav.push(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => Week5FinalScreen(),
+            pageBuilder: (_, __, ___) => Week5FinalScreen(sessionId: widget.sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

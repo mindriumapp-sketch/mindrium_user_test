@@ -2,7 +2,10 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'week5_classification_result_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// edu-sessions 저장용
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 
 // 분리한 프리젠테이션 위젯
 import 'package:gad_app_team/widgets/quiz_card.dart';
@@ -11,7 +14,8 @@ import 'package:gad_app_team/widgets/choice_card_button.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 
 class Week5ClassificationScreen extends StatefulWidget {
-  const Week5ClassificationScreen({super.key});
+  final String? sessionId;
+  const Week5ClassificationScreen({super.key, required this.sessionId});
 
   @override
   Week5ClassificationScreenState createState() =>
@@ -52,6 +56,9 @@ class Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
   int correctCount = 0;
   List<Map<String, dynamic>> quizResults = [];
 
+  // edu-sessions 저장 중복 방지 플래그
+  bool _savedToEduSession = false;
+
   @override
   void initState() {
     super.initState();
@@ -59,20 +66,25 @@ class Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
     shuffledSentences.shuffle();
   }
 
-  void _nextSentence() {
-    setState(() {
-      if (currentIndex < shuffledSentences.length - 1) {
+  Future<void> _nextSentence() async {
+    if (currentIndex < shuffledSentences.length - 1) {
+      setState(() {
         currentIndex++;
         feedback = null;
         feedbackColor = null;
         answered = false;
-      } else {
-        saveQuizResult(correctCount, quizResults);
+      });
+    } else {
+        // 🔹 마지막 문항까지 완료된 시점: edu-sessions 에 저장
+        await _saveWeek5QuizToEduSessionOnce();
+
+        if (!mounted) return;
         Navigator.push(
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
                 Week5ClassificationResultScreen(
+                  sessionId: widget.sessionId,
                   correctCount: correctCount,
                   quizResults: quizResults,
                 ),
@@ -80,8 +92,7 @@ class Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
             reverseTransitionDuration: Duration.zero,
           ),
         );
-      }
-    });
+    }
   }
 
   void _checkAnswer(String selected) {
@@ -110,24 +121,67 @@ class Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
     });
   }
 
-  Future<void> saveQuizResult(
-      int correctCount,
-      List<Map<String, dynamic>> quizResults,
-      ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('week5_classification_correct_count', correctCount);
-    final wrongList = quizResults
-        .where((item) => item['isCorrect'] == false)
-        .map((item) => {
-      'text': item['text'],
-      'userChoice': item['userChoice'],
-      'correctType': item['correctType'],
-    })
-        .toList();
-    await prefs.setString(
-      'week5_classification_wrong_list',
-      wrongList.toString(),
-    );
+  /// 마지막 문항까지 완료되었을 때,
+  /// week_number=5 최신 edu-session 에 classification_quiz 저장
+  Future<void> _saveWeek5QuizToEduSession() async {
+    try {
+      final tokens = TokenStorage();
+      final access = await tokens.access;
+
+      if (access == null) {
+        debugPrint(
+          '[Week5Classification] No access token. Skip edu-sessions update.',
+        );
+        return;
+      }
+
+      final client = ApiClient(tokens: tokens);
+      final eduApi = EduSessionsApi(client);
+
+      final sessionId = widget.sessionId?.toString();
+      if (sessionId == null || sessionId.isEmpty) {
+        debugPrint(
+          '[Week5Classification] week5 session has no session_id. Skip update.',
+        );
+        return;
+      }
+
+      // quizResults → ClassificationQuiz JSON으로 변환
+      final totalCount = shuffledSentences.length;
+
+      final classificationQuiz = <String, dynamic>{
+        'correct_count': correctCount,
+        'total_count': totalCount,
+        'results': quizResults
+            .map((item) => {
+          'text': item['text'],
+          'correct_type': item['correctType'],
+          'user_choice': item['userChoice'],
+          'is_correct': item['isCorrect'],
+        })
+            .toList(),
+      };
+
+      await eduApi.updateEduSession(
+        sessionId: sessionId,
+        classificationQuiz: classificationQuiz,
+      );
+
+      debugPrint(
+        '[Week5Classification] classification_quiz saved to edu-session ($sessionId)',
+      );
+    } catch (e, st) {
+      debugPrint(
+        '[Week5Classification] Failed to save classification_quiz: $e\n$st',
+      );
+    }
+  }
+
+  /// 같은 화면 lifecycle 안에서 한 번만 저장되도록 래핑
+  Future<void> _saveWeek5QuizToEduSessionOnce() async {
+    if (_savedToEduSession) return;
+    _savedToEduSession = true;
+    await _saveWeek5QuizToEduSession();
   }
 
   @override
@@ -194,9 +248,9 @@ class Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
                         const SizedBox(height: 16),
                         NavigationButtons(
                           onBack: () => Navigator.pop(context),
-                          onNext: () {
+                          onNext: () async {
                             if (answered) {
-                              _nextSentence();
+                              await _nextSentence();
                             } else {
                               BlueBanner.show(context, '답변을 선택해주세요!');
                             }

@@ -187,15 +187,33 @@ class _NotiPlayerState extends State<NotiPlayer>
       await _saveOnce(reason: 'complete');
       if (!mounted) return;
 
+      // 🔹 현재 라우트 args에서 beforeSud / sudId 있으면 같이 넘김
+      final currentArgs = ModalRoute.of(context)?.settings.arguments;
+
+      final Map<String, dynamic> nextArgs = {
+        'taskId': widget.taskId,
+        'weekNumber': widget.weekNumber,
+        'relaxId': _logger.relaxId, // logger가 서버에서 받은 세션 id
+      };
+
+      if (currentArgs is Map) {
+        // 타입 안전하게 꺼내기 (null 아니면만 추가)
+        final dynamic beforeSud = currentArgs['beforeSud'];
+        final dynamic sudId = currentArgs['sudId'];
+
+        if (beforeSud != null) {
+          nextArgs['beforeSud'] = beforeSud;
+        }
+        if (sudId != null) {
+          nextArgs['sudId'] = sudId;
+        }
+      }
+
       Navigator.pushNamedAndRemoveUntil(
         context,
         widget.nextPage,
             (_) => false,
-        arguments: {
-          'taskId': widget.taskId,
-          'weekNumber': widget.weekNumber,
-          'relaxId': _logger.relaxId, // logger가 서버에서 받은 세션 id
-        },
+        arguments: nextArgs,
       );
     }
   }
@@ -321,6 +339,7 @@ class _NotiPlayerState extends State<NotiPlayer>
       // 3) 좌표 → 주소 문자열 변환 (가능하면)
       String? addressName;
       try {
+        await setLocaleIdentifier('ko_KR');
         final placemarks = await placemarkFromCoordinates(
           pos.latitude,
           pos.longitude,

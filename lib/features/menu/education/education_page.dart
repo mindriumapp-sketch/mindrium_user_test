@@ -12,6 +12,7 @@ class EducationPage extends StatefulWidget {
   final String? title;
   final bool isRelax;
   final String? imagePath;
+  final String? sessionId;
 
   const EducationPage({
     super.key,
@@ -20,6 +21,7 @@ class EducationPage extends StatefulWidget {
     this.title,
     this.isRelax = false,
     this.imagePath,
+    this.sessionId,
   });
 
   @override
@@ -203,6 +205,7 @@ class _EducationPageState extends State<EducationPage> {
             context,
             '/relaxation_education',
             arguments: {
+              'sessionId': widget.sessionId,
               'taskId': 'week1_education',
               'weekNumber': 1,
               'mp3Asset': 'week1.mp3',

@@ -1,16 +1,19 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/widgets/abc_chips_design.dart';
 
-/// AbcChipsDesign 스타일 기반의 팝업 칩 리스트
-/// 클릭 시 색상 즉시 변하고 부드러운 애니메이션 포함
+/// AbcChipsDesign 스타일 기반의 팝업 칩 리스트 (chipId 기반)
+/// - chips: AbcChip 리스트 (chipId + label + isPreset + type)
+/// - selectedChipIds: 현재 선택된 chipId 집합
+/// - onChipToggle: (chipId, selected)
 class AbcChipsPopup extends StatefulWidget {
-  final List<String> chips;
-  final Set<int> selectedIndexes;
-  final void Function(int index, bool selected)? onChipToggle;
+  final List<AbcChip> chips;
+  final Set<String> selectedChipIds;
+  final void Function(String chipId, bool selected)? onChipToggle;
 
   const AbcChipsPopup({
     super.key,
     required this.chips,
-    required this.selectedIndexes,
+    required this.selectedChipIds,
     this.onChipToggle,
   });
 
@@ -19,26 +22,25 @@ class AbcChipsPopup extends StatefulWidget {
 }
 
 class _AbcChipsPopupState extends State<AbcChipsPopup> {
-  late Set<int> _localSelected;
+  late Set<String> _localSelected;
 
   @override
   void initState() {
     super.initState();
-    _localSelected = Set<int>.from(widget.selectedIndexes);
+    _localSelected = Set<String>.from(widget.selectedChipIds);
   }
 
-  void _handleTap(int index) {
+  void _handleTap(String chipId) {
     setState(() {
-      if (_localSelected.contains(index)) {
-        _localSelected.remove(index);
+      if (_localSelected.contains(chipId)) {
+        _localSelected.remove(chipId);
       } else {
-        _localSelected.add(index);
+        _localSelected.add(chipId);
       }
     });
 
-    // 부모에도 동기화
-    final nowSelected = _localSelected.contains(index);
-    widget.onChipToggle?.call(index, nowSelected);
+    final nowSelected = _localSelected.contains(chipId);
+    widget.onChipToggle?.call(chipId, nowSelected);
   }
 
   @override
@@ -84,15 +86,14 @@ class _AbcChipsPopupState extends State<AbcChipsPopup> {
                   child: Wrap(
                     spacing: 10,
                     runSpacing: 12,
-                    children: List.generate(widget.chips.length, (index) {
-                      final label = widget.chips[index];
-                      final isSelected = _localSelected.contains(index);
+                    children: widget.chips.map((chip) {
+                      final isSelected = _localSelected.contains(chip.chipId);
                       return _AnimatedSelectableChip(
-                        label: label,
+                        label: chip.label,
                         selected: isSelected,
-                        onTap: () => _handleTap(index),
+                        onTap: () => _handleTap(chip.chipId),
                       );
-                    }),
+                    }).toList(),
                   ),
                 ),
               ),
@@ -165,10 +166,9 @@ class _AnimatedSelectableChipState extends State<_AnimatedSelectableChip>
           decoration: BoxDecoration(
             color: selected ? const Color(0xFF47A6FF) : Colors.white,
             borderRadius: BorderRadius.circular(999),
-            border:
-                selected
-                    ? null
-                    : Border.all(color: const Color(0xFF47A6FF), width: 1.1),
+            border: selected
+                ? null
+                : Border.all(color: const Color(0xFF47A6FF), width: 1.1),
             boxShadow: [
               if (selected)
                 BoxShadow(

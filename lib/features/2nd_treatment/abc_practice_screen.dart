@@ -6,7 +6,8 @@ import 'package:gad_app_team/common/constants.dart';
 
 /// 🌊 Mindrium ApplyDesign 스타일로 통합된 ABC 연습 화면
 class AbcPracticeScreen extends StatelessWidget {
-  const AbcPracticeScreen({super.key});
+  final String? sessionId;
+  const AbcPracticeScreen({super.key, this.sessionId});
 
   void _goNext(BuildContext context) {
     Navigator.push(
@@ -14,7 +15,7 @@ class AbcPracticeScreen extends StatelessWidget {
       PageRouteBuilder(
         pageBuilder:
             (_, __, ___) =>
-                const AbcInputScreen(isExampleMode: true, showGuide: false),
+                AbcInputScreen(isExampleMode: true, showGuide: false, sessionId: sessionId),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),

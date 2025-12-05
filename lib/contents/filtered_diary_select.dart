@@ -19,54 +19,67 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
 
-  Future<List<Map<String, dynamic>>> _loadFilteredDiaries(int groupId) async {
-    final diaries = await _diariesApi.listDiaries(groupId: groupId);
-    final filtered = <Map<String, dynamic>>[];
-    for (final diary in diaries) {
-      final sudScores = diary['sudScores'] as List<dynamic>? ?? const [];
-      final latest = _latestSud(sudScores);
-      final after = latest?['after_sud'] as num?;
-      if (after == null || after > 2) {
-        filtered.add(diary);
-      }
+  /// DiaryChip 리스트에서 label만 뽑는 헬퍼
+  List<String> _chipLabels(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .whereType<Map>() // DiaryChip JSON: {label, chip_id, category}
+          .map((m) => m['label']?.toString().trim())
+          .where((s) => s != null && s.isNotEmpty)
+          .cast<String>()
+          .toList();
     }
-    return filtered;
-  }
-
-  Map<String, dynamic>? _latestSud(List<dynamic> scores) {
-    if (scores.isEmpty) return null;
-    scores.sort((a, b) {
-      final da = DateTime.tryParse(
-            (a as Map)['updated_at']?.toString() ?? '',
-          ) ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      final db = DateTime.tryParse(
-            (b as Map)['updated_at']?.toString() ?? '',
-          ) ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      return db.compareTo(da);
-    });
-    return scores.first as Map<String, dynamic>?;
+    if (raw is Map) {
+      final label = raw['label']?.toString().trim();
+      return label == null || label.isEmpty ? const [] : [label];
+    }
+    return const [];
   }
 
   String _buildBelief(dynamic raw) {
-    if (raw is List) {
-      return raw.whereType<String>().join(', ');
-    }
-    return raw?.toString() ?? '';
+    final labels = _chipLabels(raw);
+    return labels.join(', ');
   }
 
   String _buildConsequence(Map<String, dynamic> diary) {
     final pieces = <String>[];
-    for (final key in ['consequence_p', 'consequence_e', 'consequence_b']) {
-      final value = diary[key];
-      if (value is List) {
-        pieces.addAll(value.whereType<String>());
-      } else if (value is String && value.trim().isNotEmpty) {
-        pieces.add(value.trim());
+
+    for (final key in [
+      'consequence_physical',
+      'consequence_emotion',
+      'consequence_action',
+    ]) {
+      final labels = _chipLabels(diary[key]);
+      pieces.addAll(labels);
+    }
+
+    return pieces.join(', ');
+  }
+
+  /// 해당 그룹(group_id = uuid String)의 일기 중
+  /// latest_sud 가 null 이거나 > 2 인 것만 필터링
+  Future<List<Map<String, dynamic>>> _loadFilteredDiaries(
+      String groupId,
+      ) async {
+    final diaries = await _diariesApi.listDiarySummaries(groupId: groupId);
+    final filtered = <Map<String, dynamic>>[];
+
+    for (final diary in diaries) {
+      final latestSud = diary['latest_sud'];
+      if (latestSud == null) {
+        filtered.add(diary);
+        continue;
+      }
+      if (latestSud is num && latestSud > 2) {
+        filtered.add(diary);
+      } else if (latestSud is String) {
+        final v = num.tryParse(latestSud);
+        if (v != null && v > 2) {
+          filtered.add(diary);
+        }
       }
     }
-    return pieces.join(', ');
+    return filtered;
   }
 
   @override
@@ -81,9 +94,8 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
       );
     }
 
-    final groupIdInt =
-        groupId == null ? null : int.tryParse(groupId.toString());
-    if (groupIdInt == null) {
+    // ✅ 이제 groupId는 uuid String 그대로 사용 (int 파싱 X)
+    if (groupId == null || groupId.isEmpty) {
       return const Scaffold(
         body: Center(child: Text('그룹 정보를 찾을 수 없습니다.')),
       );
@@ -118,7 +130,7 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
 
           // 🌿 콘텐츠 본문
           FutureBuilder<List<Map<String, dynamic>>>(
-            future: _loadFilteredDiaries(groupIdInt),
+            future: _loadFilteredDiaries(groupId),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -158,10 +170,24 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
                   final diary = docs[index];
-                  final diaryId = diary['diaryId']?.toString() ?? '';
-                  final title =
-                      diary['activating_events']?.toString().trim() ??
-                      '(제목 없음)';
+
+                  // ✅ 백엔드 스키마: "diary_id"
+                  final diaryId = diary['diary_id']?.toString() ?? '';
+
+                  // ✅ activation 은 DiaryChip(Map). label 사용
+                  final activationRaw = diary['activation'];
+                  String title;
+                  if (activationRaw is Map &&
+                      (activationRaw['label']?.toString().trim().isNotEmpty ??
+                          false)) {
+                    title = activationRaw['label'].toString().trim();
+                  } else if (activationRaw is String &&
+                      activationRaw.trim().isNotEmpty) {
+                    title = activationRaw.trim();
+                  } else {
+                    title = '(제목 없음)';
+                  }
+
                   final belief = _buildBelief(diary['belief']);
                   final consequence = _buildConsequence(diary);
                   final isSelected = _selectedIds.contains(diaryId);
@@ -179,10 +205,9 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
                         ),
                       ],
                       border: Border.all(
-                        color:
-                            isSelected
-                                ? const Color(0xFF47A6FF)
-                                : Colors.transparent,
+                        color: isSelected
+                            ? const Color(0xFF47A6FF)
+                            : Colors.transparent,
                         width: 2,
                       ),
                     ),
@@ -214,25 +239,22 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color:
-                                      isSelected
-                                          ? const Color(0xFF47A6FF)
-                                          : Colors.grey.shade400,
+                                  color: isSelected
+                                      ? const Color(0xFF47A6FF)
+                                      : Colors.grey.shade400,
                                   width: 2,
                                 ),
-                                color:
-                                    isSelected
-                                        ? const Color(0xFF47A6FF)
-                                        : Colors.white,
+                                color: isSelected
+                                    ? const Color(0xFF47A6FF)
+                                    : Colors.white,
                               ),
-                              child:
-                                  isSelected
-                                      ? const Icon(
-                                        Icons.check,
-                                        color: Colors.white,
-                                        size: 16,
-                                      )
-                                      : null,
+                              child: isSelected
+                                  ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              )
+                                  : null,
                             ),
                             Expanded(
                               child: Column(
@@ -285,23 +307,21 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: PrimaryActionButton(
             text: _selectedIds.isNotEmpty ? '선택하기' : '홈으로',
-            onPressed:
-                _selectedIds.isNotEmpty
-                    ? () {
-                      final selectedId = _selectedIds.first;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) => BeforeSudRatingScreen(abcId: selectedId),
-                        ),
-                      );
-                    }
-                    : () => Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      '/home',
-                      (_) => false,
-                    ),
+            onPressed: _selectedIds.isNotEmpty
+                ? () {
+              final selectedId = _selectedIds.first;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BeforeSudRatingScreen(abcId: selectedId),
+                ),
+              );
+            }
+                : () => Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home',
+                  (_) => false,
+            ),
           ),
         ),
       ),

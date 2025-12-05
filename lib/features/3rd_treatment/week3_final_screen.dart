@@ -5,7 +5,8 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
 
 class Week3FinalScreen extends StatelessWidget {
-  const Week3FinalScreen({super.key,});
+  final String? sessionId;
+  const Week3FinalScreen({super.key, required this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +132,7 @@ class Week3FinalScreen extends StatelessWidget {
             context,
             '/relaxation_education',
             arguments: {
+              'sessionId': sessionId,
               'taskId': 'week3_education',
               'weekNumber': 3,
               'mp3Asset': 'week3.mp3',

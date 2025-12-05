@@ -1,10 +1,9 @@
-// 📄 education_screen.dart (최종 확정본)
+// 📄 education_screen.dart (방탄 버전)
 import 'package:flutter/gestures.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/utils/edu_progress.dart';
 import 'package:gad_app_team/widgets/edu_progress_section.dart';
-// import 'package:gad_app_team/features/menu/menu_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/menu/education/education_page.dart';
@@ -14,10 +13,11 @@ class _NoScrollbarBehavior extends ScrollBehavior {
 
   @override
   Widget buildOverscrollIndicator(
-    BuildContext c,
-    Widget child,
-    ScrollableDetails d,
-  ) => child;
+      BuildContext c,
+      Widget child,
+      ScrollableDetails d,
+      ) =>
+      child;
 
   @override
   Widget buildScrollbar(BuildContext c, Widget child, ScrollableDetails d) =>
@@ -32,11 +32,13 @@ class _NoScrollbarBehavior extends ScrollBehavior {
 }
 
 class EducationScreen extends StatefulWidget {
+  final String? sessionId;
   final bool isRelax;
 
   const EducationScreen({
     super.key,
-    this.isRelax = false
+    this.sessionId,
+    this.isRelax = false,
   });
 
   @override
@@ -44,38 +46,42 @@ class EducationScreen extends StatefulWidget {
 }
 
 class _EducationScreenState extends State<EducationScreen> {
-  String? _userName;
+  // ───────────────── items / route mapping ─────────────────
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserName();
-  }
-  void _loadUserName() {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    setState(() => _userName = userProvider.userName);
-  }
-
-  late final List<BookItem> _items = widget.isRelax? [
-    BookItem('불안이란 무엇인가?', '/education1', 'assets/image/edu_book1.jpg'),
-    BookItem('동반되기 쉬운 다른 문제들', '/education3', 'assets/image/edu_book3.jpg'),
-    BookItem('불안의 치료 방법', '/education4', 'assets/image/edu_book4.jpg'),
-    BookItem('점진적 이완 훈련 안내', '/education7', 'assets/image/edu_relaxation.png'),
-  ] : [
-    BookItem('불안이란 무엇인가?', '/education1', 'assets/image/edu_book1.jpg'),
-    BookItem('불안이 생기는 원리', '/education2', 'assets/image/edu_book2.jpg'),
-    BookItem('동반되기 쉬운 다른 문제들', '/education3', 'assets/image/edu_book3.jpg'),
-    BookItem('불안의 치료 방법', '/education4', 'assets/image/edu_book4.jpg'),
-    BookItem('Mindrium의 치료 방법', '/education5', 'assets/image/edu_book5.jpg'),
-    BookItem('자기 이해를 높이는 방법', '/education6', 'assets/image/edu_book6.jpg'),
+  late final List<BookItem> _items = widget.isRelax
+      ? [
+    BookItem('불안이란 무엇인가?', '/education1',
+        'assets/image/edu_book1.jpg'),
+    BookItem('동반되기 쉬운 다른 문제들', '/education3',
+        'assets/image/edu_book3.jpg'),
+    BookItem('불안의 치료 방법', '/education4',
+        'assets/image/edu_book4.jpg'),
+    BookItem('점진적 이완 훈련 안내', '/education7',
+        'assets/image/edu_relaxation.png'),
+  ]
+      : [
+    BookItem('불안이란 무엇인가?', '/education1',
+        'assets/image/edu_book1.jpg'),
+    BookItem('불안이 생기는 원리', '/education2',
+        'assets/image/edu_book2.jpg'),
+    BookItem('동반되기 쉬운 다른 문제들', '/education3',
+        'assets/image/edu_book3.jpg'),
+    BookItem('불안의 치료 방법', '/education4',
+        'assets/image/edu_book4.jpg'),
+    BookItem('Mindrium의 치료 방법', '/education5',
+        'assets/image/edu_book5.jpg'),
+    BookItem('자기 이해를 높이는 방법', '/education6',
+        'assets/image/edu_book6.jpg'),
   ];
 
-  late final Map<String, String> _routeToKey = widget.isRelax? {
+  late final Map<String, String> _routeToKey = widget.isRelax
+      ? {
     '/education1': 'week1_part1',
     '/education3': 'week1_part3',
     '/education4': 'week1_part4',
     '/education7': 'week1_relaxation',
-  } : {
+  }
+      : {
     '/education1': 'week1_part1',
     '/education2': 'week1_part2',
     '/education3': 'week1_part3',
@@ -84,12 +90,14 @@ class _EducationScreenState extends State<EducationScreen> {
     '/education6': 'week1_part6',
   };
 
-  late final Map<String, String>  _routeToPrefix = widget.isRelax? {
+  late final Map<String, String> _routeToPrefix = widget.isRelax
+      ? {
     '/education1': 'assets/education_data/week1_part1_',
     '/education3': 'assets/education_data/week1_part3_',
     '/education4': 'assets/education_data/week1_part4_',
     '/education7': 'assets/education_data/week1_relaxation_',
-  } : {
+  }
+      : {
     '/education1': 'assets/education_data/week1_part1_',
     '/education2': 'assets/education_data/week1_part2_',
     '/education3': 'assets/education_data/week1_part3_',
@@ -98,15 +106,28 @@ class _EducationScreenState extends State<EducationScreen> {
     '/education6': 'assets/education_data/week1_part6_',
   };
 
+  // ───────────────── 교육 슬라이드 진입 ─────────────────
+
   Future<void> _openBook(BuildContext context, BookItem it) async {
+    // ✅ async gap 전에는 context 안 건드림
     await EduProgress.setLastRoute(it.route);
+
+    // ✅ async gap 이후 context 방탄
     if (!context.mounted) return;
-    final result = await Navigator.pushNamed(context, it.route);
+
+    final result = await Navigator.pushNamed(
+        context, it.route,
+        arguments: {'sessionId': widget.sessionId});
+
     if (result is int) {
       final key = _routeToKey[it.route];
-      if (key != null) await EduProgress.save(key, result);
+      if (key != null) {
+        await EduProgress.save(key, result);
+      }
     }
   }
+
+  // ───────────────── build ─────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -114,26 +135,40 @@ class _EducationScreenState extends State<EducationScreen> {
     const cardH = 200.0;
     const cardGap = 10.0;
     final cardW = cardH * coverAspect;
-    final row1 = widget.isRelax? _items.sublist(0, 2): _items.sublist(0, 3);
-    final row2 = widget.isRelax? _items.sublist(2, 4): _items.sublist(3, 6);
+
+    final row1 = widget.isRelax ? _items.sublist(0, 2) : _items.sublist(0, 3);
+    final row2 =
+    widget.isRelax ? _items.sublist(2, 4) : _items.sublist(3, 6);
+
+    // ✅ 이름은 Provider에서 바로 읽기 (initState + setState 필요 없음)
+    final user = context.watch<UserProvider>();
+    final name =
+    (user.userName.isNotEmpty) ? user.userName : '사용자';
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (widget.isRelax) {
-          Navigator.pushNamedAndRemoveUntil(context, '/treatment', (_)=>false);
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home_edu',
+                (_) => false,
+          );
         } else {
-          Navigator.pushNamedAndRemoveUntil(context, '/contents', (_)=>false);
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/contents',
+                (_) => false,
+          );
         }
       },
       child: ScrollConfiguration(
         behavior: const _NoScrollbarBehavior(),
         child: Scaffold(
-          backgroundColor: Colors.white, // ✅ 온백 유지
+          backgroundColor: Colors.white,
           body: Stack(
             children: [
-              /// 🌊 Mindrium-style 배경
               Positioned.fill(
                 child: Image.asset(
                   'assets/image/eduhome.png',
@@ -141,25 +176,31 @@ class _EducationScreenState extends State<EducationScreen> {
                   opacity: const AlwaysStoppedAnimation(0.35),
                 ),
               ),
-
               SafeArea(
                 child: Column(
                   children: [
-                    /// ✅ CustomAppBar (뒤로가기 → /contents)
                     CustomAppBar(
-                      title: widget.isRelax? '1주차 - 불안에 대한 교육': '불안에 대한 교육',
+                      title: widget.isRelax
+                          ? '1주차 - 불안에 대한 교육'
+                          : '불안에 대한 교육',
                       maxTitleLines: 2,
                       titleAlign: TextAlign.start,
                       showHome: true,
                       confirmOnHome: true,
                       confirmOnBack: false,
-                      onBack:() {
+                      onBack: () {
                         if (widget.isRelax) {
-                          // ✅ 이완 모드일 때: /treatment 까지 돌아가기
-                          Navigator.pushNamedAndRemoveUntil(context, '/treatment', (_)=>false);
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/home_edu',
+                                (_) => false,
+                          );
                         } else {
-                          // ✅ 일반 모드일 때: 기존 동작 유지
-                          Navigator.pushNamedAndRemoveUntil(context, '/contents', (_)=>false);
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/contents',
+                                (_) => false,
+                          );
                         }
                       },
                       titleTextStyle: const TextStyle(
@@ -170,8 +211,6 @@ class _EducationScreenState extends State<EducationScreen> {
                       ),
                       toolbarHeight: 56,
                     ),
-
-                    /// ✅ 메인 콘텐츠 스크롤 영역
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(
@@ -180,9 +219,11 @@ class _EducationScreenState extends State<EducationScreen> {
                         ),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 980),
+                            constraints:
+                            const BoxConstraints(maxWidth: 980),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
+                              crossAxisAlignment:
+                              CrossAxisAlignment.center,
                               children: [
                                 _buildCardSection(
                                   row1,
@@ -192,7 +233,7 @@ class _EducationScreenState extends State<EducationScreen> {
                                   cardGap,
                                 ),
                                 const SizedBox(height: 24),
-                                _buildProgressSection(),
+                                _buildProgressSection(name),
                               ],
                             ),
                           ),
@@ -209,13 +250,15 @@ class _EducationScreenState extends State<EducationScreen> {
     );
   }
 
+  // ───────────────── 섹션 빌더들 ─────────────────
+
   Widget _buildCardSection(
-    List<BookItem> row1,
-    List<BookItem> row2,
-    double cardH,
-    double cardW,
-    double cardGap,
-  ) {
+      List<BookItem> row1,
+      List<BookItem> row2,
+      double cardH,
+      double cardW,
+      double cardGap,
+      ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
@@ -244,20 +287,21 @@ class _EducationScreenState extends State<EducationScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          _horizontalBookList(row1, cardH, cardW, cardGap),
+          _horizontalBookList(row1, cardH, cardW, cardGap, widget.sessionId),
           const SizedBox(height: 16),
-          _horizontalBookList(row2, cardH, cardW, cardGap),
+          _horizontalBookList(row2, cardH, cardW, cardGap, widget.sessionId),
         ],
       ),
     );
   }
 
   Widget _horizontalBookList(
-    List<BookItem> items,
-    double cardH,
-    double cardW,
-    double cardGap,
-  ) {
+      List<BookItem> items,
+      double cardH,
+      double cardW,
+      double cardGap,
+      String? sessionId,
+      ) {
     return SizedBox(
       height: cardH,
       child: ListView.separated(
@@ -274,36 +318,34 @@ class _EducationScreenState extends State<EducationScreen> {
             item: it,
             onTap: () {
               if (widget.isRelax) {
-                ///TODO: 스크린타임 해결 후 이거 진행률에 따라 lock/unlock 이든 팝업창이든 가능하게 만들기
+                // ✅ 이완 모드: 항상 전체 1주차 교육 묶음 페이지로
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        EducationPage(
-                          title: '1주차 - 불안에 대한 교육',
-                          jsonPrefixes: const [
-                            'week1_part1_',
-                            'week1_part3_',
-                            'week1_part4_',
-                            'week1_relaxation_',
-                          ],
-                          isRelax: true,
-                        ),
+                    builder: (_) => EducationPage(
+                      title: '1주차 - 불안에 대한 교육',
+                      jsonPrefixes: [
+                        'week1_part1_',
+                        'week1_part3_',
+                        'week1_part4_',
+                        'week1_relaxation_',
+                      ],
+                      isRelax: true,
+                      sessionId: sessionId,
+                    ),
                   ),
                 );
               } else {
                 _openBook(context, it);
               }
-            }
+            },
           );
         },
       ),
     );
   }
 
-  Widget _buildProgressSection() {
-    final name = _userName ?? '사용자';
-
+  Widget _buildProgressSection(String name) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
@@ -317,16 +359,21 @@ class _EducationScreenState extends State<EducationScreen> {
         ],
       ),
       padding: const EdgeInsets.all(20),
-      child: widget.isRelax? Padding(
+      child: widget.isRelax
+          ? Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Center(
           child: Text(
             '$name님, 1주차에서는 불안에 대해 배워보고, 점진적 이완을 연습해보겠습니다.',
             style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
           ),
         ),
-      ): EducationProgressSection(
+      )
+          : EducationProgressSection(
         items: _items,
         routeToKey: _routeToKey,
         routeToPrefix: _routeToPrefix,

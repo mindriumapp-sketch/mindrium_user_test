@@ -5,9 +5,6 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/blue_white_card.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class ValueStartScreen extends StatefulWidget {
   final int weekNumber;
@@ -28,45 +25,16 @@ class ValueStartScreen extends StatefulWidget {
 }
 
 class _ValueStartScreenState extends State<ValueStartScreen> {
-  String? _userName;
-  String? _userValueGoal;
-  bool _isLoading = true;
-
-  final _page = PageController();
+  final PageController _page = PageController();
   int _index = 0;
 
   static const Color _navy = Color(0xFF263C69);
   static const Color _blue = Color(0xFF339DF1);
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    try {
-      // UserProvider에서 사용자 이름 가져오기
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      _userName = userProvider.userName;
-      
-      // UserDataApi에서 value_goal 가져오기
-      final apiClient = ApiClient(tokens: TokenStorage());
-      final userDataApi = UserDataApi(apiClient);
-      final valueGoalData = await userDataApi.getValueGoal();
-      _userValueGoal = valueGoalData?['value_goal'] as String?;
-      
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('사용자 데이터 로드 실패: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+  void dispose() {
+    _page.dispose(); // ✅ PageController 방탄
+    super.dispose();
   }
 
   void _goNextOrStart() {
@@ -78,7 +46,9 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => widget.nextPageBuilder()),
+        MaterialPageRoute(
+          builder: (_) => widget.nextPageBuilder(),
+        ),
       );
     }
   }
@@ -94,7 +64,25 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<UserProvider>();
     final double maxCardWidth = MediaQuery.of(context).size.width - 34 * 2;
+
+    // ✅ 아직 유저 정보 안 들어온 케이스 방어
+    if (!user.isUserLoaded) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final String name =
+    (user.userName.isNotEmpty) ? user.userName : '사용자';
+
+    // TODO: 핵심 가치 수정은 마이페이지에서만 가능하게 둘지 여부 (설명 문구 추가할지 등)
+    final String valueGoal = (user.valueGoal != null &&
+        user.valueGoal!.trim().isNotEmpty)
+        ? user.valueGoal!.trim()
+        : '행복 가족 건강';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -113,9 +101,7 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
             ),
           ),
           SafeArea(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
+            child: Column(
               children: [
                 Expanded(
                   child: PageView(
@@ -126,8 +112,8 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                         maxWidth: maxCardWidth,
                         navy: _navy,
                         blue: _blue,
-                        name: _userName ?? '사용자',
-                        value: _userValueGoal ?? '행복 가족 건강',
+                        name: name,
+                        value: valueGoal,
                         weekDescription: widget.weekDescription,
                       ),
                       _GuidePage(
@@ -135,7 +121,7 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                         navy: _navy,
                         title: '${widget.weekNumber}주차 활동 안내',
                         subtitle: widget.weekTitle,
-                        weekNumber: widget.weekNumber, // ✅ 추가
+                        weekNumber: widget.weekNumber,
                       ),
                     ],
                   ),
@@ -148,12 +134,12 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                         child: OutlinedButton(
                           onPressed: _index == 0 ? null : _goPrev,
                           style: OutlinedButton.styleFrom(
-                            padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                            backgroundColor:
-                            Colors.white.withValues(alpha: _index == 0 ? 0.5 : 1),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: _index == 0 ? 0.5 : 1,
+                            ),
                             side: BorderSide(
-                              color: Colors.white.withValues(alpha:  0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -162,9 +148,8 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                           child: Text(
                             '이 전',
                             style: TextStyle(
-                              color: _index == 0
-                                  ? Colors.black38
-                                  : _blue,
+                              color:
+                              _index == 0 ? Colors.black38 : _blue,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -177,8 +162,9 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _blue,
                             foregroundColor: Colors.white,
-                            padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -272,7 +258,8 @@ class _WelcomePage extends StatelessWidget {
             outerExpand: EdgeInsets.zero,
             innerColor: Colors.white,
             innerRadius: 20,
-            innerPadding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
+            innerPadding:
+            const EdgeInsets.fromLTRB(28, 26, 28, 26),
             dividerColor: const Color(0xFFE8EDF4),
             dividerWidth: 240,
             titleTopGap: 10,
@@ -289,7 +276,9 @@ class _WelcomePage extends StatelessWidget {
                       child: Container(
                         width: _badgeWidth,
                         padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 10),
+                          vertical: 16,
+                          horizontal: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
@@ -316,7 +305,9 @@ class _WelcomePage extends StatelessWidget {
                     Container(
                       width: _badgeWidth,
                       padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 20),
+                        vertical: 8,
+                        horizontal: 20,
+                      ),
                       decoration: BoxDecoration(
                         color: blue,
                         borderRadius: BorderRadius.zero,
@@ -336,7 +327,11 @@ class _WelcomePage extends StatelessWidget {
                 Text(
                   protectKoreanWords(weekDescription),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: navy, fontSize: 14, height: 1.5),
+                  style: TextStyle(
+                    color: navy,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
                 ),
               ],
             ),
@@ -352,14 +347,14 @@ class _GuidePage extends StatelessWidget {
   final Color navy;
   final String title;
   final String subtitle;
-  final int weekNumber; // 추가
+  final int weekNumber;
 
   const _GuidePage({
     required this.maxWidth,
     required this.navy,
     required this.title,
     required this.subtitle,
-    required this.weekNumber, // 추가
+    required this.weekNumber,
   });
 
   @override
@@ -381,7 +376,8 @@ class _GuidePage extends StatelessWidget {
             outerExpand: EdgeInsets.zero,
             innerColor: Colors.white,
             innerRadius: 20,
-            innerPadding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
+            innerPadding:
+            const EdgeInsets.fromLTRB(28, 26, 28, 26),
             dividerColor: const Color(0xFFE8EDF4),
             dividerWidth: 240,
             titleTopGap: 10,

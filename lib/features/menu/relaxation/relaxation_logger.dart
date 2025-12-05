@@ -6,16 +6,6 @@ import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
 /// 점진적 이완 세션용 로거
-///
-/// ✅ 유지한 것들
-/// - logEvent(String action)
-/// - logAutosaveTick()  → autosave_* 는 DB 저장 시 필터링
-/// - setFullyCompleted()  → 완주 여부 플래그
-/// - saveLogs()  → 한 세션당 한 도큐먼트 upsert
-///
-/// ✅ 바뀐 것들
-/// - endTime은 **완주(_fullyCompleted=true)**일 때만 기록
-/// - 완주 전 saveLogs: realLogs + autosave_checkpoint 1개만 추가
 class RelaxationLogger {
   final String taskId;
   final int? weekNumber;

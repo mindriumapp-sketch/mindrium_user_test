@@ -5,7 +5,8 @@ import 'package:gad_app_team/features/2nd_treatment/abc_belief_screen.dart';
 /// 🌊 ABC 모델 - A단계 (Activating Event)
 /// AbcActivateDesign 스타일 적용 (Tutor형 메모 카드)
 class AbcActivateScreen extends StatelessWidget {
-  const AbcActivateScreen({super.key});
+  final String? sessionId;
+  const AbcActivateScreen({super.key, this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,7 @@ class AbcActivateScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const AbcBeliefScreen(),
+            pageBuilder: (_, __, ___) => AbcBeliefScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

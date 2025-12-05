@@ -17,12 +17,14 @@ class CustomTagsApi {
   Future<List<Map<String, dynamic>>> listCustomTags({
     String? chipType,
     bool includeDeleted = false,
+    bool summaryFlag = true,
   }) async {
     final res = await _client.dio.get(
       '/custom-tags',
       queryParameters: {
         if (chipType != null) 'chip_type': chipType,
         'include_deleted': includeDeleted,
+        'summary_flag': summaryFlag
       },
     );
 
@@ -73,20 +75,17 @@ class CustomTagsApi {
   /// POST /custom-tags
   ///
   /// 백엔드 스키마:
-  /// - chip_id: String (클라에서 생성해서 보내야 함)
   /// - label: String
   /// - type: "A" | "B" | "CP" | "CE" | "CA"
   /// - is_preset: bool (optional, default=false)
   /// - client_timestamp: DateTime (필수)
   Future<Map<String, dynamic>> createCustomTag({
-    required String chipId,
     required String label,
     required String type,
     bool isPreset = false,
     DateTime? clientTimestamp,
   }) async {
     final payload = <String, dynamic>{
-      'chip_id': chipId,
       'label': label,
       'type': type,
       'is_preset': isPreset,
@@ -168,40 +167,6 @@ class CustomTagsApi {
     throw DioException(
       requestOptions: res.requestOptions,
       message: 'Invalid /custom-tags/{chip_id} (DELETE) response',
-    );
-  }
-
-  /// Category 로그 조회 (short_term: confront/avoid 포함)
-  Future<List<Map<String, dynamic>>> listCategoryLogs({
-    String? chipId,
-    String? diaryId,
-    DateTime? startCompletedAt,
-    DateTime? endCompletedAt,
-  }) async {
-    final res = await _client.dio.get(
-      '/custom-tags/logs/category',
-      queryParameters: {
-        if (chipId != null) 'chip_id': chipId,
-        if (diaryId != null) 'diary_id': diaryId,
-        if (startCompletedAt != null)
-          'start_completed_at': startCompletedAt.toUtc().toIso8601String(),
-        if (endCompletedAt != null)
-          'end_completed_at': endCompletedAt.toUtc().toIso8601String(),
-      },
-    );
-
-    final data = res.data;
-    if (data is List) {
-      return data
-          .whereType<Map>()
-          .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
-          .toList()
-          .cast<Map<String, dynamic>>();
-    }
-
-    throw DioException(
-      requestOptions: res.requestOptions,
-      message: 'Invalid /custom-tags/logs/category response',
     );
   }
 
@@ -350,4 +315,37 @@ class CustomTagsApi {
     );
   }
 
+  /// Category 로그 조회 (short_term: confront/avoid 포함)
+  Future<List<Map<String, dynamic>>> listCategoryLogs({
+    String? chipId,
+    String? diaryId,
+    DateTime? startCompletedAt,
+    DateTime? endCompletedAt,
+  }) async {
+    final res = await _client.dio.get(
+      '/custom-tags/logs/category',
+      queryParameters: {
+        if (chipId != null) 'chip_id': chipId,
+        if (diaryId != null) 'diary_id': diaryId,
+        if (startCompletedAt != null)
+          'start_completed_at': startCompletedAt.toUtc().toIso8601String(),
+        if (endCompletedAt != null)
+          'end_completed_at': endCompletedAt.toUtc().toIso8601String(),
+      },
+    );
+
+    final data = res.data;
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
+          .toList()
+          .cast<Map<String, dynamic>>();
+    }
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /custom-tags/logs/category response',
+    );
+  }
 }

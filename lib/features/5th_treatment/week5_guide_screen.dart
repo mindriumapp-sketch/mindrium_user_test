@@ -4,7 +4,8 @@ import 'package:gad_app_team/widgets/tutor_design.dart'; // ✅ AbcActivateDesig
 
 /// 🌊 Mindrium 스타일 - 5주차 불안 직면 VS 회피 (사례 소개)
 class Week5GuideScreen extends StatelessWidget {
-  const Week5GuideScreen({super.key});
+  final String? sessionId;
+  const Week5GuideScreen({super.key, required this.sessionId});
 
   String get _description =>
       '이 여성은 34살의 초등학교 교사입니다.\n'
@@ -27,7 +28,7 @@ class Week5GuideScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week5BeliefScreen(),
+            pageBuilder: (_, __, ___) => Week5BeliefScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

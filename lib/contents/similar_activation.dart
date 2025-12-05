@@ -1,9 +1,13 @@
+import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
+// import 'package:provider/provider.dart';
+// import 'package:gad_app_team/data/user_provider.dart';
+
 
 /// 💡 Mindrium 스타일: 비슷한 상황 확인 화면
 /// 앞쪽은 InnerBtnCardScreen 구조로 감싸고,
@@ -16,12 +20,14 @@ class SimilarActivationScreen extends StatelessWidget {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId = args['abcId'] as String?;
     final String? groupId = args['groupId'] as String?;
-    final int? sud = args['sud'] as int?;
+    final int? sud = args['beforeSud'] as int?;
+    final String? sudId = args['sudId'] as String?;
     debugPrint('[SimilarActivation] abcId=$abcId, groupId=$groupId');
 
     final tokens = TokenStorage();
     final apiClient = ApiClient(tokens: tokens);
     final diariesApi = DiariesApi(apiClient);
+    final sudApi = SudApi(apiClient);
 
     return InnerBtnCardScreen(
       appBarTitle: '비슷한 상황 확인',
@@ -39,20 +45,10 @@ class SimilarActivationScreen extends StatelessWidget {
           return;
         }
 
+        // NOTE: 나중에 UserProvider 연결되면 currentWeek 기반으로 분기
+        // final userProvider = context.read<UserProvider>();
+        // final completedWeeks = userProvider.currentWeek;
         int completedWeeks = 8; //TODO: 임시 8주차 완료 처리
-        // try {
-        //   final progress = await userDataApi.getProgress();
-        //   final weekProgress = progress['week_progress'];
-        //   if (weekProgress is List) {
-        //     for (final item in weekProgress) {
-        //       if (item is Map && item['completed'] == true) {
-        //         completedWeeks++;
-        //       }
-        //     }
-        //   }
-        // } catch (e) {
-        //   debugPrint('❌ 진행도 정보 조회 실패: $e');
-        // }
 
         if (!context.mounted) return;
         final route =
@@ -60,10 +56,11 @@ class SimilarActivationScreen extends StatelessWidget {
         Navigator.pushNamed(
           context,
           route,
-          arguments: {'abcId': abcId, 'sud': sud},
+          arguments: {'abcId': abcId, 'beforeSud': sud, 'sudId': sudId},
         );
       },
       onSecondary: () {
+        sudApi.deleteSudScore(diaryId: abcId!, sudId: sudId!);
         Navigator.pushNamed(
           context,
           '/diary_yes_or_no',
@@ -92,7 +89,7 @@ class SimilarActivationScreen extends StatelessWidget {
           }
 
           final activatingEvent =
-              (data['activating_events'] ?? data['activatingEvent'] ?? '')
+              (data['activation'] ?? data['activation'] ?? '')
                   .toString()
                   .trim();
           final beliefValue = data['belief'];
@@ -104,9 +101,9 @@ class SimilarActivationScreen extends StatelessWidget {
                       .join(', ')
                   : (beliefValue ?? '').toString().trim();
           final consequences = [
-            data['consequence_p'],
-            data['consequence_e'],
-            data['consequence_b'],
+            data['consequence_physical'],
+            data['consequence_emotion'],
+            data['consequence_action'],
           ]
               .whereType<List>()
               .expand((list) => list)

@@ -5,7 +5,8 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
 
 class Week5FinalScreen extends StatelessWidget {
-  const Week5FinalScreen({super.key,});
+  final String? sessionId;
+  const Week5FinalScreen({super.key, required this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +101,7 @@ class Week5FinalScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
-                    onNext: () => _showStartDialog(context),
+                    onNext: () => _showStartDialog(context, sessionId),
                   ),
                 ),
               ],
@@ -112,7 +113,7 @@ class Week5FinalScreen extends StatelessWidget {
   }
 
   /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
-  void _showStartDialog(BuildContext context) {
+  void _showStartDialog(BuildContext context, String? sessionId) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -131,6 +132,7 @@ class Week5FinalScreen extends StatelessWidget {
             context,
             '/relaxation_education',
             arguments: {
+              'sessionId': sessionId,
               'taskId': 'week5_education',
               'weekNumber': 5,
               'mp3Asset': 'week5.mp3',

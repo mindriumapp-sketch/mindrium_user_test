@@ -5,6 +5,7 @@ import 'package:gad_app_team/features/5th_treatment/week5_classification_detail_
 import 'week5_imagination.dart';
 
 class Week5ClassificationResultScreen extends StatelessWidget {
+  final String? sessionId;
   final int correctCount;
   final List<Map<String, dynamic>> quizResults;
 
@@ -12,6 +13,7 @@ class Week5ClassificationResultScreen extends StatelessWidget {
     super.key,
     required this.correctCount,
     required this.quizResults,
+    required this.sessionId,
   });
 
   @override
@@ -119,6 +121,7 @@ class Week5ClassificationResultScreen extends StatelessWidget {
                         context,
                         PageRouteBuilder(
                           pageBuilder: (_, __, ___) => Week5ImaginationScreen(
+                            sessionId: sessionId,
                             quizResults: quizResults,
                             correctCount: correctCount,
                           ),

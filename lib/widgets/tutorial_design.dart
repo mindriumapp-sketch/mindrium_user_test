@@ -14,6 +14,7 @@ class ApplyDesign extends StatelessWidget {
   final Widget child; // 카드 내부 내용
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final String leftLabel;
   final String rightLabel;
 
   const ApplyDesign({
@@ -23,6 +24,7 @@ class ApplyDesign extends StatelessWidget {
     required this.child,
     required this.onBack,
     required this.onNext,
+    this.leftLabel = '이전',
     this.rightLabel = '다음',
   });
 
@@ -88,6 +90,7 @@ class ApplyDesign extends StatelessWidget {
                   child: NavigationButtons(
                     onBack: onBack,
                     onNext: onNext,
+                    leftLabel: leftLabel,
                     rightLabel: rightLabel,
                   ),
                 ),

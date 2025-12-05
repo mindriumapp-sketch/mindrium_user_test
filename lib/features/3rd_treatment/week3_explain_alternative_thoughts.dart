@@ -7,15 +7,13 @@ import 'package:gad_app_team/features/3rd_treatment/week3_alternative_thoughts.d
 import 'package:gad_app_team/utils/text_line_utils.dart';
 
 class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
+  final String? sessionId;
   final List<String> chips;
-  final List<Map<String, dynamic>>? quizResults;
-  final int? correctCount;
 
   const Week3ExplainAlternativeThoughtsScreen({
     super.key,
+    required this.sessionId,
     required this.chips,
-    this.quizResults,
-    this.correctCount,
   });
 
   // 강조 박스
@@ -192,9 +190,8 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
           context,
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => Week3AlternativeThoughtsScreen(
+              sessionId: sessionId,
               previousChips: chips,
-              quizResults: quizResults,
-              correctCount: correctCount,
             ),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,

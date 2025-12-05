@@ -7,30 +7,20 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 /// - activeIndex: 0(A), 1(B), 2(C)
 /// - smallText: 위쪽 작은 텍스트
 /// - bigText: 중앙 큰 텍스트
-/// - selectedChips: 아래 칩에서 사용자가 선택한 라벨들 (카드 안에 pill로 2개까지 보여줌)
 class AbcStepCard extends StatelessWidget {
   final int activeIndex;
   final String smallText;
   final String bigText;
-  final List<String> selectedChips;
-  final bool? isStepA;
 
   const AbcStepCard({
     super.key,
     required this.activeIndex,
     required this.smallText,
     required this.bigText,
-    this.selectedChips = const [],
-    this.isStepA = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    const previewCount = 2;
-    final bool needMore = selectedChips.length > previewCount;
-    // final List<String> preview =
-    needMore ? selectedChips.sublist(0, previewCount) : selectedChips;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

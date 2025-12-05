@@ -8,10 +8,12 @@ import 'package:gad_app_team/features/3rd_treatment/week3_imagination.dart';
 
 class Week3ClassificationResultScreen extends StatelessWidget {
   final int correctCount;
+  final String? sessionId;
   final List<Map<String, dynamic>> quizResults;
 
   const Week3ClassificationResultScreen({
     super.key,
+    required this.sessionId,
     required this.correctCount,
     required this.quizResults,
   });
@@ -166,8 +168,7 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                         context,
                         PageRouteBuilder(
                           pageBuilder: (_, __, ___) => Week3ImaginationScreen(
-                            quizResults: quizResults,
-                            correctCount: correctCount,
+                            sessionId: sessionId,
                           ),
                           transitionDuration: Duration.zero,
                           reverseTransitionDuration: Duration.zero,

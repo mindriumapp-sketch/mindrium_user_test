@@ -383,6 +383,7 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
     setState(() => _saving = true);
 
     try {
+      // TODO: description에 뭐 넣을거 없쥬? 예전에 있어서 넣엇던 필드인디
       await _surveyApi.submitSurvey(
         type: 'before_survey',
         answers: {

@@ -4,42 +4,71 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_activate_screen.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
-import 'package:gad_app_team/widgets/blue_banner.dart'; // CustomBanner 들어있다고 가정
+import 'package:gad_app_team/widgets/blue_banner.dart';
 
 class AbcGuideScreen extends StatefulWidget {
-  const AbcGuideScreen({super.key});
+  final String? sessionId;
+  const AbcGuideScreen({super.key, this.sessionId});
 
   @override
   State<AbcGuideScreen> createState() => _AbcGuideScreenState();
 }
 
 class _AbcGuideScreenState extends State<AbcGuideScreen> {
-  bool _showBanner = true;
-  Timer? _bannerTimer;
+  bool _showJellyfishIcon = false; // 우상단 해파리 아이콘 노출 여부
+  Timer? _jellyTimer;
 
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      CustomBanner.show(context);      // 들어올 때 배너
-      _startBannerTimer();             // 5초 후 해파리 나타나게
+      // ✅ 화면 진입 시, 하얀 배너 + 해파리 4초 보여줌
+      CustomBanner.show(context);
+
+      // ✅ 4초 뒤부터 화면 우상단 해파리 아이콘 등장
+      _startJellyTimer();
     });
   }
 
-  void _startBannerTimer() {
-    _bannerTimer?.cancel();
-    _bannerTimer = Timer(const Duration(seconds: 4), () {
+  void _startJellyTimer() {
+    _jellyTimer?.cancel();
+    _jellyTimer = Timer(const Duration(seconds: 4), () {
       if (!mounted) return;
       setState(() {
-        _showBanner = false;
+        _showJellyfishIcon = true;
       });
     });
   }
 
   @override
   void dispose() {
-    _bannerTimer?.cancel();
+    // ✅ 화면 떠날 때: 타이머/배너 둘 다 정리
+    _jellyTimer?.cancel();
+    BlueBanner.hide();
     super.dispose();
+  }
+
+  void _goBack(BuildContext context) {
+    BlueBanner.hide(); // 🔻 뒤로갈 때 배너 강제 제거
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Week2Screen(sessionId: widget.sessionId),
+      ),
+    );
+  }
+
+  void _goNext(BuildContext context) {
+    BlueBanner.hide(); // 🔻 다음 화면 갈 때도 배너 강제 제거
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => AbcActivateScreen(sessionId: widget.sessionId),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
   }
 
   @override
@@ -51,24 +80,8 @@ class _AbcGuideScreenState extends State<AbcGuideScreen> {
         ApplyDesign(
           appBarTitle: '2주차 - ABC 모델',
           cardTitle: 'ABC 모델이란?',
-          onBack: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const Week2Screen(),
-              ),
-            );
-          },
-          onNext: () {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => AbcActivateScreen(),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
-          },
+          onBack: () => _goBack(context),
+          onNext: () => _goNext(context),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: const [
@@ -93,20 +106,16 @@ class _AbcGuideScreenState extends State<AbcGuideScreen> {
           ),
         ),
 
-        // 2) 카드 “바깥” 우상단에 해파리 올리기
-        if (!_showBanner)
+        // 2) 카드 바깥 우상단 해파리 아이콘 (배너 다시 띄우기)
+        if (_showJellyfishIcon)
           Positioned(
-            // 이 값들이 바로 네가 빨간색으로 칠한 자리
-            // 필요하면 살짝씩 조절해
-            top: 85,        // 앱바 높이 + 카드 위 여백 대략
-            right: 40,       // 카드 오른쪽 여백 맞춰서
+            top: 85,
+            right: 40,
             child: GestureDetector(
               onTap: () {
+                // 눌렀을 때 4초짜리 배너 다시 띄우기
                 CustomBanner.show(context);
-                setState(() {
-                  _showBanner = true;
-                });
-                _startBannerTimer();
+                // 아이콘은 계속 남아 있어도 됨 (원하면 다시 타이머 돌려서 잠깐 숨겼다 나와도 됨)
               },
               child: Image.asset(
                 'assets/image/jellyfish_smart.png',
@@ -120,3 +129,4 @@ class _AbcGuideScreenState extends State<AbcGuideScreen> {
     );
   }
 }
+

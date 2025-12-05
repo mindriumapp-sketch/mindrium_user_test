@@ -21,7 +21,8 @@ class RelaxOrAlternativePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId = args['abcId'] as String?;
-    final int? sud = args['sud'] as int?;
+    final String? sudId = args['sudId'] as String?;
+    final int? beforeSud = args['beforeSud'] as int?;
     final dynamic diary = args['diary'];
     final dynamic rawOrigin = args['origin'];
     final String origin = rawOrigin is String ? rawOrigin : 'apply';
@@ -42,20 +43,23 @@ class RelaxOrAlternativePage extends StatelessWidget {
             'nextPage': '/relaxation_score',
             'diary': diary,
             'origin': origin,
+            'beforeSud': beforeSud,
+            'sudId': sudId,
           },
         );
       },
       secondaryText: '대체 생각 작성',
       onSecondary: () {
         debugPrint(
-          '[relax_or_alternative] abcId=$abcId, sud=$sud, diary=$diary',
+          '[relax_or_alternative] abcId=$abcId, sud=$beforeSud, diary=$diary',
         );
         Navigator.pushNamed(
           context,
           '/apply_alt_thought',
           arguments: {
             'abcId': abcId,
-            'sud': sud,
+            'beforeSud': beforeSud,
+            'sudId': sudId,
             'origin': origin,
             if (diary != null) 'diary': diary,
           },

@@ -4,7 +4,6 @@ import 'package:gad_app_team/features/4th_treatment/week4_skip_choice_screen.dar
 import 'package:gad_app_team/features/2nd_treatment/notification_selection_screen.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 
@@ -20,26 +19,34 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final SudApi _sudApi = SudApi(_apiClient);
-  late final DiariesApi _diariesApi = DiariesApi(_apiClient);
 
   Map _args() => ModalRoute.of(context)?.settings.arguments as Map? ?? {};
   String? get _abcId => _args()['abcId'] as String?;
   String? get _origin => _args()['origin'] as String?;
   dynamic get _diary => _args()['diary'];
+  String? get _sudId => _args()['sudId'] as String?;
 
   // ───────────────────── FastAPI 저장 ─────────────────────
-  Future<void> _saveSud() async {
+  Future<Map<String, dynamic>?> _saveSud() async {
     final abcId = _abcId;
-    if (abcId == null || abcId.isEmpty) return;
-    await _sudApi.createSudScore(
+    final sudId = _sudId;
+    if (abcId == null || abcId.isEmpty || sudId == null || sudId.isEmpty) {
+      return null;
+    }
+
+    final res = await _sudApi.updateSudScore(
       diaryId: abcId,
-      beforeScore: _sud,
+      sudId: sudId,
       afterScore: _sud,
     );
+    return res;
   }
 
   // ───────────────────── 비교 및 분기 ─────────────────────
-  Future<void> _compareAndNavigate() async {
+  Future<void> _compareAndNavigate(Map<String, dynamic> res) async {
+    final beforeSud = (res['before_sud'] as num?)?.toInt() ?? _sud;
+    final afterSud  = (res['after_sud']  as num?)?.toInt() ?? _sud;
+
     final abcId = _abcId;
     final origin = _origin;
     final diaryArg = _diary;
@@ -52,7 +59,7 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
           MaterialPageRoute(
             builder:
                 (_) =>
-                    NotificationSelectionScreen(origin: 'apply', abcId: abcId),
+                    NotificationSelectionScreen(origin: 'apply', abcId: abcId!),
           ),
         );
       } else {
@@ -67,19 +74,6 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
       return;
     }
 
-    final diaryData = await _diariesApi.getDiary(abcId);
-    final scores = diaryData['sudScores'] as List<dynamic>? ?? const [];
-    scores.sort((a, b) {
-      final da = DateTime.tryParse(a['updated_at']?.toString() ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      final db = DateTime.tryParse(b['updated_at']?.toString() ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      return db.compareTo(da);
-    });
-    final latest = scores.isNotEmpty ? scores.first : null;
-    final beforeSud = latest?['before_sud'] as num? ?? _sud;
-    final afterSud = latest?['after_sud'] as num? ?? _sud;
-
     if (!mounted) return;
     if (afterSud < beforeSud) {
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
@@ -89,16 +83,11 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
         PageRouteBuilder(
           pageBuilder:
               (_, __, ___) => Week4SkipChoiceScreen(
-                beforeSud: beforeSud.toInt(),
-                  allBList:
-                      (_args()['allBList'] as List?)?.cast<String>() ?? const [],
-                  remainingBList:
-                      (_args()['remainingBList'] as List?)?.cast<String>() ??
-                      const [],
-                existingAlternativeThoughts:
-                  (_args()['allAlternativeThoughts'] as List?)
-                      ?.cast<String>() ??
-                  const [],
+                beforeSud: beforeSud,
+                allBList: (_args()['allBList'] as List?)?.cast<String>() ?? const [],
+                remainingBList: (_args()['remainingBList'] as List?)?.cast<String>() ?? const [],
+                existingAlternativeThoughts: (_args()['allAlternativeThoughts'] as List?)
+                      ?.cast<String>() ?? const [],
                 abcId: abcId,
                 isFromAfterSud: true,
               ),
@@ -134,9 +123,15 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
       cardTitle: '대체 생각을 한 후,\n지금의 불안 정도를 선택해 주세요',
       onBack: () => Navigator.pop(context),
       onNext: () async {
-        await _saveSud();
+        final res = await _saveSud();
         if (!context.mounted) return;
-        await _compareAndNavigate();
+
+        // sudId 없거나 저장 실패 등
+        if (res == null) {
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+          return;
+        }
+        await _compareAndNavigate(res);
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,

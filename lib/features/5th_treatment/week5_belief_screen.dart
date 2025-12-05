@@ -4,7 +4,8 @@ import 'package:gad_app_team/widgets/tutor_design.dart';
 
 /// 🌊 Mindrium 스타일 - 5주차 불안 직면 VS 회피 화면
 class Week5BeliefScreen extends StatelessWidget {
-  const Week5BeliefScreen({super.key});
+  final String? sessionId;
+  const Week5BeliefScreen({super.key, required this.sessionId});
 
   String get _description =>
       '걱정이 많아지면서 신체적으로도 여러 증상이 나타났습니다.\n'
@@ -26,7 +27,7 @@ class Week5BeliefScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week5ConsequenceScreen(),
+            pageBuilder: (_, __, ___) => Week5ConsequenceScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

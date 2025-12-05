@@ -94,6 +94,25 @@ class SudApi {
     );
   }
 
+  Future<void> deleteSudScore({
+    required String diaryId,
+    required String sudId,
+  }) async {
+    final res = await _client.dio.delete(
+      '/sud-scores/$diaryId/$sudId',
+    );
+
+    // 백엔드가 204 No Content 돌려줄 예정
+    if (res.statusCode == 204 || res.statusCode == 200) {
+      return;
+    }
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message:
+      'Invalid /sud-scores delete response (status: ${res.statusCode})',
+    );
+  }
 // ---------------------------------------------------------------------------
 // (추후 사용용) SUD 주차별 / 일별 통계 API
 // 주석만 풀면 바로 사용 가능

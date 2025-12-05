@@ -9,11 +9,13 @@ import 'package:gad_app_team/widgets/chips_editor.dart';   // ChipsEditor
 import 'week5_confront_anxiety.dart';
 
 class Week5ImaginationScreen extends StatefulWidget {
+  final String? sessionId;
   final List<Map<String, dynamic>>? quizResults;
   final int? correctCount;
 
   const Week5ImaginationScreen({
     super.key,
+    required this.sessionId,
     this.quizResults,
     this.correctCount,
   });
@@ -105,6 +107,7 @@ class _Week5ImaginationScreenState extends State<Week5ImaginationScreen> {
             context,
             PageRouteBuilder(
               pageBuilder: (_, __, ___) => Week5ConfrontAnxietyScreen(
+                sessionId: widget.sessionId,
                 previousChips: values,
                 quizResults: widget.quizResults,
                 correctCount: widget.correctCount,

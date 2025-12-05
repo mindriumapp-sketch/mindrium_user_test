@@ -4,7 +4,8 @@ import 'package:gad_app_team/features/5th_treatment/week5_classification_screen.
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ✅ ApplyDesign 사용
 
 class Week5PracticeScreen extends StatelessWidget {
-  const Week5PracticeScreen({super.key});
+  final String? sessionId;
+  const Week5PracticeScreen({super.key, required this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +17,7 @@ class Week5PracticeScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week5ClassificationScreen(),
+            pageBuilder: (_, __, ___) => Week5ClassificationScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

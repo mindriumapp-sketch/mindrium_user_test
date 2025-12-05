@@ -3,37 +3,48 @@ import 'package:gad_app_team/widgets/abc_chips_design.dart';
 import 'package:gad_app_team/widgets/abc_step_card.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 
-/// 🧩 C단계: 결과(신체·감정·행동) 3단계 뷰
+/// 🧩 C단계: 결과(신체·감정·행동) 3단계 뷰 (chipId 기반)
 class StepCView extends StatefulWidget {
   final int subStep; // 0=신체, 1=감정, 2=행동
-  final List<String> physicalList;
-  final List<String> emotionList;
-  final List<String> behaviorList;
-  final Set<int> selectedPhysical;
-  final Set<int> selectedEmotion;
-  final Set<int> selectedBehavior;
+
+  /// C1: 신체 칩들
+  final List<AbcChip> physicalChips;
+
+  /// C2: 감정 칩들
+  final List<AbcChip> emotionChips;
+
+  /// C3: 행동 칩들
+  final List<AbcChip> behaviorChips;
+
+  /// 현재 선택된 chipId 집합
+  final Set<String> selectedPhysicalChipIds;
+  final Set<String> selectedEmotionChipIds;
+  final Set<String> selectedBehaviorChipIds;
+
   final bool isExampleMode;
 
-  final void Function(String text)? onAddPhysical;
-  final void Function(String text)? onAddEmotion;
-  final void Function(String text)? onAddBehavior;
+  /// "+추가" 눌렀을 때 (팝업은 상위 AbcInputScreen에서 처리)
+  final VoidCallback? onAddPhysical;
+  final VoidCallback? onAddEmotion;
+  final VoidCallback? onAddBehavior;
 
-  final void Function(int index)? onDeletePhysical;
-  final void Function(int index)? onDeleteEmotion;
-  final void Function(int index)? onDeleteBehavior;
+  /// X 삭제 눌렀을 때 (chipId)
+  final void Function(String chipId)? onDeletePhysical;
+  final void Function(String chipId)? onDeleteEmotion;
+  final void Function(String chipId)? onDeleteBehavior;
 
-  /// ✅ 부모(AbcInputScreen)에 선택 변경 알림 콜백
+  /// ✅ 부모(AbcInputScreen)에 "선택 상태 바뀜"만 알려주는 콜백
   final VoidCallback? onSelectionChanged;
 
   const StepCView({
     super.key,
     required this.subStep,
-    required this.physicalList,
-    required this.emotionList,
-    required this.behaviorList,
-    required this.selectedPhysical,
-    required this.selectedEmotion,
-    required this.selectedBehavior,
+    required this.physicalChips,
+    required this.emotionChips,
+    required this.behaviorChips,
+    required this.selectedPhysicalChipIds,
+    required this.selectedEmotionChipIds,
+    required this.selectedBehaviorChipIds,
     this.isExampleMode = false,
     this.onAddPhysical,
     this.onAddEmotion,
@@ -67,11 +78,12 @@ class _StepCViewState extends State<StepCView> {
     return _buildCommonSection(
       title: '불안할 때 몸에\n어떤 증상이 있었나요?',
       smallText: '결과를 관찰해요',
-      chips: widget.physicalList,
-      selectedIndexes: widget.selectedPhysical,
+      chips: widget.physicalChips,
+      selectedChipIds: widget.selectedPhysicalChipIds,
       exampleMessage: "예시로 '두근거림' 칩을 눌러 선택해보세요!",
       onAdd: widget.isExampleMode ? null : widget.onAddPhysical,
-      onDelete: widget.isExampleMode ? null : widget.onDeletePhysical,
+      onDelete:
+      widget.isExampleMode ? null : widget.onDeletePhysical,
     );
   }
 
@@ -80,11 +92,12 @@ class _StepCViewState extends State<StepCView> {
     return _buildCommonSection(
       title: '불안할 때\n어떤 감정을 느꼈나요?',
       smallText: '결과를 관찰해요',
-      chips: widget.emotionList,
-      selectedIndexes: widget.selectedEmotion,
+      chips: widget.emotionChips,
+      selectedChipIds: widget.selectedEmotionChipIds,
       exampleMessage: "예시로 '불안' 칩을 눌러 선택해보세요!",
       onAdd: widget.isExampleMode ? null : widget.onAddEmotion,
-      onDelete: widget.isExampleMode ? null : widget.onDeleteEmotion,
+      onDelete:
+      widget.isExampleMode ? null : widget.onDeleteEmotion,
     );
   }
 
@@ -93,23 +106,24 @@ class _StepCViewState extends State<StepCView> {
     return _buildCommonSection(
       title: '그때 어떤 행동을 했나요?',
       smallText: '결과를 관찰해요',
-      chips: widget.behaviorList,
-      selectedIndexes: widget.selectedBehavior,
+      chips: widget.behaviorChips,
+      selectedChipIds: widget.selectedBehaviorChipIds,
       exampleMessage: "예시로 '자전거를 타지 않았어요' 칩을 눌러보세요!",
       onAdd: widget.isExampleMode ? null : widget.onAddBehavior,
-      onDelete: widget.isExampleMode ? null : widget.onDeleteBehavior,
+      onDelete:
+      widget.isExampleMode ? null : widget.onDeleteBehavior,
     );
   }
 
-  /// 🎯 공통 구성 (신체/감정/행동 공용 뷰)
+  /// 🎯 공통 구성 (신체/감정/행동 공용 뷰) — chipId 기반
   Widget _buildCommonSection({
     required String title,
     required String smallText,
-    required List<String> chips,
-    required Set<int> selectedIndexes,
+    required List<AbcChip> chips,
+    required Set<String> selectedChipIds,
     required String exampleMessage,
-    required void Function(String text)? onAdd,
-    required void Function(int index)? onDelete,
+    required VoidCallback? onAdd,
+    required void Function(String chipId)? onDelete,
   }) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -121,29 +135,28 @@ class _StepCViewState extends State<StepCView> {
             activeIndex: 2,
             smallText: smallText,
             bigText: title,
-            selectedChips: selectedIndexes.map((i) => chips[i]).toList(),
           ),
           const SizedBox(height: 30),
-          if (widget.isExampleMode) JellyfishBanner(message: exampleMessage),
+          if (widget.isExampleMode)
+            JellyfishBanner(message: exampleMessage),
           const SizedBox(height: 20),
           AbcChipsDesign(
             chips: chips,
-            defaultCount: widget.isExampleMode ? 3 : 4,
-            selectedIndexes: selectedIndexes,
-            singleSelect: false,
-            onChipToggle: (i, selected) {
+            selectedChipIds: selectedChipIds,
+            singleSelect: false, // C단계는 다중 선택 가능
+            isExampleMode: widget.isExampleMode,
+            onChipToggle: (chipId, selected) {
               setState(() {
                 if (selected) {
-                  selectedIndexes.add(i);
+                  selectedChipIds.add(chipId);
                 } else {
-                  selectedIndexes.remove(i);
+                  selectedChipIds.remove(chipId);
                 }
               });
-              widget.onSelectionChanged?.call(); // ✅ 부모에게 상태 변경 알림
+              widget.onSelectionChanged?.call();
             },
             onChipAdd: onAdd,
             onChipDelete: onDelete,
-            isExampleMode: widget.isExampleMode,
           ),
           const SizedBox(height: 50),
         ],

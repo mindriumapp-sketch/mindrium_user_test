@@ -5,7 +5,8 @@ import 'package:gad_app_team/features/2nd_treatment/abc_consequence_screen.dart'
 /// 🌊 ABC 모델 - B단계 (Belief)
 /// AbcActivateDesign (TutorDesign) 스타일 적용
 class AbcBeliefScreen extends StatelessWidget {
-  const AbcBeliefScreen({super.key});
+  final String? sessionId;
+  const AbcBeliefScreen({super.key, this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +25,7 @@ class AbcBeliefScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const AbcConsequenceScreen(),
+            pageBuilder: (_, __, ___) => AbcConsequenceScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

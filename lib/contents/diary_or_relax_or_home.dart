@@ -19,7 +19,8 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map?;
     final String? groupId = args?['groupId'] as String?;
-    final int? sud = args?['sud'] as int?;
+    final int? beforeSud = args?['beforeSud'] as int?;
+    final String? sudId = args?['sudId'] as String?;
 
     return InnerBtnCardScreen(
       appBarTitle: '다음 단계 선택',
@@ -38,6 +39,8 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
             'riveAsset': 'noti.riv',
             'nextPage': '/relaxation_score',
             'origin': 'apply',
+            'beforeSud': beforeSud,
+            'sudId': sudId,
           },
         );
       },
@@ -55,7 +58,7 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                 Navigator.pushNamed(
                   context,
                   '/diary_select',
-                  arguments: {'groupId': groupId, 'sud': sud},
+                  arguments: {'groupId': groupId, 'beforeSud': beforeSud},
                 );
               },
               style: OutlinedButton.styleFrom(

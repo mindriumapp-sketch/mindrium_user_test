@@ -11,7 +11,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/features/2nd_treatment/abc_group_add.dart';
+import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 
 class DiaryYesOrNo extends StatelessWidget {
@@ -143,30 +143,31 @@ class DiaryYesOrNo extends StatelessWidget {
     try {
       // 🔹 FastAPI + MongoDB에 빈 일기 생성
       final diaryRes = await diariesApi.createDiary(
-        groupId: 1, // 그룹은 이후 화면에서 지정
         activation: activationChip,
         belief: const [],
         consequenceP: const [],
         consequenceE: const [],
         consequenceB: const [],
-        sudScores: const [],
         alternativeThoughts: const [],
         alarms: const [],
         latitude: pos?.latitude,
         longitude: pos?.longitude,
         addressName: addressKo,
       );
-      final abcId = diaryRes['diaryId']?.toString();
+      final abcId = diaryRes['diary_id']?.toString();
       if (abcId == null || abcId.isEmpty) {
         throw Exception('생성된 일기 ID를 확인할 수 없습니다.');
       }
 
+      Map<String, dynamic>? res;
+      String? sudId;
       if (beforeSud != null) {
         try {
-          await sudApi.createSudScore(
+          res = await sudApi.createSudScore(
             diaryId: abcId,
             beforeScore: beforeSud,
           );
+          sudId = res['sud_id'];
         } on DioException catch (e) {
           debugPrint('⚠️ SUD 저장 실패(Dio): ${e.message}');
         } catch (e) {
@@ -184,6 +185,7 @@ class DiaryYesOrNo extends StatelessWidget {
                   origin: origin,
                   abcId: abcId,
                   beforeSud: beforeSud,
+                  sudId: sudId,
                   diary: diary,
                 ),
           ),

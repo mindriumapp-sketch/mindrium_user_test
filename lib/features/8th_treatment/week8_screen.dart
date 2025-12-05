@@ -1,47 +1,82 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/value_start.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_roadmap_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:provider/provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 
 class Week8Screen extends StatefulWidget {
-  const Week8Screen({super.key});
+  final String? sessionId;
+  const Week8Screen({super.key, this.sessionId});
 
   @override
   State<Week8Screen> createState() => _Week8ScreenState();
 }
 
 class _Week8ScreenState extends State<Week8Screen> {
+  bool _creatingSession = false;
+  String? _sessionId;
   String? _userName;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _sessionId = widget.sessionId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeCreateEduSession();
+    });
   }
 
-  Future<void> _loadUserName() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .get();
+  Future<void> _maybeCreateEduSession() async {
+    if (!mounted) return;
+    final user = context.read<UserProvider>();
+    if (!user.isUserLoaded) return;
+    setState(() => _userName = user.userName);
 
-        if (doc.exists) {
-          final data = doc.data();
-          if (mounted) {
-            setState(() {
-              _userName = data?['name'] as String?;
-            });
-          }
-        }
+    if (_sessionId != null && _sessionId!.isNotEmpty) {
+      debugPrint('[Week8Screen] 기존 sessionId 그대로 사용: $_sessionId');
+      return;
+    }
+    if (_creatingSession) return;
+    setState(() => _creatingSession = true);
+
+    try {
+      final tokens = TokenStorage();
+      final access = await tokens.access;
+      if (access == null) {
+        debugPrint('[Week8Screen] access token 없음 → edu-session 생성 스킵');
+        setState(() => _creatingSession = false);
+        return;
       }
+
+      final client = ApiClient(tokens: tokens);
+      final eduApi = EduSessionsApi(client);
+
+      const int totalScreens = 10; // 실제 플로우에 맞게 조정
+
+      final res = await eduApi.createCommonSession(
+        weekNumber: 8,
+        totalScreens: totalScreens,
+        lastScreenIndex: 1,
+        completed: false,
+        startTime: DateTime.now(),
+        endTime: null,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _creatingSession = false;
+        _sessionId = (res['session_id'] as String?)?.trim();
+      });
+
+      debugPrint('[Week8Screen] edu-sessions create 성공 (week=8, id=$_sessionId)');
     } catch (e) {
-      debugPrint('사용자 이름 로드 실패: $e');
+      if (!mounted) return;
+      debugPrint('[Week8Screen] edu-sessions create 실패: $e');
+      setState(() => _creatingSession = false);
     }
   }
 
@@ -56,7 +91,7 @@ class _Week8ScreenState extends State<Week8Screen> {
       weekNumber: 8,
       weekTitle: 'Mindrium 교육 프로그램을\n모두 완료하셨습니다!',
       weekDescription: weekDescription,
-      nextPageBuilder: () => const Week8RoadmapScreen(),
+      nextPageBuilder: () => Week8RoadmapScreen(sessionId: _sessionId),
     );
   }
 }

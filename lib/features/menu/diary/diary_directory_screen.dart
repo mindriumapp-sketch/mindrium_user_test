@@ -8,130 +8,105 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 
-class DiaryEntry {
-  final String id;
-  final int? groupId;
-  final String activatingEvents;
-  final List<String> belief;
-  final List<String> consequenceEmotion;
-  final List<String> consequencePhysical;
-  final List<String> consequenceBehavior;
-  final List<Map<String, dynamic>> sudScores;
-  final List<Map<String, dynamic>> alarms;
-  final DateTime createdAt;
-  final DateTime? updatedAt;
-  final String? addressName;
-
-  DiaryEntry({
-    required this.id,
-    required this.groupId,
-    required this.activatingEvents,
-    required this.belief,
-    required this.consequenceEmotion,
-    required this.consequencePhysical,
-    required this.consequenceBehavior,
-    required this.sudScores,
-    required this.alarms,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.addressName,
-  });
-
-  factory DiaryEntry.fromMap(Map<String, dynamic> raw) {
-    final createdRaw = raw['createdAt'];
-    final updatedRaw = raw['updatedAt'];
-
-    DateTime parseDate(dynamic value) {
-      if (value is DateTime) return value.toUtc();
-      if (value is String) {
-        try {
-          return DateTime.parse(value).toUtc();
-        } catch (_) {}
-      }
-      return DateTime.now().toUtc();
-    }
-
-    List<String> stringList(dynamic value) {
-      if (value is List) {
-        return value
-            .map((e) => e?.toString() ?? '')
-            .where((e) => e.isNotEmpty)
-            .toList();
-      }
-      return const [];
-    }
-
-    List<Map<String, dynamic>> sudScoreList(dynamic value) {
-      if (value is List) {
-        return value
-            .whereType<Map>()
-            .map((e) => e.map((key, val) => MapEntry(key.toString(), val)))
-            .toList();
-      }
-      return const [];
-    }
-
-    List<Map<String, dynamic>> alarmList(dynamic value) {
-      Iterable<Map> source;
-      if (value is Map) {
-        source = value.values.whereType<Map>();
-      } else if (value is List) {
-        source = value.whereType<Map>();
-      } else {
-        return const [];
-      }
-
-      return source
-          .map((alarm) {
-            final sanitized = alarm.map((k, v) => MapEntry(k.toString(), v));
-            sanitized.remove('latitude');
-            sanitized.remove('longitude');
-            return sanitized;
-          })
-          .toList()
-          .cast<Map<String, dynamic>>();
-    }
-
-    return DiaryEntry(
-      id: raw['diaryId']?.toString() ?? 'unknown',
-      groupId:
-          raw['group_Id'] is num
-              ? (raw['group_Id'] as num).toInt()
-              : int.tryParse('${raw['group_Id']}'),
-      activatingEvents: raw['activating_events']?.toString() ?? '-',
-      belief: stringList(raw['belief']),
-      consequenceEmotion: stringList(raw['consequence_e']),
-      consequencePhysical: stringList(raw['consequence_p']),
-      consequenceBehavior: stringList(raw['consequence_b']),
-      sudScores: sudScoreList(raw['sudScores']),
-      alarms: alarmList(raw['alarms']),
-      createdAt: parseDate(createdRaw),
-      updatedAt: updatedRaw == null ? null : parseDate(updatedRaw),
-      addressName: raw['addressName']?.toString(),
-    );
-  }
-}
-
-class NotificationDirectoryScreen extends StatefulWidget {
-  const NotificationDirectoryScreen({super.key});
+/// ----------------------
+/// DiaryDirectoryScreen
+/// ----------------------
+class DiaryDirectoryScreen extends StatefulWidget {
+  const DiaryDirectoryScreen({super.key});
 
   @override
-  State<NotificationDirectoryScreen> createState() =>
-      _NotificationDirectoryScreenState();
+  State<DiaryDirectoryScreen> createState() => _DiaryDirectoryScreenState();
 }
 
-class _NotificationDirectoryScreenState
-    extends State<NotificationDirectoryScreen> {
+class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
   late final WorryGroupsApi _worryGroupsApi = WorryGroupsApi(_apiClient);
 
-  List<DiaryEntry> _diaries = [];
-  Map<int, String> _groupTitles = {}; // 그룹 ID -> 제목 매핑
-  int? _selectedGroupId;
+  /// 일기 전체 목록 (백엔드 응답 정규화한 형태)
+  List<Map<String, dynamic>> _diaries = [];
+
+  /// 그룹 ID(uuid) -> 제목
+  Map<String, String> _groupTitles = {};
+
+  /// 그룹 ID(uuid) -> character_id
+  Map<String, int?> _groupCharacters = {};
+
+  /// 보관함이 아닌 active 그룹 ID(uuid) 집합
+  Set<String> _activeGroupIds = {};
+
+  /// 선택된 그룹 ID(uuid). null이면 "전체 그룹" 의미
+  String? _selectedGroupId;
+
   bool _loading = true;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // arguments로 groupId 받아서 초기 필터 설정
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args =
+      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args['groupId'] != null) {
+        setState(() {
+          _selectedGroupId = args['groupId'].toString();
+        });
+      }
+    });
+
+    Future.microtask(_loadDiaries);
+  }
+
+  /// worry_groups에서 그룹 메타정보(제목, character_id, activeGroupIds) 한 번에 로드
+  Future<void> _loadGroupMeta() async {
+    try {
+      final groups =
+      await _worryGroupsApi.listWorryGroups(includeArchived: false);
+
+      final titles = <String, String>{};
+      final characters = <String, int?>{};
+      final activeIds = <String>{};
+
+      for (final group in groups) {
+        final id = group['group_id'];
+        if (id == null) continue;
+
+        final idStr = id.toString();
+        activeIds.add(idStr);
+
+        final title = group['group_title']?.toString() ?? '제목 없음';
+        titles[idStr] = title;
+
+        final ch = group['character_id'];
+        if (ch is int) {
+          characters[idStr] = ch;
+        } else if (ch != null) {
+          characters[idStr] = int.tryParse(ch.toString());
+        } else {
+          characters[idStr] = null;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _groupTitles = titles;
+          _groupCharacters = characters;
+          _activeGroupIds = activeIds;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ 그룹 메타 로드 실패: $e');
+    }
+  }
+
+  /// "전체 그룹" + 개별 그룹 ID(uuid) 리스트
+  List<String?> _extractGroupIds() {
+    final sorted = _groupTitles.keys.toList()..sort();
+    return [null, ...sorted];
+  }
 
   Future<void> _loadDiaries() async {
     setState(() {
@@ -140,25 +115,37 @@ class _NotificationDirectoryScreenState
     });
 
     try {
-      // 그룹 제목 로드
-      await _loadGroupTitles();
+      // worry_groups 메타 먼저 로드 (제목, 캐릭터, activeGroupIds)
+      await _loadGroupMeta();
 
-      final list = await _diariesApi.listDiaries();
-      final entries = list.map((item) => DiaryEntry.fromMap(item)).toList();
-      if (!mounted) return;
-      setState(() {
-        _diaries = entries;
-        if (_diaries.every((d) => d.groupId != _selectedGroupId)) {
-          _selectedGroupId = null;
+      final rawEntries = await _diariesApi.listDiaries();
+
+      // 응답 정규화
+      final normalized = rawEntries.map((e) {
+        final map = Map<String, dynamic>.from(e);
+
+        // group_id를 항상 String(uuid)로 통일
+        final g = map['group_id'];
+        if (g != null) {
+          map['group_id'] = g.toString();
         }
+
+        // created_at / updated_at은 카드에서 사용 시 필요하면 그때 parse
+        return map;
+      }).toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        _diaries = normalized;
+        // 선택된 그룹이 있어도 자동 초기화는 하지 않고 그대로 둔다.
       });
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error =
-            e.response?.data is Map
-                ? e.response?.data['detail']?.toString()
-                : e.message ?? '알 수 없는 오류가 발생했습니다.';
+        _error = e.response?.data is Map
+            ? e.response?.data['detail']?.toString()
+            : e.message ?? '알 수 없는 오류가 발생했습니다.';
       });
     } catch (e) {
       if (!mounted) return;
@@ -166,26 +153,10 @@ class _NotificationDirectoryScreenState
         _error = '일기를 불러오지 못했습니다: $e';
       });
     } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // arguments로 groupId를 받아서 초기 필터 설정
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      if (args != null && args['groupId'] != null) {
-        final groupId = args['groupId'];
-        setState(() {
-          _selectedGroupId =
-              groupId is int ? groupId : int.tryParse(groupId.toString());
-        });
+      if (mounted) {
+        setState(() => _loading = false);
       }
-    });
-    Future.microtask(_loadDiaries);
+    }
   }
 
   @override
@@ -201,7 +172,9 @@ class _NotificationDirectoryScreenState
         onBack: () {
           Navigator.pop(
             context,
-            MaterialPageRoute(builder: (context) => const ContentScreen()),
+            MaterialPageRoute(
+              builder: (context) => const ContentScreen(),
+            ),
           );
         },
       ),
@@ -227,7 +200,8 @@ class _NotificationDirectoryScreenState
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: _buildBody(),
             ),
           ),
@@ -236,9 +210,24 @@ class _NotificationDirectoryScreenState
     );
   }
 
+  /// 자동 생성 일기 여부 (걱정일기 없이 위치만으로 생성된 더미 일기)
+  bool _isAutoGeneratedDiary(Map<String, dynamic> entry) {
+    final activation = entry['activation'];
+    final label = activation is Map
+        ? activation['label']?.toString() ?? ''
+        : activation?.toString() ?? '';
+
+    // DiaryYesOrNo._handleNo 에서 생성하는 패턴:
+    // '자동 생성 일기 \n주소: ...'
+    return label.startsWith('자동 생성 일기');
+  }
+
+
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF5B9FD3)),
+      );
     }
     if (_error != null) {
       return Column(
@@ -246,7 +235,10 @@ class _NotificationDirectoryScreenState
         children: [
           Text(_error!, style: const TextStyle(color: Colors.redAccent)),
           const SizedBox(height: 12),
-          ElevatedButton(onPressed: _loadDiaries, child: const Text('다시 시도')),
+          ElevatedButton(
+            onPressed: _loadDiaries,
+            child: const Text('다시 시도'),
+          ),
         ],
       );
     }
@@ -259,7 +251,10 @@ class _NotificationDirectoryScreenState
             Center(
               child: Text(
                 '작성된 일기가 없습니다.',
-                style: TextStyle(color: Color(0xFF1B405C), fontSize: 16),
+                style: TextStyle(
+                  color: Color(0xFF1B405C),
+                  fontSize: 16,
+                ),
               ),
             ),
           ],
@@ -267,126 +262,91 @@ class _NotificationDirectoryScreenState
       );
     }
 
-    // FutureBuilder로 보관함 그룹을 제외한 일기만 표시
-    return FutureBuilder<Set<int>>(
-      future: _getActiveGroupIds(),
-      builder: (context, snapshot) {
-        final activeGroupIds = snapshot.data ?? {};
+    // 보관함이 아닌 그룹에 속한 일기만 표시.
+    // group_id == null 인 일기는 "없는 것"으로 간주하여 제외.
+    // + 자동 생성 일기(위치 기반 더미)는 목록에서 숨김.
+    final activeDiaries = _diaries
+        .where((d) {
+      final gid = d['group_id'];
+      if (gid == null) return false; // group 없는 일기: 제외
+      if (_isAutoGeneratedDiary(d)) return false; // 자동 생성 일기 숨김
+      return _activeGroupIds.contains(gid);
+    })
+        .toList();
 
-        // 보관함이 아닌 그룹의 일기만 필터링
-        final activeDiaries =
-            _diaries
-                .where(
-                  (d) =>
-                      d.groupId == null || activeGroupIds.contains(d.groupId),
-                )
-                .toList();
+    final filtered = _selectedGroupId == null
+        ? activeDiaries
+        : activeDiaries
+        .where((d) => d['group_id'] == _selectedGroupId)
+        .toList();
 
-        final filtered =
-            _selectedGroupId == null
-                ? activeDiaries
-                : activeDiaries
-                    .where((d) => d.groupId == _selectedGroupId)
-                    .toList();
-
-        return RefreshIndicator(
-          onRefresh: _loadDiaries,
-          child: Column(
-            children: [
-              _GroupFilter(
-                selectedGroupId: _selectedGroupId,
-                groupIds: _extractGroupIds(),
-                groupTitles: _groupTitles,
-                diaries: activeDiaries,
-                totalDiaries: activeDiaries.length,
-                onSelected: (value) {
-                  setState(() => _selectedGroupId = value);
-                },
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    return _DiaryCard(
-                      entry: filtered[index],
-                      onAlarmUpdated: _loadDiaries,
-                    );
-                  },
-                ),
-              ),
-            ],
+    return RefreshIndicator(
+      onRefresh: _loadDiaries,
+      child: Column(
+        children: [
+          _GroupFilter(
+            selectedGroupId: _selectedGroupId,
+            groupIds: _extractGroupIds(),
+            groupTitles: _groupTitles,
+            diaries: activeDiaries,
+            totalDiaries: activeDiaries.length,
+            onSelected: (value) {
+              setState(() => _selectedGroupId = value);
+            },
           ),
-        );
-      },
+          const SizedBox(height: 12),
+          Expanded(
+            child: filtered.isEmpty
+                ? ListView(
+              padding:
+              const EdgeInsets.only(bottom: 24, top: 40),
+              children: [
+                Center(
+                  child: Text(
+                    _selectedGroupId == null
+                        ? '작성된 일기가 없습니다.'
+                        : '선택한 그룹에는 작성된 일기가 없습니다.',
+                    style: const TextStyle(
+                      color: Color(0xFF1B405C),
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            )
+                : ListView.builder(
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final entry = filtered[index];
+                final gid = entry['group_id']?.toString();
+                final characterId =
+                gid != null ? _groupCharacters[gid] : null;
+
+                return _DiaryCard(
+                  entry: entry,
+                  characterId: characterId,
+                  onAlarmUpdated: _loadDiaries,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
-  }
-
-  // 보관함이 아닌 모든 그룹 ID를 반환 (일기 0개인 그룹도 포함)
-  List<int?> _extractGroupIds() {
-    // 그룹 제목에서 가져온 모든 그룹 ID를 사용
-    final sorted = _groupTitles.keys.toList()..sort();
-    return [null, ...sorted];
-  }
-
-  // 보관함이 아닌 그룹의 ID만 반환
-  Future<Set<int>> _getActiveGroupIds() async {
-    try {
-      final groups = await _worryGroupsApi.listWorryGroups(
-        includeArchived: false,
-      );
-      return groups
-          .where((g) => g['group_id'] != null)
-          .map(
-            (g) =>
-                g['group_id'] is int
-                    ? g['group_id'] as int
-                    : int.tryParse(g['group_id'].toString()),
-          )
-          .whereType<int>()
-          .toSet();
-    } catch (e) {
-      debugPrint('❌ 그룹 목록 로드 실패: $e');
-      return {};
-    }
-  }
-
-  // 그룹 제목 로드
-  Future<void> _loadGroupTitles() async {
-    try {
-      final groups = await _worryGroupsApi.listWorryGroups(
-        includeArchived: false,
-      );
-      final titles = <int, String>{};
-      for (final group in groups) {
-        final id = group['group_id'];
-        final title = group['group_title']?.toString() ?? '제목 없음';
-        if (id != null) {
-          final groupId = id is int ? id : int.tryParse(id.toString());
-          if (groupId != null) {
-            titles[groupId] = title;
-          }
-        }
-      }
-      if (mounted) {
-        setState(() {
-          _groupTitles = titles;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ 그룹 제목 로드 실패: $e');
-    }
   }
 }
 
+/// ----------------------
+/// 그룹 필터 칩 영역
+/// ----------------------
 class _GroupFilter extends StatelessWidget {
-  final List<int?> groupIds;
-  final Map<int, String> groupTitles;
-  final List<DiaryEntry> diaries;
+  final List<String?> groupIds;
+  final Map<String, String> groupTitles;
+  final List<Map<String, dynamic>> diaries;
   final int totalDiaries;
-  final int? selectedGroupId;
-  final ValueChanged<int?> onSelected;
+  final String? selectedGroupId;
+  final ValueChanged<String?> onSelected;
 
   const _GroupFilter({
     required this.groupIds,
@@ -440,27 +400,26 @@ class _GroupFilter extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children:
-                groupIds.map((id) {
-                  final bool selected = id == selectedGroupId;
-                  final groupDiaryCount =
-                      id == null
-                          ? diaries.length
-                          : diaries.where((d) => d.groupId == id).length;
-                  final label =
-                      id == null
-                          ? '전체 그룹 ($groupDiaryCount)'
-                          : '${groupTitles[id] ?? '그룹 #$id'} ($groupDiaryCount)';
-                  return ChoiceChip(
-                    label: Text(label),
-                    selected: selected,
-                    onSelected: (_) => onSelected(id),
-                    selectedColor: const Color(0xFF5B9FD3),
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : const Color(0xFF1B405C),
-                    ),
-                  );
-                }).toList(),
+            children: groupIds.map((id) {
+              final bool selected = id == selectedGroupId;
+              final groupDiaryCount = id == null
+                  ? diaries.length
+                  : diaries.where((d) => d['group_id'] == id).length;
+              final label = id == null
+                  ? '전체 그룹 ($groupDiaryCount)'
+                  : '${groupTitles[id] ?? '그룹 #$id'} ($groupDiaryCount)';
+
+              return ChoiceChip(
+                label: Text(label),
+                selected: selected,
+                onSelected: (_) => onSelected(id),
+                selectedColor: const Color(0xFF5B9FD3),
+                labelStyle: TextStyle(
+                  color:
+                  selected ? Colors.white : const Color(0xFF1B405C),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -468,22 +427,87 @@ class _GroupFilter extends StatelessWidget {
   }
 }
 
+/// ----------------------
+/// 일기 카드
+/// ----------------------
 class _DiaryCard extends StatelessWidget {
-  final DiaryEntry entry;
+  final Map<String, dynamic> entry;
+  final int? characterId;
   final Future<void> Function()? onAlarmUpdated;
-  const _DiaryCard({required this.entry, this.onAlarmUpdated});
+
+  const _DiaryCard({
+    required this.entry,
+    required this.characterId,
+    this.onAlarmUpdated,
+  });
+
+  List<String> _chipLabels(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) {
+        if (e is Map) {
+          final label = e['label'];
+          return label?.toString();
+        }
+        return e?.toString();
+      })
+          .whereType<String>()
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
 
   @override
   Widget build(BuildContext context) {
     final formatter = DateFormat('yyyy.MM.dd HH:mm');
-    final created = formatter.format(entry.createdAt.toLocal());
+
+    // created_at 파싱 (이미 DateTime이면 그대로 사용)
+    final createdRaw = entry['created_at'];
+    final DateTime? createdAt = createdRaw is DateTime
+        ? createdRaw
+        : createdRaw is String
+        ? DateTime.parse(createdRaw)
+        : null;
+    final created = createdAt != null
+        ? formatter.format(createdAt.toLocal())
+        : '-';
+
+    // activation DiaryChip → label 추출
+    final activationRaw = entry['activation'];
+    final activationLabel = activationRaw is Map
+        ? (activationRaw['label']?.toString() ?? '')
+        : activationRaw?.toString() ?? '';
+
+    // 칩 리스트들 label 추출
+    final beliefLabels = _chipLabels(entry['belief']);
+    final physicalLabels = _chipLabels(entry['consequence_physical']);
+    final emotionLabels = _chipLabels(entry['consequence_emotion']);
+    final actionLabels = _chipLabels(entry['consequence_action']);
+
+    // latest_sud (int 또는 double 가능)
+    final num? latestSud = entry['latest_sud'] as num?;
+
+    // 알람 리스트 정규화
+    final rawAlarms = entry['alarms'];
+    final alarms = (rawAlarms is List)
+        ? rawAlarms
+        .whereType<Map>()
+        .map((raw) =>
+        raw.map((k, v) => MapEntry(k.toString(), v)))
+        .toList()
+        .cast<Map<String, dynamic>>()
+        : <Map<String, dynamic>>[];
+
+    final addressName = entry['address_name']?.toString();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
+        border:
+        Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -493,24 +517,31 @@ class _DiaryCard extends StatelessWidget {
         ],
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          tilePadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding:
+          const EdgeInsets.fromLTRB(16, 0, 16, 16),
           leading: CircleAvatar(
             radius: 26,
             backgroundColor: const Color(0xFFB8DAF5),
-            backgroundImage:
-                entry.groupId != null
-                    ? AssetImage('assets/image/character${entry.groupId}.png')
-                    : null,
-            child:
-                entry.groupId == null
-                    ? const Icon(Icons.help_outline, color: Color(0xFF0E2C48))
-                    : null,
+            backgroundImage: characterId != null
+                ? AssetImage(
+              'assets/image/character$characterId.png',
+            )
+                : null,
+            child: characterId == null
+                ? const Icon(
+              Icons.help_outline,
+              color: Color(0xFF0E2C48),
+            )
+                : null,
           ),
           title: Text(
-            entry.activatingEvents,
+            activationLabel.isNotEmpty ? activationLabel : '(빈 제목)',
             style: const TextStyle(
               color: Color(0xFF0E2C48),
               fontSize: 16,
@@ -522,18 +553,23 @@ class _DiaryCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               created,
-              style: const TextStyle(color: Color(0xFF1B405C), fontSize: 14),
+              style: const TextStyle(
+                color: Color(0xFF1B405C),
+                fontSize: 14,
+              ),
             ),
           ),
           children: [
-            _SudScoreBar(scores: entry.sudScores),
+            _SudScoreBar(latestSud: latestSud),
             const SizedBox(height: 12),
             _buildSection(
               context: context,
               icon: Icons.psychology_outlined,
               title: '생각 (Belief)',
               child: Text(
-                entry.belief.isEmpty ? '-' : entry.belief.join(', '),
+                beliefLabels.isEmpty
+                    ? '-'
+                    : beliefLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
@@ -543,9 +579,9 @@ class _DiaryCard extends StatelessWidget {
               icon: Icons.local_hospital_outlined,
               title: '신체 반응',
               child: Text(
-                entry.consequencePhysical.isEmpty
+                physicalLabels.isEmpty
                     ? '-'
-                    : entry.consequencePhysical.join(', '),
+                    : physicalLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
@@ -555,9 +591,9 @@ class _DiaryCard extends StatelessWidget {
               icon: Icons.mood_outlined,
               title: '감정 반응',
               child: Text(
-                entry.consequenceEmotion.isEmpty
+                emotionLabels.isEmpty
                     ? '-'
-                    : entry.consequenceEmotion.join(', '),
+                    : emotionLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
@@ -567,23 +603,23 @@ class _DiaryCard extends StatelessWidget {
               icon: Icons.directions_walk_outlined,
               title: '행동 반응',
               child: Text(
-                entry.consequenceBehavior.isEmpty
+                actionLabels.isEmpty
                     ? '-'
-                    : entry.consequenceBehavior.join(', '),
+                    : actionLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
             const SizedBox(height: 12),
             _AlarmSection(
-              alarms: entry.alarms,
+              alarms: alarms,
               onEdit: () async {
                 await Navigator.pushNamed(
                   context,
                   '/noti_select',
                   arguments: {
                     'fromDirectory': true,
-                    'abcId': entry.id,
-                    'label': entry.activatingEvents,
+                    'abcId': entry['diary_id'],
+                    'label': activationLabel,
                     'origin': 'diary_directory',
                   },
                 );
@@ -592,15 +628,16 @@ class _DiaryCard extends StatelessWidget {
                 }
               },
             ),
-            if (entry.addressName != null && entry.addressName!.isNotEmpty) ...[
+            if (addressName != null && addressName.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildSection(
                 context: context,
                 icon: Icons.location_on_outlined,
                 title: '기록 위치',
                 child: Text(
-                  entry.addressName!,
-                  style: const TextStyle(color: Color(0xFF1B405C)),
+                  addressName,
+                  style:
+                  const TextStyle(color: Color(0xFF1B405C)),
                 ),
               ),
             ],
@@ -611,62 +648,43 @@ class _DiaryCard extends StatelessWidget {
   }
 }
 
+/// ----------------------
+/// SUD 요약 막대 (latest_sud 기준)
+/// ----------------------
 class _SudScoreBar extends StatelessWidget {
-  final List<Map<String, dynamic>> scores;
-  const _SudScoreBar({required this.scores});
-
-  int _parseScore(dynamic value) {
-    if (value is num) return value.clamp(0, 10).toInt();
-    if (value is String) {
-      final parsed = double.tryParse(value);
-      if (parsed != null) {
-        return parsed.clamp(0, 10).toInt();
-      }
-    }
-    return 0;
-  }
-
-  DateTime _parseDate(dynamic value) {
-    if (value is DateTime) return value.toUtc();
-    if (value is String) {
-      try {
-        return DateTime.parse(value).toUtc();
-      } catch (_) {}
-    }
-    return DateTime.now().toUtc();
-  }
+  final num? latestSud;
+  const _SudScoreBar({required this.latestSud});
 
   @override
   Widget build(BuildContext context) {
-    Map<String, dynamic>? latestEntry;
-    if (scores.isNotEmpty) {
-      final copy = List<Map<String, dynamic>>.from(scores);
-      copy.sort(
-        (a, b) =>
-            _parseDate(a['created_at']).compareTo(_parseDate(b['created_at'])),
-      );
-      latestEntry = copy.last;
-    }
-    final latest = _parseScore(latestEntry?['before_sud']);
-    final ratio = latest / 10.0;
-    final color =
-        Color.lerp(const Color(0xFF4CAF50), const Color(0xFFF44336), ratio)!;
+    double score = (latestSud ?? 0).toDouble();
+    if (score < 0) score = 0;
+    if (score > 10) score = 10;
+
+    final ratio = score / 10.0;
+    final color = Color.lerp(
+      const Color(0xFF4CAF50),
+      const Color(0xFFF44336),
+      ratio,
+    )!;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FBFF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3F2FD)),
+        border:
+        Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment:
+            MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                '주관적 불안점수',
+                '주관적 불안점수 (최근 기준)',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -681,10 +699,12 @@ class _SudScoreBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Text(
-                  '$latest / 10',
+                  '${score.toStringAsFixed(1)} / 10',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -710,12 +730,27 @@ class _SudScoreBar extends StatelessWidget {
   }
 }
 
+/// ----------------------
+/// 알람 섹션
+/// ----------------------
 class _AlarmSection extends StatelessWidget {
   final List<Map<String, dynamic>> alarms;
   final VoidCallback? onEdit;
-  const _AlarmSection({required this.alarms, this.onEdit});
 
-  static const List<String> _weekdayNames = ['월', '화', '수', '목', '금', '토', '일'];
+  const _AlarmSection({
+    required this.alarms,
+    this.onEdit,
+  });
+
+  static const List<String> _weekdayNames = [
+    '월',
+    '화',
+    '수',
+    '목',
+    '금',
+    '토',
+    '일',
+  ];
 
   String _weekdayLabel(int dayNumber) {
     if (dayNumber < 1 || dayNumber > 7) return '$dayNumber';
@@ -737,7 +772,10 @@ class _AlarmSection extends StatelessWidget {
               style: TextStyle(color: Color(0xFF1B405C)),
             ),
             const SizedBox(height: 8),
-            _AlarmActionButton(label: '알림 추가', onPressed: onEdit),
+            _AlarmActionButton(
+              label: '알림 추가',
+              onPressed: onEdit,
+            ),
           ],
         ),
       );
@@ -751,75 +789,109 @@ class _AlarmSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ...alarms.asMap().entries.map((entry) {
-            final map = entry.value as Map? ?? {};
-            final location =
-                map['location_desc'] ??
+            final map = entry.value;
+            final location = map['location_desc'] ??
                 map['location'] ??
+                map['address_name'] ??
                 map['addressName'] ??
                 '-';
             final notifyEnter =
-                map['notifyEnter'] == true || map['enter'] == true;
-            final notifyExit = map['notifyExit'] == true || map['exit'] == true;
-            final condition =
-                notifyEnter && notifyExit
-                    ? '입장/퇴장'
-                    : notifyEnter
-                    ? '입장 시'
-                    : notifyExit
-                    ? '퇴장 시'
-                    : '';
+                map['enter'] == true || map['notifyEnter'] == true;
+            final notifyExit =
+                map['exit'] == true || map['notifyExit'] == true;
+
+            final condition = notifyEnter && notifyExit
+                ? '입장/퇴장'
+                : notifyEnter
+                ? '입장 시'
+                : notifyExit
+                ? '퇴장 시'
+                : '';
+
             final time = map['time'] ?? map['scheduledTime'] ?? '-';
-            final repeatOption = (map['repeat_option'] ?? '').toString();
-            final weekDays =
-                (map['weekDays'] as List?)
-                    ?.map((e) => e is num ? e.toInt() : int.tryParse('$e') ?? 0)
-                    .where((d) => d > 0 && d <= 7)
-                    .toList() ??
+
+            final repeatOption =
+            (map['repeat_option'] ?? map['repeatOption'] ?? '')
+                .toString();
+
+            final rawWeekdays = (map['weekdays'] ??
+                map['weekDays']) as List<dynamic>?;
+
+            final weekDays = rawWeekdays
+                ?.map(
+                  (e) => e is num
+                  ? e.toInt()
+                  : int.tryParse('$e') ?? 0,
+            )
+                .where((d) => d > 0 && d <= 7)
+                .toList() ??
                 const [];
+
             final reminderMinutes = map['reminder_minutes'];
-            final repeatText =
-                repeatOption == 'weekly'
-                    ? (weekDays.isNotEmpty
-                        ? '매주 (${weekDays.map(_weekdayLabel).join(', ')})'
-                        : '매주')
-                    : '매일';
+
+            final repeatText = repeatOption == 'weekly'
+                ? (weekDays.isNotEmpty
+                ? '매주 (${weekDays.map(_weekdayLabel).join(', ')})'
+                : '매주')
+                : '매일';
+
             final reminderText =
-                reminderMinutes is num && reminderMinutes > 0
-                    ? '알림 $reminderMinutes분 전'
-                    : null;
+            reminderMinutes is num && reminderMinutes > 0
+                ? '알림 ${reminderMinutes.toInt()}분 전'
+                : null;
+
             final locationDisplay =
-                condition.isNotEmpty && location != '-'
-                    ? '$location ($condition)'
-                    : condition.isNotEmpty
-                    ? condition
-                    : location.toString();
+            condition.isNotEmpty && location != '-'
+                ? '$location ($condition)'
+                : condition.isNotEmpty
+                ? condition
+                : location.toString();
 
             return Container(
-              margin: EdgeInsets.only(top: entry.key > 0 ? 10 : 0),
+              margin: EdgeInsets.only(
+                top: entry.key > 0 ? 10 : 0,
+              ),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FBFF),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF4A8CCB)),
+                border: Border.all(
+                  color: const Color(0xFF4A8CCB),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _infoRow(Icons.location_on_outlined, '위치', locationDisplay),
+                  _infoRow(
+                    Icons.location_on_outlined,
+                    '위치',
+                    locationDisplay,
+                  ),
                   const SizedBox(height: 6),
-                  _infoRow(Icons.access_time_outlined, '시간', time.toString()),
+                  _infoRow(
+                    Icons.access_time_outlined,
+                    '시간',
+                    time.toString(),
+                  ),
                   const SizedBox(height: 6),
                   _infoRow(Icons.repeat, '반복', repeatText),
                   if (reminderText != null) ...[
                     const SizedBox(height: 6),
-                    _infoRow(Icons.alarm, '다시 알림', reminderText),
+                    _infoRow(
+                      Icons.alarm,
+                      '다시 알림',
+                      reminderText,
+                    ),
                   ],
                 ],
               ),
             );
           }),
           const SizedBox(height: 8),
-          _AlarmActionButton(label: '알림 수정', onPressed: onEdit),
+          _AlarmActionButton(
+            label: '알림 수정',
+            onPressed: onEdit,
+          ),
         ],
       ),
     );
@@ -829,7 +901,11 @@ class _AlarmSection extends StatelessWidget {
 class _AlarmActionButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
-  const _AlarmActionButton({required this.label, this.onPressed});
+
+  const _AlarmActionButton({
+    required this.label,
+    this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -840,8 +916,13 @@ class _AlarmActionButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: accent,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
         icon: const Icon(
           Icons.notifications_active_outlined,
@@ -860,6 +941,9 @@ class _AlarmActionButton extends StatelessWidget {
   }
 }
 
+/// ----------------------
+/// 공통 섹션 & row 유틸
+/// ----------------------
 Widget _buildSection({
   required BuildContext context,
   required IconData icon,
@@ -870,14 +954,23 @@ Widget _buildSection({
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFF90CAF9), width: 1.2),
+      border:
+      Border.all(color: const Color(0xFF90CAF9), width: 1.2),
     ),
     child: Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      data: Theme.of(context).copyWith(
+        dividerColor: Colors.transparent,
+      ),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        leading: Icon(icon, color: const Color(0xFF5B9FD3), size: 22),
+        tilePadding:
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        childrenPadding:
+        const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        leading: Icon(
+          icon,
+          color: const Color(0xFF5B9FD3),
+          size: 22,
+        ),
         title: Text(
           title,
           style: const TextStyle(
@@ -908,7 +1001,10 @@ Widget _infoRow(IconData icon, String label, String value) {
       Expanded(
         child: Text(
           value,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF1B405C)),
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFF1B405C),
+          ),
         ),
       ),
     ],

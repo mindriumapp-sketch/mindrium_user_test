@@ -39,7 +39,6 @@ class DiariesApi {
     List<Map<String, dynamic>> consequenceP = const [],  // List<DiaryChip>
     List<Map<String, dynamic>> consequenceE = const [],  // List<DiaryChip>
     List<Map<String, dynamic>> consequenceB = const [],  // List<DiaryChip>
-    List<Map<String, dynamic>> sudScores = const [],
     List<String> alternativeThoughts = const [],
     List<Map<String, dynamic>> alarms = const [],
     double? latitude,
@@ -54,7 +53,6 @@ class DiariesApi {
       'consequence_physical': consequenceP,
       'consequence_emotion': consequenceE,
       'consequence_action': consequenceB,
-      'sud_scores': sudScores,
       'alternative_thoughts': alternativeThoughts,
       'alarms': alarms,
       if (latitude != null) 'latitude': latitude,
@@ -233,6 +231,21 @@ class DiariesApi {
 
     await _client.dio.delete(
       '/diaries/$diaryId/alarms/$alarmId',
+      data: payload,
+    );
+  }
+
+  Future<void> deleteAllAlarms(
+      String diaryId, {
+        DateTime? clientTimestamp,
+      }) async {
+    final payload = _withClientTimestamp(
+      <String, dynamic>{},
+      clientTimestamp: clientTimestamp,
+    );
+
+    await _client.dio.delete(
+      '/diaries/$diaryId/alarms',
       data: payload,
     );
   }

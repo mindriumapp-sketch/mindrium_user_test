@@ -13,6 +13,13 @@ class UserDayCounter extends ChangeNotifier {
 
   bool get isUserLoaded => _createdAt != null;
 
+  void reset() {
+    _timer?.cancel();
+    _timer = null;
+    _createdAt = null;
+    notifyListeners();
+  }
+
   int get daysSinceJoin {
     if (_createdAt == null) return 0;
     return DateTime.now().difference(_createdAt!).inDays + 1;

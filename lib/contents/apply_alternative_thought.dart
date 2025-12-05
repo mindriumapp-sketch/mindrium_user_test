@@ -9,7 +9,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 
-/// 💡 Firestore의 'belief' 필드(B 리스트)를 불러와 선택 후 다음 단계로 이동하는 화면
+/// 💡 'belief' 필드(B 리스트)를 불러와 선택 후 다음 단계로 이동하는 화면
 class ApplyAlternativeThoughtScreen extends StatefulWidget {
   const ApplyAlternativeThoughtScreen({super.key});
 
@@ -95,7 +95,7 @@ class _ApplyAlternativeThoughtScreenState
   }
 
   Future<List<String>> _loadGroupBeliefs(int groupId) async {
-    final diaries = await _diariesApi.listDiaries(groupId: groupId);
+    final diaries = await _diariesApi.listDiarySummaries(groupId: groupId);
     return _extractBeliefsFromDiaries(diaries);
   }
 
@@ -136,10 +136,11 @@ class _ApplyAlternativeThoughtScreenState
     final remaining = List<String>.from(all)..remove(b);
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final diary = args['diary'];
+    final sudId = args['sudId'];
     Navigator.push(
       context,
       MaterialPageRoute(
-        settings: RouteSettings(arguments: {'origin': 'apply', 'diary': diary}),
+        settings: RouteSettings(arguments: {'origin': 'apply', 'diary': diary, 'sudId': sudId}),
         builder:
             (_) => Week4AlternativeThoughtsScreen(
               previousChips: [b],

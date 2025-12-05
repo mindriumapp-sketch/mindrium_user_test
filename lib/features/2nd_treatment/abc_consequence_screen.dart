@@ -4,7 +4,8 @@ import 'package:gad_app_team/features/2nd_treatment/abc_practice_screen.dart';
 
 /// 🌊 5주차 - 불안 직면 VS 회피 (AbcActivateDesign 적용)
 class AbcConsequenceScreen extends StatelessWidget {
-  const AbcConsequenceScreen({super.key});
+  final String? sessionId;
+  const AbcConsequenceScreen({super.key, this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +25,7 @@ class AbcConsequenceScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const AbcPracticeScreen(),
+            pageBuilder: (_, __, ___) => AbcPracticeScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'api_client.dart';
-import '../storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class AuthApi {
   final ApiClient _client;

@@ -4,17 +4,15 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/chips_editor.dart';
 import 'week3_explain_alternative_thoughts.dart';
 
-// ⭐ 우리가 방금 쓰기로 한 더블 카드 레이아웃
+// ⭐ 더블 카드 레이아웃
 import 'package:gad_app_team/widgets/top_btm_card.dart';
 
 class Week3ImaginationScreen extends StatefulWidget {
-  final List<Map<String, dynamic>>? quizResults;
-  final int? correctCount;
+  final String? sessionId;
 
   const Week3ImaginationScreen({
     super.key,
-    this.quizResults,
-    this.correctCount,
+    required this.sessionId,
   });
 
   @override
@@ -108,9 +106,8 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
       context,
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => Week3ExplainAlternativeThoughtsScreen(
+          sessionId: widget.sessionId,
           chips: values,
-          quizResults: widget.quizResults,
-          correctCount: widget.correctCount,
         ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,

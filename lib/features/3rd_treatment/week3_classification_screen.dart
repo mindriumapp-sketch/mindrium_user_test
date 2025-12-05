@@ -6,10 +6,15 @@ import 'package:gad_app_team/widgets/q_quiz_card.dart';
 import 'package:gad_app_team/widgets/q_jellyfish_notice.dart';
 import 'package:gad_app_team/widgets/choice_card_button.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_classification_result_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+// edu-sessions 저장용
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 
 class Week3ClassificationScreen extends StatefulWidget {
-  const Week3ClassificationScreen({super.key});
+  final String? sessionId;
+  const Week3ClassificationScreen({super.key, required this.sessionId});
 
   @override
   Week3ClassificationScreenState createState() =>
@@ -80,6 +85,9 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
   int correctCount = 0;
   List<Map<String, dynamic>> quizResults = [];
 
+  // edu-sessions 저장 중복 방지 플래그
+  bool _savedToEduSession = false;
+
   Week3ClassificationScreenState();
 
   @override
@@ -89,29 +97,96 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
     shuffledSentences.shuffle();
   }
 
-  void _nextSentence() {
-    setState(() {
-      if (currentIndex < shuffledSentences.length - 1) {
+  /// 마지막 문항까지 완료되었을 때,
+  /// week_number=3 최신 edu-session 에 classification_quiz 저장
+  Future<void> _saveWeek3QuizToEduSession() async {
+    try {
+      final tokens = TokenStorage();
+      final access = await tokens.access;
+
+      if (access == null) {
+        debugPrint(
+          '[Week3Classification] No access token. Skip edu-sessions update.',
+        );
+        return;
+      }
+
+      final client = ApiClient(tokens: tokens);
+      final eduApi = EduSessionsApi(client);
+
+      final sessionId = widget.sessionId?.toString();
+      if (sessionId == null || sessionId.isEmpty) {
+        debugPrint(
+          '[Week3Classification] week3 session has no session_id. Skip update.',
+        );
+        return;
+      }
+
+      // quizResults → ClassificationQuiz JSON으로 변환
+      final totalCount = shuffledSentences.length;
+
+      final classificationQuiz = <String, dynamic>{
+        'correct_count': correctCount,
+        'total_count': totalCount,
+        'results': quizResults
+            .map((item) => {
+          'text': item['text'],
+          'correct_type': item['correctType'],
+          'user_choice': item['userChoice'],
+          'is_correct': item['isCorrect'],
+        })
+            .toList(),
+      };
+
+      await eduApi.updateEduSession(
+        sessionId: sessionId,
+        classificationQuiz: classificationQuiz,
+      );
+
+      debugPrint(
+        '[Week3Classification] classification_quiz saved to edu-session ($sessionId)',
+      );
+    } catch (e, st) {
+      debugPrint(
+        '[Week3Classification] Failed to save classification_quiz: $e\n$st',
+      );
+    }
+  }
+
+  /// 같은 화면 lifecycle 안에서 한 번만 저장되도록 래핑
+  Future<void> _saveWeek3QuizToEduSessionOnce() async {
+    if (_savedToEduSession) return;
+    _savedToEduSession = true;
+    await _saveWeek3QuizToEduSession();
+  }
+
+  Future<void> _nextSentence() async {
+    if (currentIndex < shuffledSentences.length - 1) {
+      setState(() {
         currentIndex++;
         feedback = null;
         feedbackColor = null;
         answered = false;
-      } else {
-        saveQuizResult(correctCount, quizResults);
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                Week3ClassificationResultScreen(
-                  correctCount: correctCount,
-                  quizResults: quizResults,
-                ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      }
-    });
+      });
+    } else {
+      // 🔹 마지막 문항까지 완료된 시점: edu-sessions 에 저장
+      await _saveWeek3QuizToEduSessionOnce();
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              Week3ClassificationResultScreen(
+                sessionId: widget.sessionId,
+                correctCount: correctCount,
+                quizResults: quizResults,
+              ),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+    }
   }
 
   void _checkAnswer(String selected) {
@@ -142,29 +217,6 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
         'isCorrect': correct,
       });
     });
-  }
-
-  Future<void> saveQuizResult(
-      int correctCount,
-      List<Map<String, dynamic>> quizResults,
-      ) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setInt('week3_classification_correct_count', correctCount);
-
-    final wrongList = quizResults
-        .where((item) => item['isCorrect'] == false)
-        .map((item) => {
-      'text': item['text'],
-      'userChoice': item['userChoice'],
-      'correctType': item['correctType'],
-    })
-        .toList();
-
-    await prefs.setString(
-      'week3_classification_wrong_list',
-      wrongList.toString(),
-    );
   }
 
   @override
@@ -250,9 +302,9 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
                     leftLabel: '이전',
                     rightLabel: '다음',
                     onBack: () => Navigator.pop(context),
-                    onNext: () {
+                    onNext: () async {
                       if (answered) {
-                        _nextSentence();
+                        await _nextSentence();
                       } else {
                         BlueBanner.show(context, '먼저 답을 선택해 주세요');
                       }

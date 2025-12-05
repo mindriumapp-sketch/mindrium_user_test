@@ -35,6 +35,11 @@ class BlueBanner {
       _entry = null;
     });
   }
+
+  static void hide() {
+    _entry?.remove();
+    _entry = null;
+  }
 }
 
 class _ToastBubble extends StatelessWidget {
@@ -74,7 +79,7 @@ class _ToastBubble extends StatelessWidget {
 }
 
 /// ─────────────────────────────
-/// 여기서부터 네가 쓰고 싶은 하얀 배너
+/// 여기서부터 하얀 배너
 /// ─────────────────────────────
 class CustomBanner {
   static OverlayEntry? _entry;

@@ -22,6 +22,8 @@ class RelaxYesOrNo extends StatelessWidget {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId = args['abcId'] as String?;
+    final String? sudId = args['sudId'] as String?;
+    final int? beforeSud = args['beforeSud'] as int?;
     final diary = args['diary'];
     final dynamic rawOrigin = args['origin'];
     final String origin = rawOrigin is String ? rawOrigin : 'apply';
@@ -42,12 +44,15 @@ class RelaxYesOrNo extends StatelessWidget {
             'nextPage': '/relaxation_score',
             'diary': diary,
             'origin': origin,
+            'beforeSud': beforeSud,
+            'sudId': sudId,
           },
         );
       },
       // “아니오” 버튼 → 홈 복귀
       secondaryText: '아니오',
       onSecondary: () {
+        // TODO: 활동 마무리 화면이나 팝업..?
         Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
       },
       // 카드 내부 본문

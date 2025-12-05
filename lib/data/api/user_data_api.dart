@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
-import 'custom_tags_api.dart';
 
 class UserDataApi {
   final ApiClient _client;
@@ -46,31 +45,16 @@ class UserDataApi {
     );
   }
 
-  // ----- Custom Tags (delegates to CustomTagsApi) -----
-  CustomTagsApi get _customTags => CustomTagsApi(_client);
+  /// 홈 화면 '오늘의 할 일' 상태 조회: GET /users/me/todaytask
+  Future<Map<String, dynamic>> getTodayTask() async {
+    final res = await _client.dio.get('/users/me/todaytask');
+    final data = res.data;
+    if (data is Map<String, dynamic>) return data;
 
-  Future<List<Map<String, dynamic>>> getCustomTags({
-    String? chipType,
-    bool includeDeleted = false,
-  }) {
-    return _customTags.listCustomTags(
-      chipType: chipType,
-      includeDeleted: includeDeleted,
-    );
-  }
-
-  Future<Map<String, dynamic>> createCustomTag({
-    required String text,
-    required String type,
-    bool isPreset = false,
-  }) async {
-    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final chipId = 'chip_$now';
-    return _customTags.createCustomTag(
-      chipId: chipId,
-      label: text,
-      type: type,
-      isPreset: isPreset,
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /users/me/todaytask response',
     );
   }
 }
+

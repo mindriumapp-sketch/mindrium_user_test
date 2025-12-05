@@ -6,7 +6,8 @@ import 'package:gad_app_team/widgets/tutorial_design.dart';
 
 /// 🌊 Mindrium ApplyDesign 스타일로 리디자인된 실제 작성 시작 화면
 class AbcRealStartScreen extends StatelessWidget {
-  const AbcRealStartScreen({super.key});
+  final String? sessionId;
+  const AbcRealStartScreen({super.key, this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +18,14 @@ class AbcRealStartScreen extends StatelessWidget {
         Navigator.pop(context);
       },
       onNext: () {
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const AbcInputScreen(showGuide: false),
+            builder: (_) => AbcInputScreen(showGuide: false, sessionId: sessionId,),
           ),
         );
       },
+      leftLabel: '연습하기',
       rightLabel: '작성하기',
       child: Column(
         mainAxisSize: MainAxisSize.min,

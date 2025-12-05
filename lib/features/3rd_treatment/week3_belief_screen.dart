@@ -5,7 +5,9 @@ import 'package:gad_app_team/widgets/tutor_design.dart'; // ✅ AbcActivateDesig
 /// 💬 3주차 - Self Talk (신체적 반응 시나리오)
 /// AbcActivateDesign 스타일 적용 (이미지 + 텍스트 + 네비게이션 버튼)
 class Week3BeliefScreen extends StatelessWidget {
-  const Week3BeliefScreen({super.key});
+  final String? sessionId;
+
+  const Week3BeliefScreen({super.key, required this.sessionId});
 
   String get _description =>
       "걱정이 많아지면서 신체적으로도 여러 증상이 나타났습니다.\n\n"
@@ -25,7 +27,7 @@ class Week3BeliefScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week3ConsequenceScreen(),
+            pageBuilder: (_, __, ___) => Week3ConsequenceScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

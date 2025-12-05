@@ -1,6 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
-import 'package:gad_app_team/data/user_progress.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 
 /// 앱 사용법을 안내하는 튜토리얼 화면
@@ -33,6 +32,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
     ),
   ];
 
+  /// 튜토리얼 끝났을 때 다음 화면으로 이동
+  /// 여기 들어오는 시점에는 설문 미완료 유저만 온다고 가정 → 항상 /before_survey
+  void _finishTutorial() {
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/before_survey');
+  }
+
   Future<void> _goNext() async {
     if (_currentIndex < pages.length - 1) {
       await _controller.nextPage(
@@ -41,21 +47,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
       );
       return;
     }
-    final hasSurvey = await UserDatabase.hasCompletedSurvey();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(
-      context,
-      hasSurvey ? '/home' : '/before_survey',
-    );
+    // 마지막 페이지에서 "시작하기" 누르면 바로 설문 화면으로
+    _finishTutorial();
   }
 
-  Future<void> _skipTutorial() async {
-    final hasSurvey = await UserDatabase.hasCompletedSurvey();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(
-      context,
-      hasSurvey ? '/home' : '/before_survey',
-    );
+  void _skipTutorial() {
+    // 건너뛰기 눌러도 동일하게 설문 화면으로
+    _finishTutorial();
   }
 
   @override
@@ -110,7 +108,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
               ),
             ),
 
-            // ✅ 아래쪽 한 줄짜리 도트 인디케이터만 남김
+            // 도트 인디케이터
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(pages.length, (i) {

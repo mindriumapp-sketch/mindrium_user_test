@@ -1,10 +1,14 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+
 import 'package:gad_app_team/widgets/login_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
-import 'package:gad_app_team/data/api/users_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/daycounter.dart';
 
 /// 로그인 화면 (기능 로직만)
 class LoginScreen extends StatefulWidget {
@@ -19,9 +23,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _login() async {
@@ -33,34 +37,58 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    // ⬇️ await 전에 Provider 뽑기
+    final dayCounter = context.read<UserDayCounter>();
+    final userProvider = context.read<UserProvider>();
+    final todayTaskProvider = context.read<TodayTaskProvider>();
+
+    // 새 로그인 시도 전에 상태 초기화
+    userProvider.reset();
+    todayTaskProvider.reset();
+    dayCounter.reset();
+
     final tokens = TokenStorage();
     final client = ApiClient(tokens: tokens);
     final authApi = AuthApi(client, tokens);
-    final usersApi = UsersApi(client);
 
     try {
+      // 1) 로그인 → 토큰 저장
       await authApi.login(email: email, password: password);
-      final me = await usersApi.me();
 
+      // 2) 유저 정보 + 진행도 로딩 (/users/me + /users/me/progress)
+      await userProvider.loadUserData(dayCounter: dayCounter);
+
+      // 3) 오늘의 할 일 로딩 ( /users/me/todaytask )
+      await todayTaskProvider.loadTodayTask();
+
+      // 4) SharedPreferences (기존 로직 유지)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('uid', me['id'] ?? me['_id'] ?? '');
-      await prefs.setString('email', me['email'] ?? email);
+      await prefs.setString('uid', userProvider.userId);
+      await prefs.setString(
+        'email',
+        userProvider.userEmail.isNotEmpty ? userProvider.userEmail : email,
+      );
 
       if (!mounted) return;
+
+      // 5) 설문 여부 보고 분기
+      final hasSurvey = userProvider.surveyCompleted;
       Navigator.pushReplacementNamed(
         context,
-        '/tutorial',
-        arguments: {
-          'uid': me['id'] ?? me['_id'],
-          'email': me['email'] ?? email,
-          'userData': me,
-        },
+        hasSurvey ? '/home' : '/tutorial',
       );
     } catch (e) {
-      // 백엔드에서 401 / 400 등을 던지면 여기로 옴.
+      // 로그인 전체 플로우 실패 → 토큰 + 상태 정리
+      await tokens.clear();
+      userProvider.reset();
+      todayTaskProvider.reset();
+      dayCounter.reset();
+
       _showError('로그인 실패: ${e is Exception ? e.toString() : '오류'}');
-      // 사용자 없을 가능성 → 가입 화면 이동 유도
+
+      if (!mounted) return;
+
       Navigator.pushNamed(
         context,
         '/terms',
@@ -68,8 +96,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
-
-  // Firebase 에러 코드 분기 제거됨
 
   void _goToSignup() {
     final email = emailController.text.trim();
@@ -79,6 +105,13 @@ class _LoginScreenState extends State<LoginScreen> {
       '/terms',
       arguments: {'email': email, 'password': password},
     );
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override

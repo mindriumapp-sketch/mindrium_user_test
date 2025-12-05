@@ -7,6 +7,11 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'relaxation_logger.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:provider/provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 
 // --- 주차 타이틀 ---
 const Map<int, String> kRelaxationWeekTitles = {
@@ -18,6 +23,19 @@ const Map<int, String> kRelaxationWeekTitles = {
   6: '6주차 - 차등 이완',
   7: '7주차 - 신속 이완',
   8: '8주차 - 신속 이완',
+};
+
+
+//TODO: --- 주차 화면 수 ---
+const Map<int, int> kWeekScreens = {
+  1: 6,
+  2: 15,
+  3: 12,
+  4: 12,
+  5: 12,
+  6: 12,
+  7: 12,
+  8: 12,
 };
 
 String relaxationTitleForWeek(int? week) {
@@ -34,6 +52,7 @@ const Duration _kAutosaveInterval = Duration(seconds: 30);
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class PracticePlayer extends StatefulWidget {
+  final String? sessionId;
   final String taskId;
   final int weekNumber;
   final String mp3Asset;
@@ -45,6 +64,7 @@ class PracticePlayer extends StatefulWidget {
     required this.weekNumber,
     required this.mp3Asset,
     required this.riveAsset,
+    this.sessionId,
   });
 
   @override
@@ -75,6 +95,10 @@ class _PracticePlayerState extends State<PracticePlayer>
 // ✅ 현재 활성 상태가 시작된 시점
   DateTime? _lastActivityTime;
 
+  late final ApiClient _apiClient;
+  late final EduSessionsApi _eduSessionsApi;
+  bool _sessionUpdated = false; // 중복 호출 방지
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +112,9 @@ class _PracticePlayerState extends State<PracticePlayer>
 
     // 🔥 세션 시작 시점에 위치 한 번만 캡처해서 logger에 넣음
     _captureStartLocation();
+
+    _apiClient = ApiClient(tokens: TokenStorage());
+    _eduSessionsApi = EduSessionsApi(_apiClient);
 
     _startAutosaveTimer();
   }
@@ -176,24 +203,54 @@ class _PracticePlayerState extends State<PracticePlayer>
     }
   }
 
-  void _checkIfBothFinished() async {
+  /// ✅ edu-sessions + UserProvider 로컬 진행도 동기화
+  Future<void> _updateEduSessionOnComplete() async {
+    final sessionId = widget.sessionId;
 
+    // 세션 ID 없으면 조용히 스킵
+    if (sessionId == null || sessionId.isEmpty) {
+      debugPrint('[PracticePlayer] sessionId 없음, edu-sessions 업데이트 스킵');
+      return;
+    }
+    if (_sessionUpdated) return;
+
+    _sessionUpdated = true;
+
+    try {
+      // 1) 백엔드 edu_sessions 업데이트
+      await _eduSessionsApi.updateEduSession(
+        sessionId: sessionId,
+        completed: true,
+        lastScreenIndex: kWeekScreens[widget.weekNumber],
+        endTime: DateTime.now(),
+      );
+      debugPrint('[PracticePlayer] edu-sessions 업데이트 성공 (sessionId=$sessionId)');
+
+      // 2) 성공한 경우에만 UserProvider에서 /users/me/progress 다시 로딩
+      if (!mounted) return;
+      final userProvider = context.read<UserProvider>();
+      await userProvider.refreshProgress();
+    } catch (e) {
+      // 네비게이션은 막지 않고 로그만 남김
+      debugPrint('[PracticePlayer] edu-sessions 업데이트 or progress refresh 실패: $e');
+    }
+  }
+
+  void _checkIfBothFinished() async {
     if (_isAudioFinished && _isRiveFinished) {
       // ✅ 완주 플래그 먼저 세움
       _logger.setFullyCompleted();
       _logger.logEvent("session_complete");
 
       await _saveOnce(reason: 'complete');
+      await _updateEduSessionOnComplete();
       if (!mounted) return;
 
-      //await EduProgress.markWeekDone(1);
-      // ✅ 교육 or 이완모음 화면으로 이동 (진행도 갱신 및 다음 주차 unlock 반영)
       if (widget.taskId.contains('menu')) {
         Navigator.pushNamedAndRemoveUntil(context, '/contents', (_) => false);
       }
       else {
-        // TODO: 교육 완료 completed bool을 여기서 보낼지 말지 정하기..
-        Navigator.pushNamedAndRemoveUntil(context, '/treatment', (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
       }
     }
   }
@@ -312,13 +369,14 @@ class _PracticePlayerState extends State<PracticePlayer>
       // 2) 이미 허용된 경우에만 현재 위치 가져오기
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
+          accuracy: LocationAccuracy.low,
         ),
       );
 
       // 3) 좌표 → 주소 문자열 변환 (가능하면)
       String? addressName;
       try {
+        await setLocaleIdentifier('ko_KR');
         final placemarks = await placemarkFromCoordinates(
           pos.latitude,
           pos.longitude,

@@ -7,26 +7,19 @@ import 'package:gad_app_team/contents/apply_alternative_thought.dart';
 import 'package:gad_app_team/contents/diary_or_relax_or_home.dart';
 import 'package:gad_app_team/contents/filtered_diary_select.dart';
 import 'package:gad_app_team/contents/diary_yes_or_no.dart';
-import 'package:gad_app_team/contents/filtered_diary_show.dart';
 import 'package:gad_app_team/contents/relax_or_alternative.dart';
 import 'package:gad_app_team/contents/relax_yes_or_no.dart';
 import 'package:gad_app_team/contents/similar_activation.dart';
-// import 'package:gad_app_team/contents/training_select.dart';
-import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_result_screen.dart';
-import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
-import 'package:gad_app_team/features/screen_time/screen_time_page.dart';
+// import 'package:gad_app_team/features/screen_time/screen_time_page.dart';
 
 //notification
 import 'package:gad_app_team/features/menu/diary/diary_directory_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/notification_selection_screen.dart';
 
 //treatment
-import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_input_screen.dart';
-import 'package:gad_app_team/features/2nd_treatment/abc_group_add.dart';
-import 'package:gad_app_team/features/2nd_treatment/abc_group.dart';
+import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 
 // Feature imports
 import 'package:gad_app_team/features/auth/login_screen.dart';
@@ -39,6 +32,7 @@ import 'package:gad_app_team/features/settings/setting_screen.dart';
 
 // Menu imports
 import 'package:gad_app_team/features/menu/menu_screen.dart';
+import 'package:gad_app_team/features/menu/diary/abc_group.dart';
 import 'package:gad_app_team/features/menu/education/education_screen.dart';
 import 'package:gad_app_team/features/menu/archive/archive_screen.dart';
 import 'package:gad_app_team/features/menu/education/education1.dart';
@@ -59,7 +53,6 @@ import 'package:gad_app_team/contents/after_sud_screen.dart';
 // Navigation screen imports
 import 'package:gad_app_team/navigation/screen/home_screen.dart';
 import 'package:gad_app_team/navigation/screen/myinfo_screen.dart';
-import 'package:gad_app_team/navigation/screen/treatment_screen.dart';
 
 import 'features/menu/archive/character_battle.dart';
 import 'features/menu/archive/sea_archive_page.dart';
@@ -135,8 +128,10 @@ class MyApp extends StatelessWidget {
         '/tutorial': (context) => const TutorialScreen(),
         '/before_survey': (context) => const BeforeSurveyScreen(),
         '/home': (context) => const HomeScreen(),
+        '/home_edu': (_) => const HomeScreen(initialIndex: 1),
+        '/home_mindrium': (_) => const HomeScreen(initialIndex: 2),
+        '/home_settings': (_) => const HomeScreen(initialIndex: 3),
         '/myinfo': (context) => const MyInfoScreen(),
-        '/treatment': (context) => const TreatmentScreen(),
         '/contents': (context) => const ContentScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/education': (context) => const EducationScreen(),
@@ -148,15 +143,17 @@ class MyApp extends StatelessWidget {
         '/education6': (context) => const Education6Page(),
         '/education7': (context) => const Education7Page(),
         '/relaxation': (context) => const RelaxationScreen(),
-        '/screen_time': (context) => const ScreenTimePage(),
+        // '/screen_time': (context) => const ScreenTimePage(),
         '/relaxation_education': (context) {
           final args =
               (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
+          final sessionId = args['sessionId'] as String?;
           final taskId = args['taskId'] as String? ?? 'week1_education';
           final weekNumber = args['weekNumber'] as int? ?? 1;
           final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
           final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
           return PracticePlayer(
+            sessionId: sessionId,
             taskId: taskId,
             weekNumber: weekNumber,
             mp3Asset: mp3Asset,
@@ -185,19 +182,15 @@ class MyApp extends StatelessWidget {
         "/diary_relax_home": (context) => const DiaryOrRelaxOrHome(),
         '/diary_yes_or_no': (context) => const DiaryYesOrNo(),
         "/diary_select": (context) => const DiarySelectScreen(),
-        "/diary_show": (context) => const DiaryShowScreen(),
         "/similar_activation": (context) => const SimilarActivationScreen(),
         "/relax_or_alternative": (context) => const RelaxOrAlternativePage(),
         "/relax_yes_or_no": (context) => const RelaxYesOrNo(),
         "/alt_yes_or_no": (context) => const AltYesOrNo(),
-        // "/training": (context) => const TrainingSelect(),
         '/apply_alt_thought':
             (context) => const ApplyAlternativeThoughtScreen(),
         "/abc_group_add": (context) => const AbcGroupAddScreen(),
         '/diary_group': (context) => AbcGroupScreen(),
         '/archive': (context) => ArchiveScreen(),
-        '/week1': (context) => const Week1Screen(),
-        '/week2': (context) => const Week2Screen(),
         '/abc': (context) {
           final args =
               (ModalRoute.of(context)?.settings.arguments as Map?) ?? const {};
@@ -217,20 +210,18 @@ class MyApp extends StatelessWidget {
             beforeSud: beforeSud,
           );
         },
-        '/week4': (context) => const Week4Screen(),
-        '/week8': (context) => const Week8Screen(),
-        '/alt_thought': (context) => const Week4ClassificationResultScreen(),
+        '/alt_thought': (context) => const Week4ClassificationResultScreen(sudId: null),
         '/noti_select': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map?;
           return NotificationSelectionScreen(
             fromDirectory: args?['fromDirectory'] as bool? ?? false,
             label: args?['label'] as String?,
-            abcId: args?['abcId'] as String?,
+            abcId: args?['abcId'] as String,
             notificationId: args?['notificationId'] as String?,
-            origin: args?['origin'] as String?,
+            sessionId: args?['sessionId'] as String?,
           );
         },
-        '/diary_directory': (context) => NotificationDirectoryScreen(),
+        '/diary_directory': (context) => DiaryDirectoryScreen(),
         '/battle': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map?;
           final groupId = args?['groupId']?.toString() ?? '';

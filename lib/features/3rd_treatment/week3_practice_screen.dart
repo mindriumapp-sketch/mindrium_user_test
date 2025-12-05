@@ -3,7 +3,8 @@ import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_classification_screen.dart';
 
 class Week3PracticeScreen extends StatelessWidget {
-  const Week3PracticeScreen({super.key});
+  final String? sessionId;
+  const Week3PracticeScreen({super.key, required this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +16,7 @@ class Week3PracticeScreen extends StatelessWidget {
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week3ClassificationScreen(),
+            pageBuilder: (_, __, ___) => Week3ClassificationScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

@@ -9,15 +9,13 @@ import 'package:gad_app_team/features/3rd_treatment/week3_visual_screen.dart';
 import 'package:gad_app_team/widgets/top_btm_card.dart';
 
 class Week3AlternativeThoughtsScreen extends StatefulWidget {
+  final String? sessionId;
   final List<String> previousChips;
-  final List<Map<String, dynamic>>? quizResults;
-  final int? correctCount;
 
   const Week3AlternativeThoughtsScreen({
     super.key,
+    required this.sessionId,
     required this.previousChips,
-    this.quizResults,
-    this.correctCount,
   });
 
   @override
@@ -112,10 +110,9 @@ class _Week3AlternativeThoughtsScreenState
       context,
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => Week3VisualScreen(
+          sessionId: widget.sessionId,
           previousChips: widget.previousChips,
           alternativeChips: values,
-          quizResults: widget.quizResults,
-          correctCount: widget.correctCount,
         ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,

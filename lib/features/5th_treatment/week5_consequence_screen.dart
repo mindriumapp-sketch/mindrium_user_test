@@ -4,7 +4,8 @@ import 'package:gad_app_team/features/5th_treatment/week5_practice_screen.dart';
 
 /// 💬 5주차 - 불안 직면 VS 회피 (메모시트 디자인 적용)
 class Week5ConsequenceScreen extends StatelessWidget {
-  const Week5ConsequenceScreen({super.key});
+  final String? sessionId;
+  const Week5ConsequenceScreen({super.key, required this.sessionId});
   String get _description =>
       '수업 중에도 쉽게 피로를 느끼고, 가슴이 갑갑하거나 속이 울렁거리는 증상이 가끔 나타납니다.\n\n'
           '집중력도 눈에 띄게 떨어져서 수업 자료를 준비하다가도 멍하니 시간을 보내는 일이 잦아졌고,\n'
@@ -22,7 +23,7 @@ class Week5ConsequenceScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week5PracticeScreen(),
+            pageBuilder: (_, __, ___) => Week5PracticeScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

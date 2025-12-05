@@ -5,7 +5,9 @@ import 'package:gad_app_team/widgets/tutor_design.dart'; // ✅ AbcActivateDesig
 /// 💬 3주차 - Self Talk (결과 시나리오)
 /// AbcActivateDesign 스타일 적용
 class Week3ConsequenceScreen extends StatelessWidget {
-  const Week3ConsequenceScreen({super.key});
+  final String? sessionId;
+
+  const Week3ConsequenceScreen({super.key, required this.sessionId});
   String get _description =>
       '수업 중에도 쉽게 피로를 느끼고, 가슴이 갑갑하거나 속이 울렁거리는 증상이 가끔 나타납니다.\n\n'
           '집중력도 눈에 띄게 떨어져서 수업 자료를 준비하다가도 멍하니 시간을 보내는 일이 잦아졌고,\n'
@@ -23,7 +25,7 @@ class Week3ConsequenceScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week3PracticeScreen(),
+            pageBuilder: (_, __, ___) => Week3PracticeScreen(sessionId: sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

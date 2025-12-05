@@ -1,8 +1,8 @@
 // 🌊 Mindrium TreatmentScreen — 단일 오픈 + 자동 unlock 반영
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 
-import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_screen.dart';
@@ -11,69 +11,52 @@ import 'package:gad_app_team/features/5th_treatment/week5_screen.dart';
 import 'package:gad_app_team/features/6th_treatment/week6_screen.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_screen.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
-
 import 'package:gad_app_team/widgets/tap_design_treatment.dart'; // ✅ 디자인 위젯
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class TreatmentScreen extends StatelessWidget {
   const TreatmentScreen({super.key});
 
-  Future<Map<String, dynamic>> _loadUserProgress(BuildContext context) async {
-    final userDayCounter = context.read<UserDayCounter>();
-    final tokens = TokenStorage();
-    final client = ApiClient(tokens: tokens);
-    final userDataApi = UserDataApi(client);
-
-    try {
-      final data = await userDataApi.getProgress();
-      final weekProgress = (data['week_progress'] as List?) ?? [];
-      final completedWeeks = <int>{};
-      final unlockedWeeks = <int>{};
-
-      for (final entry in weekProgress) {
-        if (entry is! Map) continue;
-        final weekNumber = entry['week_number'];
-        if (weekNumber is! int) continue;
-        if (entry['completed'] == true) {
-          completedWeeks.add(weekNumber);
-        }
-        if ((entry['progress_percent'] ?? 0) is num &&
-            (entry['progress_percent'] as num) > 0) {
-          unlockedWeeks.add(weekNumber);
-        }
-      }
-
-      final currentWeek = data['current_week'] is int ? data['current_week'] as int : 1;
-      for (int i = 1; i <= currentWeek; i++) {
-        unlockedWeeks.add(i);
-      }
-      if (unlockedWeeks.isEmpty) unlockedWeeks.add(1);
-
-      final weekByDays = userDayCounter.daysSinceJoin ~/ 7;
-
-      return {
-        'weekByDays': weekByDays,
-        'completedWeekSet': completedWeeks,
-        'unlockedWeekSet': unlockedWeeks,
-      };
-    } catch (e) {
-      debugPrint('⚠️ [TreatmentScreen] 사용자 진행도 불러오기 실패: $e');
-      return {
-        'weekByDays': userDayCounter.daysSinceJoin ~/ 7,
-        'completedWeekSet': <int>{},
-        'unlockedWeekSet': <int>{1},
-      };
-    }
-  }
-
-  // ────────────────────────────────
-  // 빌드
-  // ────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final userDayCounter = context.watch<UserDayCounter>();
+    final user = context.watch<UserProvider>();
+
+    // ✅ Splash/Login에서 userProvider.loadUserData 안 탔거나,
+    //    토큰 문제 등으로 아직 유저 정보가 없는 극초기/에러 케이스 방어
+    if (!user.isUserLoaded) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF87CEEB)),
+        ),
+      );
+    }
+
+    // ── 서버에서 내려준 진행도 정보 ──
+    const int totalWeeks = 8;
+
+    // last_completed_week: 0~8 범위로 클램핑
+    int lastCompleted = user.lastCompletedWeek;
+    if (lastCompleted < 0) lastCompleted = 0;
+    if (lastCompleted > totalWeeks) lastCompleted = totalWeeks;
+
+    // current_week: 1~8 범위로 클램핑 (혹시 0이나 9 이상이 와도 방어)
+    int currentWeek = user.currentWeek;
+    if (currentWeek < 1) currentWeek = 1;
+    if (currentWeek > totalWeeks) currentWeek = totalWeeks;
+
+    // 완료된 주차 집합 (1~lastCompleted)
+    final completedWeeks = <int>{
+      for (int w = 1; w <= lastCompleted; w++) w,
+    };
+
+    // TODO: 나중에 진짜 잠금 로직 쓰고 싶으면 여기서 currentWeek 기준으로 enabled 계산
+    // final enabledList = List<bool>.generate(totalWeeks, (i) {
+    //   final weekNo = i + 1;
+    //   return weekNo <= currentWeek;
+    // });
+
+    // 🔹 지금은 임시로 모두 오픈
+    final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
 
     final List<Map<String, String>> weekContents = [
       {'title': '1주차', 'subtitle': '점진적 이완 / 불안에 대한 교육'},
@@ -97,61 +80,21 @@ class TreatmentScreen extends StatelessWidget {
       Week8Screen(),
     ];
 
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _loadUserProgress(context),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || !userDayCounter.isUserLoaded) {
-          return const Scaffold(
-            backgroundColor: Colors.white,
-            body: Center(child: CircularProgressIndicator(color: Color(0xFF87CEEB))),
-          );
-        }
+    debugPrint(
+        "🟦 [TreatmentScreen] lastCompleted=$lastCompleted, currentWeek=$currentWeek");
+    debugPrint("🟦 [TreatmentScreen] completedWeeks=$completedWeeks");
+    debugPrint("🟦 [TreatmentScreen] enabledList=$enabledList");
 
-        final completedWeeks =
-            snapshot.data!['completedWeekSet'] as Set<int>? ?? <int>{};
-        final unlockedWeeks =
-            snapshot.data!['unlockedWeekSet'] as Set<int>? ?? <int>{};
-        final weekByDays = snapshot.data!['weekByDays'] as int? ?? 0;
-
-        int lastCompleted = completedWeeks.isEmpty
-            ? 0
-            : completedWeeks.reduce((a, b) => a > b ? a : b);
-        final candidateByDone = lastCompleted + 1;
-        final candidateByDays = (weekByDays + 1).clamp(1, 8);
-        final int currentOpenWeek =
-            candidateByDone <= candidateByDays ? candidateByDone : candidateByDays;
-        final int clampedOpenWeek = currentOpenWeek.clamp(1, 8);
-
-
-        // final List<bool> enabledList = List<bool>.generate(8, (i) {
-        //   final weekNo = i + 1;
-        //   if (completedWeeks.contains(weekNo)) return false;
-        //   if (unlockedWeeks.contains(weekNo)) return true;
-        //   if (weekNo == (lastCompleted + 1)) return true;
-        //   return weekNo == 1; // 첫 주차 기본 오픈
-        // });
-
-        //[잠금/해제 활성화] 위 주석 부분을 해제 & 바로 아랫줄 enableList선언부 주석처리하시면 됩니다
-        final List<bool> enabledList = List<bool>.filled(weekContents.length, true);
-
-        debugPrint("🟦 [TreatmentScreen] weekByDays=$weekByDays, "
-            "lastCompleted=$lastCompleted, currentOpenWeek=$clampedOpenWeek");
-        debugPrint("🟦 [TreatmentScreen] enabledList=$enabledList");
-        debugPrint("✅ [TreatmentScreen] completedWeeks 전달 값 = $completedWeeks");
-        debugPrint("✅ [TreatmentScreen] unlockedWeeks 전달 값 = $unlockedWeeks");
-
-        return Scaffold(
-          extendBodyBehindAppBar: true,
-          backgroundColor: Colors.transparent,
-          body: TreatmentDesign(
-            appBarTitle: '',
-            weekContents: weekContents,
-            weekScreens: weekScreens,
-            enabledList: enabledList,
-            completedWeeks: completedWeeks,
-          ),
-        );
-      },
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      body: TreatmentDesign(
+        appBarTitle: '',
+        weekContents: weekContents,
+        weekScreens: weekScreens,
+        enabledList: enabledList,
+        completedWeeks: completedWeeks,
+      ),
     );
   }
 }

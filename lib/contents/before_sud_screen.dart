@@ -41,25 +41,28 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
   }
 
   // ────────────────────── FastAPI 저장 ──────────────────────
-  Future<void> _saveSud(String? abcId) async {
-    if (abcId == null || abcId.isEmpty) return;
+  Future<Map<String, dynamic>?> _saveSudAndGet(String? abcId) async {
+    if (abcId == null || abcId.isEmpty) {
+      return null;
+    }
+
     final access = await _tokens.access;
     if (access == null) {
       throw Exception('로그인이 필요합니다.');
     }
 
-    await _sudApi.createSudScore(
+    final res = await _sudApi.createSudScore(
       diaryId: abcId,
       beforeScore: _sud,
-      afterScore: _sud,
     );
+    return res;
   }
 
 
   Future<String> _loadGroupId(String abcId) async {
     try {
       final diary = await _diariesApi.getDiary(abcId);
-      final dynamic raw = diary['group_Id'] ?? diary['groupId'];
+      final dynamic raw = diary['group_id'];
       return raw == null ? '' : raw.toString();
     } on DioException catch (_) {
       return '';
@@ -126,7 +129,11 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
         setState(() => _saving = true);
 
         try {
-          await _saveSud(abcId);
+          Map<String, dynamic>? res;
+          if (hasAbcId) {
+            res = await _saveSudAndGet(abcId);
+          }
+
           if (!context.mounted) return;
 
           if (!hasAbcId && (origin == 'apply' || origin == 'solve')) {
@@ -157,11 +164,18 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
           final groupId = await _loadGroupId(ensuredAbcId);
           if (!context.mounted) return;
 
+          final sudId = res?['sud_id']?.toString() ?? '';
+
           if (_sud > 2) {
             Navigator.pushReplacementNamed(
               context,
               '/similar_activation',
-              arguments: {'abcId': ensuredAbcId, 'groupId': groupId, 'sud': _sud},
+              arguments: {
+                'abcId': ensuredAbcId,
+                'groupId': groupId,
+                'beforeSud': _sud,
+                'sudId': sudId,
+              },
             );
           } else {
             Navigator.pushReplacementNamed(
@@ -170,8 +184,9 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
               arguments: {
                 'abcId': ensuredAbcId,
                 'groupId': groupId,
-                'sud': _sud,
                 'origin': origin,
+                'beforeSud': _sud,
+                'sudId': sudId,
               },
             );
           }
