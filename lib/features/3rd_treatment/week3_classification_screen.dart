@@ -205,8 +205,8 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
         feedbackColor = const Color(0xFF4CAF50);
       } else {
         feedback = selected == 'healthy'
-            ? '도움이 되는 생각이라고 하셨군요.\n하지만 이건 도움이 되지 않는 생각쪽에 \n가깝습니다.'
-            : '도움이 되지 않는 생각이라고 하셨군요. \n하지만 이건 도움이 되는 생각쪽에 \n가깝습니다.';
+            ? '도움이 되는 생각이라고 하셨군요. 하지만 이건 도움이 되지 않는 생각쪽에  가깝습니다.'
+            : '도움이 되지 않는 생각이라고 하셨군요. 하지만 이건 도움이 되는 생각쪽에 가깝습니다.';
         feedbackColor = const Color(0xFFFF5252);
       }
 
@@ -243,7 +243,7 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
           SafeArea(
             child: Column(
               children: [
-                const CustomAppBar(title: '3주차 - Self Talk'),
+                const CustomAppBar(title: 'Self Talk'),
 
                 // 위쪽: 콘텐츠 영역
                 Expanded(

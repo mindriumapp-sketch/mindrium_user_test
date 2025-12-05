@@ -9,7 +9,7 @@ class Week3PracticeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '3주차 - Self Talk',
+      appBarTitle: 'Self Talk',
       cardTitle: '한번 연습해볼까요?',
       onBack: () => Navigator.pop(context),
       onNext: () {
@@ -29,9 +29,9 @@ class Week3PracticeScreen extends StatelessWidget {
         children: [
           SizedBox(height: 12),
           Text(
-            '방금 본 여성의 예시 상황에 몰입해 보면서\n'
-                '도움이 되는 생각과\n'
-                '도움이 되지 않는 생각을\n'
+            '방금 본 여성의 예시 상황에 몰입해 보면서'
+                '도움이 되는 생각과'
+                '도움이 되지 않는 생각을'
                 '구분하는 연습을 해볼 거예요.',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -53,7 +53,7 @@ class Week3PracticeScreen extends StatelessWidget {
           ),
 
           Text(
-            '이제 생각의 방향을\n구체적으로 살펴볼까요?',
+            '이제 생각의 방향을 구체적으로 살펴볼까요?',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 15,

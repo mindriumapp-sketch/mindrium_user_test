@@ -107,10 +107,10 @@ class _Week3GuideScreenState extends State<Week3GuideScreen> {
         _chipsKey.currentState?.unfocusAndCommit();
       },
       child: ApplyDoubleCard(
-        appBarTitle: '3주차 - Self Talk',
+        appBarTitle: 'Self Talk',
         topChild: _buildTopCard(context),
         bottomChild: _buildBottomCard(context),
-        middleNoticeText: '아래 영역을 탭하면 항목이 추가돼요!\n엔터 또는 바깥 터치로 확정됩니다',
+        middleNoticeText: '아래 영역을 탭하면 항목이 추가돼요! 엔터 또는 바깥 터치로 확정됩니다',
         onBack: () => Navigator.pop(context),
         onNext: () => _goNext(context),
 

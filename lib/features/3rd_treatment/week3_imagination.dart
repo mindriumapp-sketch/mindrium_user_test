@@ -48,7 +48,7 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
           ),
           SizedBox(height: 12),
           Text(
-            '불안할 때 떠오르는 최악의 상황이나\n걱정되는 장면을 솔직하게 적어보세요.',
+            '불안할 때 떠오르는 최악의 상황이나 걱정되는 장면을 솔직하게 적어보세요.',
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w200,
@@ -118,7 +118,7 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
   @override
   Widget build(BuildContext context) {
     return ApplyDoubleCard(
-      appBarTitle: '3주차 - Self Talk',
+      appBarTitle: 'Self Talk',
       topChild: _buildTopPanel(),
       // 가운데 말풍선 텍스트
       middleBannerText:
