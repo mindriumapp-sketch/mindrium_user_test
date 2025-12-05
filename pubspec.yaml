@@ -65,11 +65,9 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/image/11.png
     - assets/image/Background_wave.png
     - assets/image/activating event.png
     - assets/image/alternative thoughts.png
-    - assets/image/anxiety_character.png
     - assets/image/attack.png
     - assets/image/belief.png
     - assets/image/character1.png
@@ -126,7 +124,6 @@ flutter:
     - assets/image/character20.png
     - assets/image/character20_mid.png
     - assets/image/character20_last.png
-    - assets/image/completion.png
     - assets/image/congrats.png
     - assets/image/consequence.png
     - assets/image/coral_green.png
@@ -157,8 +154,6 @@ flutter:
     - assets/image/men.png
     - assets/image/battle_scene_bg.png
     - assets/image/nice.png
-    - assets/image/otter_sushi.png
-    - assets/image/photo.png
     - assets/image/pink1.png
     - assets/image/pink2.png
     - assets/image/pink3.png
@@ -166,13 +161,11 @@ flutter:
     - assets/image/popup2.png
     - assets/image/progressing.png
     - assets/image/question_icon.png
-    - assets/image/ranking_illustration.png
     - assets/image/scenario_1.png
     - assets/image/scenario_2.png
     - assets/image/scenario_3.png
     - assets/image/spring.png
     - assets/image/undone.png
-    - assets/image/weekly_diary.png
     - assets/image/wrong.png
     - assets/image/think_blue.png
     - assets/image/aquarium_background.png

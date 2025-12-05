@@ -26,10 +26,10 @@ class AbcPracticeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const String titleText = '한번 연습해볼까요?';
     const String descriptionText =
-        '방금 본 자전거 예시 상황에 몰입해 보면서\nABC 모델 연습을 해볼 거예요.';
+        '방금 본 자전거 예시 상황에 몰입해 보면서 ABC 모델 연습을 해볼 거예요.';
 
     return ApplyDesign(
-      appBarTitle: '2주차 - ABC 모델',
+      appBarTitle: 'ABC 모델',
       cardTitle: titleText,
       onBack: () => Navigator.pop(context),
       onNext: () => _goNext(context),

@@ -180,9 +180,7 @@ class _EducationScreenState extends State<EducationScreen> {
                 child: Column(
                   children: [
                     CustomAppBar(
-                      title: widget.isRelax
-                          ? '1주차 - 불안에 대한 교육'
-                          : '불안에 대한 교육',
+                      title: '불안에 대한 교육',
                       maxTitleLines: 2,
                       titleAlign: TextAlign.start,
                       showHome: true,
@@ -323,7 +321,7 @@ class _EducationScreenState extends State<EducationScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => EducationPage(
-                      title: '1주차 - 불안에 대한 교육',
+                      title: '불안에 대한 교육',
                       jsonPrefixes: [
                         'week1_part1_',
                         'week1_part3_',

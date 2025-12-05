@@ -96,7 +96,7 @@ class _Week2ScreenState extends State<Week2Screen> {
     }
 
     return ApplyDesign(
-      appBarTitle: '2주차 - 시작하기',
+      appBarTitle: '2주차 시작',
       cardTitle: '2주차 시작 ✨',
       onBack: () => Navigator.pop(context),
       onNext: () {
@@ -131,8 +131,8 @@ class _Week2ScreenState extends State<Week2Screen> {
           Text(
             protectKoreanWords(
               '이번 주차에서는 불안이 발생하는 상황을 '
-                  'A(사건), B(생각), C(결과)로 나누어 분석하는 ABC 모델을 배워보겠습니다.\n\n'
-                  '자전거를 타려고 했을 때의 상황을 예시로 살펴볼게요.',
+              'A(사건), B(생각), C(결과)로 나누어 분석하는 ABC 모델을 배워보겠습니다.\n\n'
+              '자전거를 타려고 했을 때의 상황을 예시로 살펴볼게요.',
             ),
             textAlign: TextAlign.center,
             style: const TextStyle(

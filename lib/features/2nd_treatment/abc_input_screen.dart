@@ -507,7 +507,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
       appBar: CustomAppBar(
         title: (widget.isExampleMode
             ? '예시 연습하기'
-            : (widget.origin == null ? '2주차 - ABC 모델' : '일기 작성')),
+            : (widget.origin == null ? 'ABC 모델' : '일기 작성')),
         onBack: () {
           if (_currentStep == 0 && _currentCSubStep == 0) {
             Navigator.pop(context);

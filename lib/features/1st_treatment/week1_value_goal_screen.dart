@@ -77,7 +77,7 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
     final name = (user.userName).isNotEmpty ? user.userName : '사용자';
 
     return ApplyDesign(
-      appBarTitle: '1주차 - 시작하기',
+      appBarTitle: '시작하기',
       cardTitle: 'Mindrium에 오신 것을\n환영합니다 🌊',
       onBack: () => Navigator.pop(context),
       onNext: _isLoading ? null : _saveUserData,

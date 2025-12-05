@@ -12,7 +12,7 @@ class AbcRealStartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '2주차 - ABC 모델',
+      appBarTitle: 'ABC 모델',
       cardTitle: '잘하셨어요!',
       onBack: () {
         Navigator.pop(context);
@@ -45,7 +45,7 @@ class AbcRealStartScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            protectKoreanWords('이제 실제로 나의 사례를 떠올리며\n걱정일기를 작성해보세요.'),
+            protectKoreanWords('이제 실제로 나의 사례를 떠올리며 걱정일기를 작성해보세요.'),
             style: TextStyle(
               fontSize: 16,
               color: Colors.black87,

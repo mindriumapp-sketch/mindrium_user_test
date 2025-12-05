@@ -10,7 +10,7 @@ class AbcConsequenceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AbcActivateDesign(
-      appBarTitle: '2주차 - ABC 모델',
+      appBarTitle: 'ABC 모델',
       scenarioImage: 'assets/image/week2_scenario3.jpg', // ✅ 시각 자료 (원하시는 걸로 교체 가능)
       descriptionText:
           '걱정이 많아지면서 신체적으로도 여러 증상이 나타났습니다.\n'

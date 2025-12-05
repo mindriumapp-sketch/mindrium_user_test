@@ -260,7 +260,7 @@ class _EducationPageState extends State<EducationPage> {
       } else {
         final prefix = _slides[currentIndex].content.title;
         if (prefix.contains('이완')) {
-          titleText = '1주차 - 점진적 이완';
+          titleText = '점진적 이완';
         }
       }
     }

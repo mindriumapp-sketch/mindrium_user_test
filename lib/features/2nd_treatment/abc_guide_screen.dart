@@ -78,7 +78,7 @@ class _AbcGuideScreenState extends State<AbcGuideScreen> {
       children: [
         // 1) 카드 포함 전체 화면
         ApplyDesign(
-          appBarTitle: '2주차 - ABC 모델',
+          appBarTitle: 'ABC 모델',
           cardTitle: 'ABC 모델이란?',
           onBack: () => _goBack(context),
           onNext: () => _goNext(context),

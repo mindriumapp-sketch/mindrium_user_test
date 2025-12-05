@@ -17,7 +17,7 @@ class AbcBeliefScreen extends StatelessWidget {
         "그때의 아픔이 다시 느껴지는 것 같았어요.";
 
     return AbcActivateDesign(
-      appBarTitle: '2주차 - ABC 모델',
+      appBarTitle: 'ABC 모델',
       descriptionText: descriptionText,
       scenarioImage: 'assets/image/belief.png',
       onBack: () => Navigator.pop(context),

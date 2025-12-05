@@ -122,11 +122,7 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
           );
           return;
         } else {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/home',
-                (route) => false,
-          );
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
       },
 
