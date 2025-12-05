@@ -35,6 +35,7 @@ import 'package:gad_app_team/features/menu/menu_screen.dart';
 import 'package:gad_app_team/features/menu/diary/abc_group.dart';
 import 'package:gad_app_team/features/menu/education/education_screen.dart';
 import 'package:gad_app_team/features/menu/archive/archive_screen.dart';
+import 'package:gad_app_team/features/menu/report/report_screen.dart';
 import 'package:gad_app_team/features/menu/education/education1.dart';
 import 'package:gad_app_team/features/menu/education/education2.dart';
 import 'package:gad_app_team/features/menu/education/education3.dart';
@@ -191,6 +192,7 @@ class MyApp extends StatelessWidget {
         "/abc_group_add": (context) => const AbcGroupAddScreen(),
         '/diary_group': (context) => AbcGroupScreen(),
         '/archive': (context) => ArchiveScreen(),
+        '/report': (context) => const ReportScreen(),
         '/abc': (context) {
           final args =
               (ModalRoute.of(context)?.settings.arguments as Map?) ?? const {};
@@ -228,7 +230,7 @@ class MyApp extends StatelessWidget {
           return PokemonBattleDeletePage(groupId: groupId);
         },
         '/archive_sea': (context) => SeaArchivePage(),
-        '/agent_help': (context) => ChatApp()
+        '/agent_help': (context) => ChatApp(),
       },
     );
   }

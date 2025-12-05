@@ -21,7 +21,8 @@ class PokemonBattleDeletePage extends StatefulWidget {
   });
 
   @override
-  State<PokemonBattleDeletePage> createState() => _PokemonBattleDeletePageState();
+  State<PokemonBattleDeletePage> createState() =>
+      _PokemonBattleDeletePageState();
 }
 
 class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
@@ -38,6 +39,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
   bool _isDefeated = false;
 
   String? _characterName;
+  int? _characterId;
 
   // ========== HP ==========
   int _maxHp = 0;
@@ -78,8 +80,8 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
       lowerBound: -4,
       upperBound: 4,
     )..addStatusListener((s) {
-        if (s == AnimationStatus.completed) _shakeController.reverse();
-      });
+      if (s == AnimationStatus.completed) _shakeController.reverse();
+    });
 
     _scoreController = AnimationController(
       vsync: this,
@@ -88,8 +90,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
 
     _voice = CharacterBattleAsr();
     _initializeVoice();
-    _loadSkillsFromFirestore();
-    _loadCharacterInfo();
+    _loadData();
     _startEmotionCycle();
   }
 
@@ -136,68 +137,53 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     }
   }
 
-  Future<void> _loadCharacterInfo() async {
-    try {
-      // 그룹 정보 조회
-      final groupData = await _worryGroupsApi.getWorryGroup(widget.groupId);
-      _characterName = groupData['group_title']?.toString() ?? '이름 없음';
+  // ========== 데이터 로드 (통합) ==========
 
-      // 그룹의 모든 일기 조회 (belief 정보)
+  Future<void> _loadData() async {
+    try {
+      debugPrint('🔍 [데이터 로드 시작] group_id: ${widget.groupId}');
+
+      // 1. 그룹 정보 조회
+      final groupData = await _worryGroupsApi.getWorryGroup(widget.groupId);
+      final characterName = groupData['group_title']?.toString() ?? '이름 없음';
+      final characterId = groupData['character_id'] as int?;
+
+      debugPrint('🎨 [캐릭터 정보] name: $characterName, id: $characterId');
+
+      // 2. 그룹의 모든 일기 조회 (한 번만)
       final response = await _apiClient.dio.get(
         '/diaries',
-        queryParameters: {'group_id': int.tryParse(widget.groupId) ?? 0},
+        queryParameters: {'group_id': widget.groupId},
       );
 
-      final Set<String> emotions = {};
+      debugPrint('📦 [일기 응답]: ${response.data}');
+
+      final List<String> emotions = [];
+      final List<String> skills = [];
+
+      // 3. 일기 데이터에서 belief와 alternative_thoughts 추출
       if (response.data is List) {
         for (final item in response.data) {
           if (item is! Map) continue;
-          final dynamic emotionData = item['belief'];
 
-          if (emotionData is String && emotionData.trim().isNotEmpty) {
-            emotions.add(emotionData.trim());
-          } else if (emotionData is List) {
-            for (final e in emotionData) {
-              if (e is String && e.trim().isNotEmpty) {
-                emotions.add(e.trim());
+          // belief 추출
+          final List<dynamic>? beliefData = item['belief'];
+          if (beliefData != null) {
+            for (final b in beliefData) {
+              // belief 배열 안의 각 항목에서 label 값 추출
+              if (b is Map && b['label'] != null) {
+                final labelText = b['label'].toString().trim();
+                if (labelText.isNotEmpty) {
+                  emotions.add(labelText);
+                }
               }
             }
           }
-        }
-      }
 
-      // belief를 랜덤으로 섞어서 다양하게 보여주기
-      final emotionsList = emotions.toList();
-      emotionsList.shuffle();
-
-      setState(() {
-        _characterEmotions =
-            emotionsList.isNotEmpty ? emotionsList : ['감정 데이터가 없습니다'];
-        _currentEmotionIndex = 0;
-      });
-    } catch (e) {
-      debugPrint('❌ MongoDB 일기 불러오기 실패: $e');
-      setState(() {
-        _characterEmotions = ['데이터를 불러오지 못했습니다'];
-      });
-    }
-  }
-
-  Future<void> _loadSkillsFromFirestore() async {
-    try {
-      // 그룹의 모든 일기 조회 (alternativeThoughts 정보)
-      final response = await _apiClient.dio.get(
-        '/diaries',
-        queryParameters: {'group_id': int.tryParse(widget.groupId) ?? 0},
-      );
-
-      final Set<String> skills = {};
-      if (response.data is List) {
-        for (final item in response.data) {
-          if (item is! Map) continue;
-          final List<dynamic>? alternatives = item['alternativeThoughts'];
-          if (alternatives != null) {
-            for (final alt in alternatives) {
+          // alternative_thoughts 추출
+          final List<dynamic>? altThoughts = item['alternative_thoughts'];
+          if (altThoughts != null) {
+            for (final alt in altThoughts) {
               if (alt is String && alt.trim().isNotEmpty) {
                 skills.add(alt.trim());
               }
@@ -206,15 +192,28 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         }
       }
 
+      debugPrint('🎯 [최종 감정 목록]: $emotions');
+      debugPrint('🎯 [최종 스킬 목록]: $skills');
+
+      // belief를 랜덤으로 섞어서 다양하게 보여주기
+      if (emotions.isNotEmpty) {
+        emotions.shuffle();
+      }
+
       setState(() {
-        _skillsList = skills.isNotEmpty ? skills.toList() : ['대체 생각이 없습니다'];
+        _characterName = characterName;
+        _characterId = characterId;
+        _characterEmotions = emotions.isNotEmpty ? emotions : ['감정 데이터가 없습니다'];
+        _currentEmotionIndex = 0;
+        _skillsList = skills.isNotEmpty ? skills : ['대체 생각이 없습니다'];
         _maxHp = _skillsList.length;
         _targetHp = _maxHp;
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ MongoDB 일기 불러오기 실패: $e');
+      debugPrint('❌ 데이터 로드 실패: $e');
       setState(() {
+        _characterEmotions = ['데이터를 불러오지 못했습니다'];
         _skillsList = ['데이터를 불러오지 못했습니다'];
         _maxHp = 1;
         _targetHp = 1;
@@ -402,22 +401,23 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     if (!mounted) return;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('음성인식 오류'),
-        content: const Text(
-          '음성인식을 사용할 수 없습니다.\n\n'
-          '1. 마이크 권한 확인\n'
-          '2. 네트워크 연결 확인\n'
-          '3. 실기기에서 테스트\n\n'
-          '⚠️ 에뮬레이터는 지원되지 않습니다.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('음성인식 오류'),
+            content: const Text(
+              '음성인식을 사용할 수 없습니다.\n\n'
+              '1. 마이크 권한 확인\n'
+              '2. 네트워크 연결 확인\n'
+              '3. 실기기에서 테스트\n\n'
+              '⚠️ 에뮬레이터는 지원되지 않습니다.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -569,92 +569,92 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     );
   }
 
-Widget _buildCharacters(String myChar) {
-  final dx = _shakeController.value;
+  Widget _buildCharacters(String myChar) {
+    final dx = _shakeController.value;
 
-  return Stack(
-    children: [
-      // 내 캐릭터 + 사용자 말풍선
-      Positioned(
-        left: 8,
-        bottom: 160,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            if (_isUserBubbleVisible && _userBubbleText != null)
-              Positioned(
-                top: -60,
-                left: 80,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _buildEmotionBubble(
-                    _userBubbleText!,
-                    key: ValueKey("user_bubble_$_userBubbleText"),
+    return Stack(
+      children: [
+        // 내 캐릭터 + 사용자 말풍선
+        Positioned(
+          left: 8,
+          bottom: 160,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (_isUserBubbleVisible && _userBubbleText != null)
+                Positioned(
+                  top: -60,
+                  left: 80,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _buildEmotionBubble(
+                      _userBubbleText!,
+                      key: ValueKey("user_bubble_$_userBubbleText"),
+                    ),
                   ),
                 ),
-              ),
-            Image.asset(myChar, height: 220, fit: BoxFit.contain),
-          ],
+              Image.asset(myChar, height: 220, fit: BoxFit.contain),
+            ],
+          ),
         ),
-      ),
 
-      // 타겟 캐릭터 + 감정 말풍선
-      Positioned(
-        top: 210,
-        right: 24 + dx,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            if (_characterEmotions.isNotEmpty)
-              Positioned(
-                top: -60,
-                right: 0,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 600),
-                  child: _isBubbleVisible
-                      ? _buildEmotionBubble(
-                          _bubbleText ??
-                              _characterEmotions[_currentEmotionIndex],
-                          key: ValueKey("visible_$_currentEmotionIndex"),
-                        )
-                      : const SizedBox.shrink(key: ValueKey("hidden")),
+        // 타겟 캐릭터 + 감정 말풍선
+        Positioned(
+          top: 210,
+          right: 24 + dx,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (_characterEmotions.isNotEmpty)
+                Positioned(
+                  top: -60,
+                  right: 0,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 600),
+                    child:
+                        _isBubbleVisible
+                            ? _buildEmotionBubble(
+                              _bubbleText ??
+                                  _characterEmotions[_currentEmotionIndex],
+                              key: ValueKey("visible_$_currentEmotionIndex"),
+                            )
+                            : const SizedBox.shrink(key: ValueKey("hidden")),
+                  ),
                 ),
+
+              // ★ 자동 HP 상태에 맞는 표정 이미지
+              Image.asset(
+                _getCharacterImage(),
+                height: 160,
+                fit: BoxFit.contain,
+                errorBuilder:
+                    (_, __, ___) =>
+                        const Icon(Icons.error, size: 100, color: Colors.white),
               ),
-
-            // ★ 자동 HP 상태에 맞는 표정 이미지
-            Image.asset(
-              _getCharacterImage(),
-              height: 160,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.error, size: 100, color: Colors.white),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    ],
-  );
-}
-
-String _getCharacterImage() {
-  final id = widget.groupId;
-
-  if (_maxHp == 0) {
-    return 'assets/image/character$id.png';
+      ],
+    );
   }
 
-  double ratio = _targetHp / _maxHp;
+  String _getCharacterImage() {
+    final id = _characterId ?? 1; // character_id 사용, 없으면 기본값 1
 
-  if (ratio > 2 / 3) {
-    return 'assets/image/character$id.png';          // 기본 표정
-  } else if (ratio > 1 / 3) {
-    return 'assets/image/character${id}_mid.png';      // 중간 데미지
-  } else {
-    return 'assets/image/character${id}_last.png';     // 마지막 데미지
+    if (_maxHp == 0) {
+      return 'assets/image/character$id.png';
+    }
+
+    double ratio = _targetHp / _maxHp;
+
+    if (ratio > 2 / 3) {
+      return 'assets/image/character$id.png'; // 기본 표정
+    } else if (ratio > 1 / 3) {
+      return 'assets/image/character${id}_mid.png'; // 중간 데미지
+    } else {
+      return 'assets/image/character${id}_last.png'; // 마지막 데미지
+    }
   }
-}
-
-
 
   Widget _buildEmotionBubble(String text, {Key? key, Color? backgroundColor}) {
     return Container(
@@ -699,9 +699,15 @@ String _getCharacterImage() {
           width: 120,
           height: 120,
           decoration: BoxDecoration(
-            color: _listening
-                ? const Color(0xFF56E0C6).withValues(alpha: 0.9)
-                : const Color.fromARGB(255, 65, 79, 79).withValues(alpha: 0.8),
+            color:
+                _listening
+                    ? const Color(0xFF56E0C6).withValues(alpha: 0.9)
+                    : const Color.fromARGB(
+                      255,
+                      65,
+                      79,
+                      79,
+                    ).withValues(alpha: 0.8),
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white30),
           ),
@@ -788,6 +794,31 @@ String _getCharacterImage() {
                         );
                       },
                     ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 공격 버튼
+                ElevatedButton(
+                  onPressed:
+                      (_selectedSkill != null && !_isAttacking && !_isDefeated)
+                          ? _handleAttack
+                          : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF56E0C6),
+                    foregroundColor: Colors.black87,
+                    disabledBackgroundColor: Colors.grey.withValues(alpha: 0.3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    '공격',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
