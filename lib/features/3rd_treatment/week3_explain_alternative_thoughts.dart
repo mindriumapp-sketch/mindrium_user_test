@@ -48,7 +48,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
 
     /// ApplyDesign 이 전체 레이아웃(배경/앱바/카드/네비)을 처리
     return ApplyDesign(
-      appBarTitle: '3주차 - Self Talk',
+      appBarTitle: 'Self Talk',
       cardTitle: '대체 생각 배우기',
 
       // 카드 내부 실제 콘텐츠
@@ -62,7 +62,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
                 Image.asset('assets/image/question_icon.png', width: 36, height: 36),
                 const SizedBox(height: 16),
                 Text(
-                  protectKoreanWords('추가로 작성하신 불안한 상황을 보면서\n대체 생각이 무엇인지 배워 볼까요?'),
+                  protectKoreanWords('추가로 작성하신 불안한 상황을 보면서 대체 생각이 무엇인지 배워 볼까요?'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -118,7 +118,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
             TextSpan(
               children: [
                 const TextSpan(
-                  text: "예를 들어, \n이런 불안한 생각이 있을 수 있어요:\n",
+                  text: "예를 들어, \n이런 불안한 생각이 있을 수 있어요:\n\n",
                   style: TextStyle(
                     fontSize: 15.5,
                     color: Colors.black87,

@@ -78,7 +78,7 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
 
     return ApplyDesign(
       appBarTitle: '시작하기',
-      cardTitle: 'Mindrium에 오신 것을\n환영합니다 🌊',
+      cardTitle: 'Mindrium에 오신 것을 환영합니다 🌊',
       onBack: () => Navigator.pop(context),
       onNext: _isLoading ? null : _saveUserData,
       child: Form(
@@ -88,7 +88,7 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
           children: [
             Text(
               protectKoreanWords(
-                '이 프로그램을 통해 불안을 관리하고 \n더 나은 삶을 만들어가시길 바랍니다.',
+                '이 프로그램을 통해 불안을 관리하고 더 나은 삶을 만들어가시길 바랍니다.',
               ),
               style: const TextStyle(
                 fontSize: 14.5,
@@ -99,7 +99,7 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
             const SizedBox(height: 30),
             Text(
               protectKoreanWords(
-                '$name님, 삶에서 가장 중요하게\n생각하는 가치는 무엇인가요?',
+                '$name님, 삶에서 가장 중요하게 생각하는 가치는 무엇인가요?',
               ),
               style: const TextStyle(
                 fontSize: 18,

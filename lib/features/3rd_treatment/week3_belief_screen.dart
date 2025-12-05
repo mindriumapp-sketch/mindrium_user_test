@@ -19,7 +19,7 @@ class Week3BeliefScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AbcActivateDesign(
-      appBarTitle: '3주차 - Self Talk',
+      appBarTitle: 'Self Talk',
       scenarioImage: 'assets/image/scenario_2.png', // ✅ 실제 상황 이미지 경로 지정
       descriptionText: _description,
       onBack: () => Navigator.pop(context),

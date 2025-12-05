@@ -78,7 +78,7 @@ class Week3FinalScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 14),
                                 Text(
-                                  '자기이해와 긍정적 자기대화를\n실천했어요!',
+                                  '자기이해와 긍정적 자기대화를 실천했어요!',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 18,

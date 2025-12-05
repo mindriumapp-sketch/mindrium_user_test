@@ -123,10 +123,10 @@ class _Week3AlternativeThoughtsScreenState
   @override
   Widget build(BuildContext context) {
     return ApplyDoubleCard(
-      appBarTitle: '3주차 - Self Talk',
+      appBarTitle: 'Self Talk',
       topChild: _buildTopPanel(),
       middleBannerText:
-      '아래 영역을 탭하면 항목이 추가돼요!\n엔터 또는 바깥 터치로 확정됩니다',
+      '아래 영역을 탭하면 항목이 추가돼요! 엔터 또는 바깥 터치로 확정됩니다',
       bottomChild: _buildBottomPanel(),
       onBack: () => Navigator.pop(context),
 

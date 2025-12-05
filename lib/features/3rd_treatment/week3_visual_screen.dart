@@ -197,7 +197,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
       appBar: const CustomAppBar(
-        title: '3주차 - Self Talk',
+        title: 'Self Talk',
         confirmOnBack: false,
         showHome: true,
       ),

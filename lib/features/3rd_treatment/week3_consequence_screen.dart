@@ -17,7 +17,7 @@ class Week3ConsequenceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AbcActivateDesign(
-      appBarTitle: '3주차 - Self Talk',         // ✅ 주차 제목 주입
+      appBarTitle: 'Self Talk',         // ✅ 주차 제목 주입
       scenarioImage: 'assets/image/scenario_3.png', // ✅ 실제 결과 이미지 경로 지정
       descriptionText: _description,
       onBack: () => Navigator.pop(context),
