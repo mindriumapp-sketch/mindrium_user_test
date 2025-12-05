@@ -11,7 +11,7 @@ import 'package:gad_app_team/widgets/ruled_paragraph.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
+import 'package:gad_app_team/data/api/custom_tags_api.dart';
 
 class Week4NextThoughtScreen extends StatefulWidget {
   final List<String> remainingBList;
@@ -49,14 +49,14 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
   bool _isLoading = true;
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
-  late final UserDataApi _userDataApi;
+  late final CustomTagsApi _customTagsApi;
 
   @override
   void initState() {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
-    _userDataApi = UserDataApi(_client);
+    _customTagsApi = CustomTagsApi(_client);
     _startCountdown();
     _fetchActivatingEvent();
   }
@@ -202,7 +202,7 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
               await _diariesApi.updateDiary(diaryId, {'belief': merged});
               // 커스텀 태그(B)로도 저장
               for (final t in toAdd) {
-                await _userDataApi.createCustomTag(text: t, type: 'B');
+                await _customTagsApi.createCustomTag(label: t, type: 'B');
               }
             }
           }

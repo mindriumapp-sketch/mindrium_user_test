@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -45,8 +47,28 @@ class TodayTaskProvider extends ChangeNotifier {
 
   bool get hasError => _lastError != null;
   int _requestId = 0;
+  bool _notifyScheduled = false;
 
   bool get isLoaded => _date != null;
+
+  @override
+  void notifyListeners() => _notifyListenersSafely();
+
+  void _notifyListenersSafely() {
+    if (!hasListeners) return;
+    if (_notifyScheduled) return;
+
+    _notifyScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifyScheduled = false;
+      if (!hasListeners) return;
+      super.notifyListeners();
+    });
+
+    // 혹시 프레임이 없으면 하나 예약
+    SchedulerBinding.instance.scheduleFrame();
+  }
 
   // ───────────────────── 서버 로딩 ─────────────────────
 
@@ -57,7 +79,7 @@ class TodayTaskProvider extends ChangeNotifier {
     final myRequest = ++_requestId;
     _isLoading = true;
     _lastError = null;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       await _loadFromServer(requestId: myRequest);
@@ -69,7 +91,7 @@ class TodayTaskProvider extends ChangeNotifier {
     } finally {
       if (myRequest == _requestId) {
         _isLoading = false;
-        notifyListeners();
+        _notifyListenersSafely();
       }
     }
   }
@@ -91,7 +113,7 @@ class TodayTaskProvider extends ChangeNotifier {
       }
     } finally {
       if (myRequest == _requestId) {
-        notifyListeners();
+        _notifyListenersSafely();
       }
     }
   }
@@ -160,7 +182,7 @@ class TodayTaskProvider extends ChangeNotifier {
     if (lastEducationAt != null) {
       _lastEducationAt = lastEducationAt;
     }
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   /// 로그아웃 등에서 상태 싹 초기화.
@@ -173,7 +195,7 @@ class TodayTaskProvider extends ChangeNotifier {
     _lastEducationAt = null;
     _isLoading = false;
     _lastError = null;
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   // 기존 clear() 호출하는 코드가 있을 수 있으니 alias로 남겨두기

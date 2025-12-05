@@ -5,7 +5,12 @@ import 'package:gad_app_team/features/3rd_treatment/week3_explain_alternative_th
 
 /// 🌊 3주차 - Self Talk (상상하기 단계)
 class Week3GuideScreen extends StatefulWidget {
-  const Week3GuideScreen({super.key});
+  final String? sessionId;
+
+  const Week3GuideScreen({
+    super.key,
+    required this.sessionId,
+  });
 
   @override
   State<Week3GuideScreen> createState() => _Week3GuideScreenState();
@@ -83,9 +88,10 @@ class _Week3GuideScreenState extends State<Week3GuideScreen> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder:
-            (_, __, ___) =>
-                Week3ExplainAlternativeThoughtsScreen(chips: values),
+        pageBuilder: (_, __, ___) => Week3ExplainAlternativeThoughtsScreen(
+          sessionId: widget.sessionId,
+          chips: values,
+        ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),

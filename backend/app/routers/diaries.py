@@ -437,6 +437,7 @@ async def get_latest_diary(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     summary_flag: bool = True,
+    include_auto: bool = False,
 ):
     """
     최신(가장 최근 created_at) 일기 반환

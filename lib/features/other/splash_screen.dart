@@ -7,16 +7,22 @@ import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/common/constants.dart';
 
-
 /// 앱 실행 시 처음 보여지는 스플래시 화면
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  late final Future<bool> _initFuture;
 
   /// 앱 초기화:
   /// - 토큰 조회
   /// - 있으면 /users/me + /users/me/progress 로딩
   /// - UserDayCounter + TodayTask까지 세팅
-  Future<bool> _initApp(BuildContext context) async {
+  Future<bool> _initApp() async {
     final tokens = TokenStorage();
 
     final userProvider = context.read<UserProvider>();
@@ -52,9 +58,15 @@ class SplashScreen extends StatelessWidget {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _initFuture = _initApp();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      future: _initApp(context),
+      future: _initFuture,
       builder: (context, snapshot) {
         // 아직 로딩 중
         if (!snapshot.hasData) {

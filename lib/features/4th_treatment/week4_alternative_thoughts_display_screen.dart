@@ -62,7 +62,7 @@ class _Week4AlternativeThoughtsDisplayScreenState
         await Future.delayed(const Duration(seconds: 1));
         if (!mounted) return false;
         setState(() => _secondsLeft--);
-        return true;
+        return true; 
       } else {
         setState(() => _isNextEnabled = true);
         return false;
@@ -75,17 +75,17 @@ class _Week4AlternativeThoughtsDisplayScreenState
     final hasAlt = widget.alternativeThoughts.isNotEmpty;
 
     final mainText = hasAlt
-        ? "'${widget.previousB}' 생각에 대해\n'${widget.alternativeThoughts.join(', ')}'(이)라는 도움이 되는 생각을 작성해주셨네요.\n\n잘 진행해주시고 계십니다!"
-        : "'${widget.previousB}' 생각에 대한\n도움이 되는 생각들을 확인해보세요.";
+        ? "'${widget.previousB}' 생각에 대해 \n'${widget.alternativeThoughts.join(', ')}'(이)라는 도움이 되는 생각을 작성해주셨네요. \n\n잘 진행해주시고 계십니다!"
+        : "'${widget.previousB}' 생각에 대한 도움이 되는 생각들을 확인해보세요.";
 
     final subText =
-        '도움이 되는 생각을 해볼 때,\n처음 들었던 불안한 생각을\n얼마나 강하게 믿고 있는지\n다시 한번 평가해볼게요.';
+        '도움이 되는 생각을 해볼 때, 처음 들었던 불안한 생각을 얼마나 강하게 믿고 있는지 다시 한번 평가해볼게요.';
 
     // BlueWhiteCard에서 쓰던 줄 길이와 비슷하게
     const double kRuleWidth = 220;
 
     return ApplyDesign(
-      appBarTitle: '4주차 - 인지 왜곡 찾기',
+      appBarTitle: '인지 왜곡 찾기',
       cardTitle: '도움이 되는 생각 점검',
       onBack: () => Navigator.pop(context),
       onNext: _isNextEnabled

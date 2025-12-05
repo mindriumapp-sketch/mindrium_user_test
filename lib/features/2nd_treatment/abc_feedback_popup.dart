@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
-import 'package:gad_app_team/features/2nd_treatment/abc_group_add.dart';
+import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/models/grid_item.dart';
 import 'package:gad_app_team/widgets/abc_visualization_design.dart'; // ✅ 추가

@@ -91,7 +91,7 @@ class _Week8ScreenState extends State<Week8Screen> {
       weekNumber: 8,
       weekTitle: 'Mindrium 교육 프로그램을\n모두 완료하셨습니다!',
       weekDescription: weekDescription,
-      nextPageBuilder: () => Week8RoadmapScreen(sessionId: _sessionId),
+      nextPageBuilder: () => const Week8RoadmapScreen(),
     );
   }
 }

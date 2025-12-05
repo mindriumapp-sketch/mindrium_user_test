@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
@@ -30,6 +31,7 @@ class UserProvider extends ChangeNotifier {
 
   // 여러 비동기 요청이 섞여 들어올 때 가장 마지막 요청만 유효하게 만들기 위한 ID
   int _requestId = 0;
+  bool _notifyScheduled = false;
 
   // ───────────────────── 기본 프로필 정보 (/users/me) ─────────────────────
   String _userName = '사용자';
@@ -77,6 +79,24 @@ class UserProvider extends ChangeNotifier {
           _totalRelaxations > 0 ||
           _valueGoal != null;
 
+  @override
+  void notifyListeners() => _notifyListenersSafely();
+
+  void _notifyListenersSafely() {
+    if (!hasListeners) return;
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifyScheduled = false;
+      if (!hasListeners) return;
+      super.notifyListeners();
+    });
+
+    // 프레임이 없을 수도 있으니 보장
+    SchedulerBinding.instance.scheduleFrame();
+  }
+
   // ───────────────────── public API ─────────────────────
 
   /// /users/me + /users/me/progress 를 모두 불러서
@@ -87,7 +107,7 @@ class UserProvider extends ChangeNotifier {
     final myRequest = ++_requestId;
     _isLoadingUser = true;
     _hasError = false;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       // 1) 기본 프로필: /users/me
@@ -134,7 +154,7 @@ class UserProvider extends ChangeNotifier {
     } finally {
       if (myRequest == _requestId) {
         _isLoadingUser = false;
-        notifyListeners();
+        _notifyListenersSafely();
       }
     }
   }
@@ -159,7 +179,7 @@ class UserProvider extends ChangeNotifier {
       }
     } finally {
       if (myRequest == _requestId) {
-        notifyListeners();
+        _notifyListenersSafely();
       }
     }
   }
@@ -179,7 +199,7 @@ class UserProvider extends ChangeNotifier {
       }
     } finally {
       if (myRequest == _requestId) {
-        notifyListeners();
+        _notifyListenersSafely();
       }
     }
   }
@@ -205,7 +225,7 @@ class UserProvider extends ChangeNotifier {
     _totalRelaxations = 0;
     _valueGoal = null;
 
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   // ───────────────────── 내부 헬퍼 ─────────────────────
@@ -335,7 +355,7 @@ class UserProvider extends ChangeNotifier {
     if (totalRelaxations != null) {
       _totalRelaxations = totalRelaxations;
     }
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   /// 핵심 가치를 "로컬에서만" 갱신할 때 쓰는 유틸.
@@ -343,12 +363,12 @@ class UserProvider extends ChangeNotifier {
   /// - 예: updateValueGoal API 성공 후, 응답의 value_goal을 그대로 반영.
   void setValueGoalLocally(String? valueGoal) {
     _valueGoal = valueGoal;
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   /// 유저 이름을 로컬에서만 변경 (서버 PATCH는 별도 API가 담당)
   void updateUserName(String name) {
     _userName = name;
-    notifyListeners();
+    _notifyListenersSafely();
   }
 }

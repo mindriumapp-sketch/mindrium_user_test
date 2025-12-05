@@ -33,20 +33,16 @@ class Week4FinishScreen extends StatelessWidget {
 
     // 기존 문구 그대로 유지
     final String successText =
-        '축하합니다! 불안의 정도가 $beforeSud에서 $afterSud로 낮아졌네요.\n'
-        '도움이 되는 생각을 찾아보는 과정을 통해 불안을 줄이는데 성공하셨습니다.';
+        '축하합니다! \n\n불안의 정도가 $beforeSud에서 $afterSud로 낮아졌네요. \n도움이 되는 생각을 찾아보는 과정을 통해 불안을 줄이는데 성공하셨습니다.';
 
     final String encourageText =
-        '아직 불안의 정도가 충분히 낮아지지 않았네요.\n'
-        '하지만 여기까지 잘 따라와 주신 것만으로도 정말 대단하세요.';
+        '아직 불안의 정도가 충분히 낮아지지 않았네요. \n하지만 여기까지 잘 따라와 주신 것만으로도 정말 대단하세요.';
 
     final String footerText =
-        '도움이 되는 생각을 찾는 과정이 처음에는 쉽지 않을 수 있어요.\n'
-        '조금 더 연습하고, 내 마음을 들여다보는 시간을 가져보면 분명 불안이 줄어들 수 있습니다.\n\n'
-        '고생하셨습니다.';
+        '도움이 되는 생각을 찾는 과정이 처음에는 쉽지 않을 수 있어요. \n조금 더 연습하고, 내 마음을 들여다보는 시간을 가져보면 분명 불안이 줄어들 수 있습니다. \n\n고생하셨습니다.';
 
     return ApplyDesign(
-      appBarTitle: '4주차 - 인지 왜곡 찾기',
+      appBarTitle: '인지 왜곡 찾기',
       cardTitle: '불안 완화 결과',
       onBack: () => Navigator.pop(context),
       onNext: () async {

@@ -210,7 +210,7 @@ class MyApp extends StatelessWidget {
             beforeSud: beforeSud,
           );
         },
-        '/alt_thought': (context) => const Week4ClassificationResultScreen(sudId: null),
+        '/alt_thought': (context) => const Week4ClassificationResultScreen(),
         '/noti_select': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map?;
           return NotificationSelectionScreen(

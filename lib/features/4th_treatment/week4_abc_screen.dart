@@ -63,14 +63,32 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     }
   }
 
+  String _chipLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      return (raw['label'] ?? '').toString();
+    }
+    return raw.toString();
+  }
+
+  String _chipText(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => _chipLabel(e).trim())
+          .where((e) => e.isNotEmpty)
+          .join(', ');
+    }
+    return _chipLabel(raw).trim();
+  }
+
   List<String> _parseBeliefToList(dynamic raw) {
     if (raw is List) {
       return raw
-          .map((e) => e.toString().trim())
+          .map((e) => _chipLabel(e).trim())
           .where((e) => e.isNotEmpty)
           .toList();
     }
-    final s = (raw ?? '').toString();
+    final s = _chipLabel(raw);
     return s
         .split(',')
         .map((e) => e.trim())
@@ -103,12 +121,13 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     final sud = widget.sud;
 
     return ApplyDesign(
-      appBarTitle: '4주차 - 인지 왜곡 찾기',
-      cardTitle: '최근 ABC 모델 확인',
+      appBarTitle: '인지 왜곡 찾기',
+      cardTitle: '최근 걱정 일기 확인',
       onBack: () => Navigator.pop(context),
       onNext: () {
         // 항상 현재 화면에서 로드한 최신 일기의 ID를 사용
-        final id = _abcModel?['diaryId']?.toString();
+        final id =
+            (_abcModel?['diary_id'] ?? _abcModel?['diaryId'])?.toString();
 
         if (id == null || id.isEmpty) {
           Navigator.push(
@@ -190,25 +209,38 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
       );
     }
 
-    final a =
-        _abcModel?['activating_events'] ?? _abcModel?['activatingEvent'] ?? '';
+    String _safe(String text) {
+      try {
+        // replaces ill-formed UTF-16 sequences with � to avoid TextSpan crashes
+        return String.fromCharCodes(text.runes);
+      } catch (_) {
+        return '';
+      }
+    }
+
+    final a = _safe(_chipText(
+      _abcModel?['activation'] ??
+          _abcModel?['activating_events'] ??
+          _abcModel?['activatingEvent'],
+    ));
     // belief는 리스트일 수 있음 → 표시용으로 쉼표 연결
-    final beliefRaw = _abcModel?['belief'];
-    final b =
-        (beliefRaw is List)
-            ? beliefRaw.whereType<String>().join(', ')
-            : (beliefRaw?.toString() ?? '');
-    final cPhysical =
-        _abcModel?['consequence_p'] ?? _abcModel?['consequence_physical'] ?? '';
-    final cEmotion =
-        _abcModel?['consequence_e'] ?? _abcModel?['consequence_emotion'] ?? '';
-    final cBehavior =
-        _abcModel?['consequence_b'] ?? _abcModel?['consequence_behavior'] ?? '';
+    final b = _safe(_chipText(_abcModel?['belief']));
+    final cPhysical = _safe(_chipText(
+      _abcModel?['consequence_physical'] ?? _abcModel?['consequence_p'],
+    ));
+    final cEmotion = _safe(_chipText(
+      _abcModel?['consequence_emotion'] ?? _abcModel?['consequence_e'],
+    ));
+    final cBehavior = _safe(_chipText(
+      _abcModel?['consequence_action'] ??
+          _abcModel?['consequence_behavior'] ??
+          _abcModel?['consequence_b'],
+    ));
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
 
     // 날짜
     String formattedDate = '';
-    final createdAt = _abcModel?['createdAt'];
+    final createdAt = _abcModel?['created_at'] ?? _abcModel?['createdAt'];
     if (createdAt != null) {
       final DateTime date =
           createdAt is DateTime
@@ -254,7 +286,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                '최근에 작성하신 ABC 걱정일기를\n확인해 볼까요?',
+                '최근에 작성하신 ABC 걱정일기를 확인해 볼까요?',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -267,32 +299,40 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
         // 📄 본문 (Week6와 동일한 문장 구성/하이라이트)
         Text.rich(
           TextSpan(
-            children: [
-              TextSpan(text: "$userName님은 "),
-              WidgetSpan(child: _highlightedText("'$a'")),
-              const TextSpan(text: " 상황에서 "),
-              WidgetSpan(child: _highlightedText("'$b'")),
-              const TextSpan(text: " 생각을 하였습니다.\n\n"),
+            children: () {
+              final spans = <InlineSpan>[
+                TextSpan(text: "$userName님은 "),
+                WidgetSpan(child: _highlightedText("'$a'")),
+                const TextSpan(text: " 상황에서 "),
+                WidgetSpan(child: _highlightedText("'$b'")),
+                const TextSpan(text: " 생각을 하였습니다."),
+              ];
 
-              if (cPhysical.isNotEmpty ||
-                  cEmotion.isNotEmpty ||
-                  cBehavior.isNotEmpty) ...[
-                const TextSpan(text: "그 결과 "),
-                if (cPhysical.isNotEmpty) ...[
-                  const TextSpan(text: "신체적으로 "),
-                  WidgetSpan(child: _highlightedText("'$cPhysical'")),
-                  const TextSpan(text: " 증상이 나타났고, "),
-                ],
-                if (cEmotion.isNotEmpty) ...[
-                  WidgetSpan(child: _highlightedText("'$cEmotion'")),
-                  const TextSpan(text: " 감정을 느끼셨으며, "),
-                ],
-                if (cBehavior.isNotEmpty) ...[
-                  WidgetSpan(child: _highlightedText("'$cBehavior'")),
-                  const TextSpan(text: "\n행동을 하였습니다.\n\n"),
-                ],
-              ],
-            ],
+              final hasC = cPhysical.isNotEmpty || cEmotion.isNotEmpty || cBehavior.isNotEmpty;
+              if (hasC) {
+                spans.add(const TextSpan(text: " 그 결과 "));
+                if (cPhysical.isNotEmpty) {
+                  spans.addAll([
+                    const TextSpan(text: "신체적으로 "),
+                    WidgetSpan(child: _highlightedText("'$cPhysical'")),
+                    const TextSpan(text: " 증상이 나타났고, "),
+                  ]);
+                }
+                if (cEmotion.isNotEmpty) {
+                  spans.addAll([
+                    WidgetSpan(child: _highlightedText("'$cEmotion'")),
+                    const TextSpan(text: " 감정을 느끼셨으며, "),
+                  ]);
+                }
+                if (cBehavior.isNotEmpty) {
+                  spans.addAll([
+                    WidgetSpan(child: _highlightedText("'$cBehavior'")),
+                    const TextSpan(text: " 행동을 하였습니다."),
+                  ]);
+                }
+              }
+              return spans;
+            }(),
             style: const TextStyle(
               fontSize: 18,
               color: Colors.black,

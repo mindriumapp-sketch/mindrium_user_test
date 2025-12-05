@@ -48,10 +48,23 @@ class Week4ClassificationResultScreen extends StatelessWidget {
   final String? abcId;
   final int loopCount;
 
+  String _chipLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      return (raw['label'] ?? '').toString();
+    }
+    if (raw is String) {
+      final match = RegExp(r'label\s*[:=]\s*([^,}]+)').firstMatch(raw);
+      if (match != null) return match.group(1)?.trim() ?? '';
+    }
+    return raw.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String mainThought =
-    (bList != null && bList!.isNotEmpty) ? bList!.last : '';
+    final String mainThought = _chipLabel(
+      (bList != null && bList!.isNotEmpty) ? bList!.last : '',
+    );
 
     // 경로 기반 카피/플로우
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
@@ -68,10 +81,10 @@ class Week4ClassificationResultScreen extends StatelessWidget {
       mainQuestionText = '다른 생각에 대해서도 도움이 되는 생각을 찾아볼까요?';
     } else if (isFromAnxietyScreen) {
       mainQuestionText =
-      '방금 보셨던 "$mainThought"이(라)는 생각에 대해 도움이 되는 생각을 찾아보는 시간을 가져보겠습니다!';
+      '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 찾아보는 시간을 가져보겠습니다!';
     } else {
       mainQuestionText =
-      '방금 보셨던 "$mainThought"이(라)는 생각에 대해 도움이 되는 생각을 찾아볼까요?';
+      '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 찾아볼까요?';
     }
 
     // 디폴트 값들
@@ -81,8 +94,8 @@ class Week4ClassificationResultScreen extends StatelessWidget {
 
     // 보조 문구/세컨 버튼 라벨
     final supportText = isFromApply
-        ? '만약 지금은 좀 부담스러우시다면 \n다음번에 해도 괜찮아요.'
-        : '만약 지금은 좀 부담스러우시다면 \n다른 생각들 먼저 보고 다시 돌아와도 \n괜찮아요.';
+        ? '만약 지금은 좀 부담스러우시다면 다음번에 해도 괜찮아요.'
+        : '만약 지금은 좀 부담스러우시다면 다른 생각들 먼저 보고 다시 돌아와도 괜찮아요.';
     final secondaryButtonLabel =
     isFromApply ? '다음번에 찾아볼게요.' : '다른 생각으로 진행할게요.';
 
@@ -90,8 +103,8 @@ class Week4ClassificationResultScreen extends StatelessWidget {
     final String quizText = [
       mainQuestionText,
       if (!isFromAnxietyScreen) // 선택 유도 문구
-        '\n아래 두 가지 방법 중 하나를 \n선택해주세요.',
-    ].join('\n');
+        '아래 두 가지 방법 중 하나를 선택해주세요.',
+    ].join(' ');
 
     // ===== 네비게이션 핸들러 (원본 로직 유지) =====
     void onPrimary() {
@@ -160,10 +173,11 @@ class Week4ClassificationResultScreen extends StatelessWidget {
               pageBuilder: (_, __, ___) =>
                   Week4AfterSudScreen(
                     beforeSud: safeBeforeSud,
-                    currentB: (bList != null &&
-                        bList!.isNotEmpty)
-                        ? bList!.last
-                        : '',
+                    currentB: _chipLabel(
+                      (bList != null && bList!.isNotEmpty)
+                          ? bList!.last
+                          : '',
+                    ),
                     remainingBList: safeRemainingBList,
                     allBList: safeAllBList,
                     alternativeThoughts:
@@ -181,10 +195,11 @@ class Week4ClassificationResultScreen extends StatelessWidget {
               pageBuilder: (_, __, ___) =>
                   Week4AfterSudScreen(
                     beforeSud: safeBeforeSud,
-                    currentB: (bList != null &&
-                        bList!.isNotEmpty)
-                        ? bList!.last
-                        : '',
+                    currentB: _chipLabel(
+                      (bList != null && bList!.isNotEmpty)
+                          ? bList!.last
+                          : '',
+                    ),
                     remainingBList: safeRemainingBList,
                     allBList: safeAllBList,
                     alternativeThoughts:

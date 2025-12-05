@@ -1,14 +1,20 @@
 import 'dart:async';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 
 class UserDayCounter extends ChangeNotifier {
   DateTime? _createdAt;
   Timer? _timer;
+  bool _notifyScheduled = false;
+
+  @override
+  void notifyListeners() => _notifyListenersSafely();
 
   void setCreatedAt(DateTime date) {
     _createdAt = date;
     _startDailyTimer();
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   bool get isUserLoaded => _createdAt != null;
@@ -17,7 +23,7 @@ class UserDayCounter extends ChangeNotifier {
     _timer?.cancel();
     _timer = null;
     _createdAt = null;
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   int get daysSinceJoin {
@@ -35,8 +41,24 @@ class UserDayCounter extends ChangeNotifier {
   void _startDailyTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(hours: 24), (_) {
-      notifyListeners(); // 하루마다 갱신
+      _notifyListenersSafely(); // 하루마다 갱신
     });
+  }
+
+  void _notifyListenersSafely() {
+    if (!hasListeners) return;
+    if (_notifyScheduled) return;
+
+    _notifyScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifyScheduled = false;
+      if (!hasListeners) return;
+      super.notifyListeners();
+    });
+
+    // 혹시 프레임이 없으면 하나 예약
+    SchedulerBinding.instance.scheduleFrame();
   }
 
   @override
@@ -45,4 +67,3 @@ class UserDayCounter extends ChangeNotifier {
     super.dispose();
   }
 }
-

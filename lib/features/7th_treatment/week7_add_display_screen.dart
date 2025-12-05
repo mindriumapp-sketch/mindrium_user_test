@@ -7,7 +7,6 @@ import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/custom_tags_api.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
@@ -68,7 +67,7 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
   late AnimationController _slideController;
   late final ApiClient _client;
   late final CustomTagsApi _customTagsApi;
-  late final UserDataApi _userDataApi;
+  // late final UserDataApi _userDataApi;
   late final Week7Api _week7Api;
 
   // 공유 전역 상태
@@ -89,7 +88,7 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
     _customTagsApi = CustomTagsApi(_client);
-    _userDataApi = UserDataApi(_client);
+    // _userDataApi = UserDataApi(_client);
     _week7Api = Week7Api(_client);
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -223,15 +222,18 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
   }
 
   Future<void> _loadCustomTags() async {
-    final tags = await _userDataApi.getCustomTags();
-    _customTags = tags;
+    final tags = await _customTagsApi.listCustomTags(chipType: 'CA');
     for (final tag in tags) {
       final chipId = tag['chip_id']?.toString();
-      final text = tag['text']?.toString();
-      if (chipId != null && text != null && text.isNotEmpty) {
-        _registerChipBehavior(chipId, text);
+      final label = (tag['text'] ?? tag['label'])?.toString().trim();
+      if (chipId != null && label != null && label.isNotEmpty) {
+        _registerChipBehavior(chipId, label);
       }
     }
+    if (!mounted) return;
+    setState(() {
+      _customTags = tags;
+    });
   }
 
   void _registerChipBehavior(String chipId, String behavior) {
@@ -270,8 +272,8 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
           final behavior =
               _chipToBehavior[chipId] ??
               _customTags
-                  .where((tag) => tag['chip_id'] == chipId)
-                  .map((tag) => tag['text']?.toString())
+                  .where((tag) => tag['chip_id']?.toString() == chipId)
+                  .map((tag) => (tag['text'] ?? tag['label'])?.toString())
                   .firstWhere(
                     (value) => value != null && value.isNotEmpty,
                     orElse: () => null,
@@ -318,22 +320,27 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     if (existing != null) return existing;
 
     for (final tag in _customTags) {
-      if (tag['text'] == behavior && tag['chip_id'] != null) {
+      final label = (tag['text'] ?? tag['label'])?.toString();
+      if (label == behavior && tag['chip_id'] != null) {
         final chipId = tag['chip_id'].toString();
         _registerChipBehavior(chipId, behavior);
         return chipId;
       }
     }
 
-    final created = await _userDataApi.createCustomTag(
-      text: behavior,
-      type: 'CB',
+    final created = await _customTagsApi.createCustomTag(
+      label: behavior,
+      type: 'CA',
     );
-    final chipId = created['chip_id']?.toString();
-    if (chipId == null) {
+    final chipId =
+        (created['chip_id'] ?? created['_id'])?.toString().trim();
+    if (chipId == null || chipId.isEmpty) {
       throw Exception('chip_id 생성 실패');
     }
-    _customTags.add(created);
+    final normalized = Map<String, dynamic>.from(created);
+    normalized['chip_id'] = chipId;
+    normalized['text'] ??= behavior;
+    _customTags.add(normalized);
     _registerChipBehavior(chipId, behavior);
     return chipId;
   }
@@ -346,14 +353,14 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
       final chipId = log['chip_id']?.toString();
       if (chipId == null) continue;
 
+      final tag = _customTags.firstWhere(
+        (t) => t['chip_id']?.toString() == chipId,
+        orElse: () => const {},
+      );
+
       final behavior =
           _chipToBehavior[chipId] ??
-          _customTags
-              .firstWhere(
-                (tag) => tag['chip_id']?.toString() == chipId,
-                orElse: () => const {},
-              )['text']
-              ?.toString() ??
+          (tag['text'] ?? tag['label'])?.toString() ??
           chipId;
 
       final shortTerm = log['short_term']?.toString();

@@ -57,7 +57,7 @@ class _Week4ImaginationScreenState extends State<Week4ImaginationScreen> {
     const double kRuleWidth = 220;
 
     return ApplyDesign(
-      appBarTitle: '4주차 - 인지 왜곡 찾기',
+      appBarTitle: '인지 왜곡 찾기',
       cardTitle: '상황 떠올리기',
       onBack: () => Navigator.pop(context),
       onNext: () {
@@ -89,7 +89,7 @@ class _Week4ImaginationScreenState extends State<Week4ImaginationScreen> {
           const SizedBox(height: 20),
 
           RuledParagraph(
-            text: '$userName님, 이때의 상황을 \n자세히 생각해 보세요.',
+            text: '$userName님, 이때의 상황을 자세히 생각해 보세요.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 18,

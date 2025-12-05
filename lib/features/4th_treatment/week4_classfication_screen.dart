@@ -112,7 +112,7 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
         _abcModel = res;
         _isLoading = false;
         _initBList();
-      });
+      }); 
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -122,33 +122,45 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
     }
   }
 
-  void _initBList() {
-    List<String> parseBelief(dynamic raw) {
-      if (raw is List) {
-        return raw
-            .map((e) => e.toString().trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
-      }
-      final s = (raw ?? '').toString();
-      return s
-          .split(',')
-          .map((e) => e.trim())
+  String _chipLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      return (raw['label'] ?? '').toString();
+    }
+    if (raw is String) {
+      final match = RegExp(r'label\s*[:=]\s*([^,}]+)').firstMatch(raw);
+      if (match != null) return match.group(1)?.trim() ?? '';
+    }
+    return raw.toString();
+  }
+
+  List<String> _parseBelief(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => _chipLabel(e).trim())
           .where((e) => e.isNotEmpty)
           .toList();
     }
+    final s = _chipLabel(raw);
+    return s
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
 
+  void _initBList() {
     // 1) 인자로 받은 목록 우선
     if (widget.bListInput.isNotEmpty) {
       _bList =
           widget.bListInput
-              .map((e) => e.trim())
+              .map((e) => _chipLabel(e).trim())
               .where((e) => e.isNotEmpty)
               .toList();
     }
     // 2) 비어 있으면 모델에서 파싱
     if (_bList.isEmpty && _abcModel != null) {
-      _bList = parseBelief(_abcModel?['belief']);
+      _bList = _parseBelief(_abcModel?['belief']);
     }
     // 3) 남은 목록 중 아직 점수 안 준 첫 항목 선택
     final remainB = _bList.where((b) => !_bScores.containsKey(b)).toList();
@@ -276,10 +288,11 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
         );
       }
 
-      final displayB =
-          _currentB.isNotEmpty
-              ? _currentB
-              : (widget.bListInput.isNotEmpty ? widget.bListInput.first : '');
+      final displayB = _chipLabel(
+        _currentB.isNotEmpty
+            ? _currentB
+            : (widget.bListInput.isNotEmpty ? widget.bListInput.first : ''),
+      );
 
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -385,13 +398,13 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
 
     // ===== ApplyDoubleCard 사용: 위/아래 패널 전달 =====
     return ApplyDoubleCard(
-      appBarTitle: '4주차 - 인지 왜곡 찾기',
+      appBarTitle: '인지 왜곡 찾기',
       onBack: () => Navigator.pop(context),
       onNext: _onNext,
       topChild: buildTopPanel(),
       bottomChild: buildBottomPanel(),
       middleBannerText:
-          '지금은 위 생각에 대해 \n얼마나 강하게 믿고 계시나요? 아래 슬라이더를 조정하고 [ 다음 ]을 눌러주세요.',
+          '지금은 위 생각에 대해 얼마나 강하게 믿고 계시나요? 아래 슬라이더를 조정하고 [ 다음 ]을 눌러주세요.',
       panelsGap: 2,
     );
   }
