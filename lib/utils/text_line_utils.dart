@@ -10,8 +10,8 @@ String protectKoreanWords(String text) {
   for (int i = 0; i < words.length; i++) {
     final word = words[i];
 
-    for (int j = 0; j < word.length; j++) {
-      final ch = word[j];
+    for (final codePoint in word.runes) {
+      final ch = String.fromCharCode(codePoint); // code point 단위로 순회해 이모지 서러게이트 분리 방지
       buffer.write(ch);
 
       // 하이라이트/마크다운 마커는 깨지지 않도록 WORD JOINER를 붙이지 않음
