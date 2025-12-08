@@ -1,28 +1,25 @@
 import 'dart:ui';
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'custom_appbar.dart';
 import '../features/2nd_treatment/abc_group_add_screen.dart';
 
 /// 🪸 Mindrium 수족관 스타일 걱정 그룹 목록 (withOpacity 제거 버전)
 class AbcGroupListView extends StatelessWidget {
-  final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs;
-  final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>
-  diariesByGroup;
+  final List<Map<String, dynamic>> groups;
+  final Map<String, List<Map<String, dynamic>>> diariesByGroup;
   final String uid;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
   final void Function(
     BuildContext,
     Map<String, dynamic>,
-    DocumentReference<Map<String, dynamic>>,
   )
   onEdit;
 
   const AbcGroupListView({
     super.key,
-    required this.docs,
+    required this.groups,
     required this.diariesByGroup,
     required this.uid,
     required this.selectedIndex,
@@ -109,25 +106,24 @@ class AbcGroupListView extends StatelessWidget {
                           ),
                           child: ListView.separated(
                             padding: const EdgeInsets.all(20),
-                            itemCount: docs.length + 1,
+                            itemCount: groups.length + 1,
                             separatorBuilder:
                                 (_, __) => const SizedBox(height: 14),
                             itemBuilder: (ctx, i) {
                               if (i == 0) return const AddGroupCard();
-                              final doc = docs[i - 1];
-                              final data = doc.data();
+                              final data = groups[i - 1];
                               final groupId =
-                                  (data['group_id'] ?? '').toString();
+                                  (data['group_id'] ??
+                                      data['groupId'] ??
+                                      '').toString();
                               final diaries = diariesByGroup[groupId] ?? [];
                               return GroupCard(
-                                uid: uid,
                                 group: data,
                                 index: i,
-                                docRef: doc.reference,
                                 isSelected: selectedIndex == i,
                                 diaryCount: diaries.length,
                                 onSelect: () => onSelect(i),
-                                onEdit: onEdit,
+                                onEdit: (ctx, g) => onEdit(ctx, g),
                               );
                             },
                           ),
@@ -203,42 +199,50 @@ class AddGroupCard extends StatelessWidget {
 
 /// 🐚 그룹 카드 (유리 느낌 + 선택 시 하이라이트)
 class GroupCard extends StatelessWidget {
-  final String uid;
   final Map<String, dynamic> group;
   final int index;
-  final DocumentReference<Map<String, dynamic>> docRef;
   final bool isSelected;
   final int diaryCount;
   final VoidCallback onSelect;
   final void Function(
     BuildContext,
     Map<String, dynamic>,
-    DocumentReference<Map<String, dynamic>>,
   )
   onEdit;
 
   const GroupCard({
     super.key,
-    required this.uid,
     required this.group,
     required this.index,
-    required this.docRef,
     required this.isSelected,
     required this.diaryCount,
     required this.onSelect,
     required this.onEdit,
   });
 
+  DateTime _parseDate(dynamic raw) {
+    if (raw is DateTime) return raw;
+    if (raw is String) {
+      final parsed = DateTime.tryParse(raw);
+      if (parsed != null) return parsed;
+    }
+    if (raw is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(raw);
+      } catch (_) {}
+    }
+    return DateTime.now();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final groupId = (group['group_id'] ?? '').toString();
+    final groupId = (group['group_id'] ?? group['groupId'] ?? '').toString();
     final title = (group['group_title'] ?? '').toString();
     final contents = (group['group_contents'] ?? '').toString();
-    final createdAt =
-        (group['createdAt'] is Timestamp)
-            ? (group['createdAt'] as Timestamp).toDate()
-            : DateTime.now();
+    final createdAt = _parseDate(group['created_at'] ?? group['createdAt']);
     final createdStr = DateFormat('yyyy.MM.dd').format(createdAt);
+    final bool isDefaultGroup =
+        groupId == '1' || groupId == 'group_example';
 
     final Color highlightColor = const Color(0xFF007BA7);
 
@@ -339,14 +343,14 @@ class GroupCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (groupId != '1')
+            if (!isDefaultGroup)
               IconButton(
                 icon: Icon(
                   Icons.edit,
                   size: 22,
                   color: isSelected ? highlightColor : const Color(0xFF004C73),
                 ),
-                onPressed: () => onEdit(context, group, docRef),
+                onPressed: () => onEdit(context, group),
               ),
           ],
         ),

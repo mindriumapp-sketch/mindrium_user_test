@@ -28,4 +28,4 @@ class AppSizes {
   static const double space = 16;
 }
 
-const String vworldApiKey = '7155638C-954A-3B54-8BFE-B5B8BCCC32A4';
+const String vworldApiKey = '3E7D019F-6908-3D49-82C5-EEC922006324';

@@ -135,11 +135,12 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                         onTap: (img, title, desc, createdAt) {
                           showDialog(
                             context: context,
-                            builder: (_) => _FishInfoPopup(
-                              title: title,
-                              desc: desc,
-                              image: img,
-                            ),
+                            builder:
+                                (_) => _FishInfoPopup(
+                                  title: title,
+                                  desc: desc,
+                                  image: img,
+                                ),
                           );
                         },
                       ),
@@ -156,7 +157,7 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: const [
                               BoxShadow(
@@ -252,7 +253,7 @@ class _SmoothFishState extends State<_SmoothFish>
   bool _facingRight = true;
   Duration? _lastTick;
   static const double speed = 35.0;
-  static const double fishSize = 64.0;
+  static const double fishSize = 85.0;
 
   double get _maxX => (widget.area.width - fishSize).clamp(0, double.infinity);
 
@@ -366,8 +367,11 @@ class _SmoothFishState extends State<_SmoothFish>
           onTap: () => widget.onTap(img, title, desc, createdAt),
           child: Transform(
             alignment: Alignment.center,
-            transform:
-                Matrix4.diagonal3Values(_facingRight ? 1.0 : -1.0, 1.0, 1.0),
+            transform: Matrix4.diagonal3Values(
+              _facingRight ? 1.0 : -1.0,
+              1.0,
+              1.0,
+            ),
             child: Image(image: img, width: fishSize, height: fishSize),
           ),
         ),
@@ -411,7 +415,7 @@ class _FishInfoPopup extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF0E2C48),
                 ),
               ),
               const SizedBox(height: 8),
@@ -420,7 +424,7 @@ class _FishInfoPopup extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
-                  color: Color.fromARGB(179, 0, 0, 0),
+                  color: Color(0xFF6B7280),
                   height: 1.4,
                 ),
               ),

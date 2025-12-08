@@ -4,6 +4,7 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/features/menu/menu_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -17,7 +18,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
   String? _selectedGroupId;
   late final ApiClient _apiClient;
   List<Map<String, dynamic>> _archivedGroups = [];
-  Map<String, int> _diaryCountByGroup = {};
   bool _isLoading = true;
 
   @override
@@ -31,23 +31,17 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
   Future<void> _loadArchivedGroups() async {
     setState(() => _isLoading = true);
     try {
-      // 아카이브된 그룹 목록 조회 (include_archived=true)
-      final response = await _apiClient.dio.get(
-        '/users/me/worry-groups',
-        queryParameters: {'include_archived': true},
-      );
-      final groups =
+      // 아카이브된 그룹만 조회
+      final response = await _apiClient.dio.get('/worry-groups/archived');
+      final archived =
           (response.data as List?)?.cast<Map<String, dynamic>>() ?? [];
-      debugPrint('🔍 전체 그룹 수: ${groups.length}');
+      debugPrint('✅ 아카이브된 그룹 수: ${archived.length}');
 
-      for (var g in groups) {
+      for (var g in archived) {
         debugPrint(
-          '📦 그룹: id=${g['group_id']}, title=${g['group_title']}, archived=${g['archived']}',
+          '📦 그룹: id=${g['group_id']}, title=${g['group_title']}, character_id=${g['character_id']}, diary_count=${g['diary_count']}',
         );
       }
-
-      final archived = groups.where((g) => g['archived'] == true).toList();
-      debugPrint('✅ 아카이브된 그룹 수: ${archived.length}');
 
       // 보관일 최근순 정렬
       archived.sort((a, b) {
@@ -60,27 +54,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
         return bDate.compareTo(aDate);
       });
 
-      // 각 그룹의 일기 개수 조회
-      final Map<String, int> counts = {};
-      for (final group in archived) {
-        final groupId = group['group_id']?.toString() ?? '';
-        if (groupId.isEmpty) continue;
-
-        try {
-          final response = await _apiClient.dio.get(
-            '/diaries',
-            queryParameters: {'group_id': int.tryParse(groupId) ?? 0},
-          );
-          counts[groupId] = (response.data as List?)?.length ?? 0;
-        } catch (e) {
-          debugPrint('❌ 그룹 $groupId 일기 개수 조회 실패: $e');
-          counts[groupId] = 0;
-        }
-      }
-
       setState(() {
         _archivedGroups = archived;
-        _diaryCountByGroup = counts;
         _isLoading = false;
       });
     } catch (e) {
@@ -146,7 +121,9 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                           Icon(
                             Icons.inventory_2_outlined,
                             size: 80,
-                            color: const Color(0xFF5B9FD3).withValues(alpha: 0.5),
+                            color: const Color(
+                              0xFF5B9FD3,
+                            ).withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 16),
                           const Text(
@@ -192,14 +169,20 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.25),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.35),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.35,
+                                          ),
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.05,),
+                                            color: Colors.black.withValues(
+                                              alpha: 0.05,
+                                            ),
                                             blurRadius: 8,
                                             offset: const Offset(0, 3),
                                           ),
@@ -275,7 +258,10 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
         // 더 투명한 배경으로 물결 무늬 노출
         color: Colors.white.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.2),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -405,12 +391,16 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                                 )
                                 : null,
                         color:
-                            isSelected ? null : Colors.white.withValues(alpha: 0.7),
+                            isSelected
+                                ? null
+                                : Colors.white.withValues(alpha: 0.7),
                         boxShadow: [
                           BoxShadow(
                             color:
                                 isSelected
-                                    ? const Color(0xFF5B9FD3).withValues(alpha: 0.3)
+                                    ? const Color(
+                                      0xFF5B9FD3,
+                                    ).withValues(alpha: 0.3)
                                     : Colors.black.withValues(alpha: 0.05),
                             blurRadius: isSelected ? 16 : 12,
                             offset: const Offset(0, 4),
@@ -419,7 +409,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                       ),
                       padding: const EdgeInsets.all(8),
                       child: Image.asset(
-                        'assets/image/character$groupId.png',
+                        'assets/image/character${group['character_id']}.png',
                         height: 60,
                         fit: BoxFit.contain,
                         errorBuilder:
@@ -474,13 +464,14 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
 
     final group = matches.first;
     final groupId = group['group_id']?.toString() ?? '';
+    final characterId = group['character_id'] ?? 0;
     final title = group['group_title']?.toString() ?? '';
     final contents = group['group_contents']?.toString() ?? '';
     final archivedAt =
         DateTime.tryParse(group['archived_at']?.toString() ?? '') ??
         DateTime.now();
     final archivedStr = DateFormat('yyyy.MM.dd').format(archivedAt);
-    final count = _diaryCountByGroup[groupId] ?? 0;
+    final count = group['diary_count'] ?? 0;
 
     return GestureDetector(
       onTap: () {
@@ -529,7 +520,9 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF5B9FD3).withValues(alpha: 0.25),
+                          color: const Color(
+                            0xFF5B9FD3,
+                          ).withValues(alpha: 0.25),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -538,7 +531,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                     padding: const EdgeInsets.all(5),
                     child: ClipOval(
                       child: Image.asset(
-                        'assets/image/character$groupId.png',
+                        'assets/image/character$characterId.png',
                         fit: BoxFit.cover,
                         errorBuilder:
                             (_, __, ___) => const Icon(
@@ -649,11 +642,24 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
             // 📔 일기 CTA
             GestureDetector(
               onTap: () {
-                // 일기 목록 화면으로 이동
-                Navigator.pushNamed(
+                // 보관함 일기 목록 화면으로 이동
+                Navigator.push(
                   context,
-                  '/diary_directory',
-                  arguments: {'groupId': int.tryParse(groupId) ?? 0},
+                  MaterialPageRoute(
+                    builder:
+                        (context) => ArchivedDiaryScreen(
+                          groupId: groupId,
+                          groupTitle: title,
+                          groupContents: contents,
+                          characterId: characterId,
+                          createdAt:
+                              DateTime.tryParse(
+                                group['created_at']?.toString() ?? '',
+                              ) ??
+                              DateTime.now(),
+                          archivedAt: archivedAt,
+                        ),
+                  ),
                 );
               },
               child: Container(

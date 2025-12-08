@@ -1,8 +1,7 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
@@ -10,6 +9,10 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/models/grid_item.dart';
 import 'package:gad_app_team/widgets/abc_visualization_design.dart'; // ✅ 추가
 import 'package:gad_app_team/widgets/blue_banner.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/diaries_api.dart';
+import 'package:gad_app_team/data/api/sud_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
 
 /// 🌊 Mindrium ABC Feedback Popup (MemoFullDesign + Visualization)
 class AbcFeedbackPopup extends StatefulWidget {
@@ -45,6 +48,10 @@ class AbcFeedbackPopup extends StatefulWidget {
 class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
   bool _showFeedback = true;
   bool _isSaving = false;
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final DiariesApi _diariesApi = DiariesApi(_apiClient);
+  late final SudApi _sudApi = SudApi(_apiClient);
 
   // 💬 피드백 텍스트 카드
   Widget _buildFeedbackContent() {
@@ -118,46 +125,76 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (ctx) => CustomPopupDesign(
-            title: "위치 정보 수집 동의",
-            message: "현재 위치 정보를 함께 저장하시겠습니까?",
-            positiveText: "동의",
-            negativeText: "거부",
-            iconAsset: "assets/image/dialog_fish.png",
-            backgroundAsset: "assets/image/sea_bg_3d.png",
-            onPositivePressed: () async {
-              Navigator.pop(ctx);
-              await Future.delayed(const Duration(milliseconds: 150));
-              await _saveAndGoToAdd(withLocation: true);
-            },
-            onNegativePressed: () async {
-              Navigator.pop(ctx);
-              await Future.delayed(const Duration(milliseconds: 150));
-              await _saveAndGoToAdd(withLocation: false);
-            },
-          ),
+      builder: (ctx) => CustomPopupDesign(
+        title: "위치 정보 수집 동의",
+        message: "현재 위치 정보를 함께 저장하시겠습니까?",
+        positiveText: "동의",
+        negativeText: "거부",
+        iconAsset: "assets/image/dialog_fish.png",
+        backgroundAsset: "assets/image/sea_bg_3d.png",
+        onPositivePressed: () async {
+          Navigator.pop(ctx);
+          await Future.delayed(const Duration(milliseconds: 150));
+          await _saveAndGoToAdd(withLocation: true);
+        },
+        onNegativePressed: () async {
+          Navigator.pop(ctx);
+          await Future.delayed(const Duration(milliseconds: 150));
+          await _saveAndGoToAdd(withLocation: false);
+        },
+      ),
     );
   }
 
-  // ✅ Firestore 저장 + 화면 이동
+  List<Map<String, dynamic>> _mapGridItems(List<GridItem> items) {
+    return items
+        .map((e) => e.label.trim())
+        .where((label) => label.isNotEmpty)
+        .map((label) => _diariesApi.makeDiaryChip(label: label))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _mapStringChips(List<String> items) {
+    return items
+        .map((e) => e.trim())
+        .where((label) => label.isNotEmpty)
+        .map((label) => _diariesApi.makeDiaryChip(label: label))
+        .toList();
+  }
+
+  // ✅ FastAPI 저장 + 화면 이동
   Future<void> _saveAndGoToAdd({required bool withLocation}) async {
     setState(() => _isSaving = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('로그인이 필요합니다.')));
+      final access = await _tokens.access;
+      if (access == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('로그인이 필요합니다.')));
+        }
         return;
       }
 
-      final firestore = FirebaseFirestore.instance;
-      final userCollection = firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('abc_models');
+      final activationLabel =
+          widget.activatingEventChips.isNotEmpty
+              ? widget.activatingEventChips.first.label.trim()
+              : '';
+      if (activationLabel.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('상황을 선택해 주세요.')));
+        }
+        return;
+      }
+
+      final activation = _diariesApi.makeDiaryChip(label: activationLabel);
+      final beliefChips = _mapGridItems(widget.beliefChips);
+      final emotionChips = _mapStringChips(widget.selectedEmotionChips);
+      final physicalChips = _mapStringChips(widget.selectedPhysicalChips);
+      final behaviorChips = _mapStringChips(widget.selectedBehaviorChips);
 
       Position? pos;
       if (withLocation) {
@@ -179,21 +216,54 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
         }
       }
 
-      final data = {
-        'activatingEvent': widget.activatingEventChips
-            .map((e) => e.label)
-            .join(', '),
-        'belief': widget.beliefChips.map((e) => e.label).join(', '),
-        'consequence_emotion': widget.selectedEmotionChips.join(', '),
-        'consequence_physical': widget.selectedPhysicalChips.join(', '),
-        'consequence_behavior': widget.selectedBehaviorChips.join(', '),
-        if (pos != null) 'latitude': pos.latitude,
-        if (pos != null) 'longitude': pos.longitude,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
+      Map<String, dynamic> diary;
+      String diaryId;
 
-      final docRef = await userCollection.add(data);
-      debugPrint("✅ ABC 모델 저장 완료: ${docRef.id}");
+      if (widget.abcId == null || widget.abcId!.isEmpty) {
+        diary = await _diariesApi.createDiary(
+          activation: activation,
+          belief: beliefChips,
+          consequenceP: physicalChips,
+          consequenceE: emotionChips,
+          consequenceB: behaviorChips,
+          alternativeThoughts: const [],
+          alarms: const [],
+          latitude: pos?.latitude,
+          longitude: pos?.longitude,
+        );
+        diaryId = diary['diary_id']?.toString() ?? '';
+        debugPrint("✅ FastAPI ABC 모델 생성 완료: $diaryId");
+      } else {
+        final body = {
+          'activation': activation,
+          'belief': beliefChips,
+          'consequence_physical': physicalChips,
+          'consequence_emotion': emotionChips,
+          'consequence_action': behaviorChips,
+          'alternative_thoughts': const [],
+          'alarms': const [],
+          if (pos != null) 'latitude': pos.latitude,
+          if (pos != null) 'longitude': pos.longitude,
+        };
+        diary = await _diariesApi.updateDiary(widget.abcId!, body);
+        diaryId = widget.abcId!;
+        debugPrint("✅ FastAPI ABC 모델 수정 완료: $diaryId");
+      }
+
+      if (diaryId.isEmpty) {
+        throw Exception('일기 ID를 확인할 수 없습니다.');
+      }
+
+      if (widget.beforeSud != null) {
+        try {
+          await _sudApi.createSudScore(
+            diaryId: diaryId,
+            beforeScore: widget.beforeSud!,
+          );
+        } catch (e) {
+          debugPrint('SUD 저장 실패: $e');
+        }
+      }
 
       if (mounted) {
         BlueBanner.show(context, '저장이 완료되었습니다.');
@@ -207,17 +277,30 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
             builder:
                 (_) => AbcGroupAddScreen(
                   origin: widget.origin ?? 'etc',
-                  abcId: docRef.id,
+                  abcId: diaryId,
                   label:
                       widget.activatingEventChips.isNotEmpty
                           ? widget.activatingEventChips[0].label
                           : '',
                   beforeSud: widget.beforeSud,
                   diary: 'new',
-                ),
+            ),
           ),
         );
       });
+    } on DioException catch (e, st) {
+      debugPrint('❌ ABC 저장 실패: $e\n$st');
+      final detail =
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(
+          SnackBar(content: Text('저장 중 오류가 발생했습니다: ${detail ?? e}')),
+        );
+      }
     } catch (e, st) {
       debugPrint('❌ ABC 저장 실패: $e\n$st');
       if (mounted) {

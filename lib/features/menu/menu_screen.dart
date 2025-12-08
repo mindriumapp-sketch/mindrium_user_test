@@ -14,11 +14,7 @@ class ContentScreen extends StatelessWidget {
         'subtitle': '불안을 이해하고 관리하기',
         'route': '/education',
       },
-      {
-        'title': '이완',
-        'subtitle': '긴장을 완화하고 마음을 안정시키기',
-        'route': '/relaxation',
-      },
+      {'title': '이완', 'subtitle': '긴장을 완화하고 마음을 안정시키기', 'route': '/relaxation'},
       {
         'title': '걱정 일기 목록',
         'subtitle': '나의 걱정 기록 살펴보기',
@@ -29,11 +25,8 @@ class ContentScreen extends StatelessWidget {
         'subtitle': '비슷한 걱정을 묶어서 정리하기',
         'route': '/diary_group',
       },
-      {
-        'title': '보관함',
-        'subtitle': '완료한 일기와 그룹을 모아보기',
-        'route': '/archive',
-      },
+      {'title': '보관함', 'subtitle': '완료한 일기와 그룹을 모아보기', 'route': '/archive'},
+      {'title': '리포트', 'subtitle': '나의 치료 진행 상황 보기', 'route': '/report'},
     ];
 
     /// 📋 TreatmentDesign 형식으로 변환
@@ -47,14 +40,15 @@ class ContentScreen extends StatelessWidget {
             )
             .toList();
 
-    final weekScreens = menuItems
-        .map(
-          (e) => _MenuRouteLauncher(
-            routeName: e['route'] as String,
-            arguments: e['arguments'],
-          ),
-        )
-        .toList();
+    final weekScreens =
+        menuItems
+            .map(
+              (e) => _MenuRouteLauncher(
+                routeName: e['route'] as String,
+                arguments: e['arguments'],
+              ),
+            )
+            .toList();
 
     return PopScope(
       canPop: false,
@@ -97,10 +91,9 @@ class _MenuRouteLauncherState extends State<_MenuRouteLauncher> {
     _navigated = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(
-        widget.routeName,
-        arguments: widget.arguments,
-      );
+      Navigator.of(
+        context,
+      ).pushReplacementNamed(widget.routeName, arguments: widget.arguments);
     });
   }
 
