@@ -21,7 +21,7 @@ String notiTitle(String taskId, int? weekNumber) {
     return relaxationTitleForWeek(weekNumber);
   }
   // 일기 기반 알림: 주차 정보 없음
-  return '알림 이후 이완';
+  return '이완 활동';
 }
 
 

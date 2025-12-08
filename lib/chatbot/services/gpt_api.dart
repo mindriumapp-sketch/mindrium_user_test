@@ -1,40 +1,52 @@
 // lib/services/gpt_api.dart
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-/// ⚠️ 개발용 키는 코드에 직접 포함하지 말고,
-/// flutter run --dart-define=OPENAI_API_KEY=sk-... 로 전달하는 것을 권장.
-/// 또는 .env / 백엔드 프록시를 통해 관리하세요.
+/// GPT API 호출을 FastAPI 백엔드 프록시로 위임하여 프런트 코드에 키를 노출하지 않음.
 class GptApi {
-  GptApi(this.apiKey, {this.model = 'gpt-4o-mini', this.embeddingModel = 'text-embedding-3-large'});
+  GptApi({String? baseUrl, this.model = 'gpt-4o-mini', this.embeddingModel = 'text-embedding-3-large'})
+      : baseUrl = _resolveBaseUrl(baseUrl);
 
-  final String apiKey;
+  static const _envProxyBase = String.fromEnvironment('AI_PROXY_BASE_URL', defaultValue: '');
+  static const _envApiBase = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
+  final String baseUrl;
   final String model;
   final String embeddingModel;
+
+  static String _resolveBaseUrl(String? override) {
+    if (override != null && override.isNotEmpty) return override;
+    if (_envProxyBase.isNotEmpty) return _envProxyBase;
+    if (_envApiBase.isNotEmpty) return _envApiBase;
+    if (kIsWeb) {
+      final origin = Uri.base.origin;
+      if (origin.startsWith('http')) return origin;
+    }
+    return 'http://10.0.2.2:8080';
+  }
+
+  Uri _endpoint(String path) {
+    final normalized = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final trimmed = path.startsWith('/') ? path.substring(1) : path;
+    return Uri.parse('$normalized/$trimmed');
+  }
 
   /// history: [{role:'system'|'user'|'assistant', content:'...'}, ...]
   /// userMessage: 현재 사용자 발화
   Future<String> chat(List<Map<String, String>> history, String userMessage) async {
-    if (apiKey.isEmpty) {
-      throw Exception('❌ OpenAI API key가 설정되지 않았습니다. (--dart-define=OPENAI_API_KEY=...)');
-    }
-
     final List<Map<String, String>> messages = [
       ...history,
       {'role': 'user', 'content': userMessage},
     ];
 
     try {
-      final uri = Uri.parse('https://api.openai.com/v1/chat/completions');
       final response = await http
           .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-            },
+            _endpoint('/ai/chat'),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'model': model,
               'messages': messages,
@@ -46,7 +58,7 @@ class GptApi {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final text = (data['choices']?[0]?['message']?['content'] ?? '').toString().trim();
+        final text = (data['reply'] ?? '').toString().trim();
         if (text.isEmpty) return '응답이 비어 있습니다.';
         return text;
       } else {
@@ -62,19 +74,11 @@ class GptApi {
 
   /// 텍스트를 임베딩 벡터로 변환 (RAG용)
   Future<List<double>> getEmbedding(String text) async {
-    if (apiKey.isEmpty) {
-      throw Exception('❌ OpenAI API key가 설정되지 않았습니다.');
-    }
-
     try {
-      final uri = Uri.parse('https://api.openai.com/v1/embeddings');
       final response = await http
           .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-            },
+            _endpoint('/ai/embedding'),
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'model': embeddingModel,
               'input': text,
@@ -84,7 +88,7 @@ class GptApi {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final embedding = data['data']?[0]?['embedding'];
+        final embedding = data['embedding'];
         if (embedding is List) {
           return embedding.map((e) => (e as num).toDouble()).toList();
         }

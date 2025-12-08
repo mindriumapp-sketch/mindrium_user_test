@@ -35,7 +35,7 @@ class _ApplyAlternativeThoughtScreenState
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
+    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
     _abcId = args['abcId'] as String? ?? flow.diaryId;
     _beforeSud = (args['beforeSud'] as int?) ?? flow.beforeSud ?? 0;
     if (_abcId != null) flow.setDiaryId(_abcId);
@@ -60,15 +60,11 @@ class _ApplyAlternativeThoughtScreenState
         list = _parseBeliefList(diary['belief']);
 
         if (list.isEmpty) {
-          final groupRaw = diary['group_Id'] ?? diary['groupId'];
-          final groupId =
-              groupRaw is int
-                  ? groupRaw
-                  : groupRaw is num
-                  ? groupRaw.toInt()
-                  : int.tryParse(groupRaw?.toString() ?? '');
-          if (groupId != null) {
-            list = await _loadGroupBeliefs(groupId);
+          final groupRaw =
+              diary['group_id'] ?? diary['groupId'] ?? diary['group_Id'];
+          if (groupRaw != null &&
+              groupRaw.toString().trim().isNotEmpty) {
+            list = await _loadGroupBeliefs(groupRaw);
           }
         }
       }
@@ -97,7 +93,7 @@ class _ApplyAlternativeThoughtScreenState
     }
   }
 
-  Future<List<String>> _loadGroupBeliefs(int groupId) async {
+  Future<List<String>> _loadGroupBeliefs(dynamic groupId) async {
     final diaries = await _diariesApi.listDiarySummaries(groupId: groupId);
     return _extractBeliefsFromDiaries(diaries);
   }
@@ -152,11 +148,11 @@ class _ApplyAlternativeThoughtScreenState
     final all = _bList;
     final remaining = List<String>.from(all)..remove(b);
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
+    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
     final diary = args['diary'] ?? flow.diary;
     final sudId = args['sudId'] ?? flow.sudId;
     Navigator.push(
-      context,
+      context, 
       MaterialPageRoute(
         settings: RouteSettings(
           arguments: {
@@ -194,7 +190,7 @@ class _ApplyAlternativeThoughtScreenState
 
     return InnerBtnCardScreen(
       appBarTitle: '도움이 되는 생각 찾기',
-      title: '$userName님,\n어떤 생각을 대상으로 찾아볼까요?',
+      title: '$userName님,\n이전에 일기에 작성했던 생각이에요.\n어떤 생각을 대상으로 찾아볼까요?',
       primaryText:
           hasBeliefs ? '도움이 되는 생각을 찾아볼게요!' : '다음에 진행하기',
       onPrimary: () {

@@ -18,6 +18,7 @@ from routers.screen_time import router as screen_time_router
 from routers.schedule_events import router as schedule_events_router
 from routers.edu_sessions import router as edu_sessions_router
 from routers.worry_groups import router as worry_groups_router
+from routers.ai import router as ai_router
 
 settings = get_settings()
 
@@ -310,3 +311,4 @@ app.include_router(schedule_events_router)
 app.include_router(edu_sessions_router)
 app.include_router(custom_tags_router)
 app.include_router(worry_groups_router)
+app.include_router(ai_router)

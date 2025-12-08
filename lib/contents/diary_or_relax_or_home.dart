@@ -53,11 +53,11 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
       },
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             height: 56,
-            child: OutlinedButton(
+            child: FilledButton(
               onPressed: () {
                 Navigator.pushNamed(
                   context,
@@ -65,8 +65,9 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                   arguments: {'groupId': groupId, 'beforeSud': beforeSud},
                 );
               },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF47A6FF), width: 2.5),
+              style: FilledButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF33A4F0), width: 2.5),
+                backgroundColor: Color(0xFF33A4F0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(28),
                 ),
@@ -77,7 +78,7 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Noto Sans KR',
-                  color: Color(0xFF47A6FF),
+                  color: Colors.white
                 ),
               ),
             ),

@@ -24,6 +24,12 @@ class Settings(BaseModel):
     smtp_password: str | None = os.getenv("SMTP_PASSWORD")
     email_from: str | None = os.getenv("EMAIL_FROM")
 
+    # OpenAI 프록시용 설정 (키는 환경변수에서만 로드)
+    openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
+    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    openai_embedding_model: str = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-large")
+    openai_api_base: str = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

@@ -37,9 +37,6 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  // ⚠️ Demo API key — replace with proxy/server injection in production
-  static const _apiKey = '';
-
   // ===== Emotion Decision Parameters =====
   static const double kSwitchStrong = 0.92; // spike accept threshold
   static const double kAltStrong = 0.85;    // streak relief minimum confidence
@@ -160,7 +157,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       await _initJsonLog();
 
-      _api = GptApi(_apiKey, embeddingModel: 'text-embedding-3-large');
+      _api = GptApi(embeddingModel: 'text-embedding-3-large');
       _agents = Agents(_api);
       _repo = DataRepo();
 
