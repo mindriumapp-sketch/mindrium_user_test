@@ -92,7 +92,7 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
     }
 
     if (!mounted) return;
-    if (afterSud < beforeSud) {
+    if (afterSud < beforeSud || afterSud <= 2) {
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     } else {
       Navigator.pushReplacement(

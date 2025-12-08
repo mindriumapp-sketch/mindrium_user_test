@@ -21,7 +21,11 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map?;
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
+    final String? abcId = flow.diaryId ??
+        args?['abcId'] as String? ??
+        args?['diaryId'] as String?;
     final String? groupId = flow.groupId ?? args?['groupId'] as String?;
+    final String? taskId = abcId ?? groupId;
     final int? beforeSud = flow.beforeSud ?? args?['beforeSud'] as int?;
     final String? sudId = flow.sudId ?? args?['sudId'] as String?;
 
@@ -38,7 +42,8 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
           '/relaxation_noti',
           arguments: {
             ...flow.toArgs(),
-            'taskId': groupId,
+            'taskId': taskId,
+            if (abcId != null) 'abcId': abcId,
             'mp3Asset': 'noti.mp3',
             'riveAsset': 'noti.riv',
             'nextPage': '/relaxation_score',

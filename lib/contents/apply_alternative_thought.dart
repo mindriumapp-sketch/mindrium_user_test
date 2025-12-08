@@ -30,12 +30,21 @@ class _ApplyAlternativeThoughtScreenState
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
+  bool _didPostFrameSync = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
+    final flow = context.read<ApplyOrSolveFlow>()
+      ..syncFromArgs(args, override: true, notify: false);
+    if (!_didPostFrameSync) {
+      _didPostFrameSync = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        flow.syncFromArgs(args, override: true);
+      });
+    }
     _abcId = args['abcId'] as String? ?? flow.diaryId;
     _beforeSud = (args['beforeSud'] as int?) ?? flow.beforeSud ?? 0;
     if (_abcId != null) flow.setDiaryId(_abcId);
@@ -148,7 +157,7 @@ class _ApplyAlternativeThoughtScreenState
     final all = _bList;
     final remaining = List<String>.from(all)..remove(b);
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
+    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
     final diary = args['diary'] ?? flow.diary;
     final sudId = args['sudId'] ?? flow.sudId;
     Navigator.push(
