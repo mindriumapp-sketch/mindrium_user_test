@@ -38,6 +38,7 @@ class AbcVisualizationScreen extends StatefulWidget {
   final String? origin;
   final String? abcId;
   final int? beforeSud;
+  final String? sudId;
 
   const AbcVisualizationScreen({
     super.key,
@@ -51,6 +52,7 @@ class AbcVisualizationScreen extends StatefulWidget {
     this.abcId,
     this.beforeSud,
     this.sessionId,
+    this.sudId,
   });
 
   @override
@@ -71,6 +73,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   void initState() {
     super.initState();
     _diaryId = widget.abcId;  // 기존 일기에서 들어온 경우 이미 값 있음
+    sudId = widget.sudId;
   }
 
   @override
@@ -267,17 +270,15 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
 
       // 5) SUD 저장 – 한 번만 만들고, 그 이후 수정에서는 안 만들기
       if (widget.beforeSud != null && sudId == null) {
-        _sudApi
-            .createSudScore(
-          diaryId: resolvedDiaryId,
-          beforeScore: widget.beforeSud!,
-        )
-            .then((res) {
+        try {
+          final res = await _sudApi.createSudScore(
+            diaryId: resolvedDiaryId,
+            beforeScore: widget.beforeSud!,
+          );
           sudId = res['sud_id']?.toString();
-        }).catchError((e) {
+        } catch (e) {
           debugPrint('SUD 저장 실패: $e');
-          return;
-        });
+        }
       }
 
       // 6) 저장 성공 후 다음 화면
@@ -341,6 +342,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
     final resolvedDiaryId = diaryId ?? widget.abcId;
     final resolvedLabel =
         label ?? widget.activatingChips.map((c) => c.label).join(', ');
+    final resolvedSudId = widget.sudId ?? sudId;
 
     final args = <String, dynamic>{};
     if (resolvedDiaryId != null && resolvedDiaryId.isNotEmpty) {
@@ -354,6 +356,9 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
     }
     if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
       args['sessionId'] = widget.sessionId;
+    }
+    if (resolvedSudId != null && resolvedSudId.isNotEmpty) {
+      args['sudId'] = resolvedSudId;
     }
     if (locationConsent != null) {
       args['locationConsent'] = locationConsent;

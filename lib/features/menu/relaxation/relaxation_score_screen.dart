@@ -62,6 +62,7 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
     final String? abcId = args['taskId'] as String? ?? flow.diaryId;
     final String? relaxId = args['relaxId'] as String?;
     final String origin = args['origin'] as String? ?? flow.origin;
+    final String? sudId = args['sudId'] as String? ?? flow.sudId;
 
     final userProvider = context.watch<UserProvider>();
     final int currentWeek = userProvider.currentWeek;
@@ -95,7 +96,7 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
                 'abcId': abcId,
                 'diary': args['diary'],
                 'beforeSud': args['beforeSud'],
-                'sudId': args['sudId']
+                'sudId': sudId,
               },
             );
           } else {
@@ -107,7 +108,7 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
                 'abcId': abcId,
                 'diary': args['diary'],
                 'beforeSud': args['beforeSud'],
-                'sudId': args['sudId']
+                'sudId': sudId,
               },
             );
           }

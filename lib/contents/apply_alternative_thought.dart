@@ -235,8 +235,10 @@ class _ApplyAlternativeThoughtScreenState
                   ),
                 ),
               )
-              : Flexible(
-                // 👇 ListView가 안 보이던 문제 해결
+              : SizedBox(
+                // ListView가 Flex가 아닌 부모 안에서 ParentData 오류를 내던 문제를
+                // 명시적 높이 박스로 감싸 해결
+                height: 320,
                 child: ListView.separated(
                   shrinkWrap: true,
                   physics: const AlwaysScrollableScrollPhysics(),

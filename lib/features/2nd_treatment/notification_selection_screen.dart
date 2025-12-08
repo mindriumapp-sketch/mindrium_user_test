@@ -30,6 +30,7 @@ class NotificationSelectionScreen extends StatefulWidget {
   final String? notificationId;
   final String? origin;
   final String? sessionId;
+  final String? sudId;
   final bool locationConsent;
 
   const NotificationSelectionScreen({
@@ -40,6 +41,7 @@ class NotificationSelectionScreen extends StatefulWidget {
     this.notificationId,
     this.origin,
     this.sessionId,
+    this.sudId,
     this.locationConsent = true,
   });
 
@@ -1044,6 +1046,7 @@ class _NotificationSelectionScreenState
                         diaryId: diaryId,
                         label: widget.label,
                         sessionId: widget.sessionId,
+                        sudId: widget.sudId,
                   ),
                 ),
               );
