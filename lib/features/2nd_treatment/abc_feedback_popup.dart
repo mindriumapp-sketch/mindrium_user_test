@@ -277,7 +277,7 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
             builder:
                 (_) => AbcGroupAddScreen(
                   origin: widget.origin ?? 'etc',
-                  abcId: diaryId,
+                  diaryId: diaryId,
                   label:
                       widget.activatingEventChips.isNotEmpty
                           ? widget.activatingEventChips[0].label

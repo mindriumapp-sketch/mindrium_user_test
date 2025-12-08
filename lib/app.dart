@@ -221,6 +221,7 @@ class MyApp extends StatelessWidget {
             abcId: args?['abcId'] as String,
             notificationId: args?['notificationId'] as String?,
             sessionId: args?['sessionId'] as String?,
+            origin: args?['origin'] as String?,
           );
         },
         '/diary_directory': (context) => DiaryDirectoryScreen(),

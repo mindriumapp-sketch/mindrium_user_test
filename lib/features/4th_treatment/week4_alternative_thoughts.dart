@@ -75,13 +75,13 @@ class _Week4AlternativeThoughtsScreenState
       if (widget.abcId == null || widget.abcId!.isEmpty) {
         final list = await _diariesApi.listDiaries();
         if (list.isEmpty) return;
-        diaryId = (list.first['diaryId'] ?? '').toString();
+        diaryId = (list.first['diary_id'] ?? '').toString();
         if (diaryId.isEmpty) return;
       } else {
         diaryId = widget.abcId!;
       }
       await _diariesApi.updateDiary(diaryId, {
-        'alternativeThoughts': allAlternativeThoughts,
+        'alternative_thoughts': allAlternativeThoughts,
       });
     } catch (e, st) {
       debugPrint('❌ 대체생각 저장 오류: $e');
@@ -119,6 +119,8 @@ class _Week4AlternativeThoughtsScreenState
                     widget.abcId ?? routeArgs['abcId'] as String? ?? flow.diaryId;
                 final int? beforeSudArg =
                     widget.beforeSud ?? routeArgs['beforeSud'] as int? ?? flow.beforeSud;
+                final String? sudIdArg =
+                    routeArgs['sudId'] as String? ?? flow.sudId;
 
                 final currentThoughts = _chipsKey.currentState?.values ?? _chips;
                 final combinedThoughts = [
@@ -154,15 +156,17 @@ class _Week4AlternativeThoughtsScreenState
                             abcId: abcIdArg ?? widget.abcId,
                             loopCount: widget.loopCount,
                           ),
-                      settings: RouteSettings(
-                        arguments: {
-                          ...flow.toArgs(),
-                          if ((abcIdArg ?? widget.abcId) != null)
-                            'abcId': (abcIdArg ?? widget.abcId)!,
-                          'origin': originArg,
-                          if (diaryArg != null) 'diary': diaryArg,
-                        },
-                      ),
+                          settings: RouteSettings(
+                            arguments: {
+                              ...flow.toArgs(),
+                              if ((abcIdArg ?? widget.abcId) != null)
+                                'abcId': (abcIdArg ?? widget.abcId)!,
+                              'origin': originArg,
+                              if (diaryArg != null) 'diary': diaryArg,
+                              if (sudIdArg != null) 'sudId': sudIdArg,
+                              if (beforeSudArg != null) 'beforeSud': beforeSudArg,
+                            },
+                          ),
                       transitionDuration: Duration.zero,
                       reverseTransitionDuration: Duration.zero,
                     ),

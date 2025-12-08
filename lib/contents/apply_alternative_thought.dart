@@ -164,6 +164,7 @@ class _ApplyAlternativeThoughtScreenState
             'origin': 'apply',
             if (diary != null) 'diary': diary,
             if (sudId != null) 'sudId': sudId,
+            'beforeSud': _beforeSud,
           },
         ),
         builder:

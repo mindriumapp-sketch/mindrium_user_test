@@ -162,6 +162,8 @@ class Week4ClassificationResultScreen extends StatelessWidget {
             'abcId': abcId_,
             'origin': origin,
             'diary': diary,
+            'sudId': args['sudId'] ?? flow.sudId,
+            'beforeSud': args['beforeSud'] ?? flow.beforeSud ?? safeBeforeSud,
           },
         );
         return;

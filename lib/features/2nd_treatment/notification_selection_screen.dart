@@ -1038,15 +1038,15 @@ class _NotificationSelectionScreenState
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder:
-                  (_) => AbcGroupAddScreen(
-                    origin: widget.origin ?? 'etc',
-                    abcId: diaryId,
-                    label: widget.label,
-                    sessionId: widget.sessionId,
-              ),
-            ),
-          );
+                  builder:
+                      (_) => AbcGroupAddScreen(
+                        origin: widget.origin ?? 'etc',
+                        diaryId: diaryId,
+                        label: widget.label,
+                        sessionId: widget.sessionId,
+                  ),
+                ),
+              );
         },
         onNegativePressed: () {
           Navigator.pop(dialogCtx);
@@ -1065,7 +1065,7 @@ class _NotificationSelectionScreenState
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(title: '2주차 - ABC 모델'),
+      appBar: const CustomAppBar(title: '알림 설정'),
       body: Stack(
         fit: StackFit.expand,
         children: [

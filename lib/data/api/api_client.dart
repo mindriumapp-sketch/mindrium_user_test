@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../storage/token_storage.dart';
 
 const String _envBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
@@ -14,6 +15,12 @@ class ApiClient {
     }
     if (_envBaseUrl.isNotEmpty) {
       return _envBaseUrl;
+    }
+    if (kIsWeb) {
+      final origin = Uri.base.origin;
+      if (origin.startsWith('http')) {
+        return origin;
+      }
     }
     return 'http://10.0.2.2:8080';
   }

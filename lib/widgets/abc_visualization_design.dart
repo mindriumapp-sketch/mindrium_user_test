@@ -36,7 +36,7 @@ class AbcVisualizationDesign extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleText = '2주차 - ABC 모델';
+    final titleText = 'ABC 모델';
     final content = showFeedback ? feedbackWidget : visualizationWidget;
 
     // ✅ 배경은 그대로 메모시트 유지

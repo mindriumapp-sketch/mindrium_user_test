@@ -190,7 +190,7 @@ class DiaryYesOrNo extends StatelessWidget {
             builder:
                 (_) => AbcGroupAddScreen(
                   origin: origin,
-                  abcId: abcId,
+                  diaryId: abcId,
                   beforeSud: beforeSud,
                   sudId: sudId,
                   diary: diary,

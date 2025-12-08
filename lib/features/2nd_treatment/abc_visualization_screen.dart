@@ -1,5 +1,4 @@
 import 'package:gad_app_team/data/api/sud_api.dart';
-import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:provider/provider.dart';
@@ -77,7 +76,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   @override
   Widget build(BuildContext context) {
     return MemoFullDesign(
-      appBarTitle: (widget.origin != null) ? '2주차 - ABC 모델' : '일기 작성',
+      appBarTitle: (widget.origin != null) ? 'ABC 모델' : '일기 작성',
       onBack: () {
         if (!_showFeedback) {
           setState(() => _showFeedback = true);
@@ -358,21 +357,6 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
     }
     if (locationConsent != null) {
       args['locationConsent'] = locationConsent;
-    }
-    if (widget.beforeSud != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => AbcGroupAddScreen(
-                origin: widget.origin,
-                abcId: resolvedDiaryId,
-                beforeSud: widget.beforeSud,
-                sudId: sudId,
-          ),
-        ),
-      );
-      return;
     }
 
     if (!mounted) return;

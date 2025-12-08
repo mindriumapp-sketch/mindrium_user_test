@@ -35,9 +35,8 @@ class _ScreenTimeAutoTrackerState extends State<ScreenTimeAutoTracker>
   bool _initialised = false;
   bool _isClosingActive = false;
   bool _isFlushingQueue = false;
-  // final bool _trackingEnabled = !kIsWeb; // ← 원래 로직(웹 비활성)
-  // QA 동안 웹에서도 수집하기 위해 임시로 활성화합니다. 테스트 후 위 줄로 되돌리세요.
-  final bool _trackingEnabled = true;
+  // 웹 빌드에서는 엔진 뷰 dispose 시 라이프사이클 콜백이 꼬일 수 있어 추적을 끈다.
+  final bool _trackingEnabled = !kIsWeb;
 
   @override
   void initState() {

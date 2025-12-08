@@ -1,13 +1,13 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ✅ ApplyDesign
 import 'package:gad_app_team/features/4th_treatment/week4_skip_choice_screen.dart';
-import 'package:gad_app_team/features/2nd_treatment/notification_selection_screen.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 
 class AfterSudRatingScreen extends StatefulWidget {
   const AfterSudRatingScreen({super.key});
@@ -25,23 +25,52 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
   Map _args() => ModalRoute.of(context)?.settings.arguments as Map? ?? {};
   String? get _abcId => _args()['abcId'] as String?;
   String? get _origin => _args()['origin'] as String?;
-  dynamic get _diary => _args()['diary'];
   String? get _sudId => _args()['sudId'] as String?;
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
 
   // ───────────────────── FastAPI 저장 ─────────────────────
   Future<Map<String, dynamic>?> _saveSud() async {
-    final abcId = _abcId;
-    final sudId = _sudId;
+    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(_args(), notify: false);
+    final abcId = _abcId ?? flow.diaryId;
+    final sudId = _sudId ?? flow.sudId;
+
+    if (abcId != null) flow.setDiaryId(abcId);
+    if (sudId != null) flow.setSudId(sudId);
+
     if (abcId == null || abcId.isEmpty || sudId == null || sudId.isEmpty) {
+      debugPrint('[after_sud] missing ids: abcId=$abcId, sudId=$sudId');
       return null;
     }
 
-    final res = await _sudApi.updateSudScore(
-      diaryId: abcId,
-      sudId: sudId,
-      afterScore: _sud,
-    );
-    return res;
+    final access = await _tokens.access;
+    if (access == null) {
+      _showSnack('로그인이 필요합니다.');
+      return null;
+    }
+
+    try {
+      final res = await _sudApi.updateSudScore(
+        diaryId: abcId,
+        sudId: sudId,
+        afterScore: _sud,
+      );
+      return res;
+    } on DioException catch (e) {
+      debugPrint('[after_sud] updateSudScore DioException: ${e.message}');
+      _showSnack('SUD를 저장하지 못했습니다. 다시 시도해주세요.');
+    } catch (e) {
+      debugPrint('[after_sud] updateSudScore error: $e');
+      _showSnack('SUD를 저장하지 못했습니다. 다시 시도해주세요.');
+    }
+    return null;
   }
 
   // ───────────────────── 비교 및 분기 ─────────────────────
@@ -53,26 +82,8 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
     final abcId = _abcId ?? flow.diaryId;
     final origin = _origin ?? flow.origin;
-    final diaryArg = _diary ?? flow.diary;
     if (abcId != null) flow.setDiaryId(abcId);
     flow.setOrigin(origin);
-
-    if (origin == 'apply') {
-      if (!mounted) return;
-      if (diaryArg == 'new') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder:
-                (_) =>
-                    NotificationSelectionScreen(origin: 'apply', abcId: abcId!),
-          ),
-        );
-      } else {
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-      }
-      return;
-    }
 
     if (abcId == null || abcId.isEmpty) {
       if (!mounted) return;

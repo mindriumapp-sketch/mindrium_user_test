@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 // ─────────────────────────  Flutter  ──────────────────────────
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show PlatformException;
 
 // ─────────────────────  3rd‑party Packages  ───────────────────
@@ -209,6 +210,7 @@ class NotificationProvider extends ChangeNotifier {
   }
 
   late final Future<void> _ready;
+  bool _supportsLocalNotifications = true;
   NotificationSetting? _current;
   NotificationSetting? get current => _current;
 
@@ -240,30 +242,43 @@ class NotificationProvider extends ChangeNotifier {
 
   /* ─────────── 초기화 ─────────── */
   Future<void> _init() async {
+    if (kIsWeb) {
+      _supportsLocalNotifications = false;
+      debugPrint('[NOTI] 웹에서는 로컬 알림 플러그인을 지원하지 않아 스킵합니다.');
+      return;
+    }
+
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
 
-    await _fln.initialize(
-      const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(),
-      ),
-      onDidReceiveNotificationResponse: (resp) {
-        final payload = resp.payload;
-        debugPrint('[NOTI] rawPayload=${resp.payload}');
-        if (payload == null || !payload.startsWith('/') || navigatorKey.currentState == null) {
-          return;
-        }
-        final uri = Uri.parse(payload);
-        debugPrint('[NAV] path=${uri.path} params=${uri.queryParameters}');
+    try {
+      await _fln.initialize(
+        const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: DarwinInitializationSettings(),
+        ),
+        onDidReceiveNotificationResponse: (resp) {
+          final payload = resp.payload;
+          debugPrint('[NOTI] rawPayload=${resp.payload}');
+          if (payload == null || !payload.startsWith('/') || navigatorKey.currentState == null) {
+            return;
+          }
+          final uri = Uri.parse(payload);
+          debugPrint('[NAV] path=${uri.path} params=${uri.queryParameters}');
 
-        navigatorKey.currentState!.pushNamedAndRemoveUntil(
-          uri.path,
-          (r) => r.isFirst,
-          arguments: uri.queryParameters.isEmpty ? null : uri.queryParameters,
-        );
-      },
-    );
+          navigatorKey.currentState!.pushNamedAndRemoveUntil(
+            uri.path,
+            (r) => r.isFirst,
+            arguments: uri.queryParameters.isEmpty ? null : uri.queryParameters,
+          );
+        },
+      );
+      _supportsLocalNotifications = true;
+    } catch (e, st) {
+      _supportsLocalNotifications = false;
+      debugPrint('[NOTI] 로컬 알림 초기화 실패: $e\n$st');
+      return;
+    }
 
     // 앱이 알림 클릭으로 시작된 경우 라우트 처리
     final launchDetails = await _fln.getNotificationAppLaunchDetails();
@@ -302,6 +317,7 @@ class NotificationProvider extends ChangeNotifier {
   Future<void> _cancelRecordedIds(String docId) async {
     final ids = _scheduledNotificationIds.remove(docId);
     if (ids == null) return;
+    if (!_supportsLocalNotifications) return;
     for (final id in ids) {
       await _fln.cancel(id);
     }
@@ -314,6 +330,11 @@ class NotificationProvider extends ChangeNotifier {
   /// Applies a diary-derived notification without touching the remote API.
   Future<void> applyDiarySetting(NotificationSetting? setting) async {
     await _ready;
+    if (!_supportsLocalNotifications) {
+      _current = setting;
+      notifyListeners();
+      return;
+    }
     await _cancelAll();
     if (setting == null) {
       _current = null;
@@ -406,6 +427,7 @@ class NotificationProvider extends ChangeNotifier {
     DateTimeComponents? matchComponents,
     bool isReminder = false,
   }) async {
+    if (!_supportsLocalNotifications) return;
     final exact = await _ensure(Permission.scheduleExactAlarm);
     final title = isReminder ? '다시 알림: ${_titleFor(setting)}' : _titleFor(setting);
     final body = isReminder ? '조금 전 알림을 다시 알려드려요.' : _bodyFor(setting);
@@ -747,6 +769,7 @@ class NotificationProvider extends ChangeNotifier {
     int? reminderMinutes,
     String? diaryId,
   }) async {
+    if (!_supportsLocalNotifications) return;
     final route = '/before_sud?diaryId=${diaryId ?? _current?.diaryId ?? ''}';
     debugPrint('[NOTI] payload=$route'); 
     await _fln.show(
@@ -789,6 +812,7 @@ class NotificationProvider extends ChangeNotifier {
 
   // ───────────────────────── 취소 ─────────────────────────
   Future<void> _cancelAll() async {
+    if (!_supportsLocalNotifications) return;
     await _fln.cancelAll();
     await _stopGeofenceMonitoring();
     _clearLocationTimers();
@@ -805,6 +829,7 @@ class NotificationProvider extends ChangeNotifier {
     required String diaryId,
   }) async {
     await _ready;
+    if (!_supportsLocalNotifications) return;
     await _cancelRecordedIds(id);
     _geoRegionByDocId.remove(id);
     _geoSettingByDocId.remove(id);
@@ -819,6 +844,7 @@ class NotificationProvider extends ChangeNotifier {
   /// diary 상세 화면에서 “알림을 설정하지 않을래요” 체크 시 호출
   Future<void> cancelAllSchedules({required String diaryId}) async {
     await _ready;          // 초기화 보장
+    if (!_supportsLocalNotifications) return;
     await _cancelAll();
     _current = null;
     notifyListeners();

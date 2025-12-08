@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 
 class AbcGroupAddScreen extends StatefulWidget {
   final String? label;
-  final String? abcId;
+  final String? diaryId;
   final String? origin;
   final int? beforeSud;
   final String? sudId;
@@ -26,7 +26,7 @@ class AbcGroupAddScreen extends StatefulWidget {
   const AbcGroupAddScreen({
     super.key,
     this.label,
-    this.abcId,
+    this.diaryId,
     this.origin,
     this.beforeSud,
     this.sudId,
@@ -106,7 +106,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
 
   bool get _shouldContinueTherapyFlow =>
       (widget.origin == 'apply' || widget.origin == 'solve') &&
-          widget.abcId != null;
+          widget.diaryId != null;
 
   Future<void> _navigateAfterGroupSelection() async {
     if (!mounted) return;
@@ -119,67 +119,40 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     final flow = context.read<ApplyOrSolveFlow>()
       ..syncFromArgs({
         'origin': widget.origin,
-        'abcId': widget.abcId,
+        'diaryId': widget.diaryId,
         'beforeSud': widget.beforeSud,
         'sudId': widget.sudId,
         'diary': widget.diary,
       });
     flow.setOrigin(widget.origin);
-    flow.setDiaryId(widget.abcId);
+    flow.setDiaryId(widget.diaryId);
     if (widget.beforeSud != null) flow.setBeforeSud(widget.beforeSud);
     if (widget.sudId != null) flow.setSudId(widget.sudId);
 
     final args = <String, dynamic>{
       ...flow.toArgs(),
-      'abcId': widget.abcId,
+      'diaryId': widget.diaryId,
       if (widget.beforeSud != null) 'beforeSud': widget.beforeSud,
       if (widget.diary != null) 'diary': widget.diary,
       if (widget.origin != null) 'origin': widget.origin,
       if (widget.sudId != null) 'sudId': widget.sudId,
     };
+    
+    debugPrint('[Group_add] origin=${widget.origin}');
 
-    if (widget.origin == 'solve') {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => CustomPopupDesign(
-          title: '이완 음성 안내 시작',
-          message:
-          '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-          positiveText: '확인',
-          negativeText: null,
-          backgroundAsset: null,
-          iconAsset: null,
-          onPositivePressed: () async {
-            Navigator.pop(context);
-            Navigator.pushReplacementNamed(
-              context,
-              '/relaxation_noti',
-              arguments: {
-                ...args,
-                'taskId': widget.abcId,
-                'mp3Asset': 'noti.mp3',
-                'riveAsset': 'noti.riv',
-                'nextPage': '/relaxation_score',
-                'diary': widget.diary,
-              },
-            );
-          },
-        ),
-      );
-    }
-
-    // NOTE: 나중에 UserProvider 연결되면 currentWeek 기반으로 분기
+    if (widget.origin == 'solve' || widget.origin == 'apply') {
+      // NOTE: 나중에 UserProvider 연결되면 currentWeek 기반으로 분기
     // final userProvider = context.read<UserProvider>();
     // final week = userProvider.currentWeek;
-    final week = 8; // TODO: 임시: 항상 8주차로 이동
-    if (!mounted) return;
-    final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
-    Navigator.pushReplacementNamed(
-      context,
-      route,
-      arguments: args,
-    );
+      final week = 8; // TODO: 임시: 항상 8주차로 이동
+      if (!mounted) return;
+      final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
+      Navigator.pushReplacementNamed(
+        context,
+        route,
+        arguments: args,
+      );
+    }
   }
 
   void _showEditDialog(BuildContext context, Map<String, dynamic> group) {
@@ -860,27 +833,27 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
               rightLabel: '다음',
               onBack: () => Navigator.pop(context),
               onNext: () async {
-                if (_selectedGroupId == null || widget.abcId == null) return;
+                if (_selectedGroupId == null || widget.diaryId == null) return;
 
                 try {
                   debugPrint(
-                    '🔵 그룹 업데이트 시작: diaryId=${widget.abcId}, groupId=$_selectedGroupId',
+                    '🔵 그룹 업데이트 시작: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
                   );
 
                   // ✅ 백엔드 diaries 스키마: group_id(문자열)
-                  await _diariesApi.updateDiary(widget.abcId!, {
+                  await _diariesApi.updateDiary(widget.diaryId!, {
                     'group_id': _selectedGroupId,
                   });
 
                   debugPrint(
-                    '✅ 일기 그룹 할당 완료: diaryId=${widget.abcId}, groupId=$_selectedGroupId',
+                    '✅ 일기 그룹 할당 완료: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
                   );
                 } on DioException catch (e, stackTrace) {
                   debugPrint(
                     '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
                   );
                   debugPrint('Response data: ${e.response?.data}');
-                  debugPrint('Request: PUT /diaries/${widget.abcId}');
+                  debugPrint('Request: PUT /diaries/${widget.diaryId}');
                   debugPrint(
                     'Body: {group_id: $_selectedGroupId}',
                   );
