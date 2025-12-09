@@ -837,7 +837,7 @@ class _AlarmSection extends StatelessWidget {
 
             final reminderText =
             reminderMinutes is num && reminderMinutes > 0
-                ? '알림 ${reminderMinutes.toInt()}분 전'
+                ? '알림 ${reminderMinutes.toInt()}분 후'
                 : null;
 
             final locationDisplay =
