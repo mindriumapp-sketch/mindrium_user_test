@@ -31,8 +31,9 @@ class GptApi {
     if (_envProxyBase.isNotEmpty) return _envProxyBase;
     if (_envApiBase.isNotEmpty) return _envApiBase;
     if (kIsWeb) {
-      // 웹에서는 localhost:8080의 백엔드 서버 사용
-      return 'http://localhost:8080';
+      // 웹에서는 Render 백엔드 서버 사용 (배포용)
+      // 로컬 테스트: http://localhost:8080
+      return 'https://mindrium-backend.onrender.com';
     }
     return 'http://10.0.2.2:8080';
   }

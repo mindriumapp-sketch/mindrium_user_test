@@ -27,7 +27,6 @@ Thumbs.db
 .pub-cache/
 build/
 coverage/
-lib/generated_plugin_registrant.dart
 
 ##### Android #####
 **/android/**/.gradle/
