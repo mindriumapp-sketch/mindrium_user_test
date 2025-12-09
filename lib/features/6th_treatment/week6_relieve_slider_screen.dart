@@ -41,7 +41,7 @@ class _Week6RelieveSliderScreenState extends State<Week6RelieveSliderScreen> {
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
 
     return ApplyDoubleCard(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       onBack: () => Navigator.pop(context),
       onNext: _selectedValue != null
           ? () {

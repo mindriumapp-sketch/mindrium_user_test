@@ -23,7 +23,7 @@ class ApplyOrSolveFlow extends ChangeNotifier {
   AbcDiaryLocation? _diaryLocation;
 
   // ───── getters ─────
-  String get origin => _origin ?? 'apply';
+  String get origin => _origin ?? 'edu';
   String? get sessionId => _sessionId;
   String? get diaryId => _diaryId;
   String? get groupId => _groupId;

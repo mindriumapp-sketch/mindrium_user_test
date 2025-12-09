@@ -187,7 +187,7 @@ class _Week4VisualScreenState extends State<Week4VisualScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF8FF),
-      appBar: const CustomAppBar(title: '4주차 - 인지 왜곡 찾기'),
+      appBar: const CustomAppBar(title: '인지 왜곡 찾기'),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12.0),

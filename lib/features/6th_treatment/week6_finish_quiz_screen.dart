@@ -39,6 +39,36 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
 
+  String _chipLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      return (raw['label'] ??
+              raw['chip_label'] ??
+              raw['chipId'] ??
+              raw['chip_id'] ??
+              '')
+          .toString()
+          .trim();
+    }
+    return raw.toString().trim();
+  }
+
+  List<String> _chipList(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map(_chipLabel)
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    final s = _chipLabel(raw);
+    return s
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -56,29 +86,24 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
     try {
       // 최신 일기 불러오기
       final latest = await _diariesApi.getLatestDiary();
-      final consequenceB = latest['consequence_b'] ?? [];
-      
-      List<String> behaviorList = [];
-      if (consequenceB is List) {
-        behaviorList = consequenceB
-            .map((e) => e.toString().trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
-      } else if (consequenceB is String && consequenceB.isNotEmpty) {
-        behaviorList = consequenceB
-            .split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
-      }
+      if (!mounted) return;
+
+      final consequenceB =
+          latest['consequence_action'] ??
+              latest['consequence_behavior'] ??
+              latest['consequence_b'];
+      final behaviorList = _chipList(consequenceB);
 
       setState(() {
-        _diaryId = latest['diaryId']?.toString();
+        _diaryId =
+            (latest['diary_id'] ?? latest['diaryId'] ?? latest['id'])
+                ?.toString();
         _behaviorList = behaviorList;
         _currentBehavior = _behaviorList.isNotEmpty ? _behaviorList.first : '';
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = '데이터를 불러오지 못했습니다.';
         _isLoading = false;
@@ -145,7 +170,7 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
           SafeArea(
             child: Column(
               children: [
-                const CustomAppBar(title: '6주차 - 마무리 퀴즈'),
+                const CustomAppBar(title: '마무리 퀴즈'),
 
                 // 위쪽 콘텐츠 영역
                 Expanded(
@@ -167,7 +192,7 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
                         : (!hasBehavior)
                         ? const Center(
                       child: Text(
-                        '최근에 작성한 ABC모델이 없습니다.',
+                        '최근에 작성한 일기가 없습니다.',
                         style: TextStyle(fontSize: 16),
                       ),
                     )

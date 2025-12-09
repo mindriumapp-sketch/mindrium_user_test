@@ -7,8 +7,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:provider/provider.dart';
-// import 'package:provider/provider.dart';
-// import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 
 
 /// 💡 Mindrium 스타일: 비슷한 상황 확인 화면
@@ -54,19 +53,17 @@ class SimilarActivationScreen extends StatelessWidget {
       secondaryText: '아니오',
       onPrimary: () async {
         final access = await tokens.access;
+        if (!context.mounted) return;
         if (access == null) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('로그인이 필요합니다.')));
-          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('로그인이 필요합니다.')));
           return;
         }
 
         // NOTE: 나중에 UserProvider 연결되면 currentWeek 기반으로 분기
-        // final userProvider = context.read<UserProvider>();
-        // final completedWeeks = userProvider.currentWeek;
-        int completedWeeks = 8; //TODO: 임시 8주차 완료 처리
+        final userProvider = context.read<UserProvider>();
+        final completedWeeks = userProvider.lastCompletedWeek;
 
         if (!context.mounted) return;
         final route =

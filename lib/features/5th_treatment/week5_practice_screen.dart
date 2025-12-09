@@ -10,7 +10,7 @@ class Week5PracticeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '5주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       cardTitle: '한번 연습해볼까요?',
       onBack: () => Navigator.pop(context),
       onNext: () {

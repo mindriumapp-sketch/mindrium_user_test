@@ -97,7 +97,7 @@ class _Week5ImaginationScreenState extends State<Week5ImaginationScreen> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: ApplyDoubleCard(
-        appBarTitle: '5주차 - 불안 직면 VS 회피',
+        appBarTitle: '불안 직면 VS 회피',
 
         // ◀◀ 뒤로/다음 (기존 흐름 유지)
         onBack: () => Navigator.pop(context),

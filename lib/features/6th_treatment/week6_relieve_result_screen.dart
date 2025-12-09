@@ -73,7 +73,7 @@ class _Week6RelieveResultScreenState extends State<Week6RelieveResultScreen> {
 
     // 🌊 ApplyDesign으로 전체 감싸기
     return ApplyDesign(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       cardTitle: '불안 완화 결과',
       onBack: () => Navigator.pop(context),
       onNext: () {

@@ -53,7 +53,7 @@ class Week6BehaviorClassificationScreen extends StatelessWidget {
     return Stack(
       children: [
         ApplyDesign(
-          appBarTitle: '6주차 - 불안 직면 VS 회피',
+          appBarTitle: '불안 직면 VS 회피',
           cardTitle: '행동 분류 결과',
           onBack: () => Navigator.pop(context),
           onNext: () {

@@ -45,7 +45,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
   @override
   Widget build(BuildContext context) {
     return ApplyDoubleCard(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       topChild: _buildTopPanel(),
       bottomChild: _buildBottomPanel(),
 
