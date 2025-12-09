@@ -7,11 +7,20 @@ import 'package:http/http.dart' as http;
 
 /// GPT API 호출을 FastAPI 백엔드 프록시로 위임하여 프런트 코드에 키를 노출하지 않음.
 class GptApi {
-  GptApi({String? baseUrl, this.model = 'gpt-4o-mini', this.embeddingModel = 'text-embedding-3-large'})
-      : baseUrl = _resolveBaseUrl(baseUrl);
+  GptApi({
+    String? baseUrl,
+    this.model = 'gpt-4o-mini',
+    this.embeddingModel = 'text-embedding-3-large',
+  }) : baseUrl = _resolveBaseUrl(baseUrl);
 
-  static const _envProxyBase = String.fromEnvironment('AI_PROXY_BASE_URL', defaultValue: '');
-  static const _envApiBase = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  static const _envProxyBase = String.fromEnvironment(
+    'AI_PROXY_BASE_URL',
+    defaultValue: '',
+  );
+  static const _envApiBase = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
 
   final String baseUrl;
   final String model;
@@ -22,21 +31,27 @@ class GptApi {
     if (_envProxyBase.isNotEmpty) return _envProxyBase;
     if (_envApiBase.isNotEmpty) return _envApiBase;
     if (kIsWeb) {
-      final origin = Uri.base.origin;
-      if (origin.startsWith('http')) return origin;
+      // 웹에서는 localhost:8080의 백엔드 서버 사용
+      return 'http://localhost:8080';
     }
     return 'http://10.0.2.2:8080';
   }
 
   Uri _endpoint(String path) {
-    final normalized = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final normalized =
+        baseUrl.endsWith('/')
+            ? baseUrl.substring(0, baseUrl.length - 1)
+            : baseUrl;
     final trimmed = path.startsWith('/') ? path.substring(1) : path;
     return Uri.parse('$normalized/$trimmed');
   }
 
   /// history: [{role:'system'|'user'|'assistant', content:'...'}, ...]
   /// userMessage: 현재 사용자 발화
-  Future<String> chat(List<Map<String, String>> history, String userMessage) async {
+  Future<String> chat(
+    List<Map<String, String>> history,
+    String userMessage,
+  ) async {
     final List<Map<String, String>> messages = [
       ...history,
       {'role': 'user', 'content': userMessage},
@@ -62,7 +77,8 @@ class GptApi {
         if (text.isEmpty) return '응답이 비어 있습니다.';
         return text;
       } else {
-        final errorBody = response.body.isNotEmpty ? response.body : '(no body)';
+        final errorBody =
+            response.body.isNotEmpty ? response.body : '(no body)';
         return '⚠️ 서버 오류 (${response.statusCode})\n$errorBody';
       }
     } on TimeoutException {
@@ -79,10 +95,7 @@ class GptApi {
           .post(
             _endpoint('/ai/embedding'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'model': embeddingModel,
-              'input': text,
-            }),
+            body: jsonEncode({'model': embeddingModel, 'input': text}),
           )
           .timeout(const Duration(seconds: 30));
 

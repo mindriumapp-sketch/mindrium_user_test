@@ -5,12 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# TODO: 테스트/운영 서버에서는 default 값들 무조건 바꿔야 함
+# 환경 변수에서만 로드 (기본값 제거로 보안 강화)
 class Settings(BaseModel):
-    mongo_uri: str = os.getenv("MONGO_URI", "mongodb://115.145.134.180:9013/")
+    mongo_uri: str = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
     mongo_db: str = os.getenv("DB_NAME", "flutter_test")
-    jwt_secret: str = os.getenv("JWT_SECRET", "CHANGE_ME_SECRET")
-    jwt_refresh_secret: str = os.getenv("JWT_REFRESH_SECRET", "CHANGE_ME_REFRESH")
+    jwt_secret: str = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+    jwt_refresh_secret: str = os.getenv("JWT_REFRESH_SECRET", "dev-refresh-secret-change-in-production")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
     refresh_token_expire_days: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
     email_verification_expire_minutes: int = int(os.getenv("EMAIL_VERIFICATION_EXPIRE_MINUTES", "30"))
