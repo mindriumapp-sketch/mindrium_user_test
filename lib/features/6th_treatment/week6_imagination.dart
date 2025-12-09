@@ -125,7 +125,7 @@ class _Week6ImaginationScreenState extends State<Week6ImaginationScreen> {
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       cardTitle: '불안 회피 상상하기',
       onBack: () => Navigator.pop(context),
       onNext: () {

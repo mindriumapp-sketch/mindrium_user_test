@@ -16,7 +16,7 @@ class Week5BeliefScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AbcActivateDesign(
-      appBarTitle: '5주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       scenarioImage: 'assets/image/scenario_2.png',
       descriptionText: _description,
       memoHeightFactor: 0.75,

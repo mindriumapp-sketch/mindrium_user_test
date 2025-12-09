@@ -37,16 +37,64 @@ class _Week6AbcScreenState extends State<Week6AbcScreen> {
     try {
       // 최신 일기 불러오기
       final latest = await _diariesApi.getLatestDiary();
+      if (!mounted) return;
       setState(() {
         _abcModel = latest;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = '데이터를 불러오지 못했습니다.';
         _isLoading = false;
       });
     }
+  }
+
+  String _chipLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      return (raw['label'] ??
+              raw['chip_label'] ??
+              raw['chipId'] ??
+              raw['chip_id'] ??
+              '')
+          .toString()
+          .trim();
+    }
+    return raw.toString().trim();
+  }
+
+  String _chipText(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map(_chipLabel)
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .join(', ');
+    }
+    final s = _chipLabel(raw);
+    return s
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .join(', ');
+  }
+
+  List<String> _chipList(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map(_chipLabel)
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    final s = _chipLabel(raw);
+    return s
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   Widget _highlightedText(String text) {
@@ -71,26 +119,16 @@ class _Week6AbcScreenState extends State<Week6AbcScreen> {
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       cardTitle: '최근 ABC 모델 확인',
       onBack: () => Navigator.pop(context),
       onNext: () {
         // 일기의 consequence_b (행동 리스트) 추출
-        final consequenceB = _abcModel?['consequence_b'] ?? [];
-        List<String> behaviorList = [];
-
-        if (consequenceB is List) {
-          behaviorList = consequenceB
-              .map((e) => e.toString().trim())
-              .where((e) => e.isNotEmpty)
-              .toList();
-        } else if (consequenceB is String && consequenceB.isNotEmpty) {
-          behaviorList = consequenceB
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList();
-        }
+        final consequenceB =
+            _abcModel?['consequence_action'] ??
+                _abcModel?['consequence_behavior'] ??
+                _abcModel?['consequence_b'];
+        final behaviorList = _chipList(consequenceB);
 
         Navigator.push(
           context,
@@ -128,33 +166,41 @@ class _Week6AbcScreenState extends State<Week6AbcScreen> {
             );
           }
 
-          final a = _abcModel?['activating_events'] ?? '';
-          final bList = _abcModel?['belief'] ?? [];
-          final b = bList is List ? bList.join(', ') : (bList.toString());
-          final cPhysical = _abcModel?['consequence_p'] ?? [];
-          final cPhysicalStr = cPhysical is List ? cPhysical.join(', ') : (cPhysical.toString());
-          final cEmotion = _abcModel?['consequence_e'] ?? [];
-          final cEmotionStr = cEmotion is List ? cEmotion.join(', ') : (cEmotion.toString());
-          final cBehavior = _abcModel?['consequence_b'] ?? [];
-          final cBehaviorStr = cBehavior is List ? cBehavior.join(', ') : (cBehavior.toString());
+          final a = _chipText(
+            _abcModel?['activation'] ??
+                _abcModel?['activating_events'] ??
+                _abcModel?['activatingEvent'],
+          );
+          final b = _chipText(_abcModel?['belief']);
+          final cPhysicalStr = _chipText(
+            _abcModel?['consequence_physical'] ?? _abcModel?['consequence_p'],
+          );
+          final cEmotionStr = _chipText(
+            _abcModel?['consequence_emotion'] ?? _abcModel?['consequence_e'],
+          );
+          final cBehaviorStr = _chipText(
+            _abcModel?['consequence_action'] ??
+                _abcModel?['consequence_behavior'] ??
+                _abcModel?['consequence_b'],
+          );
           final userName = Provider.of<UserProvider>(
             context,
             listen: false,
           ).userName;
 
           String formattedDate = '';
-          if (_abcModel?['createdAt'] != null) {
-            final createdAt = _abcModel!['createdAt'];
-            DateTime date;
-            if (createdAt is DateTime) {
-              date = createdAt;
-            } else if (createdAt is String) {
-              date = DateTime.parse(createdAt);
+          final createdAtRaw = _abcModel?['created_at'] ?? _abcModel?['createdAt'];
+          if (createdAtRaw != null) {
+            DateTime? date;
+            if (createdAtRaw is DateTime) {
+              date = createdAtRaw;
             } else {
-              date = DateTime.now();
+              date = DateTime.tryParse(createdAtRaw.toString());
             }
-            formattedDate =
-                '${date.year}년 ${date.month}월 ${date.day}일에 작성된 걱정일기';
+            if (date != null) {
+              formattedDate =
+                  '${date.year}년 ${date.month}월 ${date.day}일에 작성된 걱정일기';
+            }
           }
 
           return Column(

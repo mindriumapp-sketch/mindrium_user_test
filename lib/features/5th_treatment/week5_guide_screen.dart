@@ -19,7 +19,7 @@ class Week5GuideScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AbcActivateDesign(
-      appBarTitle: '5주차 - 불안 직면 VS 회피',         // ✅ 주차 제목 주입
+      appBarTitle: '불안 직면 VS 회피',         // ✅ 주차 제목 주입
       scenarioImage: 'assets/image/scenario_1.png',    // 기존 이미지 재사용
       descriptionText: _description,                   // 본문
       memoHeightFactor: 0.75,                          // 필요시 조정 가능

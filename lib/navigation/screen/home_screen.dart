@@ -537,15 +537,27 @@ class _HomeScreenState extends State<HomeScreen> {
   // ===================== 교육/훈련 섹션 =====================
 
   Widget _buildTrainingSection() {
+    final userProvider = context.read<UserProvider>();
+    final completedWeeks = userProvider.lastCompletedWeek;
+    final bool canSolve = completedWeeks >= 4;
+    const baseColor = Color(0xFFFFE2E8);
+    final cardColor = canSolve ? baseColor : baseColor.withValues(alpha: .55);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _trainingCard(
           title: '불안 해결하기',
           description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
-          color: const Color(0xFFFFE2E8),
+          color: cardColor,
           imagePath: 'assets/image/pink2.png',
           onTap: () {
+            if (!canSolve) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
+              );
+              return;
+            }
             final flow = context.read<ApplyOrSolveFlow>();
             // 기존 상태 초기화 후 solve 흐름 세팅
             flow.clear();

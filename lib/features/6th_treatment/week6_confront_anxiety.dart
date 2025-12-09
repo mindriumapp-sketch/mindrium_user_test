@@ -140,7 +140,7 @@ class _Week6ConfrontAnxietyScreenState
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       cardTitle: '다르게 생각해보기',
       onBack: () => Navigator.pop(context),
       onNext: () {

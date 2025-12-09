@@ -13,7 +13,7 @@ class Week5GuideDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AbcActivateDesign(
-      appBarTitle: '5주차 - 불안 직면 VS 회피 (2)',
+      appBarTitle: '불안 직면 VS 회피 (2)',
       scenarioImage: 'assets/image/scenario_1.png',
       descriptionText: _description,
       onBack: () => Navigator.pop(context),

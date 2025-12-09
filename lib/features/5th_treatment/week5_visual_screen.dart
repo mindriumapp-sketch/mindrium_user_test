@@ -180,7 +180,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
   @override
   Widget build(BuildContext context) {
     return ApplyDoubleCard(
-      appBarTitle: '5주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       topChild: _buildTopPanel(),
       bottomChild: _buildBottomPanel(),
       onBack: () => Navigator.pop(context),

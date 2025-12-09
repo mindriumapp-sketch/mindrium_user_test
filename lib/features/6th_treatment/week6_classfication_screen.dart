@@ -136,7 +136,7 @@ class _Week6ClassificationScreenState extends State<Week6ClassificationScreen> {
           SafeArea(
             child: Column(
               children: [
-                const CustomAppBar(title: '6주차 - 불안 직면 VS 회피'),
+                const CustomAppBar(title: '불안 직면 VS 회피'),
 
                 // 위쪽 콘텐츠 영역
                 Expanded(

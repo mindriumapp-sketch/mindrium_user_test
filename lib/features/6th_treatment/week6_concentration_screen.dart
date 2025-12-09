@@ -109,7 +109,7 @@ class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
     const double kRuleWidth = 220;
 
     return ApplyDesign(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       cardTitle: '상황에 집중하기',
       onBack: () => Navigator.pop(context),
       onNext: () {
