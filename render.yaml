@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: mindrium-backend
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend/app
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: DB_NAME
+        value: flutter_test
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 15
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+      - key: EMAIL_VERIFICATION_EXPIRE_MINUTES
+        value: 30
+      - key: RESET_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: API_PORT
+        value: 8080
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-large
+      - key: OPENAI_API_BASE
+        value: https://api.openai.com/v1
+      - key: PYTHON_VERSION
+        value: 3.11

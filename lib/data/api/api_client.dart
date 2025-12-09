@@ -2,7 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../storage/token_storage.dart';
 
-const String _envBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+const String _envBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: '',
+);
 
 class ApiClient {
   final Dio dio;
@@ -17,19 +20,15 @@ class ApiClient {
       return _envBaseUrl;
     }
     if (kIsWeb) {
-      final origin = Uri.base.origin;
-      if (origin.startsWith('http')) {
-        return origin;
-      }
+      // 웹에서는 localhost:8080의 백엔드 서버 사용
+      return 'http://localhost:8080';
     }
     return 'http://10.0.2.2:8080';
   }
 
-  ApiClient({
-    required this.tokens,
-    String? baseUrl,
-  })  : baseUrl = _resolveBaseUrl(baseUrl),
-        dio = Dio(BaseOptions(baseUrl: _resolveBaseUrl(baseUrl))) {
+  ApiClient({required this.tokens, String? baseUrl})
+    : baseUrl = _resolveBaseUrl(baseUrl),
+      dio = Dio(BaseOptions(baseUrl: _resolveBaseUrl(baseUrl))) {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
