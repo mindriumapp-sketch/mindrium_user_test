@@ -37,7 +37,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
       // 💡 배경색은 Stack에서 처리
       extendBodyBehindAppBar: true,
 
-      appBar: const CustomAppBar(title: '7주차 - 생활 습관 개선'),
+      appBar: const CustomAppBar(title: '생활 습관 개선'),
 
       body: Stack(
         fit: StackFit.expand,

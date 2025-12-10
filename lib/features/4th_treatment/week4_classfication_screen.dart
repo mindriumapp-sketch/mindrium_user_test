@@ -8,9 +8,7 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/widgets/top_btm_card.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
-import 'package:gad_app_team/data/api/custom_tags_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:dio/dio.dart';
 
 class Week4ClassificationScreen extends StatefulWidget {
   final List<String> bListInput;
@@ -50,21 +48,17 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
   String? _error;
   double _sliderValue = 5.0;
   late List<String> _bList;
-  List<String?> _beliefChipIds = [];
   late String _currentB;
   final Map<String, double> _bScores = {};
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
-  late final CustomTagsApi _customTagsApi;
   String? _diaryId;
-  final Map<String, String> _labelToChipId = {};
 
   @override
   void initState() {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
-    _customTagsApi = CustomTagsApi(_client);
     final id = widget.abcId;
     if (id != null && id.isNotEmpty) {
       _fetchDiaryById(id);
@@ -174,7 +168,6 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
       }
     }
 
-    _beliefChipIds = entries.map((e) => e['chipId']).toList();
     return entries.map((e) => e['label'] ?? '').toList();
   }
 
@@ -186,7 +179,6 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
               .map((e) => _chipLabel(e).trim())
               .where((e) => e.isNotEmpty)
               .toList();
-      _beliefChipIds = List.filled(_bList.length, null);
     }
     // 2) 비어 있으면 모델에서 파싱
     if (_bList.isEmpty && _abcModel != null) {
@@ -223,12 +215,10 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
 
     final bool isFromAnxietyScreen = widget.isFromAnxietyScreen;
 
-    // 실시간 real oddness 저장(누적 스코어 병합)
     // 항상 현재 화면에서 로드한 최신 일기의 ID를 사용
     final diaryId =
         _diaryId ?? _abcModel?['diaryId']?.toString() ?? _abcModel?['diary_id']?.toString();
     if (diaryId != null && diaryId.isNotEmpty) {
-      _saveRealOddnessBefore(diaryId);
     }
 
     Navigator.push(
@@ -251,83 +241,6 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
         reverseTransitionDuration: Duration.zero,
       ),
     );
-  }
-  // ────────────────────────────────────────────────────────────────────────────
-  Future<void> _saveRealOddnessBefore(String diaryId) async {
-    // 캐시된 diaryId (latest 호출 대비)
-    _diaryId = diaryId;
-    if (_currentB.isEmpty) return;
-
-    // label -> chip_id 캐시 구성
-    for (int i = 0; i < _bList.length; i++) {
-      if (i < _beliefChipIds.length &&
-          _beliefChipIds[i] != null &&
-          _beliefChipIds[i]!.isNotEmpty) {
-        _labelToChipId[_bList[i]] = _beliefChipIds[i]!;
-      }
-    }
-
-    // 기존 B 타입 태그 불러오기
-    try {
-      final tags = await _customTagsApi.listCustomTags(chipType: 'B');
-      for (final tag in tags) {
-        final label = (tag['text'] ?? tag['label'])?.toString().trim();
-        final chipId = tag['chip_id']?.toString();
-        if (label != null &&
-            label.isNotEmpty &&
-            chipId != null &&
-            chipId.isNotEmpty) {
-          _labelToChipId.putIfAbsent(label, () => chipId);
-        }
-      }
-    } catch (_) {}
-
-    final altThought = (widget.alternativeThoughts?.isNotEmpty == true)
-        ? widget.alternativeThoughts!.first
-        : (widget.existingAlternativeThoughts?.isNotEmpty == true
-            ? widget.existingAlternativeThoughts!.first
-            : 'Not provided');
-
-    for (final entry in _bScores.entries) {
-      final belief = entry.key.trim();
-      final before = entry.value.round().clamp(0, 10);
-      if (belief.isEmpty) continue;
-
-      String? chipId = _labelToChipId[belief];
-
-      if (chipId == null || chipId.isEmpty) {
-        try {
-          final created = await _customTagsApi.createCustomTag(
-            label: belief,
-            type: 'B',
-          );
-          chipId = (created['chip_id'] ?? created['_id'])?.toString();
-          if (chipId != null && chipId.isNotEmpty) {
-            _labelToChipId[belief] = chipId;
-          }
-        } catch (e) {
-          debugPrint('⚠️ 태그 생성 실패 ($belief): $e');
-          continue;
-        }
-      }
-
-      if (chipId == null || chipId.isEmpty) continue;
-
-      try {
-        await _customTagsApi.createRealOddnessLog(
-          chipId: chipId,
-          diaryId: diaryId,
-          beforeOdd: before,
-          alternativeThought: altThought,
-        );
-      } on DioException catch (e) {
-        debugPrint(
-          '⚠️ RealOddness 저장 실패 ($belief): ${e.response?.data ?? e.message}',
-        );
-      } catch (e) {
-        debugPrint('⚠️ RealOddness 저장 실패 ($belief): $e');
-      }
-    }
   }
 
   @override

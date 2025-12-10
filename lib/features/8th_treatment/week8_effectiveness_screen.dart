@@ -329,7 +329,7 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
       return EduhomeBg(
         child: const Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: CustomAppBar(title: '8주차 - 효과성 평가'),
+          appBar: CustomAppBar(title: '효과성 평가'),
           body: Center(child: CircularProgressIndicator()),
         ),
       );
@@ -368,7 +368,7 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
-        appBar: const CustomAppBar(title: '8주차 - 효과성 평가'),
+        appBar: const CustomAppBar(title: '효과성 평가'),
         body: SafeArea(
           child: Column(
             children: [

@@ -34,7 +34,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
       // 💡 배경색은 Stack에서 처리
       extendBodyBehindAppBar: true,
 
-      appBar: const CustomAppBar(title: '8주차 - 인지 재구성'),
+      appBar: const CustomAppBar(title: '인지 재구성'),
 
       body: Stack(
         fit: StackFit.expand,

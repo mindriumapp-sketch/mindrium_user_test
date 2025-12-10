@@ -3,7 +3,7 @@ import 'package:gad_app_team/features/value_start.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_roadmap_screen.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:gad_app_team/data/api/week8_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
@@ -20,17 +20,19 @@ class _Week8ScreenState extends State<Week8Screen> {
   bool _creatingSession = false;
   String? _sessionId;
   String? _userName;
+  late final Week8Api _week8Api;
 
   @override
   void initState() {
     super.initState();
     _sessionId = widget.sessionId;
+    _week8Api = Week8Api(ApiClient(tokens: TokenStorage()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeCreateEduSession();
+      _maybeEnsureWeek8Session();
     });
   }
 
-  Future<void> _maybeCreateEduSession() async {
+  Future<void> _maybeEnsureWeek8Session() async {
     if (!mounted) return;
     final user = context.read<UserProvider>();
     if (!user.isUserLoaded) return;
@@ -44,21 +46,23 @@ class _Week8ScreenState extends State<Week8Screen> {
     setState(() => _creatingSession = true);
 
     try {
-      final tokens = TokenStorage();
-      final access = await tokens.access;
-      if (access == null) {
-        debugPrint('[Week8Screen] access token 없음 → edu-session 생성 스킵');
-        setState(() => _creatingSession = false);
+      // 기존 세션 사용
+      final existing = await _week8Api.fetchWeek8Session();
+      final existingId =
+          existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+      if (existingId != null && existingId.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _creatingSession = false;
+          _sessionId = existingId;
+        });
+        debugPrint('[Week8Screen] 기존 week8 세션 사용: $existingId');
         return;
       }
 
-      final client = ApiClient(tokens: tokens);
-      final eduApi = EduSessionsApi(client);
-
       const int totalScreens = 10; // 실제 플로우에 맞게 조정
 
-      final res = await eduApi.createCommonSession(
-        weekNumber: 8,
+      final res = await _week8Api.createWeek8Session(
         totalScreens: totalScreens,
         lastScreenIndex: 1,
         completed: false,
@@ -72,10 +76,10 @@ class _Week8ScreenState extends State<Week8Screen> {
         _sessionId = (res['session_id'] as String?)?.trim();
       });
 
-      debugPrint('[Week8Screen] edu-sessions create 성공 (week=8, id=$_sessionId)');
+      debugPrint('[Week8Screen] week8 세션 생성 성공 (id=$_sessionId)');
     } catch (e) {
       if (!mounted) return;
-      debugPrint('[Week8Screen] edu-sessions create 실패: $e');
+      debugPrint('[Week8Screen] week8 세션 처리 실패: $e');
       setState(() => _creatingSession = false);
     }
   }

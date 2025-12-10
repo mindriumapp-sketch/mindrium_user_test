@@ -172,7 +172,7 @@ class _Week8SurveyScreenState extends State<Week8SurveyScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return ApplyDesign(
-        appBarTitle: '8주차 - 불안 평가',
+        appBarTitle: '불안 평가',
         cardTitle: '불안 평가 비교',
         onBack: () => Navigator.pop(context),
         onNext: null,
@@ -181,7 +181,7 @@ class _Week8SurveyScreenState extends State<Week8SurveyScreen> {
     }
 
     return ApplyDesign(
-      appBarTitle: '8주차 - 불안 평가',
+      appBarTitle: '불안 평가',
       cardTitle: '불안 평가 비교',
       onBack: () => Navigator.pop(context),
       onNext:

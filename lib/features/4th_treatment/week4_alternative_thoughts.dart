@@ -66,10 +66,10 @@ class _Week4AlternativeThoughtsScreenState
   Future<void> _saveAlternativeThoughts() async {
     try {
       final current = _chipsKey.currentState?.values ?? _chips;
-      final allAlternativeThoughts = [
+      final allAlternativeThoughts = _normalizeThoughts([
         ...?widget.existingAlternativeThoughts,
         ...current,
-      ];
+      ]);
 
       String diaryId;
       if (widget.abcId == null || widget.abcId!.isEmpty) {
@@ -80,6 +80,8 @@ class _Week4AlternativeThoughtsScreenState
       } else {
         diaryId = widget.abcId!;
       }
+
+      // 대체생각 저장 (diary)
       await _diariesApi.updateDiary(diaryId, {
         'alternative_thoughts': allAlternativeThoughts,
       });
@@ -87,6 +89,21 @@ class _Week4AlternativeThoughtsScreenState
       debugPrint('❌ 대체생각 저장 오류: $e');
       debugPrint('❌ Stack trace: $st');
     }
+  }
+
+  List<String> _normalizeThoughts(List<String> raw) {
+    final out = <String>[];
+    final seen = <String>{};
+
+    for (final item in raw) {
+      final trimmed = item.trim();
+      if (trimmed.isEmpty) continue;
+      if (seen.add(trimmed)) {
+        out.add(trimmed);
+      }
+    }
+
+    return out;
   }
 
   // 칩 변경 콜백
@@ -123,10 +140,10 @@ class _Week4AlternativeThoughtsScreenState
                     routeArgs['sudId'] as String? ?? flow.sudId;
 
                 final currentThoughts = _chipsKey.currentState?.values ?? _chips;
-                final combinedThoughts = [
+                final combinedThoughts = _normalizeThoughts([
                   ...?widget.existingAlternativeThoughts,
                   ...currentThoughts,
-                ];
+                ]);
 
                 // 저장
                 await _saveAlternativeThoughts();

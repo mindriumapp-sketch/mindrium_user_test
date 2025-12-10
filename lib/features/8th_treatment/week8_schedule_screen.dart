@@ -505,7 +505,7 @@ class _Week8ScheduleScreenState extends State<Week8ScheduleScreen> {
     return EduhomeBg(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: const CustomAppBar(title: '8주차 - 스케줄 관리'),
+        appBar: const CustomAppBar(title: '스케줄 관리'),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SafeArea(

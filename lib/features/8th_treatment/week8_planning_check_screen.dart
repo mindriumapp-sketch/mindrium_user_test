@@ -149,7 +149,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        appBar: CustomAppBar(title: '8주차 - 계획 점검'),
+        appBar: CustomAppBar(title: '계획 점검'),
         body: Center(child: CircularProgressIndicator()),
       );
     }
@@ -160,7 +160,7 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
-        appBar: const CustomAppBar(title: '8주차 - 계획 점검'),
+        appBar: const CustomAppBar(title: '계획 점검'),
         body: SafeArea(
           child: Column(
             children: [

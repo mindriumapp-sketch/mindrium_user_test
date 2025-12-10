@@ -121,7 +121,7 @@ class _Week7CalendarSummaryScreenState
     return EduhomeBg(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: const CustomAppBar(title: '7주차 - 캘린더 요약'),
+        appBar: const CustomAppBar(title: '캘린더 요약'),
         body: SafeArea(
           child: Column(
             children: [

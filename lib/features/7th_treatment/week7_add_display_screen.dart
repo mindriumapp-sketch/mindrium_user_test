@@ -742,7 +742,7 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '7주차 - 생활 습관 개선',
+      appBarTitle: '생활 습관 개선',
       cardTitle: '행동 분석 결과',
       onBack: () => Navigator.pop(context),
       onNext: () {

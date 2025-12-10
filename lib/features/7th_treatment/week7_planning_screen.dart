@@ -688,7 +688,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
-        appBar: const CustomAppBar(title: '7주차 - 계획 세우기'),
+        appBar: const CustomAppBar(title: '계획 세우기'),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(top: 20, bottom: 32),

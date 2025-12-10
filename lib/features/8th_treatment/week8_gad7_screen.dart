@@ -91,7 +91,7 @@ class _Week8Gad7ScreenState extends State<Week8Gad7Screen> {
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '8주차 - 불안 평가',
+      appBarTitle: '불안 평가',
       cardTitle: 'Mindrium 사용 후\n불안이 얼마나 줄었나요?',
       onBack: () => Navigator.pop(context),
       onNext:

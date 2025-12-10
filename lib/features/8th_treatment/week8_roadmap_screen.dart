@@ -45,7 +45,7 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
     }
 
     return ApplyDesign(
-      appBarTitle: '8주차 - 여정 로드맵',
+      appBarTitle: '여정 로드맵',
       cardTitle: '8주간의 여정 되돌아보기',
       onBack: () => Navigator.pop(context),
       onNext:

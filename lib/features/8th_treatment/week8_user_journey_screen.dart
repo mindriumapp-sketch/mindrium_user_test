@@ -194,7 +194,7 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
-        appBar: const CustomAppBar(title: '8주차 - 여정 회고'),
+        appBar: const CustomAppBar(title: '여정 회고'),
         body: SafeArea(
           child: Column(
             children: [

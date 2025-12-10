@@ -44,7 +44,7 @@ class _Week7ReasonInputScreenState extends State<Week7ReasonInputScreen> {
         FocusScope.of(context).unfocus();
       },
       child: ApplyDoubleCard(
-        appBarTitle: '7주차 - 생활 습관 개선',
+        appBarTitle: '생활 습관 개선',
         // 위쪽 패널
         topChild: Column(
           mainAxisSize: MainAxisSize.min,

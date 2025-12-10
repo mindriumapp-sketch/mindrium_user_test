@@ -421,7 +421,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
   @override
   Widget build(BuildContext context) {
     return ApplyDoubleCard(
-      appBarTitle: '7주차 - 생활 습관 개선',
+      appBarTitle: '생활 습관 개선',
 
       // ─── 상단 패널 ───
       topChild: Column(

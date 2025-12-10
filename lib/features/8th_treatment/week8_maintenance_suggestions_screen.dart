@@ -52,7 +52,7 @@ class _Week8MaintenanceSuggestionsScreenState
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '8주차 - 유지방법 제안',
+      appBarTitle: '유지방법 제안',
       cardTitle: '건강한 습관을 지속하기 위한 \n다섯 가지 제안',
       onBack: _previousStep,
       onNext: _isNextEnabled ? _nextStep : () {},

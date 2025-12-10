@@ -50,6 +50,8 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
   late final DiariesApi _diariesApi;
   late final CustomTagsApi _customTagsApi;
   final Map<String, String> _labelToChipId = {};
+  String? _resolvedDiaryId;
+  bool _didReadArgs = false;
 
   @override
   void initState() {
@@ -58,6 +60,15 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
     _customTagsApi = CustomTagsApi(_client);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didReadArgs) return;
+    _didReadArgs = true;
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    _resolvedDiaryId = widget.abcId ?? args?['abcId']?.toString();
   }
 
   // 점수에 따른 컬러 (Week4ClassificationScreen 스타일)
@@ -107,23 +118,6 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
           textAlign: TextAlign.center,
         ),
         SizedBox(height: 35),
-        // PanelHeader(
-        //   icon: Image.asset('assets/image/question_icon.png',
-        //       width: 32, height: 32),
-        //   subtitle: '$userName님께서 걱정일기에 작성하신 생각을 \n보며 진행해주세요.',
-        // ),
-        // const SizedBox(height: 8),
-        // Text(
-        //   (_currentB.isNotEmpty) ? _currentB : '생각이 없습니다.',
-        //   style: const TextStyle(
-        //     fontSize: 20,
-        //     color: Colors.black,
-        //     fontWeight: FontWeight.w500,
-        //     wordSpacing: 1.2,
-        //   ),
-        //   textAlign: TextAlign.center,
-        // ),
-        // const SizedBox(height: 15),
       ],
     );
   }
@@ -200,8 +194,9 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
   }
 
   // ────────────── onNext 로직 (원본 그대로 유지) ──────────────
-  void _handleNext() {
-    _saveRealOddnessAfter();
+  Future<void> _handleNext() async {
+    await _saveRealOddnessAfter();
+    if (!mounted) return;
 
     // 모든 B를 다룬 경우 → abcId 유무에 따라 분기
     if (widget.remainingBList.isEmpty) {
@@ -283,68 +278,19 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
   }
 
   Future<void> _saveRealOddnessAfter() async {
-    final diaryId = widget.abcId;
+    final diaryId = await _resolveDiaryId();
     if (diaryId == null || diaryId.isEmpty || _currentB.isEmpty) return;
-
-    // diary 기반 chip_id 찾기
-    try {
-      final diary = await _diariesApi.getDiary(diaryId);
-      final beliefs = diary['belief'];
-      if (beliefs is List) {
-        for (final b in beliefs) {
-          if (b is Map) {
-            final label = (b['label'] ?? '').toString().trim();
-            final chipId =
-                b['chip_id']?.toString() ?? b['chipId']?.toString();
-            if (label.isNotEmpty && chipId != null && chipId.isNotEmpty) {
-              _labelToChipId.putIfAbsent(label, () => chipId);
-            }
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 기존 B 태그 조회
-    try {
-      final tags = await _customTagsApi.listCustomTags(chipType: 'B');
-      for (final tag in tags) {
-        final label = (tag['text'] ?? tag['label'])?.toString().trim();
-        final chipId = tag['chip_id']?.toString();
-        if (label != null &&
-            label.isNotEmpty &&
-            chipId != null &&
-            chipId.isNotEmpty) {
-          _labelToChipId.putIfAbsent(label, () => chipId);
-        }
-      }
-    } catch (_) {}
 
     final belief = _currentB.trim();
     if (belief.isEmpty) return;
 
-    String? chipId = _labelToChipId[belief];
-
-    if (chipId == null || chipId.isEmpty) {
-      try {
-        final created = await _customTagsApi.createCustomTag(
-          label: belief,
-          type: 'B',
-        );
-        chipId = (created['chip_id'] ?? created['_id'])?.toString();
-        if (chipId != null && chipId.isNotEmpty) {
-          _labelToChipId[belief] = chipId;
-        }
-      } catch (e) {
-        debugPrint('⚠️ 태그 생성 실패 ($belief): $e');
-        return;
-      }
-    }
-
+    await _hydrateChipCache(diaryId);
+    final chipId = await _ensureChipId(belief);
     if (chipId == null || chipId.isEmpty) return;
 
-    int beforeOdd = 0;
-    String altThought = 'Not provided';
-
+    // 기존 로그에서 before_odd / altThought 추출
+    int? beforeOddFromLog;
+    List<String> existingAlts = [];
     try {
       final logs = await _customTagsApi.listRealOddnessLogs(
         chipId: chipId,
@@ -353,23 +299,23 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
       if (logs.isNotEmpty) {
         final last = logs.last;
         final b = last['before_odd'];
-        if (b is num) beforeOdd = b.round().clamp(0, 10);
+        if (b is num) beforeOddFromLog = b.round().clamp(0, 10);
         final alt = last['alternative_thought']?.toString();
-        if (alt != null && alt.isNotEmpty) altThought = alt;
+        // 이미 after_odd 있고, 대체생각 동일하면 다시 저장하지 않음
+        final after = last['after_odd'];
+        if (after is num) {
+          final mergedCheck = _mergeAltThoughts(existingAlts).join('\n');
+          final lastAlt = alt ?? '';
+          if (lastAlt == mergedCheck) {
+            return;
+          }
+        }
       }
     } catch (_) {}
 
-    if (beforeOdd == 0) {
-      beforeOdd = _sliderValue.round().clamp(0, 10);
-    }
-
-    if (altThought == 'Not provided') {
-      if (widget.alternativeThoughts.isNotEmpty) {
-        altThought = widget.alternativeThoughts.first;
-      } else if (widget.existingAlternativeThoughts?.isNotEmpty == true) {
-        altThought = widget.existingAlternativeThoughts!.first;
-      }
-    }
+    final beforeOdd =
+        beforeOddFromLog ?? _sliderValue.round().clamp(0, 10);
+    final altThought = _mergeAltThoughts(existingAlts).join('\n');
 
     try {
       await _customTagsApi.createRealOddnessLog(
@@ -389,13 +335,104 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
     }
   }
 
+  Future<String?> _resolveDiaryId() async {
+    if (_resolvedDiaryId != null && _resolvedDiaryId!.isNotEmpty) {
+      return _resolvedDiaryId;
+    }
+    if (widget.abcId != null && widget.abcId!.isNotEmpty) {
+      _resolvedDiaryId = widget.abcId;
+      return _resolvedDiaryId;
+    }
+    try {
+      final latest = await _diariesApi.getLatestDiary();
+      _resolvedDiaryId =
+          (latest['diary_id'] ?? latest['diaryId'] ?? latest['id'])
+              ?.toString();
+    } catch (_) {}
+    return _resolvedDiaryId;
+  }
+
+  Future<void> _hydrateChipCache(String diaryId) async {
+    try {
+      final diary = await _diariesApi.getDiary(diaryId);
+      final beliefs = diary['belief'];
+      if (beliefs is List) {
+        for (final b in beliefs) {
+          if (b is Map) {
+            final label = (b['label'] ?? '').toString().trim();
+            final chipId =
+                b['chip_id']?.toString() ?? b['chipId']?.toString();
+            if (label.isNotEmpty && chipId != null && chipId.isNotEmpty) {
+              _labelToChipId.putIfAbsent(label, () => chipId);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final tags = await _customTagsApi.listCustomTags(chipType: 'B');
+      for (final tag in tags) {
+        final label = (tag['text'] ?? tag['label'])?.toString().trim();
+        final chipId = tag['chip_id']?.toString();
+        if (label != null &&
+            label.isNotEmpty &&
+            chipId != null &&
+            chipId.isNotEmpty) {
+          _labelToChipId.putIfAbsent(label, () => chipId);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<String?> _ensureChipId(String belief) async {
+    String? chipId = _labelToChipId[belief];
+    if (chipId != null && chipId.isNotEmpty) return chipId;
+
+    try {
+      final created = await _customTagsApi.createCustomTag(
+        label: belief,
+        type: 'B',
+      );
+      chipId = (created['chip_id'] ?? created['_id'])?.toString();
+      if (chipId != null && chipId.isNotEmpty) {
+        _labelToChipId[belief] = chipId;
+      }
+    } catch (e) {
+      debugPrint('⚠️ 태그 생성 실패 ($belief): $e');
+    }
+    return chipId;
+  }
+
+  List<String> _mergeAltThoughts(List<String> existing) {
+    final merged = <String>[];
+    void addAll(Iterable<String> items) {
+      for (final t in items) {
+        final v = t.trim();
+        if (v.isEmpty) continue;
+        if (!merged.contains(v)) merged.add(v);
+      }
+    }
+
+    addAll(existing);
+    addAll(widget.alternativeThoughts);
+    addAll(widget.existingAlternativeThoughts ?? const []);
+
+    if (merged.isEmpty) {
+      merged.add('Not provided');
+    } else if (merged.length > 1) {
+      merged.removeWhere((e) => e == 'Not provided');
+    }
+    return merged;
+  }
+
   // ────────────── 화면 구성: ApplyDoubleCard 사용 ──────────────
   @override
   Widget build(BuildContext context) {
     return ApplyDoubleCard(
       appBarTitle: '인지 왜곡 찾기',
       onBack: () => Navigator.pop(context),
-      onNext: _handleNext,
+      onNext: () async => _handleNext(),
 
       // 상단/하단 패널
       topChild: _buildTopPanel(),
