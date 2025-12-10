@@ -49,10 +49,14 @@ class TreatmentScreen extends StatelessWidget {
       for (int w = 1; w <= lastCompleted; w++) w,
     };
 
-    final enabledList = List<bool>.generate(totalWeeks, (i) {
-      final weekNo = i + 1;
-      return weekNo <= currentWeek;
-    });
+    // TODO: 나중에 진짜 잠금 로직 쓰고 싶으면 여기서 currentWeek 기준으로 enabled 계산
+    // final enabledList = List<bool>.generate(totalWeeks, (i) {
+    //   final weekNo = i + 1;
+    //   return weekNo <= currentWeek;
+    // });
+
+    // 🔹 지금은 임시로 모두 오픈
+    final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
 
     final List<Map<String, String>> weekContents = [
       {'title': '1주차', 'subtitle': '점진적 이완 / 불안에 대한 교육'},

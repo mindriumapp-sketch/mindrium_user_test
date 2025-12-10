@@ -48,11 +48,13 @@ class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
     try {
       // 최신 일기 불러오기
       final latest = await _diariesApi.getLatestDiary();
+      if (!mounted) return;
       setState(() {
         _diary = latest;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _diary = null;
         _isLoading = false;
@@ -90,7 +92,17 @@ class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
       return parts.isNotEmpty ? parts.first : '';
     }
     if (behavior is List) {
-      return behavior.isNotEmpty ? behavior.first.toString() : '';
+      if (behavior.isEmpty) return '';
+      final first = behavior.first;
+      if (first is Map) {
+        final label = first['label'] ?? first['chip_id'] ?? first['chipId'];
+        return (label ?? '').toString();
+      }
+      return first.toString();
+    }
+    if (behavior is Map) {
+      final label = behavior['label'] ?? behavior['chip_id'] ?? behavior['chipId'];
+      return (label ?? '').toString();
     }
     final parts =
         behavior
@@ -100,6 +112,15 @@ class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
             .where((e) => e.isNotEmpty)
             .toList();
     return parts.isNotEmpty ? parts.first : '';
+  }
+
+  String _extractLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      final label = raw['label'] ?? raw['chip_id'] ?? raw['chipId'];
+      return (label ?? '').toString();
+    }
+    return raw.toString();
   }
 
   @override
@@ -150,8 +171,8 @@ class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
                   RuledParagraph(
                     text: _showSituation
                         ? _diary != null
-                        ? '$userName님, "${_diary!['activating_events'] ?? ''}" (이)라는 상황에서\n'
-                        '"${_getFirstBehavior(_diary!['consequence_b'])}"(이)라고 행동을 하였습니다.\n\n그때의 상황에 집중해보세요.'
+                        ? '$userName님, "${_extractLabel(_diary!['activation'])}" (이)라는 상황에서\n'
+                        '"${_getFirstBehavior(_diary!['consequence_action'])}"(이)라고 행동을 하였습니다.\n\n그때의 상황에 집중해보세요.'
                         : '이때의 상황을 자세히 떠올려보세요.'
                         : '앞서 보셨던 행동이 불안을 \n직면한 행동인지, 회피한 행동인지 함께 살펴볼게요.',
                     textAlign: TextAlign.center,

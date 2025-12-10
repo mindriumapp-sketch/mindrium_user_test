@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
+import 'package:gad_app_team/data/api/custom_tags_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:dio/dio.dart';
 
 // 💙 공용 UI 위젯
 import 'package:gad_app_team/widgets/quiz_card.dart';
@@ -35,9 +37,11 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
   String? _error;
 
   List<String> _behaviorList = [];
+  List<String?> _behaviorChipIds = [];
   String _currentBehavior = '';
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
+  late final CustomTagsApi _customTagsApi;
 
   String _chipLabel(dynamic raw) {
     if (raw == null) return '';
@@ -51,6 +55,41 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
           .trim();
     }
     return raw.toString().trim();
+  }
+
+  List<Map<String, String?>> _chipEntries(dynamic raw) {
+    final List<Map<String, String?>> entries = [];
+
+    void addEntry(String label, String? chipId) {
+      final trimmed = label.trim();
+      if (trimmed.isEmpty) return;
+      entries.add({'label': trimmed, 'chipId': chipId});
+    }
+
+    if (raw is List) {
+      for (final item in raw) {
+        if (item is Map) {
+          final chipId =
+              item['chip_id']?.toString() ?? item['chipId']?.toString();
+          addEntry(_chipLabel(item), chipId);
+        } else {
+          addEntry(_chipLabel(item), null);
+        }
+      }
+      return entries;
+    }
+
+    if (raw is Map) {
+      final chipId = raw['chip_id']?.toString() ?? raw['chipId']?.toString();
+      addEntry(_chipLabel(raw), chipId);
+      return entries;
+    }
+
+    final labels = _chipList(raw);
+    for (final label in labels) {
+      addEntry(label, null);
+    }
+    return entries;
   }
 
   List<String> _chipList(dynamic raw) {
@@ -74,6 +113,7 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
+    _customTagsApi = CustomTagsApi(_client);
     _fetchLatestDiary();
   }
 
@@ -92,13 +132,17 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
           latest['consequence_action'] ??
               latest['consequence_behavior'] ??
               latest['consequence_b'];
-      final behaviorList = _chipList(consequenceB);
+      final behaviorEntries = _chipEntries(consequenceB);
+      final behaviorList =
+          behaviorEntries.map((e) => e['label'] ?? '').toList();
+      final chipIds = behaviorEntries.map((e) => e['chipId']).toList();
 
       setState(() {
         _diaryId =
             (latest['diary_id'] ?? latest['diaryId'] ?? latest['id'])
                 ?.toString();
         _behaviorList = behaviorList;
+        _behaviorChipIds = chipIds;
         _currentBehavior = _behaviorList.isNotEmpty ? _behaviorList.first : '';
         _isLoading = false;
       });
@@ -117,26 +161,85 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
       throw Exception('일기 ID가 없습니다.');
     }
 
-    // confront_avoid_logs 형태로 변환
-    final now = DateTime.now().toUtc().toIso8601String();
-    final List<Map<String, dynamic>> logs = [];
+    final answeredIndexes = _answers.keys.toList()..sort();
+    if (answeredIndexes.isEmpty) return;
 
+    final now = DateTime.now().toUtc();
+
+    // chip_id 캐시 (일기 → 커스텀 태그)
+    final Map<String, String> labelToChipId = {};
     for (int i = 0; i < _behaviorList.length; i++) {
-      if (_answers.containsKey(i)) {
-        final behavior = _behaviorList[i];
-        final type = _answers[i] == 'face' ? 'confronted' : 'avoided';
-        logs.add({
-          'type': type,
-          'comment': behavior,
-          'created_at': now,
-        });
+      final chipId = i < _behaviorChipIds.length ? _behaviorChipIds[i] : null;
+      final label = _behaviorList[i];
+      if (chipId != null && chipId.isNotEmpty && label.isNotEmpty) {
+        labelToChipId[label] = chipId;
       }
     }
 
-    // 일기 업데이트
-    await _diariesApi.updateDiary(_diaryId!, {
-      'confrontAvoidLogs': logs,
-    });
+    // 기존 CA 태그 조회 (중복 생성 방지)
+    try {
+      final tags = await _customTagsApi.listCustomTags(chipType: 'CA');
+      for (final tag in tags) {
+        final label = (tag['text'] ?? tag['label'])?.toString().trim();
+        final chipId = tag['chip_id']?.toString();
+        if (label != null &&
+            label.isNotEmpty &&
+            chipId != null &&
+            chipId.isNotEmpty) {
+          labelToChipId.putIfAbsent(label, () => chipId);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ 커스텀 태그 조회 실패: $e');
+    }
+
+    for (final idx in answeredIndexes) {
+      if (idx < 0 || idx >= _behaviorList.length) continue;
+      final answer = _answers[idx];
+      final behavior = _behaviorList[idx];
+      if (answer == null || behavior.isEmpty) continue;
+
+      final shortTerm = answer == 'face' ? 'confront' : 'avoid';
+      final category = answer == 'face' ? 'healthy' : 'anxious';
+
+      String? chipId = labelToChipId[behavior];
+
+      if (chipId == null || chipId.isEmpty) {
+        try {
+          final created = await _customTagsApi.createCustomTag(
+            label: behavior,
+            type: 'CA',
+          );
+          chipId = (created['chip_id'] ?? created['_id'])?.toString();
+          if (chipId != null && chipId.isNotEmpty) {
+            labelToChipId[behavior] = chipId;
+          }
+        } catch (e) {
+          debugPrint('⚠️ 칩 생성 실패 ($behavior): $e');
+          continue;
+        }
+      }
+
+      if (chipId == null || chipId.isEmpty) continue;
+
+      try {
+        await _customTagsApi.createCategoryLog(
+          chipId: chipId,
+          diaryId: _diaryId!.toString(),
+          category: category,
+          shortTerm: shortTerm,
+          longTerm: shortTerm,
+          completedAt: now,
+        );
+      } on DioException catch (e) {
+        debugPrint(
+          '⚠️ 분류 로그 저장 실패 ($behavior): '
+              '${e.response?.data ?? e.message}',
+        );
+      } catch (e) {
+        debugPrint('⚠️ 분류 로그 저장 실패 ($behavior): $e');
+      }
+    }
   }
 
   bool get _hasBehavior => _currentBehavior.isNotEmpty;

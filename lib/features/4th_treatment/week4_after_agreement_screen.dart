@@ -8,7 +8,9 @@ import 'week4_after_sud_screen.dart';
 import 'week4_next_thought_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
+import 'package:gad_app_team/data/api/custom_tags_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:dio/dio.dart';
 
 class Week4AfterAgreementScreen extends StatefulWidget {
   final String previousB;
@@ -46,6 +48,8 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
   late String _currentB;
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
+  late final CustomTagsApi _customTagsApi;
+  final Map<String, String> _labelToChipId = {};
 
   @override
   void initState() {
@@ -53,6 +57,7 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
     _currentB = widget.previousB;
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
+    _customTagsApi = CustomTagsApi(_client);
   }
 
   // 점수에 따른 컬러 (Week4ClassificationScreen 스타일)
@@ -196,37 +201,7 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
 
   // ────────────── onNext 로직 (원본 그대로 유지) ──────────────
   void _handleNext() {
-    // realOddness.after 갱신
-    final diaryId = widget.abcId;
-    if (diaryId != null && diaryId.isNotEmpty && _currentB.isNotEmpty) {
-      // 기존 realOddness와 병합하여 전체 배열로 업데이트
-      _diariesApi
-          .getDiary(diaryId)
-          .then((current) async {
-            final List<dynamic> existing =
-                (current['realOddness'] is List)
-                    ? List.from(current['realOddness'])
-                    : <dynamic>[];
-            final Map<String, Map<String, dynamic>> byBelief = {};
-            for (final e in existing) {
-              if (e is Map && e['belief'] != null) {
-                byBelief[e['belief'].toString().trim()] = e.map(
-                  (k, v) => MapEntry(k.toString(), v),
-                );
-              }
-            }
-            final key = _currentB.trim();
-            final prev = byBelief[key];
-            byBelief[key] = {
-              if (prev != null) ...prev,
-              'belief': key,
-              'after': _sliderValue.round(),
-            };
-            final merged = byBelief.values.toList();
-            await _diariesApi.updateDiary(diaryId, {'realOddness': merged});
-          })
-          .catchError((_) {});
-    }
+    _saveRealOddnessAfter();
 
     // 모든 B를 다룬 경우 → abcId 유무에 따라 분기
     if (widget.remainingBList.isEmpty) {
@@ -304,6 +279,113 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
           reverseTransitionDuration: Duration.zero,
         ),
       );
+    }
+  }
+
+  Future<void> _saveRealOddnessAfter() async {
+    final diaryId = widget.abcId;
+    if (diaryId == null || diaryId.isEmpty || _currentB.isEmpty) return;
+
+    // diary 기반 chip_id 찾기
+    try {
+      final diary = await _diariesApi.getDiary(diaryId);
+      final beliefs = diary['belief'];
+      if (beliefs is List) {
+        for (final b in beliefs) {
+          if (b is Map) {
+            final label = (b['label'] ?? '').toString().trim();
+            final chipId =
+                b['chip_id']?.toString() ?? b['chipId']?.toString();
+            if (label.isNotEmpty && chipId != null && chipId.isNotEmpty) {
+              _labelToChipId.putIfAbsent(label, () => chipId);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 기존 B 태그 조회
+    try {
+      final tags = await _customTagsApi.listCustomTags(chipType: 'B');
+      for (final tag in tags) {
+        final label = (tag['text'] ?? tag['label'])?.toString().trim();
+        final chipId = tag['chip_id']?.toString();
+        if (label != null &&
+            label.isNotEmpty &&
+            chipId != null &&
+            chipId.isNotEmpty) {
+          _labelToChipId.putIfAbsent(label, () => chipId);
+        }
+      }
+    } catch (_) {}
+
+    final belief = _currentB.trim();
+    if (belief.isEmpty) return;
+
+    String? chipId = _labelToChipId[belief];
+
+    if (chipId == null || chipId.isEmpty) {
+      try {
+        final created = await _customTagsApi.createCustomTag(
+          label: belief,
+          type: 'B',
+        );
+        chipId = (created['chip_id'] ?? created['_id'])?.toString();
+        if (chipId != null && chipId.isNotEmpty) {
+          _labelToChipId[belief] = chipId;
+        }
+      } catch (e) {
+        debugPrint('⚠️ 태그 생성 실패 ($belief): $e');
+        return;
+      }
+    }
+
+    if (chipId == null || chipId.isEmpty) return;
+
+    int beforeOdd = 0;
+    String altThought = 'Not provided';
+
+    try {
+      final logs = await _customTagsApi.listRealOddnessLogs(
+        chipId: chipId,
+        diaryId: diaryId,
+      );
+      if (logs.isNotEmpty) {
+        final last = logs.last;
+        final b = last['before_odd'];
+        if (b is num) beforeOdd = b.round().clamp(0, 10);
+        final alt = last['alternative_thought']?.toString();
+        if (alt != null && alt.isNotEmpty) altThought = alt;
+      }
+    } catch (_) {}
+
+    if (beforeOdd == 0) {
+      beforeOdd = _sliderValue.round().clamp(0, 10);
+    }
+
+    if (altThought == 'Not provided') {
+      if (widget.alternativeThoughts.isNotEmpty) {
+        altThought = widget.alternativeThoughts.first;
+      } else if (widget.existingAlternativeThoughts?.isNotEmpty == true) {
+        altThought = widget.existingAlternativeThoughts!.first;
+      }
+    }
+
+    try {
+      await _customTagsApi.createRealOddnessLog(
+        chipId: chipId,
+        diaryId: diaryId,
+        beforeOdd: beforeOdd,
+        afterOdd: _sliderValue.round().clamp(0, 10),
+        alternativeThought: altThought,
+      );
+    } on DioException catch (e) {
+      debugPrint(
+        '⚠️ RealOddness 저장 실패 (after, $belief): '
+            '${e.response?.data ?? e.message}',
+      );
+    } catch (e) {
+      debugPrint('⚠️ RealOddness 저장 실패 (after, $belief): $e');
     }
   }
 

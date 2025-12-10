@@ -106,7 +106,7 @@ class Week4ClassificationResultScreen extends StatelessWidget {
     final String quizText = [
       mainQuestionText,
       if (!isFromAnxietyScreen) // 선택 유도 문구
-        '아래 두 가지 방법 중 하나를 선택해주세요.',
+        '\n\n아래 두 가지 방법 중 하나를 선택해주세요.',
     ].join(' ');
 
     // ===== 네비게이션 핸들러 (원본 로직 유지) =====

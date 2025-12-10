@@ -124,7 +124,7 @@ class _Week6NextRelieveScreenState extends State<Week6NextRelieveScreen> {
     const String subText = '그 행동이 단기적으로 불안을 얼마나 완화할 수 있을지 함께 살펴볼게요.';
 
     return ApplyDesign(
-      appBarTitle: '6주차 - 불안 직면 VS 회피',
+      appBarTitle: '불안 직면 VS 회피',
       cardTitle: '불안 완화 단계',
       onBack: () => Navigator.pop(context),
       onNext: () {

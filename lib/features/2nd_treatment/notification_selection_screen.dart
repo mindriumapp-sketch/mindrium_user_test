@@ -16,10 +16,12 @@ import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart'
 
 // ✅ UI 위젯 (업로드한 파일 경로에 맞게 import 경로 조정)
 import 'package:gad_app_team/widgets/notification_selection_ui.dart';
+import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/notification_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -66,6 +68,9 @@ class _NotificationSelectionScreenState
   Duration _reminderDuration = const Duration(hours: 0, minutes: 0);
   bool _noNotification = false;
   bool _isSaving = false; // 저장 중 상태
+  bool get _shouldContinueTherapyFlow =>
+      (widget.origin == 'apply' || widget.origin == 'solve' || widget.origin == 'daily') &&
+          (_abcId?.isNotEmpty ?? false);
 
   // ====== Alarm <-> NotificationSetting 변환 ======
 
@@ -1019,6 +1024,77 @@ class _NotificationSelectionScreenState
     }
   }
 
+  Future<void> _navigateNoGroupSelection(String diaryId) async {
+    if (!mounted) return;
+    _abcId ??= diaryId;
+
+    if (!_shouldContinueTherapyFlow) {
+      _showStartDialog();
+      return;
+    }
+
+    final flow = context.read<ApplyOrSolveFlow>()
+      ..syncFromArgs({
+        'origin': widget.origin,
+        'abcId': _abcId,
+        'diaryId': _abcId,
+        'sudId': widget.sudId,
+        'sessionId': widget.sessionId,
+      });
+    flow.setOrigin(widget.origin);
+    flow.setDiaryId(_abcId);
+    if (widget.sudId != null) flow.setSudId(widget.sudId);
+
+    final args = <String, dynamic>{
+      ...flow.toArgs(),
+      'diaryId': _abcId,
+      if (widget.origin != null) 'origin': widget.origin,
+      if (widget.sudId != null) 'sudId': widget.sudId,
+      if (widget.sessionId != null) 'sessionId': widget.sessionId,
+      if (widget.label != null) 'label': widget.label,
+    };
+
+    final userProvider = context.read<UserProvider>();
+    final week = userProvider.lastCompletedWeek;
+    final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
+
+    Navigator.pushReplacementNamed(
+      context,
+      route,
+      arguments: args,
+    );
+  }
+
+  void _showStartDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CustomPopupDesign(
+        title: '이완 음성 안내 시작',
+        message:
+        '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+        positiveText: '확인',
+        negativeText: null,
+        backgroundAsset: null,
+        iconAsset: null,
+        onPositivePressed: () {
+          Navigator.pop(context);
+          Navigator.pushReplacementNamed(
+            context,
+            '/relaxation_education',
+            arguments: {
+              'sessionId': widget.sessionId,
+              'taskId': 'week2_education',
+              'weekNumber': 2,
+              'mp3Asset': 'week2.mp3',
+              'riveAsset': 'week2.riv',
+            },
+          );
+        },
+      ),
+    );
+  }
+
   // ====== 그룹 선택 팝업 ======
 
   void _showGroupSelectionPopup(String diaryId) {
@@ -1053,9 +1129,7 @@ class _NotificationSelectionScreenState
         },
         onNegativePressed: () {
           Navigator.pop(dialogCtx);
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil('/home', (_) => false);
+          _navigateNoGroupSelection(diaryId);
         },
       ),
     );

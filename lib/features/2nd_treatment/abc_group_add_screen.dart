@@ -1,8 +1,8 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
-// import 'package:provider/provider.dart';
-// import 'package:gad_app_team/data/user_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 
 import '../../widgets/custom_appbar.dart';
 import '../../widgets/navigation_button.dart';
@@ -12,7 +12,6 @@ import '../../data/api/worry_groups_api.dart';
 import '../../data/api/diaries_api.dart';
 import 'abc_group_character_screen.dart';
 import '../../data/apply_solve_provider.dart';
-import 'package:provider/provider.dart';
 
 class AbcGroupAddScreen extends StatefulWidget {
   final String? label;
@@ -105,7 +104,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   }
 
   bool get _shouldContinueTherapyFlow =>
-      (widget.origin == 'apply' || widget.origin == 'solve') &&
+      (widget.origin == 'apply' || widget.origin == 'solve' || widget.origin == 'daily') &&
           widget.diaryId != null;
 
   Future<void> _navigateAfterGroupSelection() async {
@@ -141,10 +140,8 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     debugPrint('[Group_add] origin=${widget.origin}');
 
     if (widget.origin == 'solve' || widget.origin == 'apply') {
-      // NOTE: 나중에 UserProvider 연결되면 currentWeek 기반으로 분기
-    // final userProvider = context.read<UserProvider>();
-    // final week = userProvider.currentWeek;
-      final week = 8; // TODO: 임시: 항상 8주차로 이동
+    final userProvider = context.read<UserProvider>();
+    final week = userProvider.currentWeek;
       if (!mounted) return;
       final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
       Navigator.pushReplacementNamed(
