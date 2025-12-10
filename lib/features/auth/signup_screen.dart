@@ -16,6 +16,11 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  static final RegExp _passwordRegex =
+      RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,20}$');
+  static const String _passwordPolicyMessage =
+      '비밀번호는 8~20자이며, 영문자/숫자/특수문자를 각각 1자 이상 포함해야 합니다.';
+
   final emailController = TextEditingController();
   final nameController = TextEditingController();
   final passwordController = TextEditingController();
@@ -46,8 +51,8 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    if (password.length < 6) {
-      _showError('비밀번호는 6자리 이상이어야 합니다.');
+    if (!_passwordRegex.hasMatch(password)) {
+      _showError(_passwordPolicyMessage);
       return;
     }
 
@@ -123,6 +128,8 @@ class _SignupScreenState extends State<SignupScreen> {
               fillColor: Colors.white,
             ),
             const SizedBox(height: AppSizes.space),
+            _buildPasswordPolicy(),
+            const SizedBox(height: AppSizes.space),
             PasswordTextField(
               controller: passwordController,
               label: '비밀번호',
@@ -155,6 +162,42 @@ class _SignupScreenState extends State<SignupScreen> {
             PrimaryActionButton(text: '회원가입', onPressed: _signup),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordPolicy() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.grey300,
+        borderRadius: BorderRadius.circular(AppSizes.borderRadius),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '비밀번호 정책',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.black,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            '• 8~20자 길이',
+            style: TextStyle(
+              color: Colors.black87,
+            ),
+          ),
+          Text(
+            '• 영문자, 숫자, 특수문자를 각각 1자 이상 포함',
+            style: TextStyle(
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }
