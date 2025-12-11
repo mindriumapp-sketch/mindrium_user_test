@@ -150,6 +150,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         arguments: args,
       );
     }
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }
 
   void _showEditDialog(BuildContext context, Map<String, dynamic> group) {
