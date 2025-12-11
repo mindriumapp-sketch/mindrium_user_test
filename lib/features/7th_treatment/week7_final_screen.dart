@@ -182,8 +182,9 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
             arguments: {
               'taskId': 'week7_education',
               'weekNumber': 7,
-              'mp3Asset': 'week7.mp3',
-              'riveAsset': 'week7.riv',
+              //TODO: noti 임시
+              'mp3Asset': 'noti.mp3',
+              'riveAsset': 'noti.riv',
             },
           );
         },

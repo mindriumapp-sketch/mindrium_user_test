@@ -133,8 +133,9 @@ class Week6FinalScreen extends StatelessWidget {
             arguments: {
               'taskId': 'week6_education',
               'weekNumber': 6,
-              'mp3Asset': 'week6.mp3',
-              'riveAsset': 'week6.riv',
+              //TODO: week1 임시
+              'mp3Asset': 'week1.mp3',
+              'riveAsset': 'week1.riv',
             },
           );
         },

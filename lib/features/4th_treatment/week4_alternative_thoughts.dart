@@ -146,7 +146,10 @@ class _Week4AlternativeThoughtsScreenState
                 ]);
 
                 // 저장
-                await _saveAlternativeThoughts();
+                if (originArg == 'apply' || originArg == 'solve') {
+                  await _saveAlternativeThoughts();
+                }
+                
                 if (!mounted) return;
 
                 // 현재 B(생각)

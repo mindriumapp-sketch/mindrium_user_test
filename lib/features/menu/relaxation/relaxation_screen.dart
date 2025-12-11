@@ -79,15 +79,16 @@ class RelaxationScreen extends StatelessWidget {
       {'title': '8주차', 'subtitle': '신속 이완'},
     ];
 
-    final List<Widget> weekScreens = const [
+
+final List<Widget> weekScreens = const [
       PracticePlayer(taskId: 'week1_menu', weekNumber: 1, mp3Asset: 'week1.mp3', riveAsset: 'week1.riv'),
-      PracticePlayer(taskId: 'week2_menu', weekNumber: 2, mp3Asset: 'week2.mp3', riveAsset: 'week2.riv'),
-      PracticePlayer(taskId: 'week3_menu', weekNumber: 3, mp3Asset: 'week3.mp3', riveAsset: 'week3.riv'),
+      PracticePlayer(taskId: 'week2_menu', weekNumber: 2, mp3Asset: 'week1.mp3', riveAsset: 'week1.riv'),
+      PracticePlayer(taskId: 'week3_menu', weekNumber: 3, mp3Asset: 'week1.mp3', riveAsset: 'week1.riv'),
       PracticePlayer(taskId: 'week4_menu', weekNumber: 4, mp3Asset: 'week4.mp3', riveAsset: 'week4.riv'),
-      PracticePlayer(taskId: 'week5_menu', weekNumber: 5, mp3Asset: 'week5.mp3', riveAsset: 'week5.riv'),
-      PracticePlayer(taskId: 'week6_menu', weekNumber: 6, mp3Asset: 'week6.mp3', riveAsset: 'week6.riv'),
-      PracticePlayer(taskId: 'week7_menu', weekNumber: 7, mp3Asset: 'week7.mp3', riveAsset: 'week7.riv'),
-      PracticePlayer(taskId: 'week8_menu', weekNumber: 8, mp3Asset: 'week8.mp3', riveAsset: 'week8.riv'),
+      PracticePlayer(taskId: 'week5_menu', weekNumber: 5, mp3Asset: 'week1.mp3', riveAsset: 'week1.riv'),
+      PracticePlayer(taskId: 'week6_menu', weekNumber: 6, mp3Asset: 'week1.mp3', riveAsset: 'week1.riv'),
+      PracticePlayer(taskId: 'week7_menu', weekNumber: 7, mp3Asset: 'noti.mp3', riveAsset: 'noti.riv'),
+      PracticePlayer(taskId: 'week8_menu', weekNumber: 8, mp3Asset: 'noti.mp3', riveAsset: 'noti.riv'),
     ];
 
     return FutureBuilder<Map<String, dynamic>>(

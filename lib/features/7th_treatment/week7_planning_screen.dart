@@ -37,7 +37,7 @@ class CalendarEvent {
   factory CalendarEvent.fromApiResponse(Map<String, dynamic> json) {
     final startDateStr = json['start_date']?.toString() ?? '';
     final endDateStr = json['end_date']?.toString() ?? '';
-    final tasks = json['tasks'] as List<dynamic>? ?? [];
+    final tasks = json['actions'] as List<dynamic>? ?? [];
     
     return CalendarEvent(
       id: json['event_id']?.toString() ?? '',

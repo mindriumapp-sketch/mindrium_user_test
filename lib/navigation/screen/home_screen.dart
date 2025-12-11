@@ -65,6 +65,12 @@ class _HomeScreenState extends State<HomeScreen> {
     //    - Splash/Login에서 이미 다 해줬다고 가정
     Future.microtask(() async {
       await _ensureCorePermissions();
+      //TODO: 일기 개수 업데이트
+      if (mounted) {
+        final user = context.read<UserProvider>();
+        final dayCounter = context.read<UserDayCounter>();
+        await user.loadUserData(dayCounter: dayCounter);
+      }
     });
   }
 
@@ -435,8 +441,11 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () {
           // weekNumber 기반으로 taskId / asset 이름들 구성
           final taskId = 'week${weekNumber}_daily';
-          final mp3Asset = 'week$weekNumber.mp3';
-          final riveAsset = 'week$weekNumber.riv';
+          //TODO: 
+          // final mp3Asset = 'week$weekNumber.mp3';
+          // final riveAsset = 'week$weekNumber.riv';
+          final mp3Asset = 'noti.mp3';
+          final riveAsset = 'noti.riv';
 
           navigator.pushNamed(
             '/relaxation_noti',

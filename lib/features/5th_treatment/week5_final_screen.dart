@@ -135,8 +135,9 @@ class Week5FinalScreen extends StatelessWidget {
               'sessionId': sessionId,
               'taskId': 'week5_education',
               'weekNumber': 5,
-              'mp3Asset': 'week5.mp3',
-              'riveAsset': 'week5.riv',
+              //TODO: week1 임시
+              'mp3Asset': 'week1.mp3',
+              'riveAsset': 'week1.riv',
             },
           );
         },

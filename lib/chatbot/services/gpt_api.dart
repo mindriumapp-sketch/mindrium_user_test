@@ -35,7 +35,7 @@ class GptApi {
       // 로컬 테스트: http://localhost:8080
       return 'https://mindrium-backend.onrender.com';
     }
-    return 'http://10.0.2.2:8080';
+    return 'https://mindrium-backend.onrender.com';
   }
 
   Uri _endpoint(String path) {

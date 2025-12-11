@@ -121,7 +121,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
-                    onNext: () => _showStartDialog(context),
+                    // onNext: () => _showStartDialog(context),
+                    onNext: () => Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false)
                   ),
                 ),
               ],

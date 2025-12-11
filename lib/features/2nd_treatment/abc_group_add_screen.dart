@@ -906,8 +906,9 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
               'sessionId': widget.sessionId,
               'taskId': 'week2_education',
               'weekNumber': 2,
-              'mp3Asset': 'week2.mp3',
-              'riveAsset': 'week2.riv',
+              //TODO: week1 임시
+              'mp3Asset': 'week1.mp3',
+              'riveAsset': 'week1.riv',
             },
           );
         },

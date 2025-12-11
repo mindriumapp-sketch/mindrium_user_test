@@ -24,7 +24,7 @@ class ApiClient {
       // 로컬 테스트: http://localhost:8080
       return 'https://mindrium-backend.onrender.com';
     }
-    return 'http://10.0.2.2:8080';
+    return 'https://mindrium-backend.onrender.com';
   }
 
   ApiClient({required this.tokens, String? baseUrl})
