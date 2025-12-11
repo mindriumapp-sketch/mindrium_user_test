@@ -10,14 +10,12 @@ class PokemonBattleDeletePage extends StatefulWidget {
   final String groupId;
   final String? characterName;
   final String? characterDescription;
-  final VoidCallback? onGoArchive;
 
   const PokemonBattleDeletePage({
     super.key,
     required this.groupId,
     this.characterName,
     this.characterDescription,
-    this.onGoArchive,
   });
 
   @override
@@ -856,15 +854,9 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
             child: ElevatedButton.icon(
               onPressed: () async {
                 await _archiveGroup();
-                if (widget.onGoArchive != null) {
-                  widget.onGoArchive!.call();
-                  return;
-                }
                 if (!mounted) return;
                 Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/home',
-                  (_) => false,
-                  arguments: {'initialIndex': 2},
+                  '/home_mindrium',
                 );
               },
               icon: const Icon(Icons.check_circle_outline),
