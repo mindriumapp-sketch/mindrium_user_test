@@ -7,7 +7,6 @@ import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_character_screen.dart';
 import 'package:gad_app_team/features/menu/archive/character_battle.dart';
 import 'package:gad_app_team/features/menu/menu_screen.dart';
-import 'package:gad_app_team/navigation/screen/home_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -637,28 +636,7 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder:
-                                              (_) =>
-                                              PokemonBattleDeletePage(
-                                                groupId:
-                                                groupId,
-                                                onGoArchive:
-                                                    () {
-                                                  Navigator.pushAndRemoveUntil(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder:
-                                                          (_) =>
-                                                      const HomeScreen(
-                                                        initialIndex:
-                                                        2,
-                                                      ),
-                                                    ),
-                                                        (_) =>
-                                                    false,
-                                                  );
-                                                },
-                                              ),
+                                          builder: (_) => PokemonBattleDeletePage(groupId: groupId),
                                         ),
                                       );
                                     },

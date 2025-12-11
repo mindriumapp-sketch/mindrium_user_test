@@ -856,7 +856,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
                 await _archiveGroup();
                 if (!mounted) return;
                 Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/home_mindrium',
+                  '/home_mindrium', (_) => false,
                 );
               },
               icon: const Icon(Icons.check_circle_outline),
