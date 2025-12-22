@@ -1,6 +1,6 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
+// import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
@@ -20,6 +20,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
   late final Week8Api _week8Api;
   bool _isSavingCompletion = false;
   String? _sessionId;
+  static const int _totalScreens = 10;
 
   @override
   void initState() {
@@ -122,7 +123,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                   child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     // onNext: () => _showStartDialog(context),
-                    onNext: () => Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false)
+                    onNext: _isSavingCompletion ? null : _saveCompletionAndExit,
                   ),
                 ),
               ],
@@ -133,55 +134,81 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
     );
   }
 
-  /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
-  void _showStartDialog(BuildContext context) {
-    final ctx = context;
-    final nav = Navigator.of(ctx);
-    showDialog(
-      context: ctx,
-      barrierDismissible: false,
-      builder: (_) => CustomPopupDesign(
-        title: '이완 음성 안내 시작',
-        message:
-        '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-        positiveText: '확인',
-        negativeText: null,
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () async {
-          if (_isSavingCompletion) return;
-          setState(() => _isSavingCompletion = true);
-          
-          try {
-            final sessionId = await _ensureSessionId();
-            await _week8Api.updateCompletion(
-              sessionId: sessionId,
-              completed: true,
-              endTime: DateTime.now(),
-              lastScreenIndex: 0,
-              totalScreens: 1,
-            );
-            if (!mounted || !ctx.mounted) return;
-            
-            nav.pop();
-            nav.pushReplacementNamed(
-              '/relaxation_education',
-              arguments: {
-                'taskId': 'week8_education',
-                'weekNumber': 8,
-                'mp3Asset': 'week8.mp3',
-                'riveAsset': 'week8.riv',
-              },
-            );
-          } catch (e) {
-            if (!mounted || !ctx.mounted) return;
-            BlueBanner.show(ctx, '8주차 완료 상태 저장에 실패했습니다: $e');
-            setState(() => _isSavingCompletion = false);
-          }
-        },
-      ),
-    );
+  Future<void> _saveCompletionAndExit() async {
+    if (_isSavingCompletion) return;
+    setState(() => _isSavingCompletion = true);
+
+    try {
+      final sessionId = await _ensureSessionId();
+      await _week8Api.updateCompletion(
+        sessionId: sessionId,
+        completed: true,
+        endTime: DateTime.now(),
+        lastScreenIndex: _totalScreens,
+        totalScreens: _totalScreens,
+      );
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/home_edu',
+        (_) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      BlueBanner.show(context, '8주차 완료 상태 저장에 실패했습니다: $e');
+      setState(() => _isSavingCompletion = false);
+    }
   }
+
+  /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
+  // void _showStartDialog(BuildContext context) {
+  //   final ctx = context;
+  //   final nav = Navigator.of(ctx);
+  //   showDialog(
+  //     context: ctx,
+  //     barrierDismissible: false,
+  //     builder: (_) => CustomPopupDesign(
+  //       title: '이완 음성 안내 시작',
+  //       message:
+  //       '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+  //       positiveText: '확인',
+  //       negativeText: null,
+  //       backgroundAsset: null,
+  //       iconAsset: null,
+  //       onPositivePressed: () async {
+  //         if (_isSavingCompletion) return;
+  //         setState(() => _isSavingCompletion = true);
+          
+  //         try {
+  //           final sessionId = await _ensureSessionId();
+  //           await _week8Api.updateCompletion(
+  //             sessionId: sessionId,
+  //             completed: true,
+  //             endTime: DateTime.now(),
+  //             lastScreenIndex: _totalScreens,
+  //             totalScreens: _totalScreens,
+  //           );
+  //           if (!mounted || !ctx.mounted) return;
+            
+  //           nav.pop();
+  //           nav.pushReplacementNamed(
+  //             '/relaxation_education',
+  //             arguments: {
+  //               'taskId': 'week8_education',
+  //               'weekNumber': 8,
+  //               'mp3Asset': 'week8.mp3',
+  //               'riveAsset': 'week8.riv',
+  //             },
+  //           );
+  //         } catch (e) {
+  //           if (!mounted || !ctx.mounted) return;
+  //           BlueBanner.show(ctx, '8주차 완료 상태 저장에 실패했습니다: $e');
+  //           setState(() => _isSavingCompletion = false);
+  //         }
+  //       },
+  //     ),
+  //   );
+  // }
 
   Future<String> _ensureSessionId() async {
     if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
@@ -192,8 +219,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
     if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
 
     final created = await _week8Api.createWeek8Session(
-      totalScreens: 1,
-      lastScreenIndex: 0,
+      totalScreens: _totalScreens,
+      lastScreenIndex: 1,
       startTime: DateTime.now(),
       completed: false,
     );

@@ -1,4 +1,3 @@
-// lib/main.dart (2025-10-22 — 완전 통합 버전)
 // Stage-based emotion + spike + streak relief + GPT logs + RAG
 import 'dart:io' if (dart.library.html) 'utils/file_stub.dart' show Platform, File, Directory;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -17,10 +16,6 @@ import 'services/daily_context.dart';
 import 'ui/chat_bubble.dart';
 import 'services/data_repo.dart' show DataRepo, defaultUserId;
 
-// void main() {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   runApp(const ChatApp());
-// }
 
 class ChatApp extends StatelessWidget {
   const ChatApp({super.key});

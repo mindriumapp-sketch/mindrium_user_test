@@ -141,7 +141,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
 
     if (widget.origin == 'solve' || widget.origin == 'apply') {
     final userProvider = context.read<UserProvider>();
-    final week = userProvider.currentWeek;
+    final week = userProvider.lastCompletedWeek;
       if (!mounted) return;
       final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
       Navigator.pushReplacementNamed(

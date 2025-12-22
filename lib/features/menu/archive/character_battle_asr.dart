@@ -148,17 +148,22 @@ class CharacterBattleAsr {
   }
 
   static double similarity(String a, String b) {
-    final aLower = a.toLowerCase();
-    final bLower = b.toLowerCase();
+    final aNoSpace = _normalizeNoSpace(a);
+    final bNoSpace = _normalizeNoSpace(b);
 
-    if (aLower == bLower) return 1.0;
-    if (aLower.contains(bLower) || bLower.contains(aLower)) return 0.8;
+    if (aNoSpace.isEmpty || bNoSpace.isEmpty) return 0.0;
+    if (aNoSpace == bNoSpace) return 1.0;
+    if (aNoSpace.contains(bNoSpace) || bNoSpace.contains(aNoSpace)) {
+      return 0.85;
+    }
 
-    final charScore = _characterSimilarity(aLower, bLower);
+    final charScore = _characterSimilarity(aNoSpace, bNoSpace);
     if (charScore > 0.6) return charScore;
 
-    final ta = aLower.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toSet();
-    final tb = bLower.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toSet();
+    final aTokens = _normalizeTokens(a);
+    final bTokens = _normalizeTokens(b);
+    final ta = aTokens.split(' ').where((e) => e.isNotEmpty).toSet();
+    final tb = bTokens.split(' ').where((e) => e.isNotEmpty).toSet();
 
     if (ta.isEmpty || tb.isEmpty) return 0.0;
 
@@ -179,5 +184,13 @@ class CharacterBattleAsr {
 
     final maxLen = a.length > b.length ? a.length : b.length;
     return matches / maxLen;
+  }
+
+  static String _normalizeNoSpace(String input) {
+    return input.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+  }
+
+  static String _normalizeTokens(String input) {
+    return input.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
   }
 }
