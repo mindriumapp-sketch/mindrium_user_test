@@ -22,7 +22,6 @@ const Map<int, String> kRelaxationWeekTitles = {
   5: '5주차 - 차등 이완',
   6: '6주차 - 차등 이완',
   7: '7주차 - 신속 이완',
-  8: '8주차 - 신속 이완',
 };
 
 

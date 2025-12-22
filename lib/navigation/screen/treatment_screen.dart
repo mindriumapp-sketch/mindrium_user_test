@@ -66,7 +66,7 @@ class TreatmentScreen extends StatelessWidget {
       {'title': '5주차', 'subtitle': '차등 이완 / 불안 직면 vs 회피'},
       {'title': '6주차', 'subtitle': '차등 이완 / 불안 직면 vs 회피'},
       {'title': '7주차', 'subtitle': '신속 이완 / 생활 습관 개선'},
-      {'title': '8주차', 'subtitle': '신속 이완 / 인지 재구성'},
+      {'title': '8주차', 'subtitle': '인지 재구성'},
     ];
 
     final List<Widget> weekScreens = const [

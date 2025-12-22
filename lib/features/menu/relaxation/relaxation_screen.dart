@@ -76,7 +76,7 @@ class RelaxationScreen extends StatelessWidget {
       {'title': '5주차', 'subtitle': '차등 이완'},
       {'title': '6주차', 'subtitle': '차등 이완'},
       {'title': '7주차', 'subtitle': '신속 이완'},
-      {'title': '8주차', 'subtitle': '신속 이완'},
+      {'title': '8주차'},
     ];
 
 
