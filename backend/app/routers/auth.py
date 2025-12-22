@@ -59,6 +59,7 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
         "gender": payload.gender,
         "code": payload.code,
         "password_hash": hash_password(payload.password),
+        "patient_id": None,   # 플랫폼 patient_id와 연결
         "survey_completed": False,
         "surveys": [],
         "email_verified": False,
