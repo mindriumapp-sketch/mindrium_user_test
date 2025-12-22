@@ -194,13 +194,18 @@ class _SelectedChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontFamily: 'Noto Sans KR',
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontFamily: 'Noto Sans KR',
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             if (showClose && onRemove != null)
@@ -265,13 +270,18 @@ class _UnselectedChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF344B60),
-                fontSize: 16,
-                fontFamily: 'Noto Sans KR',
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF344B60),
+                  fontSize: 16,
+                  fontFamily: 'Noto Sans KR',
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             if (showClose && onRemove != null)

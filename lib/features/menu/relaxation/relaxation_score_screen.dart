@@ -65,7 +65,7 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
     final String? sudId = args['sudId'] as String? ?? flow.sudId;
 
     final userProvider = context.watch<UserProvider>();
-    final int currentWeek = userProvider.currentWeek;
+    final int currentWeek = userProvider.lastCompletedWeek;
     final bool isWeek4OrAbove = currentWeek >= 4;
 
     // 🔥 기존 색 로직 그대로 유지

@@ -33,7 +33,7 @@ class RelaxYesOrNo extends StatelessWidget {
 
     return InnerBtnCardScreen(
       appBarTitle: '이완 활동 진행',
-      title: '이완 활동을 진행하시겠어요?',
+      title: '이완 활동을 진행하시겠어요? \n"아니오"를 누르면 홈 화면으로 돌아가요.',
       backgroundAsset: 'assets/image/eduhome.png',
       primaryText: '예',
       onPrimary: () {
@@ -56,7 +56,6 @@ class RelaxYesOrNo extends StatelessWidget {
       // “아니오” 버튼 → 홈 복귀
       secondaryText: '아니오',
       onSecondary: () {
-        // TODO: 활동 마무리 화면이나 팝업..?
         Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
       },
       // 카드 내부 본문
