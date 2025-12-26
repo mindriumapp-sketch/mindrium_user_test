@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
@@ -7,7 +9,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
-/// 회원가입 화면 - 이메일, 이름, 비밀번호, 마인드리움 코드로 회원가입
+/// 회원가입 화면 - 이메일, 이름, 전화번호, 비밀번호, 마인드리움 코드(6자리)로 회원가입
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -21,8 +23,12 @@ class _SignupScreenState extends State<SignupScreen> {
   static const String _passwordPolicyMessage =
       '비밀번호는 8~20자이며, 영문자/숫자/특수문자를 각각 1자 이상 포함해야 합니다.';
 
+  // (추가) mindrium_code는 숫자 6자리
+  static final RegExp _codeRegex = RegExp(r'^\d{6}$');
+
   final emailController = TextEditingController();
   final nameController = TextEditingController();
+  final phoneController = TextEditingController(); // (추가) 전화번호
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
   final codeController = TextEditingController();
@@ -32,21 +38,22 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
-
-  // 코드 검증은 서버에서 수행합니다.
 
   Future<void> _signup() async {
     final email = emailController.text.trim();
     final name = nameController.text.trim();
+    final phone = phoneController.text.trim(); // (추가)
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
     final code = codeController.text.trim();
 
-    if ([email, name, password, confirmPassword, code].any((e) => e.isEmpty)) {
+    // (변경) phone 필수
+    if ([email, name, phone, password, confirmPassword, code]
+        .any((e) => e.isEmpty)) {
       _showError('모든 필드를 입력해주세요.');
       return;
     }
@@ -61,12 +68,24 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
+    // (추가) 마인드리움 코드는 숫자 6자리만 허용(서버에서도 검증함)
+    if (!_codeRegex.hasMatch(code)) {
+      _showError('마인드리움 코드는 숫자 6자리여야 합니다.');
+      return;
+    }
+
     try {
       final tokens = TokenStorage();
       final client = ApiClient(tokens: tokens);
       final authApi = AuthApi(client, tokens);
 
-      await authApi.signup(email: email, password: password, name: name, code: code);
+      await authApi.signup(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+        code: code,
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,9 +124,7 @@ class _SignupScreenState extends State<SignupScreen> {
           padding: const EdgeInsets.all(AppSizes.padding),
           child: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new),
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context),
           ),
         ),
       ),
@@ -128,6 +145,17 @@ class _SignupScreenState extends State<SignupScreen> {
               fillColor: Colors.white,
             ),
             const SizedBox(height: AppSizes.space),
+
+            // (추가) 전화번호
+            InputTextField(
+              controller: phoneController,
+              label: '전화번호',
+              fillColor: Colors.white,
+              keyboardType: TextInputType.phone,
+              hintText: '예) 01012345678 또는 010-1234-5678',
+            ),
+
+            const SizedBox(height: AppSizes.space),
             _buildPasswordPolicy(),
             const SizedBox(height: AppSizes.space),
             PasswordTextField(
@@ -135,9 +163,7 @@ class _SignupScreenState extends State<SignupScreen> {
               label: '비밀번호',
               isVisible: showPassword,
               toggleVisibility: () {
-                setState(() {
-                  showPassword = !showPassword;
-                });
+                setState(() => showPassword = !showPassword);
               },
             ),
             const SizedBox(height: AppSizes.space),
@@ -146,18 +172,20 @@ class _SignupScreenState extends State<SignupScreen> {
               label: '비밀번호 확인',
               isVisible: showConfirmPassword,
               toggleVisibility: () {
-                setState(() {
-                  showConfirmPassword = !showConfirmPassword;
-                });
+                setState(() => showConfirmPassword = !showConfirmPassword);
               },
             ),
             const SizedBox(height: AppSizes.space),
+
+            // (변경) 마인드리움 코드: 숫자 6자리
             InputTextField(
               controller: codeController,
-              label: '마인드리움 코드',
+              label: '마인드리움 코드(6자리)',
               fillColor: Colors.white,
+              keyboardType: TextInputType.number,
+              hintText: '예) 111111',
             ),
-            const SizedBox(height: AppSizes.space),
+
             const SizedBox(height: AppSizes.space),
             PrimaryActionButton(text: '회원가입', onPressed: _signup),
           ],
@@ -185,18 +213,9 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
           SizedBox(height: 6),
-          Text(
-            '• 8~20자 길이',
-            style: TextStyle(
-              color: Colors.black87,
-            ),
-          ),
-          Text(
-            '• 영문자, 숫자, 특수문자를 각각 1자 이상 포함',
-            style: TextStyle(
-              color: Colors.black87,
-            ),
-          ),
+          Text('• 8~20자 길이', style: TextStyle(color: Colors.black87)),
+          Text('• 영문자, 숫자, 특수문자를 각각 1자 이상 포함',
+              style: TextStyle(color: Colors.black87)),
         ],
       ),
     );

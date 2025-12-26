@@ -1,3 +1,4 @@
+# backend/app/main.py
 import asyncio
 from contextlib import asynccontextmanager
 
@@ -221,25 +222,8 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ edu_sessions 인덱스 생성 중 오류: {e}")
 
     # ---------- user_data ----------
-    # 설문/프로파일 등 Key-Value 형태 데이터 (지금은 안 써도 무해)
-    try:
-        user_data = db["users"]
-
-        await user_data.create_index(
-            [("user_id", 1)],
-            name="idx_user_data_user",
-        )
-
-        # 필요해지면 아래 유니크 인덱스 추가해서 data_type별 upsert 가능
-        # await user_data.create_index(
-        #     [("user_id", 1), ("data_type", 1)],
-        #     unique=True,
-        #     name="unique_user_data_type",
-        # )
-
-        print("✅ user_data 인덱스 생성 완료")
-    except Exception as e:
-        print(f"⚠️ user_data 인덱스 생성 중 오류: {e}")
+    # 현재 운영/통합 플로우에서는 user_data 컬렉션을 사용하지 않으므로 제거합니다.
+    # users 컬렉션에 동일 인덱스를 또 만드는 중복/혼동을 방지하기 위함.
 
     # ---------- worry_groups 컬렉션 ----------
     # 걱정 그룹 관리 (유저별 생성 순으로 조회 + 단건 조회/업데이트)
@@ -304,7 +288,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(diaries_router)
 app.include_router(sud_scores_router)       # SUD 점수 기록 라우터
-app.include_router(user_data_router)        # 사용자 데이터(설문 등)
+app.include_router(user_data_router)        # 사용자 데이터(설문 등)  <-- (주의) 이 라우터 자체도 안 쓰면 제거 권장
 app.include_router(relaxation_router)
 app.include_router(screen_time_router)
 app.include_router(schedule_events_router)

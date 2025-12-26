@@ -12,16 +12,19 @@ class AuthApi {
     required String email,
     required String password,
     required String name,
-    String? code,
-    String gender = 'male',  // 기본값 추가
+    required String phone, // (추가) 필수
+    required String code,  // (권장) 통합 가입이므로 필수로 강제
+    String gender = 'male',
   }) async {
     final body = {
       'email': email,
       'password': password,
       'name': name,
-      'gender': gender,  // gender 필드 추가
-      if (code != null && code.isNotEmpty) 'code': code,
+      'phone': phone,   // (추가) 서버에서 digits로 저장
+      'gender': gender,
+      'code': code,     // (의미 변경) code == mindrium_code(6자리)
     };
+
     await _client.dio.post('/auth/signup', data: body);
   }
 

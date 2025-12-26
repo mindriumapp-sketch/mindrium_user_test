@@ -38,6 +38,7 @@ class SignupRequest(BaseModel):
         return v
 
     name: str
+    phone: str
     gender: str | None = None
     code: Optional[str] = None
 
