@@ -10,6 +10,7 @@ class ValueStartScreen extends StatefulWidget {
   final int weekNumber;
   final String weekTitle;
   final String weekDescription;
+  final bool mergeValueAndGuide;
   final Widget Function() nextPageBuilder;
 
   const ValueStartScreen({
@@ -17,6 +18,7 @@ class ValueStartScreen extends StatefulWidget {
     required this.weekNumber,
     required this.weekTitle,
     required this.weekDescription,
+    this.mergeValueAndGuide = false,
     required this.nextPageBuilder,
   });
 
@@ -38,6 +40,16 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
   }
 
   void _goNextOrStart() {
+    if (widget.mergeValueAndGuide) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => widget.nextPageBuilder(),
+        ),
+      );
+      return;
+    }
+
     if (_index == 0) {
       _page.nextPage(
         duration: const Duration(milliseconds: 250),
@@ -75,14 +87,13 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
       );
     }
 
-    final String name =
-    (user.userName.isNotEmpty) ? user.userName : '사용자';
+    final String name = (user.userName.isNotEmpty) ? user.userName : '사용자';
 
     // TODO: 핵심 가치 수정은 마이페이지에서만 가능하게 둘지 여부 (설명 문구 추가할지 등)
-    final String valueGoal = (user.valueGoal != null &&
-        user.valueGoal!.trim().isNotEmpty)
-        ? user.valueGoal!.trim()
-        : '행복 가족 건강';
+    final String valueGoal =
+        (user.valueGoal != null && user.valueGoal!.trim().isNotEmpty)
+            ? user.valueGoal!.trim()
+            : '행복 가족 건강';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -107,23 +118,37 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                   child: PageView(
                     controller: _page,
                     onPageChanged: (i) => setState(() => _index = i),
-                    children: [
-                      _WelcomePage(
-                        maxWidth: maxCardWidth,
-                        navy: _navy,
-                        blue: _blue,
-                        name: name,
-                        value: valueGoal,
-                        weekDescription: widget.weekDescription,
-                      ),
-                      _GuidePage(
-                        maxWidth: maxCardWidth,
-                        navy: _navy,
-                        title: '${widget.weekNumber}주차 활동 안내',
-                        subtitle: widget.weekTitle,
-                        weekNumber: widget.weekNumber,
-                      ),
-                    ],
+                    children: widget.mergeValueAndGuide
+                        ? [
+                            _WelcomePage(
+                              maxWidth: maxCardWidth,
+                              navy: _navy,
+                              blue: _blue,
+                              name: name,
+                              value: valueGoal,
+                              weekDescription: widget.weekDescription,
+                              showGuideSection: true,
+                              guideSubtitle: widget.weekTitle,
+                              weekNumber: widget.weekNumber,
+                            ),
+                          ]
+                        : [
+                            _WelcomePage(
+                              maxWidth: maxCardWidth,
+                              navy: _navy,
+                              blue: _blue,
+                              name: name,
+                              value: valueGoal,
+                              weekDescription: widget.weekDescription,
+                            ),
+                            _GuidePage(
+                              maxWidth: maxCardWidth,
+                              navy: _navy,
+                              title: '${widget.weekNumber}주차 활동 안내',
+                              subtitle: widget.weekTitle,
+                              weekNumber: widget.weekNumber,
+                            ),
+                          ],
                   ),
                 ),
                 Padding(
@@ -132,11 +157,17 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: _index == 0 ? null : _goPrev,
+                          onPressed:
+                              (widget.mergeValueAndGuide || _index == 0)
+                                  ? null
+                                  : _goPrev,
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             backgroundColor: Colors.white.withValues(
-                              alpha: _index == 0 ? 0.5 : 1,
+                              alpha:
+                                  (widget.mergeValueAndGuide || _index == 0)
+                                      ? 0.5
+                                      : 1,
                             ),
                             side: BorderSide(
                               color: Colors.white.withValues(alpha: 0.8),
@@ -149,7 +180,9 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                             '이 전',
                             style: TextStyle(
                               color:
-                              _index == 0 ? Colors.black38 : _blue,
+                                  (widget.mergeValueAndGuide || _index == 0)
+                                      ? Colors.black38
+                                      : _blue,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -227,6 +260,9 @@ class _WelcomePage extends StatelessWidget {
   final String name;
   final String value;
   final String weekDescription;
+  final bool showGuideSection;
+  final String? guideSubtitle;
+  final int? weekNumber;
 
   const _WelcomePage({
     required this.maxWidth,
@@ -235,12 +271,17 @@ class _WelcomePage extends StatelessWidget {
     required this.name,
     required this.value,
     required this.weekDescription,
+    this.showGuideSection = false,
+    this.guideSubtitle,
+    this.weekNumber,
   });
 
   static const double _badgeWidth = 254.0;
 
   @override
   Widget build(BuildContext context) {
+    final showGuide = showGuideSection && guideSubtitle != null && weekNumber != null;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(34, 0, 34, 0),
       child: Center(
@@ -258,15 +299,38 @@ class _WelcomePage extends StatelessWidget {
             outerExpand: EdgeInsets.zero,
             innerColor: Colors.white,
             innerRadius: 20,
-            innerPadding:
-            const EdgeInsets.fromLTRB(28, 26, 28, 26),
+            innerPadding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
             dividerColor: const Color(0xFFE8EDF4),
             dividerWidth: 240,
             titleTopGap: 10,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 16),
+                if (showGuide) ...[
+                  const SizedBox(height: 10),
+                  Image.asset(
+                    weekNumber == 8
+                        ? 'assets/image/jellyfish_8th.png'
+                        : 'assets/image/pink3.png',
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    protectKoreanWords(guideSubtitle!),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: navy,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ] else ...[
+                  const SizedBox(height: 16),
+                ],
                 Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
@@ -376,8 +440,7 @@ class _GuidePage extends StatelessWidget {
             outerExpand: EdgeInsets.zero,
             innerColor: Colors.white,
             innerRadius: 20,
-            innerPadding:
-            const EdgeInsets.fromLTRB(28, 26, 28, 26),
+            innerPadding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
             dividerColor: const Color(0xFFE8EDF4),
             dividerWidth: 240,
             titleTopGap: 10,
