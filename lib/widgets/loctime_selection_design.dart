@@ -1,19 +1,19 @@
-// 🪸 Mindrium NotificationSelectionDesign — TreatmentDesign 구조 호환 버전
+// 🪸 Mindrium LocTimeSelectionDesign — TreatmentDesign 구조 호환 버전
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 import 'package:gad_app_team/widgets/tap_design.dart';
 
-class NotificationSelectionDesign extends StatelessWidget {
+class LocTimeSelectionDesign extends StatelessWidget {
   // ===== 전달받는 데이터/콜백 =====
   final dynamic draftTime;
   final dynamic draftLocation;
-  final bool noNotification;
+  final bool noLocTime;
   final bool isSaving;
 
   final VoidCallback onShowHelp;
   final VoidCallback onSave;
   final VoidCallback onSelectLocation;
-  final ValueChanged<bool> onToggleNoNotification;
+  final ValueChanged<bool> onToggleNoLocTime;
 
   // ===== 텍스트 =====
   final String titleText;
@@ -24,16 +24,16 @@ class NotificationSelectionDesign extends StatelessWidget {
   final String disableText;
   final String saveButtonText;
 
-  const NotificationSelectionDesign({
+  const LocTimeSelectionDesign({
     super.key,
     required this.draftTime,
     required this.draftLocation,
-    required this.noNotification,
+    required this.noLocTime,
     required this.isSaving,
     required this.onShowHelp,
     required this.onSave,
     required this.onSelectLocation,
-    required this.onToggleNoNotification,
+    required this.onToggleNoLocTime,
     required this.titleText,
     required this.subtitleText,
     required this.labelText,
@@ -51,15 +51,15 @@ class NotificationSelectionDesign extends StatelessWidget {
         {'title': titleText, 'subtitle': subtitleText},
       ],
       weekScreens: [
-        _NotificationSelectionBody(
+        _LocTimeSelectionBody(
           draftTime: draftTime,
           draftLocation: draftLocation,
-          noNotification: noNotification,
+          noLocTime: noLocTime,
           isSaving: isSaving,
           onShowHelp: onShowHelp,
           onSave: onSave,
           onSelectLocation: onSelectLocation,
-          onToggleNoNotification: onToggleNoNotification,
+          onToggleNoLocTime: onToggleNoLocTime,
           locationText: locationText,
           timeText: timeText,
           disableText: disableText,
@@ -71,31 +71,31 @@ class NotificationSelectionDesign extends StatelessWidget {
 }
 
 /// 🌊 실제 본문 컨텐츠 영역
-class _NotificationSelectionBody extends StatelessWidget {
+class _LocTimeSelectionBody extends StatelessWidget {
   final dynamic draftTime;
   final dynamic draftLocation;
-  final bool noNotification;
+  final bool noLocTime;
   final bool isSaving;
 
   final VoidCallback onShowHelp;
   final VoidCallback onSave;
   final VoidCallback onSelectLocation;
-  final ValueChanged<bool> onToggleNoNotification;
+  final ValueChanged<bool> onToggleNoLocTime;
 
   final String locationText;
   final String timeText;
   final String disableText;
   final String saveButtonText;
 
-  const _NotificationSelectionBody({
+  const _LocTimeSelectionBody({
     required this.draftTime,
     required this.draftLocation,
-    required this.noNotification,
+    required this.noLocTime,
     required this.isSaving,
     required this.onShowHelp,
     required this.onSave,
     required this.onSelectLocation,
-    required this.onToggleNoNotification,
+    required this.onToggleNoLocTime,
     required this.locationText,
     required this.timeText,
     required this.disableText,
@@ -139,12 +139,12 @@ class _NotificationSelectionBody extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            /// 🔕 알림 미설정 체크박스
+            /// 🔕 위치/시간 미설정 체크박스
             Row(
               children: [
                 Checkbox(
-                  value: noNotification,
-                  onChanged: (v) => onToggleNoNotification(v ?? false),
+                  value: noLocTime,
+                  onChanged: (v) => onToggleNoLocTime(v ?? false),
                   activeColor: Colors.white,
                   checkColor: Colors.black,
                 ),

@@ -192,8 +192,8 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                child: NavigationButtons(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                   leftLabel: '이전',
                   rightLabel: '다음',
                   onBack: () => Navigator.pop(context),

@@ -98,7 +98,7 @@ class _Week2ScreenState extends State<Week2Screen> {
     return ApplyDesign(
       appBarTitle: '2주차 시작',
       cardTitle: '2주차 시작 ✨',
-      onBack: () => Navigator.pop(context),
+      onBack: null,
       onNext: () {
         Navigator.push(
           context,

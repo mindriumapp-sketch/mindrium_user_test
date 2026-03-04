@@ -77,10 +77,12 @@ class _StepCViewState extends State<StepCView> {
   Widget _buildPhysicalStep() {
     return _buildCommonSection(
       title: '불안할 때 몸에\n어떤 증상이 있었나요?',
-      smallText: '결과를 관찰해요',
+      smallText: '그때의 결과를 차례대로 살펴봐요',
       chips: widget.physicalChips,
       selectedChipIds: widget.selectedPhysicalChipIds,
-      exampleMessage: "예시로 '두근거림' 칩을 눌러 선택해보세요!",
+      guideMessage: widget.isExampleMode
+          ? "아래에서 '두근거림'을 선택해보세요!"
+          : "몸에서 느낀 반응(C-신체)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.",
       onAdd: widget.isExampleMode ? null : widget.onAddPhysical,
       onDelete:
       widget.isExampleMode ? null : widget.onDeletePhysical,
@@ -91,10 +93,12 @@ class _StepCViewState extends State<StepCView> {
   Widget _buildEmotionStep() {
     return _buildCommonSection(
       title: '불안할 때\n어떤 감정을 느꼈나요?',
-      smallText: '결과를 관찰해요',
+      smallText: '그때의 결과를 차례대로 살펴봐요',
       chips: widget.emotionChips,
       selectedChipIds: widget.selectedEmotionChipIds,
-      exampleMessage: "예시로 '불안' 칩을 눌러 선택해보세요!",
+      guideMessage: widget.isExampleMode
+          ? "아래에서 '불안'을 선택해보세요!"
+          : "느껴진 감정(C-감정)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.",
       onAdd: widget.isExampleMode ? null : widget.onAddEmotion,
       onDelete:
       widget.isExampleMode ? null : widget.onDeleteEmotion,
@@ -105,10 +109,12 @@ class _StepCViewState extends State<StepCView> {
   Widget _buildBehaviorStep() {
     return _buildCommonSection(
       title: '그때 어떤 행동을 했나요?',
-      smallText: '결과를 관찰해요',
+      smallText: '그때의 결과를 차례대로 살펴봐요',
       chips: widget.behaviorChips,
       selectedChipIds: widget.selectedBehaviorChipIds,
-      exampleMessage: "예시로 '자전거를 타지 않았어요' 칩을 눌러보세요!",
+      guideMessage: widget.isExampleMode
+          ? "아래에서 '자전거를 타지 않았어요'를 선택해보세요!"
+          : "실제로 한 행동(C-행동)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.",
       onAdd: widget.isExampleMode ? null : widget.onAddBehavior,
       onDelete:
       widget.isExampleMode ? null : widget.onDeleteBehavior,
@@ -121,7 +127,7 @@ class _StepCViewState extends State<StepCView> {
     required String smallText,
     required List<AbcChip> chips,
     required Set<String> selectedChipIds,
-    required String exampleMessage,
+    required String guideMessage,
     required VoidCallback? onAdd,
     required void Function(String chipId)? onDelete,
   }) {
@@ -137,9 +143,6 @@ class _StepCViewState extends State<StepCView> {
             bigText: title,
           ),
           const SizedBox(height: 30),
-          if (widget.isExampleMode)
-            JellyfishBanner(message: exampleMessage),
-          const SizedBox(height: 20),
           AbcChipsDesign(
             chips: chips,
             selectedChipIds: selectedChipIds,
@@ -158,6 +161,8 @@ class _StepCViewState extends State<StepCView> {
             onChipAdd: onAdd,
             onChipDelete: onDelete,
           ),
+          const SizedBox(height: 20),
+          JellyfishBanner(message: guideMessage),
           const SizedBox(height: 50),
         ],
       ),

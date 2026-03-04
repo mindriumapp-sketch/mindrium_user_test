@@ -77,9 +77,9 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
         if (location.isNotEmpty) location,
         if (timeVal.isNotEmpty) timeVal else inout,
       ];
-      return parts.isNotEmpty ? parts.join(', ') : '알림 없음';
+      return parts.isNotEmpty ? parts.join(', ') : '위치/시간 없음';
     } catch (_) {
-      return '알림 없음';
+      return '위치/시간 없음';
     }
   }
 
@@ -199,7 +199,7 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const TextSpan(text: '알림이 울리면 '),
+                    const TextSpan(text: '설정한 위치/시간이 되면 '),
                     TextSpan(
                       text: '"$title"',
                       style: const TextStyle(
@@ -299,7 +299,7 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
     }
 
     return Scaffold(
-      appBar: const CustomAppBar(title: '걱정 일기 알림 목록'),
+      appBar: const CustomAppBar(title: '걱정 일기 위치/시간 목록'),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (context, snap) {

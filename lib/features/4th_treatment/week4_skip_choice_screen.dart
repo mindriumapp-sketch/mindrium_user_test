@@ -141,7 +141,7 @@ class Week4SkipChoiceScreen extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // =========================
-                      // 2) 해파리 알림 풍선
+                      // 2) 해파리 위치/시간 풍선
                       // =========================
                       JellyfishNotice(
                         feedback:

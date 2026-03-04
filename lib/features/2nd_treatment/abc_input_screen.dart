@@ -324,6 +324,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
   Future<void> _showAddPopup({
     required String title,
     required String highlightText,
+    required Iterable<String> existingLabels,
     required void Function(String text) onConfirm,
   }) async {
     final TextEditingController controller = TextEditingController();
@@ -348,6 +349,19 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
           enableInput: true,
           controller: controller,
           inputHint: '새로운 항목을 입력해주세요',
+          inputMaxLength: 15,
+          inputMaxLengthErrorText: '15자 이내로 작성해주세요.',
+          inputValidator: (text) {
+            if (text.isEmpty) return null;
+            String normalize(String value) =>
+                value.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+            final normalizedText = normalize(text);
+            final isDuplicated = existingLabels.any(
+              (label) => normalize(label) == normalizedText,
+            );
+            if (isDuplicated) return '중복된 항목입니다.';
+            return null;
+          },
         );
       },
     );
@@ -549,8 +563,8 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                 ),
                 const SizedBox(height: 8),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: NavigationButtons(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                     onBack: _previousStep,
                     onNext: _isNextEnabled ? _nextStep : null,
                     rightLabel: widget.isExampleMode && _currentCSubStep == 2
@@ -586,6 +600,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               : () => _showAddPopup(
             title: '상황 추가',
             highlightText: 'A - 사건 (Activating Event)',
+            existingLabels: _aChips.map((c) => c.label),
             onConfirm: (t) {
               _saveCustomTag(
                 type: 'A',
@@ -629,6 +644,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               : () => _showAddPopup(
             title: '생각 추가',
             highlightText: 'B - 생각 (Belief)',
+            existingLabels: _bChips.map((c) => c.label),
             onConfirm: (t) {
               _saveCustomTag(
                 type: 'B',
@@ -669,6 +685,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               : () => _showAddPopup(
             title: '신체 반응 추가',
             highlightText: 'C1 - 신체 (Physical)',
+            existingLabels: _physicalChips.map((c) => c.label),
             onConfirm: (t) {
               _saveCustomTag(
                 type: 'CP',
@@ -687,6 +704,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               : () => _showAddPopup(
             title: '감정 반응 추가',
             highlightText: 'C2 - 감정 (Emotion)',
+            existingLabels: _emotionChips.map((c) => c.label),
             onConfirm: (t) {
               _saveCustomTag(
                 type: 'CE',
@@ -705,6 +723,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               : () => _showAddPopup(
             title: '행동 반응 추가',
             highlightText: 'C3 - 행동 (Behavior)',
+            existingLabels: _behaviorChips.map((c) => c.label),
             onConfirm: (t) {
               _saveCustomTag(
                 type: 'CA',

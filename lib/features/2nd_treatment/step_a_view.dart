@@ -37,7 +37,12 @@ class StepAView extends StatefulWidget {
 }
 
 class _StepAViewState extends State<StepAView> {
-  String _bannerMessage = "아래에 '자전거를 타려고 함' 칩을 눌러 \n선택해보세요!";
+  String _bannerMessage = "아래에서 '자전거를 타려고 함'을 선택해보세요!";
+
+  String get _guideMessage {
+    if (widget.isExampleMode) return _bannerMessage;
+    return "먼저 불안을 느낀 상황(A)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,16 +54,10 @@ class _StepAViewState extends State<StepAView> {
         children: [
           AbcStepCard(
             activeIndex: 0,
-            smallText: '반응을 유발하는 사건이나 상황을 확인해요',
-            bigText: '불안감을 느꼈을 때,\n어떤 상황이었나요?',
+            smallText: '불안을 유발한 상황을 떠올려요',
+            bigText: '불안을 느낀 순간,\n어떤 상황이었나요?',
           ),
           const SizedBox(height: 40),
-
-          // ✅ 예시모드 전용 배너
-          if (widget.isExampleMode) ...[
-            JellyfishBanner(message: _bannerMessage),
-            const SizedBox(height: 30),
-          ],
 
           // ✅ 칩 영역 (chipId 기반)
           AbcChipsDesign(
@@ -84,8 +83,8 @@ class _StepAViewState extends State<StepAView> {
                 setState(() {
                   _bannerMessage =
                   (selected && label == '자전거를 타려고 함')
-                      ? "선택한 뒤 아래의 '다음' 버튼을 눌러주세요!"
-                      : "아래에 '자전거를 타려고 함' 칩을 눌러 \n선택해보세요!";
+                      ? "좋아요! 이제 아래의 '다음' 버튼을 눌러주세요."
+                      : "아래에서 '자전거를 타려고 함'을 선택해보세요!";
                 });
               }
             },
@@ -95,6 +94,9 @@ class _StepAViewState extends State<StepAView> {
             // "+추가": 텍스트 입력 팝업은 상위(AbcInputScreen)에서
             onChipAdd: widget.isExampleMode ? null : widget.onAddSituation,
           ),
+          const SizedBox(height: 20),
+          // ✅ 단계 고정 해파리 가이드 (칩 하단 고정)
+          JellyfishBanner(message: _guideMessage),
           const SizedBox(height: 50),
         ],
       ),

@@ -16,6 +16,9 @@ class CustomPopupDesign extends StatefulWidget {
   final bool enableInput;
   final TextEditingController? controller;
   final String inputHint;
+  final int? inputMaxLength;
+  final String inputMaxLengthErrorText;
+  final String? Function(String text)? inputValidator;
 
   const CustomPopupDesign({
     super.key,
@@ -32,6 +35,9 @@ class CustomPopupDesign extends StatefulWidget {
     this.enableInput = false, // ✅ 기본은 비활성화
     this.controller,
     this.inputHint = '내용을 입력하세요',
+    this.inputMaxLength,
+    this.inputMaxLengthErrorText = '입력 길이를 확인해주세요.',
+    this.inputValidator,
   });
 
   @override
@@ -39,6 +45,36 @@ class CustomPopupDesign extends StatefulWidget {
 }
 
 class _CustomPopupDesignState extends State<CustomPopupDesign> {
+  String? _inputErrorText;
+
+  String? _validateInput(String rawText) {
+    final text = rawText.trim();
+
+    final maxLength = widget.inputMaxLength;
+    if (maxLength != null && text.length > maxLength) {
+      return widget.inputMaxLengthErrorText;
+    }
+
+    if (widget.inputValidator != null) {
+      return widget.inputValidator!(text);
+    }
+
+    return null;
+  }
+
+  void _handlePositivePressed() {
+    if (widget.enableInput && widget.controller != null) {
+      final error = _validateInput(widget.controller!.text);
+      if (error != null) {
+        setState(() {
+          _inputErrorText = error;
+        });
+        return;
+      }
+    }
+    widget.onPositivePressed();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool singleAction = widget.negativeText == null;
@@ -119,6 +155,13 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                     child: TextField(
                       controller: widget.controller,
                       maxLines: 1,
+                      onChanged: (value) {
+                        if (_inputErrorText == null) return;
+                        final error = _validateInput(value);
+                        if (error == null) {
+                          setState(() => _inputErrorText = null);
+                        }
+                      },
                       cursorColor: const Color(0xFF74D2FF),
                       style: const TextStyle(
                         fontFamily: 'NotoSansKR',
@@ -134,7 +177,24 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                         border: InputBorder.none,
                       ),
                     ),
-                  )
+                  ),
+                if (widget.enableInput &&
+                    widget.controller != null &&
+                    _inputErrorText != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextLine(
+                      _inputErrorText!,
+                      style: const TextStyle(
+                        fontFamily: 'NotoSansKR',
+                        fontSize: 12,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ]
                 else
                   TextLine(
                     widget.message,
@@ -155,7 +215,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                     width: double.infinity,
                     child: _buildButton(
                       label: widget.positiveText,
-                      onPressed: widget.onPositivePressed,
+                      onPressed: _handlePositivePressed,
                       isPrimary: true,
                     ),
                   )
@@ -178,7 +238,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                           margin: const EdgeInsets.symmetric(horizontal: 6),
                           child: _buildButton(
                             label: widget.positiveText,
-                            onPressed: widget.onPositivePressed,
+                            onPressed: _handlePositivePressed,
                             isPrimary: true,
                           ),
                         ),

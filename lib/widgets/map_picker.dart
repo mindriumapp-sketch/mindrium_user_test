@@ -1,23 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 
 import 'package:gad_app_team/common/constants.dart';
-import 'package:gad_app_team/data/notification_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/schedule_events_api.dart';
+import 'package:gad_app_team/data/loctime_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/widgets/map_picker_design.dart';
 
 class MapPicker extends StatefulWidget {
   final LatLng? initial;
+  final TimeOfDay? initialTime;
 
-  const MapPicker({super.key, this.initial});
+  const MapPicker({super.key, this.initial, this.initialTime});
 
   @override
   State<MapPicker> createState() => _MapPickerState();
@@ -37,10 +39,12 @@ class _MapPickerState extends State<MapPicker> {
   LatLng? _current;
   List<Marker> _savedMarkers = [];
   String? _addr;
+  late TimeOfDay _selectedTime;
 
   @override
   void initState() {
     super.initState();
+    _selectedTime = widget.initialTime ?? TimeOfDay.now();
     if (widget.initial != null) {
       _picked = widget.initial;
       _reverseGeocode(widget.initial!);
@@ -55,7 +59,6 @@ class _MapPickerState extends State<MapPicker> {
     super.dispose();
   }
 
-  // ───────────── 저장된 위치 알림 마커 불러오기 ─────────────
   Future<void> _loadSavedMarkers() async {
     try {
       final docs = await _scheduleEventsApi.listScheduleEvents();
@@ -79,7 +82,6 @@ class _MapPickerState extends State<MapPicker> {
     }
   }
 
-  // ───────────── 현위치 가져오기 ─────────────
   Future<void> _determinePosition() async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -97,7 +99,6 @@ class _MapPickerState extends State<MapPicker> {
     _mapController.move(_current!, _kInitialZoom);
   }
 
-  // ───────────── 주소 검색 ─────────────
   Future<void> _onSearch() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
@@ -113,7 +114,6 @@ class _MapPickerState extends State<MapPicker> {
     } catch (_) {}
   }
 
-  // ───────────── 역지오코딩 ─────────────
   Future<void> _reverseGeocode(LatLng point) async {
     try {
       final uri = Uri.parse(
@@ -136,24 +136,23 @@ class _MapPickerState extends State<MapPicker> {
     } catch (_) {}
   }
 
-  // ───────────── 선택 완료 ─────────────
   Future<void> _confirmSelection() async {
     final LatLng latlng = _picked ?? _current ?? _kDefaultCenter;
     await _reverseGeocode(latlng);
     if (!mounted) return;
     Navigator.of(context).pop(
-      NotificationSetting(
+      LocTimeSetting(
         location: _addr ?? '선택한 위치',
         latitude: latlng.latitude,
         longitude: latlng.longitude,
         description: _addr ?? '',
+        time: _selectedTime,
         notifyEnter: true,
         notifyExit: false,
       ),
     );
   }
 
-  // ───────────── UI 연결 ─────────────
   @override
   Widget build(BuildContext context) {
     return MindriumPopupDesign(
@@ -170,6 +169,17 @@ class _MapPickerState extends State<MapPicker> {
       },
       onBack: () => Navigator.pop(context),
       onNext: _confirmSelection,
+      initialTimeDateTime: DateTime(
+        2000,
+        1,
+        1,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      ),
+      onTimeChanged: (dt) {
+        _selectedTime = TimeOfDay.fromDateTime(dt);
+      },
+      locationText: _addr,
     );
   }
 }

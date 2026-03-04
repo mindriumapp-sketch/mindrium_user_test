@@ -1,4 +1,4 @@
-import 'dart:async';
+// import 'dart:async';
 import 'package:gad_app_team/utils/text_line_material.dart';
 // import 'package:gad_app_team/features/2nd_treatment/abc_input_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
@@ -15,36 +15,36 @@ class AbcGuideScreen extends StatefulWidget {
 }
 
 class _AbcGuideScreenState extends State<AbcGuideScreen> {
-  bool _showJellyfishIcon = false; // 우상단 해파리 아이콘 노출 여부
-  Timer? _jellyTimer;
+  // bool _showJellyfishIcon = false; // 우상단 해파리 아이콘 노출 여부
+  // Timer? _jellyTimer;
 
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ 화면 진입 시, 하얀 배너 + 해파리 4초 보여줌
-      CustomBanner.show(context);
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   // ✅ 화면 진입 시, 하얀 배너 + 해파리 4초 보여줌
+    //   CustomBanner.show(context);
 
-      // ✅ 4초 뒤부터 화면 우상단 해파리 아이콘 등장
-      _startJellyTimer();
-    });
+    //   // ✅ 4초 뒤부터 화면 우상단 해파리 아이콘 등장
+    //   // _startJellyTimer();
+    // });
   }
 
-  void _startJellyTimer() {
-    _jellyTimer?.cancel();
-    _jellyTimer = Timer(const Duration(seconds: 4), () {
-      if (!mounted) return;
-      setState(() {
-        _showJellyfishIcon = true;
-      });
-    });
-  }
+  // void _startJellyTimer() {
+  //   _jellyTimer?.cancel();
+  //   _jellyTimer = Timer(const Duration(seconds: 4), () {
+  //     if (!mounted) return;
+  //     // setState(() {
+  //     //   _showJellyfishIcon = true;
+  //     // });
+  //   });
+  // }
 
   @override
   void dispose() {
     // ✅ 화면 떠날 때: 타이머/배너 둘 다 정리
-    _jellyTimer?.cancel();
+    // _jellyTimer?.cancel();
     BlueBanner.hide();
     super.dispose();
   }
@@ -107,24 +107,24 @@ class _AbcGuideScreenState extends State<AbcGuideScreen> {
         ),
 
         // 2) 카드 바깥 우상단 해파리 아이콘 (배너 다시 띄우기)
-        if (_showJellyfishIcon)
-          Positioned(
-            top: 85,
-            right: 40,
-            child: GestureDetector(
-              onTap: () {
-                // 눌렀을 때 4초짜리 배너 다시 띄우기
-                CustomBanner.show(context);
-                // 아이콘은 계속 남아 있어도 됨 (원하면 다시 타이머 돌려서 잠깐 숨겼다 나와도 됨)
-              },
-              child: Image.asset(
-                'assets/image/jellyfish_smart.png',
-                width: 90,
-                height: 90,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
+        // if (_showJellyfishIcon)
+        //   Positioned(
+        //     top: 85,
+        //     right: 40,
+        //     child: GestureDetector(
+        //       onTap: () {
+        //         // 눌렀을 때 4초짜리 배너 다시 띄우기
+        //         CustomBanner.show(context);
+        //         // 아이콘은 계속 남아 있어도 됨 (원하면 다시 타이머 돌려서 잠깐 숨겼다 나와도 됨)
+        //       },
+        //       child: Image.asset(
+        //         'assets/image/jellyfish_smart.png',
+        //         width: 90,
+        //         height: 90,
+        //         fit: BoxFit.contain,
+        //       ),
+        //     ),
+        //   ),
       ],
     );
   }

@@ -13,9 +13,8 @@ import 'package:gad_app_team/contents/similar_activation.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_result_screen.dart';
 // import 'package:gad_app_team/features/screen_time/screen_time_page.dart';
 
-//notification
+//loctime
 import 'package:gad_app_team/features/menu/diary/diary_directory_screen.dart';
-import 'package:gad_app_team/features/2nd_treatment/notification_selection_screen.dart';
 
 //treatment
 import 'package:gad_app_team/features/2nd_treatment/abc_input_screen.dart';
@@ -213,18 +212,6 @@ class MyApp extends StatelessWidget {
           );
         },
         '/alt_thought': (context) => const Week4ClassificationResultScreen(),
-        '/noti_select': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map?;
-          return NotificationSelectionScreen(
-            fromDirectory: args?['fromDirectory'] as bool? ?? false,
-            label: args?['label'] as String?,
-            abcId: args?['abcId'] as String,
-            notificationId: args?['notificationId'] as String?,
-            sessionId: args?['sessionId'] as String?,
-            origin: args?['origin'] as String?,
-            sudId: args?['sudId'] as String?,
-          );
-        },
         '/diary_directory': (context) => DiaryDirectoryScreen(),
         '/battle': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map?;

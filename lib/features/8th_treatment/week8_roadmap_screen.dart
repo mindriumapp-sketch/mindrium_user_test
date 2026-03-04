@@ -188,7 +188,7 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
       case 2:
         return {
           'title': '2주차: ABC 모델',
-          'description': '걱정일기 작성, 알림 설정, 그룹 분류하기',
+          'description': '걱정일기 작성, 위치/시간 설정, 그룹 분류하기',
         };
       case 3:
         return {

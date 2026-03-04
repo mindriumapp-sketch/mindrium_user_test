@@ -555,7 +555,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         appBar: CustomAppBar(
           title: '걱정 그룹 - 추가하기',
           onBack: () {
-            // TODO: 홈으로 돌아가는 게 맞나용...? 경우에 따라 알림으로 돌아가야 하는거 아니에요?
+            // TODO: 홈으로 돌아가는 게 맞나용...? 경우에 따라 위치/시간으로 돌아가야 하는거 아니에요?
             Navigator.of(
               context,
             ).pushNamedAndRemoveUntil('/home', (_) => false);
@@ -891,9 +891,9 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => CustomPopupDesign(
-        title: '이완 음성 안내 시작',
+        title: '이완 활동 안내',
         message:
-        '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+        '이어서 이완 활동을 진행하시겠습니까?',
         positiveText: '확인',
         negativeText: null,
         backgroundAsset: null,

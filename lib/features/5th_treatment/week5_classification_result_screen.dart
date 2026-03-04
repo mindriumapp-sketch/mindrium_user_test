@@ -113,8 +113,8 @@ class Week5ClassificationResultScreen extends StatelessWidget {
 
                 // ⛵ 하단 네비게이션 버튼 (기존 위치 유지)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: NavigationButtons(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     onNext: () {
                       Navigator.push(

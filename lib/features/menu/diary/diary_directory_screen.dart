@@ -326,7 +326,6 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
                 return _DiaryCard(
                   entry: entry,
                   characterId: characterId,
-                  onAlarmUpdated: _loadDiaries,
                 );
               },
             ),
@@ -433,12 +432,10 @@ class _GroupFilter extends StatelessWidget {
 class _DiaryCard extends StatelessWidget {
   final Map<String, dynamic> entry;
   final int? characterId;
-  final Future<void> Function()? onAlarmUpdated;
 
   const _DiaryCard({
     required this.entry,
     required this.characterId,
-    this.onAlarmUpdated,
   });
 
   List<String> _chipLabels(dynamic raw) {
@@ -610,24 +607,7 @@ class _DiaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _AlarmSection(
-              alarms: alarms,
-              onEdit: () async {
-                await Navigator.pushNamed(
-                  context,
-                  '/noti_select',
-                  arguments: {
-                    'fromDirectory': true,
-                    'abcId': entry['diary_id'],
-                    'label': activationLabel,
-                    'origin': 'diary_directory',
-                  },
-                );
-                if (onAlarmUpdated != null) {
-                  await onAlarmUpdated!();
-                }
-              },
-            ),
+            _AlarmSection(alarms: alarms),
             if (addressName != null && addressName.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildSection(
@@ -735,11 +715,9 @@ class _SudScoreBar extends StatelessWidget {
 /// ----------------------
 class _AlarmSection extends StatelessWidget {
   final List<Map<String, dynamic>> alarms;
-  final VoidCallback? onEdit;
 
   const _AlarmSection({
     required this.alarms,
-    this.onEdit,
   });
 
   static const List<String> _weekdayNames = [
@@ -762,19 +740,14 @@ class _AlarmSection extends StatelessWidget {
     if (alarms.isEmpty) {
       return _buildSection(
         context: context,
-        icon: Icons.notifications_none,
-        title: '알림 정보',
+        icon: Icons.access_time_outlined,
+        title: '위치/시간 정보',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '설정된 알림이 없습니다.',
+              '설정된 위치/시간이 없습니다.',
               style: TextStyle(color: Color(0xFF1B405C)),
-            ),
-            const SizedBox(height: 8),
-            _AlarmActionButton(
-              label: '알림 추가',
-              onPressed: onEdit,
             ),
           ],
         ),
@@ -783,8 +756,8 @@ class _AlarmSection extends StatelessWidget {
 
     return _buildSection(
       context: context,
-      icon: Icons.notifications_active_outlined,
-      title: '알림 정보',
+      icon: Icons.alarm_on_outlined,
+      title: '위치/시간 정보',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -837,7 +810,7 @@ class _AlarmSection extends StatelessWidget {
 
             final reminderText =
             reminderMinutes is num && reminderMinutes > 0
-                ? '알림 ${reminderMinutes.toInt()}분 후'
+                ? '위치/시간 ${reminderMinutes.toInt()}분 후'
                 : null;
 
             final locationDisplay =
@@ -879,7 +852,7 @@ class _AlarmSection extends StatelessWidget {
                     const SizedBox(height: 6),
                     _infoRow(
                       Icons.alarm,
-                      '다시 알림',
+                      '다시 위치/시간',
                       reminderText,
                     ),
                   ],
@@ -887,55 +860,7 @@ class _AlarmSection extends StatelessWidget {
               ),
             );
           }),
-          const SizedBox(height: 8),
-          _AlarmActionButton(
-            label: '알림 수정',
-            onPressed: onEdit,
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _AlarmActionButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-
-  const _AlarmActionButton({
-    required this.label,
-    this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const accent = Color(0xFF5B9FD3);
-    return Align(
-      alignment: Alignment.centerRight,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: accent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 10,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        icon: const Icon(
-          Icons.notifications_active_outlined,
-          color: Colors.white,
-        ),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        onPressed: onPressed,
       ),
     );
   }

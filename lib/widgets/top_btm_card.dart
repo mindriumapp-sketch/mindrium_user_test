@@ -183,8 +183,8 @@ class ApplyDoubleCard extends StatelessWidget {
                 // 아래: 항상 바닥에 붙는 네비게이션
                 if (onBack != null || onNext != null)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                    child: NavigationButtons(onBack: onBack, onNext: onNext),
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(onBack: onBack, onNext: onNext),
                   ),
               ],
             ),

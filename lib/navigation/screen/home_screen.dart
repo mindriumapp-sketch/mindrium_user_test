@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -181,16 +180,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_permissionsChecked) return;
 
     final perms = <Permission>[
-      Permission.notification,
       Permission.locationWhenInUse,
     ];
-
-    if (Platform.isAndroid) {
-      perms.addAll([
-        Permission.scheduleExactAlarm,
-        Permission.activityRecognition,
-      ]);
-    }
 
     for (final perm in perms) {
       if (!await perm.isGranted) {

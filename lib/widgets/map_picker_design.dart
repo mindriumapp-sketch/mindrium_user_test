@@ -1,9 +1,9 @@
+import 'package:flutter/cupertino.dart' show CupertinoDatePicker, CupertinoDatePickerMode;
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/common/constants.dart';
-import 'package:gad_app_team/widgets/blue_banner.dart'; // <- 너가 말한 파일
 
 class MindriumPopupDesign extends StatefulWidget {
   final String title;
@@ -16,6 +16,9 @@ class MindriumPopupDesign extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onNext;
   final Function(TapPosition, LatLng)? onTap;
+  final DateTime? initialTimeDateTime;
+  final ValueChanged<DateTime>? onTimeChanged;
+  final String? locationText;
 
   const MindriumPopupDesign({
     super.key,
@@ -29,6 +32,9 @@ class MindriumPopupDesign extends StatefulWidget {
     this.onBack,
     this.onNext,
     this.onTap,
+    this.initialTimeDateTime,
+    this.onTimeChanged,
+    this.locationText,
   });
 
   @override
@@ -36,45 +42,220 @@ class MindriumPopupDesign extends StatefulWidget {
 }
 
 class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
+  static const double _sheetMinSize = 0.075;
+  static const double _sheetInitialSize = 0.5;
+  static const double _sheetMaxSize = 0.5;
+
+  late DateTime _pickerTime;
+  bool _showJellyfishMessage = true;
+
   @override
   void initState() {
     super.initState();
-    // 화면이 그려진 다음에 배너 띄우기
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final size = MediaQuery.of(context).size;
-      // 가운데쯤에 뜨게 패딩 조절
-      CustomBanner.show(
-        context,
-        message: '지도를 탭해서 위치를 선택한 후\n[확인]을 눌러주세요.',
-        duration: const Duration(seconds: 3),
-        // 화면 높이의 절반쯤 위에 배치
-        padding: EdgeInsets.fromLTRB(16, 0, 16, size.height * 0.2),
-        showJellyfish: true,
-      );
+    _pickerTime = widget.initialTimeDateTime ?? DateTime(2000, 1, 1, 9, 0);
+  }
+
+  void _toggleJellyfishMessage() {
+    setState(() {
+      _showJellyfishMessage = !_showJellyfishMessage;
     });
+  }
+
+  Widget _buildJellyfishGuide() {
+    return SizedBox(
+      height: 110,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (_showJellyfishMessage)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: const Color(0xFF5DADEC).withValues(alpha: 0.5),
+                      width: 2,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x26000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    '일기에 작성한 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.',
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF626262),
+                      fontFamily: 'Noto Sans KR',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            right: -12,
+            bottom: 0,
+            child: GestureDetector(
+              onTap: _toggleJellyfishMessage,
+              behavior: HitTestBehavior.opaque,
+              child: Image.asset(
+                'assets/image/jellyfish_smart.png',
+                width: 90,
+                height: 90,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationCard(bool hasLocation, String locationText) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.place_outlined, color: Color(0xFF4A90E2), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '위치 설정',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A2233),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  locationText,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: hasLocation ? const Color(0xFF4A4F57) : Colors.grey,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeCard(String timeText) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.access_time, color: Color(0xFF4A90E2), size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                '시간 설정',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A2233),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                timeText,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4A4F57),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 156,
+            child: CupertinoDatePicker(
+              mode: CupertinoDatePickerMode.time,
+              use24hFormat: false,
+              initialDateTime: _pickerTime,
+              onDateTimeChanged: (dt) {
+                final next = DateTime(2000, 1, 1, dt.hour, dt.minute);
+                setState(() => _pickerTime = next);
+                widget.onTimeChanged?.call(next);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xE0E9F3FF),
-      body: Stack(
+    final timeText = TimeOfDay.fromDateTime(_pickerTime).format(context);
+    final bool hasLocation =
+        widget.locationText != null && widget.locationText!.trim().isNotEmpty;
+    final String locationText =
+        hasLocation ? widget.locationText! : '지도를 탭해 위치를 선택해주세요.';
+
+    return Material(
+      color: const Color(0xE0E9F3FF),
+      child: Stack(
         fit: StackFit.expand,
         children: [
-          // 🌍 지도
           if (widget.mapController != null)
             FlutterMap(
               mapController: widget.mapController!,
               options: MapOptions(
                 initialCenter:
-                widget.picked ?? widget.current ?? const LatLng(37.5665, 126.9780),
+                    widget.picked ?? widget.current ?? const LatLng(37.5665, 126.9780),
                 initialZoom: 16,
                 onTap: widget.onTap,
               ),
               children: [
                 TileLayer(
                   urlTemplate:
-                  'https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png',
+                      'https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png',
                   additionalOptions: {'key': vworldApiKey},
                 ),
                 if (widget.current != null)
@@ -112,7 +293,6 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
               ],
             ),
 
-          // 🩵 상단 검색창
           if (widget.searchController != null)
             Positioned(
               top: 56,
@@ -146,16 +326,78 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
               ),
             ),
 
-          // ✅ 하단 버튼은 그대로
           Positioned(
-            bottom: 40,
             left: 24,
-            right: 24,
-            child: NavigationButtons(
-              leftLabel: '닫기',
-              rightLabel: '확인',
-              onBack: widget.onBack ?? () => Navigator.pop(context),
-              onNext: widget.onNext ?? () {},
+            right: 12,
+            top: 120,
+            child: _buildJellyfishGuide(),
+          ),
+
+          Positioned.fill(
+            child: DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: _sheetInitialSize,
+              minChildSize: _sheetMinSize,
+              maxChildSize: _sheetMaxSize,
+              snap: true,
+              snapSizes: const [_sheetMinSize, _sheetMaxSize],
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7FAFF).withValues(alpha: 0.97),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 14,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: ListView(
+                    controller: scrollController,
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      10,
+                      16,
+                      MediaQuery.of(context).padding.bottom + 12,
+                    ),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFB9C3D4),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        '위치/시간 설정',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF3A4760),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLocationCard(hasLocation, locationText),
+                      const SizedBox(height: 10),
+                      _buildTimeCard(timeText),
+                      const SizedBox(height: 12),
+                      NavigationButtons(
+                        leftLabel: '이전',
+                        rightLabel: '저장',
+                        onBack: widget.onBack ?? () => Navigator.pop(context),
+                        onNext: widget.onNext ?? () {},
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],

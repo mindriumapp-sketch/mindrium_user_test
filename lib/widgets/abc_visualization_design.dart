@@ -9,7 +9,7 @@ class DesignPalette {
 
   static const TextStyle contentText = TextStyle(
     color: textBlack,
-    fontSize: 14.5,
+    fontSize: 20,
     fontFamily: 'Noto Sans KR',
     height: 1.5,
     letterSpacing: 0.3,
@@ -63,31 +63,31 @@ class AbcVisualizationDesign extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final memoWidth = width * 0.65;
-        final baseMemoMinHeight = memoWidth * 0.45;
+        final baseMemoMinHeight = memoWidth * 0.5;
 
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 10),
-            const Text(
-              '걱정일기 그려보기',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: DesignPalette.textBlack,
-                fontFamily: 'Noto Sans KR',
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              width: 200,
-              height: 2,
-              decoration: BoxDecoration(
-                color: Colors.black26.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 48),
+            // const SizedBox(height: 10),
+            // const Text(
+            //   '걱정일기 그려보기',
+            //   style: TextStyle(
+            //     fontSize: 22,
+            //     fontWeight: FontWeight.bold,
+            //     color: DesignPalette.textBlack,
+            //     fontFamily: 'Noto Sans KR',
+            //   ),
+            // ),
+            // const SizedBox(height: 4),
+            // Container(
+            //   width: 200,
+            //   height: 2,
+            //   decoration: BoxDecoration(
+            //     color: Colors.black26.withValues(alpha: 0.2),
+            //     borderRadius: BorderRadius.circular(2),
+            //   ),
+            // ),
+            // const SizedBox(height: 48),
 
             // ✅ 시각화 구성
             IntrinsicHeight(

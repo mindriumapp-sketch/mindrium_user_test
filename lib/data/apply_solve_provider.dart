@@ -117,7 +117,7 @@ class ApplyOrSolveFlow extends ChangeNotifier {
     };
   }
 
-  // 외부에서 강제로 세팅하고 싶을 때 (알림에서 진입 등)
+  // 외부에서 강제로 세팅하고 싶을 때 (위치/시간에서 진입 등)
   void setOrigin(String? value) {
     if (value == _origin) return;
     _origin = value;

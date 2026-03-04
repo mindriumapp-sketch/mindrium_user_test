@@ -449,8 +449,8 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
 
               // 아래 네비게이션 고정
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                child: NavigationButtons(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                   leftLabel: '이전',
                   rightLabel: '다음',
                   onBack: _onBack,
