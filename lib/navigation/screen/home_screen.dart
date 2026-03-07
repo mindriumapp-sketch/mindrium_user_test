@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
@@ -181,6 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final perms = <Permission>[
       Permission.locationWhenInUse,
+      Permission.notification,
     ];
 
     for (final perm in perms) {
@@ -188,6 +190,9 @@ class _HomeScreenState extends State<HomeScreen> {
         await perm.request();
       }
     }
+
+    // 알림 관련(플러그인/플랫폼) 권한은 홈 화면에서 선요청.
+    await AlarmNotificationService.instance.requestPermissions();
 
     _permissionsChecked = true;
   }
@@ -223,11 +228,11 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         _buildHeader(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 8),
         _buildProgressCard(progressData),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _buildTaskSection(),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _buildTrainingSection(),
       ],
     );
@@ -550,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title: '불안 해결하기',
           description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
           color: cardColor,
-          imagePath: 'assets/image/pink2.png',
+          imagePath: 'assets/image/pink1.png',
           onTap: () {
             if (!canSolve) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -570,6 +575,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 'origin': 'solve',
               },
             );
+          },
+        ),
+        
+        const SizedBox(height: 8),
+        _trainingCard(
+          title: '알림 설정',
+          description: '문구...', //TODO: 알림 설정 문구 고민
+          color: const Color(0xFFE4F3FF),
+          imagePath: 'assets/image/pink2.png',
+          onTap: () {
+            Navigator.pushNamed(context, '/alarm_settings');
           },
         ),
       ],

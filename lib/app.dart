@@ -28,6 +28,7 @@ import 'package:gad_app_team/features/other/before_survey.dart';
 import 'package:gad_app_team/features/other/splash_screen.dart';
 import 'package:gad_app_team/features/other/tutorial_screen.dart';
 import 'package:gad_app_team/features/settings/setting_screen.dart';
+import 'package:gad_app_team/features/alarm/alarm_settings_screen.dart';
 
 // Menu imports
 import 'package:gad_app_team/features/menu/menu_screen.dart';
@@ -134,6 +135,7 @@ class MyApp extends StatelessWidget {
         '/myinfo': (context) => const MyInfoScreen(),
         '/contents': (context) => const ContentScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/alarm_settings': (context) => const AlarmSettingsScreen(),
         '/education': (context) => const EducationScreen(),
         '/education1': (context) => const Education1Page(),
         '/education2': (context) => const Education2Page(),

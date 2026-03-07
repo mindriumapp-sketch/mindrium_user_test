@@ -34,7 +34,7 @@ class CustomNavigationBar extends StatelessWidget {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
           BottomNavigationBarItem(icon: Icon(Icons.school), label: '교육'),
           BottomNavigationBarItem(icon: Icon(Icons.water), label: 'Mindrium'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
         ],
       ),
     );
