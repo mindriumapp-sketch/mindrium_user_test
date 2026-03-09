@@ -196,7 +196,6 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
           consequenceE: emotionChips,
           consequenceB: behaviorChips,
           alternativeThoughts: const [],
-          alarms: const [],
           latitude: pos?.latitude,
           longitude: pos?.longitude,
         );
@@ -210,7 +209,6 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
           'consequence_emotion': emotionChips,
           'consequence_action': behaviorChips,
           'alternative_thoughts': const [],
-          'alarms': const [],
           if (pos != null) 'latitude': pos.latitude,
           if (pos != null) 'longitude': pos.longitude,
         };

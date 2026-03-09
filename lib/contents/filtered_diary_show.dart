@@ -36,46 +36,16 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
     _initialized = true;
   }
 
-  List<int> _normalizeWeekdays(dynamic raw) {
-    if (raw is List) {
-      final values = raw
-          .map((e) {
-            if (e is int) return e;
-            if (e is num) return e.toInt();
-            return int.tryParse(e.toString()) ?? -1;
-          })
-          .where((e) => e >= 1 && e <= 7)
-          .toList();
-      values.sort();
-      return values;
-    }
-    return const [];
-  }
-
-  String _weekdayLabel(List<int> weekdayInts) {
-    if (weekdayInts.isEmpty) return '';
-    const names = ['일', '월', '화', '수', '목', '금', '토'];
-    return weekdayInts.map((d) => names[d - 1]).join(', ');
-  }
-
-  String _formatAlarm(Map<String, dynamic> d) {
+  String _formatLocTime(Map<String, dynamic> d) {
     try {
-      final location = (d['location_desc'] ?? '').toString().trim();
-      final inout = <String>[
-        if (d['enter'] == true) '들어갈 때',
-        if (d['exit'] == true) '나올 때',
-      ].join('/');
+      final location = (d['location'] ?? d['location_desc'] ?? '')
+          .toString()
+          .trim();
       final timeVal = (d['time'] ?? '').toString().trim();
-      final repeatOpt = (d['repeat_option'] ?? '').toString();
-      final wdLabel = _weekdayLabel(_normalizeWeekdays(d['weekdays']));
 
       final parts = <String>[
-        if (repeatOpt == 'daily')
-          '매일'
-        else if (repeatOpt == 'weekly' && wdLabel.isNotEmpty)
-          '매주 ($wdLabel)',
-        if (location.isNotEmpty) location,
-        if (timeVal.isNotEmpty) timeVal else inout,
+        if (location.isNotEmpty) '위치: $location',
+        if (timeVal.isNotEmpty) '시간: $timeVal',
       ];
       return parts.isNotEmpty ? parts.join(', ') : '위치/시간 없음';
     } catch (_) {
@@ -89,9 +59,14 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
     return null;
   }
 
-  List<Map<String, dynamic>> _normalizeAlarms(dynamic raw) {
+  Map<String, dynamic>? _normalizeLocTime(dynamic raw) {
+    if (raw is Map) {
+      return Map<String, dynamic>.from(
+        raw.map((k, v) => MapEntry(k.toString(), v)),
+      );
+    }
     if (raw is List) {
-      return raw
+      final items = raw
           .whereType<Map>()
           .map(
             (e) => Map<String, dynamic>.from(
@@ -99,8 +74,9 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
             ),
           )
           .toList();
+      if (items.isNotEmpty) return items.last;
     }
-    return const [];
+    return null;
   }
 
   Future<List<Map<String, dynamic>>> _loadFilteredDiaries(
@@ -119,12 +95,12 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
     final filtered = <Map<String, dynamic>>[];
 
     for (final diary in diaries) {
-      final alarms = _normalizeAlarms(diary['alarms']);
-      if (alarms.isEmpty) continue;
+      final locTime = _normalizeLocTime(diary['loc_time'] ?? diary['alarms']);
+      if (locTime == null) continue;
 
       final latestSud = _parseSud(diary['latest_sud']);
       if (latestSud == null || latestSud > 2) {
-        filtered.add({...diary, 'alarms': alarms});
+        filtered.add({...diary, 'loc_time': locTime});
       }
     }
 
@@ -151,7 +127,7 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
   Widget _buildDiaryCard(
     BuildContext context,
     String title,
-    List<Map<String, dynamic>> alarms,
+    Map<String, dynamic> locTime,
   ) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
@@ -180,45 +156,44 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          for (final n in alarms)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: RichText(
-                text: TextSpan(
-                  style: const TextStyle(
-                    fontFamily: 'Noto Sans KR',
-                    fontSize: 14.5,
-                    height: 1.5,
-                    color: Color(0xFF232323),
-                  ),
-                  children: [
-                    TextSpan(
-                      text: '${_formatAlarm(n)}에 ',
-                      style: const TextStyle(
-                        color: Color(0xFF47A6FF),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const TextSpan(text: '설정한 위치/시간이 되면 '),
-                    TextSpan(
-                      text: '"$title"',
-                      style: const TextStyle(
-                        color: Color(0xFF007BCE),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const TextSpan(text: '에 대한 감정을 차분히 들여다보세요.\n'),
-                    const TextSpan(
-                      text: '잘 해낼 수 있을 거예요 💙',
-                      style: TextStyle(
-                        color: Color(0xFF007BCE),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  fontFamily: 'Noto Sans KR',
+                  fontSize: 14.5,
+                  height: 1.5,
+                  color: Color(0xFF232323),
                 ),
+                children: [
+                  TextSpan(
+                    text: '${_formatLocTime(locTime)}에 ',
+                    style: const TextStyle(
+                      color: Color(0xFF47A6FF),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const TextSpan(text: '설정한 위치/시간이 되면 '),
+                  TextSpan(
+                    text: '"$title"',
+                    style: const TextStyle(
+                      color: Color(0xFF007BCE),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const TextSpan(text: '에 대한 감정을 차분히 들여다보세요.\n'),
+                  const TextSpan(
+                    text: '잘 해낼 수 있을 거예요 💙',
+                    style: TextStyle(
+                      color: Color(0xFF007BCE),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );
@@ -274,14 +249,12 @@ class _DiaryShowScreenState extends State<DiaryShowScreen> {
                   itemBuilder: (context, index) {
                     final diary = docs[index];
                     final title = _resolveTitle(diary);
-                    final alarms =
-                        (diary['alarms'] as List?)?.cast<Map<String, dynamic>>() ??
-                        const [];
-                    if (alarms.isEmpty) {
+                    final locTime = _normalizeLocTime(diary['loc_time']);
+                    if (locTime == null) {
                       return const SizedBox.shrink();
                     }
 
-                    return _buildDiaryCard(context, title, alarms);
+                    return _buildDiaryCard(context, title, locTime);
                   },
                 ),
               ),

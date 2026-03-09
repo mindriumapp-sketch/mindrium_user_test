@@ -485,16 +485,21 @@ class _DiaryCard extends StatelessWidget {
     // latest_sud (int 또는 double 가능)
     final num? latestSud = entry['latest_sud'] as num?;
 
-    // 알람 리스트 정규화
-    final rawAlarms = entry['alarms'];
-    final alarms = (rawAlarms is List)
-        ? rawAlarms
-        .whereType<Map>()
-        .map((raw) =>
-        raw.map((k, v) => MapEntry(k.toString(), v)))
-        .toList()
-        .cast<Map<String, dynamic>>()
-        : <Map<String, dynamic>>[];
+    // 위치/시간 단건 정규화 (구 alarms 배열 fallback 지원)
+    final rawLocTime = entry['loc_time'] ?? entry['alarms'];
+    Map<String, dynamic>? locTimeEntry;
+    if (rawLocTime is Map) {
+      locTimeEntry = rawLocTime.map((k, v) => MapEntry(k.toString(), v));
+    } else if (rawLocTime is List && rawLocTime.isNotEmpty) {
+      final mapped = rawLocTime
+          .whereType<Map>()
+          .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
+          .toList()
+          .cast<Map<String, dynamic>>();
+      if (mapped.isNotEmpty) {
+        locTimeEntry = mapped.last;
+      }
+    }
 
     final addressName = entry['address_name']?.toString();
 
@@ -607,7 +612,7 @@ class _DiaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _AlarmSection(alarms: alarms),
+            _AlarmSection(locTimeEntry: locTimeEntry),
             if (addressName != null && addressName.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildSection(
@@ -714,30 +719,15 @@ class _SudScoreBar extends StatelessWidget {
 /// 알람 섹션
 /// ----------------------
 class _AlarmSection extends StatelessWidget {
-  final List<Map<String, dynamic>> alarms;
+  final Map<String, dynamic>? locTimeEntry;
 
   const _AlarmSection({
-    required this.alarms,
+    required this.locTimeEntry,
   });
-
-  static const List<String> _weekdayNames = [
-    '월',
-    '화',
-    '수',
-    '목',
-    '금',
-    '토',
-    '일',
-  ];
-
-  String _weekdayLabel(int dayNumber) {
-    if (dayNumber < 1 || dayNumber > 7) return '$dayNumber';
-    return _weekdayNames[dayNumber - 1];
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (alarms.isEmpty) {
+    if (locTimeEntry == null) {
       return _buildSection(
         context: context,
         icon: Icons.access_time_outlined,
@@ -761,105 +751,44 @@ class _AlarmSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ...alarms.asMap().entries.map((entry) {
-            final map = entry.value;
-            final location = map['location_desc'] ??
-                map['location'] ??
-                map['address_name'] ??
-                map['addressName'] ??
-                '-';
-            final notifyEnter =
-                map['enter'] == true || map['notifyEnter'] == true;
-            final notifyExit =
-                map['exit'] == true || map['notifyExit'] == true;
+          Builder(
+            builder: (_) {
+              final map = locTimeEntry!;
+              final location = map['location'] ??
+                  map['location_desc'] ??
+                  map['address_name'] ??
+                  map['addressName'] ??
+                  '-';
+              final time = map['time'] ?? map['scheduledTime'] ?? '-';
 
-            final condition = notifyEnter && notifyExit
-                ? '입장/퇴장'
-                : notifyEnter
-                ? '입장 시'
-                : notifyExit
-                ? '퇴장 시'
-                : '';
-
-            final time = map['time'] ?? map['scheduledTime'] ?? '-';
-
-            final repeatOption =
-            (map['repeat_option'] ?? map['repeatOption'] ?? '')
-                .toString();
-
-            final rawWeekdays = (map['weekdays'] ??
-                map['weekDays']) as List<dynamic>?;
-
-            final weekDays = rawWeekdays
-                ?.map(
-                  (e) => e is num
-                  ? e.toInt()
-                  : int.tryParse('$e') ?? 0,
-            )
-                .where((d) => d > 0 && d <= 7)
-                .toList() ??
-                const [];
-
-            final reminderMinutes = map['reminder_minutes'];
-
-            final repeatText = repeatOption == 'weekly'
-                ? (weekDays.isNotEmpty
-                ? '매주 (${weekDays.map(_weekdayLabel).join(', ')})'
-                : '매주')
-                : '매일';
-
-            final reminderText =
-            reminderMinutes is num && reminderMinutes > 0
-                ? '위치/시간 ${reminderMinutes.toInt()}분 후'
-                : null;
-
-            final locationDisplay =
-            condition.isNotEmpty && location != '-'
-                ? '$location ($condition)'
-                : condition.isNotEmpty
-                ? condition
-                : location.toString();
-
-            return Container(
-              margin: EdgeInsets.only(
-                top: entry.key > 0 ? 10 : 0,
-              ),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FBFF),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFF4A8CCB),
+              return Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FBFF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF4A8CCB),
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _infoRow(
-                    Icons.location_on_outlined,
-                    '위치',
-                    locationDisplay,
-                  ),
-                  const SizedBox(height: 6),
-                  _infoRow(
-                    Icons.access_time_outlined,
-                    '시간',
-                    time.toString(),
-                  ),
-                  const SizedBox(height: 6),
-                  _infoRow(Icons.repeat, '반복', repeatText),
-                  if (reminderText != null) ...[
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _infoRow(
+                      Icons.location_on_outlined,
+                      '위치',
+                      location.toString(),
+                    ),
                     const SizedBox(height: 6),
                     _infoRow(
-                      Icons.alarm,
-                      '다시 위치/시간',
-                      reminderText,
+                      Icons.access_time_outlined,
+                      '시간',
+                      time.toString(),
                     ),
                   ],
-                ],
-              ),
-            );
-          }),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

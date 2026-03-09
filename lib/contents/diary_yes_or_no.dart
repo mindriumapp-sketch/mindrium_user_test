@@ -154,7 +154,6 @@ class DiaryYesOrNo extends StatelessWidget {
         consequenceE: const [],
         consequenceB: const [],
         alternativeThoughts: const [],
-        alarms: const [],
         latitude: pos?.latitude,
         longitude: pos?.longitude,
         addressName: addressKo,

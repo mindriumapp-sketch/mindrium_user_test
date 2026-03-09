@@ -75,80 +75,43 @@ class _LocTimeSelectionScreenState
   bool _isSaving = false; // 저장 중 상태
   bool _openedLocationPickerOnEntry = false;
 
-  // ====== Alarm <-> LocTimeSetting 변환 ======
+  // ====== LocTime <-> LocTimeSetting 변환 ======
 
-  LocTimeSetting _settingFromAlarm(Map<String, dynamic> alarm) {
+  LocTimeSetting _settingFromLocTime(Map<String, dynamic> locTime) {
     // time: "HH:MM"
     TimeOfDay? tod;
-    final timeRaw = alarm['time']?.toString();
+    final timeRaw = locTime['time']?.toString();
     if (timeRaw != null && timeRaw.contains(':')) {
       final parts = timeRaw.split(':');
       final hour = int.tryParse(parts[0]) ?? 0;
       final minute = int.tryParse(parts[1]) ?? 0;
       tod = TimeOfDay(hour: hour, minute: minute);
     }
-
-    // repeat_option: "daily" / "weekly"
-    RepeatOption repeat = RepeatOption.daily;
-    final repeatRaw = alarm['repeat_option']?.toString();
-    if (repeatRaw == RepeatOption.weekly.name) {
-      repeat = RepeatOption.weekly;
-    }
-
-    // weekdays: [1..7]
-    final weekDays =
-        (alarm['weekdays'] as List?)
-            ?.map((e) => e is num ? e.toInt() : int.tryParse('$e') ?? 0)
-            .where((e) => e > 0)
-            .toList() ??
-            const [];
-
-    // reminder_minutes
-    final reminderRaw = alarm['reminder_minutes'];
-    final reminder =
-    reminderRaw is num
-        ? reminderRaw.toInt()
-        : int.tryParse(reminderRaw?.toString() ?? '');
+    final location = locTime['location']?.toString() ??
+        locTime['location_desc']?.toString();
 
     return LocTimeSetting(
-      id: alarm['alarm_id']?.toString(),
+      id: locTime['id']?.toString() ?? locTime['alarm_id']?.toString(),
       diaryId: _abcId, // 클라 내부용 필드
       time: tod,
-      repeatOption: repeat,
-      weekdays: weekDays,
-      reminderMinutes: reminder,
-      location: alarm['location_desc']?.toString(),
-      description: alarm['location_desc']?.toString(),
-      notifyEnter: alarm['enter'] == true,
-      notifyExit: alarm['exit'] == true,
+      repeatOption: RepeatOption.daily,
+      weekdays: const [],
+      reminderMinutes: null,
+      location: location,
+      description: location,
+      notifyEnter: false,
+      notifyExit: false,
       cause: widget.label,
     );
   }
 
-  Map<String, dynamic> _alarmPayload(LocTimeSetting setting) {
-    final weekDays =
-    setting.repeatOption == RepeatOption.weekly
-        ? (List<int>.from(setting.weekdays)..sort())
-        : <int>[];
-
-    final hasLocationText =
-        (setting.location?.trim().isNotEmpty ?? false) ||
-            (setting.description?.trim().isNotEmpty ?? false);
-
+  Map<String, dynamic> _locTimePayload(LocTimeSetting setting) {
     final map = <String, dynamic>{
       'time':
       setting.time == null
           ? null
           : '${setting.time!.hour.toString().padLeft(2, '0')}:${setting.time!.minute.toString().padLeft(2, '0')}',
-      'location_desc': setting.location ?? setting.description,
-      'repeat_option':
-      setting.repeatOption == RepeatOption.weekly ? 'weekly' : 'daily',
-      'weekdays': weekDays,
-      'reminder_minutes': setting.reminderMinutes,
-      // false를 명시적으로 보내면 백엔드 검증에서 거절되는 경우가 있어
-      // 위치 정보가 있을 때만 true 값만 전송한다.
-      if (hasLocationText && setting.notifyEnter) 'enter': true,
-      if (hasLocationText && setting.notifyExit) 'exit': true,
+      'location': setting.location ?? setting.description,
     };
 
     map.removeWhere((key, value) => value == null);
@@ -181,19 +144,34 @@ class _LocTimeSelectionScreenState
           consequenceE: emotion,
           consequenceB: behavior,
           alternativeThoughts: const [],
-          alarms: const [],
         );
         diaryId = created['diary_id']?.toString();
       } else {
-        await _diariesApi.updateDiary(diaryId, {
-          'activation': activationChip,
-          'belief': belief,
-          'consequence_physical': physical,
-          'consequence_emotion': emotion,
-          'consequence_action': behavior,
-          'alternative_thoughts': const [],
-          'alarms': const [],
-        });
+        try {
+          await _diariesApi.updateDiary(diaryId, {
+            'activation': activationChip,
+            'belief': belief,
+            'consequence_physical': physical,
+            'consequence_emotion': emotion,
+            'consequence_action': behavior,
+            'alternative_thoughts': const [],
+          });
+        } on DioException catch (e) {
+          // stale diary_id가 들어온 경우 새 diary를 만들어 저장 흐름을 복구한다.
+          if (e.response?.statusCode == 404) {
+            final created = await _diariesApi.createDiary(
+              activation: activationChip,
+              belief: belief,
+              consequenceP: physical,
+              consequenceE: emotion,
+              consequenceB: behavior,
+              alternativeThoughts: const [],
+            );
+            diaryId = created['diary_id']?.toString();
+          } else {
+            rethrow;
+          }
+        }
       }
 
       if (diaryId == null || diaryId.isEmpty) {
@@ -298,7 +276,6 @@ class _LocTimeSelectionScreenState
 
   /// 기존 위치/시간 설정을 불러와 초깃값으로 반영
   Future<void> _loadExisting() async {
-    // final diaryId = await _resolveDiaryId();
     final diaryId = _abcId;
     if (diaryId == null || diaryId.isEmpty) {
       if (mounted) {
@@ -315,77 +292,39 @@ class _LocTimeSelectionScreenState
       return;
     }
 
-
     try {
-      var alarms = await _diariesApi.listAlarms(diaryId);
-
-      // loctimeId가 지정된 경우 해당 알람만 필터링
-      if (widget.loctimeId != null && widget.loctimeId!.isNotEmpty) {
-        final filtered = alarms.where(
-              (alarm) => alarm['alarm_id']?.toString() == widget.loctimeId,
-        );
-        if (filtered.isNotEmpty) {
-          alarms = filtered.toList();
-        }
-      }
-
+      final rawLocTime = await _diariesApi.getLocTime(diaryId);
       LocTimeSetting? timeSetting;
       LocTimeSetting? locationSetting;
-      final weekSet = <int>{};
-      Duration? reminder;
 
-      for (final alarm in alarms) {
-        final setting = _settingFromAlarm(alarm);
-        final hasLocation =
-            setting.notifyEnter ||
-                setting.notifyExit ||
-                (setting.location?.isNotEmpty ?? false);
-        final hasTime = setting.time != null;
+      if (rawLocTime != null) {
+        final base = _settingFromLocTime(rawLocTime);
+        final hasLocation = (base.location?.trim().isNotEmpty ?? false) ||
+            (base.description?.trim().isNotEmpty ?? false);
+        final hasTime = base.time != null;
 
+        if (hasTime) {
+          timeSetting = base.copyWith(
+            location: null,
+            description: null,
+            notifyEnter: false,
+            notifyExit: false,
+          );
+        }
         if (hasLocation) {
-          locationSetting = setting;
-          weekSet.addAll(setting.weekdays);
-        } else if (hasTime && timeSetting == null) {
-          timeSetting = setting;
-          weekSet.addAll(setting.weekdays);
+          locationSetting = base.copyWith(
+            notifyEnter: true,
+            notifyExit: false,
+          );
         }
-
-        if (setting.reminderMinutes != null) {
-          reminder = Duration(minutes: setting.reminderMinutes!);
-        }
-      }
-
-      // 위치 설정만 있고 시간도 들어있으면, 시간용 세팅도 만들어서 분리
-      if (timeSetting == null &&
-          locationSetting != null &&
-          locationSetting.time != null) {
-        final loc = locationSetting;
-        timeSetting = loc.copyWith(
-          latitude: null,
-          longitude: null,
-          location: null,
-          notifyEnter: false,
-          notifyExit: false,
-        );
       }
 
       if (!mounted) return;
       setState(() {
         _draftTime = timeSetting;
         _draftLocation = locationSetting;
-        _selectedWeekdays
-          ..clear()
-          ..addAll(
-            weekSet.isNotEmpty
-                ? weekSet
-                : (timeSetting?.weekdays ??
-                locationSetting?.weekdays ??
-                const []),
-          );
-        _repeatOption =
-            (locationSetting ?? timeSetting)?.repeatOption ??
-                RepeatOption.daily;
-        _reminderDuration = reminder ?? _reminderDuration;
+        _selectedWeekdays.clear();
+        _repeatOption = RepeatOption.daily;
         _noLocTime = false;
       });
     } on DioException catch (e) {
@@ -620,15 +559,7 @@ class _LocTimeSelectionScreenState
       // 1) 위치/시간 비활성화 분기(현재 UI에서는 토글 숨김)
       if (_noLocTime) {
         debugPrint('🟡 위치/시간 안 받을래요 선택됨');
-        if (widget.loctimeId != null &&
-            widget.loctimeId!.isNotEmpty) {
-          await _diariesApi.deleteAlarm(
-            resolvedDiaryId,
-            widget.loctimeId!,
-          );
-        } else {
-          await _diariesApi.deleteAllAlarms(resolvedDiaryId);
-        }
+        await _diariesApi.deleteLocTime(resolvedDiaryId);
 
         if (!mounted) return;
         debugPrint('🟢 위치/시간 없음 처리 완료');
@@ -648,67 +579,53 @@ class _LocTimeSelectionScreenState
         }
       }
 
-      // 위치 + 시간 → 하나의 문서로 합치기
-      String? alarmIdToDelete;
-      if (_draftTime != null && _draftLocation != null) {
+      LocTimeSetting? merged;
+      if (_draftLocation != null) {
         final hasLocationTrigger =
             _draftLocation!.notifyEnter || _draftLocation!.notifyExit;
-        _draftLocation = _draftLocation!.copyWith(
-          time: _draftTime!.time,
-          repeatOption: _draftTime!.repeatOption,
-          weekdays: _draftTime!.weekdays,
+        merged = _draftLocation!.copyWith(
+          time: _draftTime?.time ?? _draftLocation!.time,
+          repeatOption: _draftTime?.repeatOption ?? _draftLocation!.repeatOption,
+          weekdays: _draftTime?.weekdays ?? _draftLocation!.weekdays,
           reminderMinutes:
-          _draftLocation!.reminderMinutes ?? _draftTime!.reminderMinutes,
-          // 위치를 함께 저장할 때는 트리거를 모두 false로 만들지 않는다.
-          // (일부 서버에서 위치 정보 + false/false 조합을 거절)
+              _draftLocation!.reminderMinutes ?? _draftTime?.reminderMinutes,
           notifyEnter: hasLocationTrigger ? _draftLocation!.notifyEnter : true,
           notifyExit: hasLocationTrigger ? _draftLocation!.notifyExit : false,
         );
-
-        if (_draftTime!.id != null && _draftTime!.id != _draftLocation!.id) {
-          alarmIdToDelete = _draftTime!.id;
-        }
-
-        _draftTime = null;
+      } else if (_draftTime != null) {
+        merged = _draftTime;
       }
 
-      Future<void> saveSetting(LocTimeSetting setting) async {
-        final payload = _alarmPayload(setting);
+      if (merged == null) {
+        throw Exception('저장할 위치/시간 데이터가 없습니다.');
+      }
 
-        Map<String, dynamic> result;
-        if (setting.id != null && setting.id!.isNotEmpty) {
-          result = await _diariesApi.updateAlarm(
-            resolvedDiaryId,
-            setting.id!,
-            payload,
-          );
-        } else {
-          result = await _diariesApi.createAlarm(resolvedDiaryId, payload);
-        }
-
-        final updated = _settingFromAlarm({
+      final payload = _locTimePayload(merged);
+      if (payload.isEmpty) {
+        await _diariesApi.deleteLocTime(resolvedDiaryId);
+      } else {
+        final result = await _diariesApi.upsertLocTime(
+          resolvedDiaryId,
+          payload,
+        );
+        final updated = _settingFromLocTime({
           ...result,
-          'diaryId': resolvedDiaryId, // 클라 내부용으로 diaryId 붙여줌
+          'diaryId': resolvedDiaryId,
         });
-        if (identical(setting, _draftTime)) {
-          _draftTime = updated;
-        }
-        if (identical(setting, _draftLocation)) {
-          _draftLocation = updated;
-        }
-      }
 
-      final draftTimeLocal = _draftTime;
-      if (draftTimeLocal != null) {
-        await saveSetting(draftTimeLocal);
-      }
-      final draftLocationLocal = _draftLocation;
-      if (draftLocationLocal != null) {
-        await saveSetting(draftLocationLocal);
-      }
-
-      if (alarmIdToDelete != null && alarmIdToDelete.isNotEmpty) {
-        await _diariesApi.deleteAlarm(resolvedDiaryId, alarmIdToDelete);
+        _draftTime = updated.time != null
+            ? updated.copyWith(
+                location: null,
+                description: null,
+                notifyEnter: false,
+                notifyExit: false,
+              )
+            : null;
+        final hasLocation = (updated.location?.trim().isNotEmpty ?? false) ||
+            (updated.description?.trim().isNotEmpty ?? false);
+        _draftLocation = hasLocation
+            ? updated.copyWith(notifyEnter: true, notifyExit: false)
+            : null;
       }
 
       debugPrint('🟢 위치/시간 설정 완료');
