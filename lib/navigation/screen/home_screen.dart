@@ -7,6 +7,9 @@ import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
@@ -20,7 +23,7 @@ import 'package:gad_app_team/features/5th_treatment/week5_screen.dart';
 import 'package:gad_app_team/features/6th_treatment/week6_screen.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_screen.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
-import 'package:gad_app_team/data/apply_solve_provider.dart';
+// import 'package:gad_app_team/data/apply_solve_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialIndex = 0});
@@ -52,6 +55,9 @@ class _ProgressSnapshot {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   static const int _kTotalWeeks = 8;
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final AlarmSettingsApi _alarmApi = AlarmSettingsApi(_apiClient);
 
   bool _permissionsChecked = false;
   Future<void>? _permissionFuture;
@@ -193,8 +199,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 알림 관련(플러그인/플랫폼) 권한은 홈 화면에서 선요청.
     await AlarmNotificationService.instance.requestPermissions();
+    await _syncAlarmSchedulesBestEffort();
 
     _permissionsChecked = true;
+  }
+
+  Future<void> _syncAlarmSchedulesBestEffort() async {
+    final service = AlarmNotificationService.instance;
+    try {
+      final remote = await _alarmApi.listAlarmSettings();
+      final alarms = remote.map(AlarmSetting.fromJson).toList();
+      await service.saveAlarms(alarms);
+    } catch (e) {
+      debugPrint('알림 설정 서버 동기화 실패, 로컬 캐시 사용: $e');
+      await service.syncFromStorage();
+    }
   }
 
   // ===================== 홈 탭 =====================
@@ -542,43 +561,43 @@ class _HomeScreenState extends State<HomeScreen> {
   // ===================== 교육/훈련 섹션 =====================
 
   Widget _buildTrainingSection() {
-    final userProvider = context.read<UserProvider>();
-    final completedWeeks = userProvider.lastCompletedWeek;
-    final bool canSolve = completedWeeks >= 4;
-    const baseColor = Color(0xFFFFE2E8);
-    final cardColor = canSolve ? baseColor : baseColor.withValues(alpha: .55);
+    // final userProvider = context.read<UserProvider>();
+    // final completedWeeks = userProvider.lastCompletedWeek;
+    // final bool canSolve = completedWeeks >= 4;
+    // const baseColor = Color(0xFFFFE2E8);
+    // final cardColor = canSolve ? baseColor : baseColor.withValues(alpha: .55);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _trainingCard(
-          title: '불안 해결하기',
-          description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
-          color: cardColor,
-          imagePath: 'assets/image/pink1.png',
-          onTap: () {
-            if (!canSolve) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
-              );
-              return;
-            }
-            final flow = context.read<ApplyOrSolveFlow>();
-            // 기존 상태 초기화 후 solve 흐름 세팅
-            flow.clear();
-            flow.setOrigin('solve');
-            Navigator.pushNamed(
-              context,
-              '/before_sud',
-              arguments: {
-                ...flow.toArgs(),
-                'origin': 'solve',
-              },
-            );
-          },
-        ),
+        // _trainingCard(
+        //   title: '불안 해결하기',
+        //   description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
+        //   color: cardColor,
+        //   imagePath: 'assets/image/pink1.png',
+        //   onTap: () {
+        //     if (!canSolve) {
+        //       ScaffoldMessenger.of(context).showSnackBar(
+        //         const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
+        //       );
+        //       return;
+        //     }
+        //     final flow = context.read<ApplyOrSolveFlow>();
+        //     // 기존 상태 초기화 후 solve 흐름 세팅
+        //     flow.clear();
+        //     flow.setOrigin('solve');
+        //     Navigator.pushNamed(
+        //       context,
+        //       '/before_sud',
+        //       arguments: {
+        //         ...flow.toArgs(),
+        //         'origin': 'solve',
+        //       },
+        //     );
+        //   },
+        // ),
         
-        const SizedBox(height: 8),
+        // const SizedBox(height: 8),
         _trainingCard(
           title: '알림 설정',
           description: '문구...', //TODO: 알림 설정 문구 고민

@@ -19,6 +19,7 @@ from routers.screen_time import router as screen_time_router
 from routers.schedule_events import router as schedule_events_router
 from routers.edu_sessions import router as edu_sessions_router
 from routers.worry_groups import router as worry_groups_router
+from routers.alarm_settings import router as alarm_settings_router
 from routers.ai import router as ai_router
 
 settings = get_settings()
@@ -129,6 +130,50 @@ async def lifespan(app: FastAPI):
         print("✅ diaries 인덱스 생성 완료")
     except Exception as e:
         print(f"⚠️ diaries 인덱스 생성 중 오류: {e}")
+
+    # ---------- notification_settings 컬렉션 ----------
+    try:
+        existing_collections = await db.list_collection_names()
+        if (
+            "alarm_settings" in existing_collections
+            and "notification_settings" not in existing_collections
+        ):
+            await db["alarm_settings"].rename("notification_settings")
+            print("✅ alarm_settings -> notification_settings 컬렉션 rename 완료")
+    except Exception as e:
+        print(f"⚠️ notification_settings 컬렉션 rename 중 오류: {e}")
+
+    try:
+        notification_settings = db["notification_settings"]
+
+        # 이전 구조 인덱스가 있으면 제거
+        try:
+            await notification_settings.drop_index("unique_alarm_settings_user")
+        except Exception:
+            pass
+        try:
+            await notification_settings.drop_index("unique_alarm_settings_user_alarm")
+        except Exception:
+            pass
+        try:
+            await notification_settings.drop_index("idx_alarm_settings_user_time")
+        except Exception:
+            pass
+
+        await notification_settings.create_index(
+            [("user_id", 1), ("alarm_id", 1)],
+            unique=True,
+            name="unique_notification_settings_user_alarm",
+        )
+
+        await notification_settings.create_index(
+            [("user_id", 1), ("schedule.hour", 1), ("schedule.minute", 1), ("alarm_id", 1)],
+            name="idx_notification_settings_user_time",
+        )
+
+        print("✅ notification_settings 인덱스 생성 완료")
+    except Exception as e:
+        print(f"⚠️ notification_settings 인덱스 생성 중 오류: {e}")
 
     # ---------- sud_scores 컬렉션 ----------
     # SUD 점수를 diaries에 embed 안 하고 별도 컬렉션으로도 쓸 경우 대비
@@ -295,4 +340,5 @@ app.include_router(schedule_events_router)
 app.include_router(edu_sessions_router)
 app.include_router(custom_tags_router)
 app.include_router(worry_groups_router)
+app.include_router(alarm_settings_router)
 app.include_router(ai_router)

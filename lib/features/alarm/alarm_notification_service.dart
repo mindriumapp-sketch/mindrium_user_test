@@ -85,26 +85,42 @@ class AlarmSetting {
   Map<String, dynamic> toJson() {
     final sortedDays = weekdays.toSet().where((d) => d >= 1 && d <= 7).toList()
       ..sort();
-    return {
-      'id': id,
-      'hour': hour,
-      'minute': minute,
+    final payload = <String, dynamic>{
+      'alarm_id': id,
       'label': label,
       'enabled': enabled,
-      'weekdays': sortedDays,
       'vibration': vibration,
-      'location_enabled': locationEnabled,
-      'latitude': latitude,
-      'longitude': longitude,
-      'location_label': locationLabel,
-      'location_radius_meters': locationRadiusMeters,
-      'notify_on_enter': notifyOnEnter,
-      'notify_on_exit': notifyOnExit,
+      'schedule': {
+        'hour': hour,
+        'minute': minute,
+        'weekdays': sortedDays,
+        'timezone': 'Asia/Seoul',
+      },
     };
+
+    if (locationEnabled && latitude != null && longitude != null) {
+      payload['location'] = {
+        'latitude': latitude,
+        'longitude': longitude,
+        if (locationLabel != null && locationLabel!.trim().isNotEmpty)
+          'label': locationLabel!.trim(),
+        'radius_meters': locationRadiusMeters,
+        'notify_on_enter': notifyOnEnter,
+        'notify_on_exit': notifyOnExit,
+      };
+    }
+
+    return payload;
   }
 
   factory AlarmSetting.fromJson(Map<String, dynamic> json) {
-    final rawWeekdays = (json['weekdays'] as List?) ?? const [];
+    final scheduleRaw = json['schedule'];
+    final schedule = scheduleRaw is Map
+        ? scheduleRaw.map((k, v) => MapEntry(k.toString(), v))
+        : const <String, dynamic>{};
+
+    final rawWeekdays =
+        (schedule['weekdays'] as List?) ?? (json['weekdays'] as List?) ?? const [];
     final parsedWeekdays = rawWeekdays
         .map((e) => e is int ? e : int.tryParse(e.toString()))
         .whereType<int>()
@@ -113,10 +129,25 @@ class AlarmSetting {
         .toList()
       ..sort();
 
+    final locationRaw = json['location'];
+    final location = locationRaw is Map
+        ? locationRaw.map((k, v) => MapEntry(k.toString(), v))
+        : const <String, dynamic>{};
+
+    final hasLocationObject = locationRaw is Map;
+    final latitude = _readDouble(location['latitude'] ?? json['latitude']);
+    final longitude = _readDouble(location['longitude'] ?? json['longitude']);
+    final locationEnabled =
+        (hasLocationObject || json['location_enabled'] == true) &&
+        latitude != null &&
+        longitude != null;
+
     return AlarmSetting(
-      id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
-      hour: _readInt(json['hour'], fallback: 9).clamp(0, 23),
-      minute: _readInt(json['minute'], fallback: 0).clamp(0, 59),
+      id: json['alarm_id']?.toString() ??
+          json['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
+      hour: _readInt(schedule['hour'] ?? json['hour'], fallback: 9).clamp(0, 23),
+      minute: _readInt(schedule['minute'] ?? json['minute'], fallback: 0).clamp(0, 59),
       label: (json['label']?.toString().trim().isNotEmpty ?? false)
           ? json['label'].toString().trim()
           : 'Mindrium 알림',
@@ -125,14 +156,20 @@ class AlarmSetting {
           ? const [1, 2, 3, 4, 5, 6, 7]
           : parsedWeekdays,
       vibration: json['vibration'] != false,
-      locationEnabled: json['location_enabled'] == true,
-      latitude: _readDouble(json['latitude']),
-      longitude: _readDouble(json['longitude']),
-      locationLabel: json['location_label']?.toString(),
+      locationEnabled: locationEnabled,
+      latitude: latitude,
+      longitude: longitude,
+      locationLabel:
+          location['label']?.toString() ?? json['location_label']?.toString(),
       locationRadiusMeters:
-          _readInt(json['location_radius_meters'], fallback: 120).clamp(30, 1000),
-      notifyOnEnter: json['notify_on_enter'] != false,
-      notifyOnExit: json['notify_on_exit'] == true,
+          _readInt(location['radius_meters'] ?? json['location_radius_meters'], fallback: 120)
+              .clamp(30, 1000),
+      notifyOnEnter: hasLocationObject
+          ? location['notify_on_enter'] != false
+          : json['notify_on_enter'] != false,
+      notifyOnExit: hasLocationObject
+          ? location['notify_on_exit'] == true
+          : json['notify_on_exit'] == true,
     );
   }
 
@@ -269,10 +306,15 @@ class AlarmNotificationService {
 
   Future<void> saveAlarms(List<AlarmSetting> alarms) async {
     await initialize();
+    final previousAlarms = await loadAlarms();
+    final previousIds = previousAlarms.map((a) => a.id).toSet();
+    final currentIds = alarms.map((a) => a.id).toSet();
+    final removedIds = previousIds.difference(currentIds);
+
     final prefs = await SharedPreferences.getInstance();
     final encoded = alarms.map((a) => jsonEncode(a.toJson())).toList();
     await prefs.setStringList(storageKey, encoded);
-    await syncAlarms(alarms);
+    await syncAlarms(alarms, extraCancelIds: removedIds);
   }
 
   Future<void> syncFromStorage() async {
@@ -280,11 +322,18 @@ class AlarmNotificationService {
     await syncAlarms(alarms);
   }
 
-  Future<void> syncAlarms(List<AlarmSetting> alarms) async {
+  Future<void> syncAlarms(
+    List<AlarmSetting> alarms, {
+    Iterable<String> extraCancelIds = const [],
+  }) async {
     await initialize();
 
-    for (final alarm in alarms) {
-      await _cancelAlarmSchedules(alarm.id);
+    final cancelIds = <String>{
+      ...alarms.map((alarm) => alarm.id),
+      ...extraCancelIds,
+    };
+    for (final alarmId in cancelIds) {
+      await _cancelAlarmSchedules(alarmId);
     }
     for (final alarm in alarms.where((a) => a.enabled)) {
       await _scheduleAlarm(alarm);

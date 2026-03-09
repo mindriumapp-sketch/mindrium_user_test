@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode;
+import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/map_picker.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 
 import 'alarm_notification_service.dart';
 
@@ -19,6 +23,9 @@ class AlarmSettingsScreen extends StatefulWidget {
 class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
   final AlarmNotificationService _service = AlarmNotificationService.instance;
   final Uuid _uuid = const Uuid();
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final AlarmSettingsApi _alarmApi = AlarmSettingsApi(_apiClient);
 
   bool _isLoading = true;
   List<AlarmSetting> _alarms = [];
@@ -31,21 +38,56 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
 
   Future<void> _load() async {
     await _service.initialize();
-    final alarms = await _service.loadAlarms();
+    List<AlarmSetting> alarms;
+    try {
+      final remote = await _alarmApi.listAlarmSettings();
+      alarms = remote.map(AlarmSetting.fromJson).toList()
+        ..sort(_compareAlarm);
+      await _service.saveAlarms(alarms);
+    } on DioException catch (e) {
+      debugPrint('알림 설정 서버 조회 실패: ${e.message}');
+      alarms = await _service.loadAlarms();
+      await _service.syncAlarms(alarms);
+    } catch (e) {
+      debugPrint('알림 설정 조회 실패(unknown): $e');
+      alarms = await _service.loadAlarms();
+      await _service.syncAlarms(alarms);
+    }
     if (!mounted) return;
 
     setState(() {
       _alarms = alarms;
       _isLoading = false;
     });
-
-    await _service.syncAlarms(_alarms);
   }
 
   Future<void> _persist(List<AlarmSetting> alarms) async {
     final copied = List<AlarmSetting>.from(alarms)..sort(_compareAlarm);
     setState(() => _alarms = copied);
     await _service.saveAlarms(copied);
+    try {
+      await _alarmApi.replaceAlarmSettings(
+        copied.map((alarm) => alarm.toJson()).toList(),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message = e.response?.data is Map
+          ? e.response?.data['detail']?.toString()
+          : e.message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '서버 저장에 실패했습니다. 기기에는 저장되었습니다.'
+            '${message == null || message.isEmpty ? '' : ' ($message)'}',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('서버 저장에 실패했습니다. 기기에는 저장되었습니다.')),
+      );
+    }
   }
 
   Future<void> _addAlarm() async {
