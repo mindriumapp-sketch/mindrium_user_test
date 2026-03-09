@@ -78,6 +78,11 @@ class LocTimeSetting {
 
     if (location != null && location!.isNotEmpty) {
       map['location'] = location;
+      map['location_label'] = location;
+    }
+
+    if (description != null && description!.isNotEmpty) {
+      map['location_desc'] = description;
     }
 
     if (description == null || description!.isEmpty) {
@@ -109,9 +114,14 @@ class LocTimeSetting {
       weekdays: _weekdaysFrom(json['weekdays']),
       latitude: _doubleFrom(json['latitude']),
       longitude: _doubleFrom(json['longitude']),
-      location: json['location']?.toString(),
+      location:
+          json['location_label']?.toString() ??
+          json['location']?.toString(),
       cause: json['cause']?.toString(),
-      description: json['description']?.toString(),
+      description:
+          json['location_desc']?.toString() ??
+          json['description']?.toString() ??
+          json['location']?.toString(),
       reminderMinutes: _intFrom(json['reminder_minutes'] ?? json['reminderMinutes']),
       savedAt: _dateFrom(savedAtRaw),
       notifyEnter: _boolFrom(json['notify_enter'] ?? json['notifyEnter']),

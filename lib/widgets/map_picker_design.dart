@@ -9,6 +9,7 @@ class MindriumPopupDesign extends StatefulWidget {
   final String title;
   final TextEditingController? searchController;
   final MapController? mapController;
+  final VoidCallback? onMapReady;
   final LatLng? picked;
   final LatLng? current;
   final List<Marker>? savedMarkers;
@@ -19,12 +20,20 @@ class MindriumPopupDesign extends StatefulWidget {
   final DateTime? initialTimeDateTime;
   final ValueChanged<DateTime>? onTimeChanged;
   final String? locationText;
+  final bool showLocationLabelInput;
+  final TextEditingController? locationLabelController;
+  final List<String> locationLabelChips;
+  final bool isLoadingLocationLabels;
+  final ValueChanged<String>? onLocationLabelSelected;
+  final Future<void> Function()? onAddLocationLabel;
+  final bool showTimePicker;
 
   const MindriumPopupDesign({
     super.key,
     required this.title,
     this.searchController,
     this.mapController,
+    this.onMapReady,
     this.picked,
     this.current,
     this.savedMarkers,
@@ -35,6 +44,13 @@ class MindriumPopupDesign extends StatefulWidget {
     this.initialTimeDateTime,
     this.onTimeChanged,
     this.locationText,
+    this.showLocationLabelInput = false,
+    this.locationLabelController,
+    this.locationLabelChips = const [],
+    this.isLoadingLocationLabels = false,
+    this.onLocationLabelSelected,
+    this.onAddLocationLabel,
+    this.showTimePicker = true,
   });
 
   @override
@@ -43,8 +59,8 @@ class MindriumPopupDesign extends StatefulWidget {
 
 class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   static const double _sheetMinSize = 0.075;
-  static const double _sheetInitialSize = 0.5;
-  static const double _sheetMaxSize = 0.5;
+  static const double _sheetInitialSize = 0.33;
+  static const double _sheetMaxSize = 0.6;
 
   late DateTime _pickerTime;
   bool _showJellyfishMessage = true;
@@ -61,7 +77,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
     });
   }
 
-  Widget _buildJellyfishGuide() {
+  Widget _buildJellyfishGuide(String guideText) {
     return SizedBox(
       height: 110,
       child: Stack(
@@ -89,10 +105,10 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                       ),
                     ],
                   ),
-                  child: const Text(
-                    '일기에 작성한 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.',
+                  child: Text(
+                    guideText,
                     textAlign: TextAlign.left,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF626262),
@@ -230,9 +246,120 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
     );
   }
 
+  Widget _buildLocationLabelCard() {
+    final selectedLabel = widget.locationLabelController?.text.trim() ?? '';
+    final chips = widget.locationLabelChips.toSet().toList();
+
+    Widget buildLabelChip({
+      required String label,
+      required Future<void> Function() onTapAsync,
+      bool selected = false,
+    }) {
+      return InkWell(
+        onTap: () async {
+          await onTapAsync();
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE9F3FF) : const Color(0xFFF7F8FA),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? const Color(0xFF7CB3E8) : const Color(0xFFC7CDD7),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: selected ? const Color(0xFF275E92) : const Color(0xFF2B2F36),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.bookmark_border,
+                color: Color(0xFF4A90E2),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '위치 라벨',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A2233),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (widget.isLoadingLocationLabels) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ] else ...[
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                ...chips.map(
+                  (label) => buildLabelChip(
+                    label: label,
+                    selected: selectedLabel == label,
+                    onTapAsync: () async {
+                      widget.onLocationLabelSelected?.call(label);
+                    },
+                  ),
+                ),
+                buildLabelChip(
+                  label: '+ 추가',
+                  onTapAsync: () async {
+                    await widget.onAddLocationLabel?.call();
+                  },
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final timeText = TimeOfDay.fromDateTime(_pickerTime).format(context);
+    final guideText = widget.showTimePicker
+        ? '일기에 작성한 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
+        : '알림을 받을 위치를 선택한 뒤 [저장]을 눌러주세요.';
     final bool hasLocation =
         widget.locationText != null && widget.locationText!.trim().isNotEmpty;
     final String locationText =
@@ -251,6 +378,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                     widget.picked ?? widget.current ?? const LatLng(37.5665, 126.9780),
                 initialZoom: 16,
                 onTap: widget.onTap,
+                onMapReady: widget.onMapReady,
               ),
               children: [
                 TileLayer(
@@ -330,18 +458,17 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
             left: 24,
             right: 12,
             top: 120,
-            child: _buildJellyfishGuide(),
+            child: _buildJellyfishGuide(guideText),
           ),
 
           Positioned.fill(
-            child: DraggableScrollableSheet(
-              expand: false,
-              initialChildSize: _sheetInitialSize,
-              minChildSize: _sheetMinSize,
-              maxChildSize: _sheetMaxSize,
-              snap: true,
-              snapSizes: const [_sheetMinSize, _sheetMaxSize],
-              builder: (context, scrollController) {
+              child: DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: _sheetInitialSize,
+                minChildSize: _sheetMinSize,
+                maxChildSize: _sheetMaxSize,
+                snap: false,
+                builder: (context, scrollController) {
                 return Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFF7FAFF).withValues(alpha: 0.97),
@@ -374,10 +501,10 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        '위치/시간 설정',
+                      Text(
+                        widget.showTimePicker ? '위치/시간 설정' : '위치 설정',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF3A4760),
@@ -385,8 +512,15 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                       ),
                       const SizedBox(height: 12),
                       _buildLocationCard(hasLocation, locationText),
-                      const SizedBox(height: 10),
-                      _buildTimeCard(timeText),
+                      if (widget.showLocationLabelInput &&
+                          widget.locationLabelController != null) ...[
+                        const SizedBox(height: 10),
+                        _buildLocationLabelCard(),
+                      ],
+                      if (widget.showTimePicker) ...[
+                        const SizedBox(height: 10),
+                        _buildTimeCard(timeText),
+                      ],
                       const SizedBox(height: 12),
                       NavigationButtons(
                         leftLabel: '이전',

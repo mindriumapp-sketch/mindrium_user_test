@@ -178,17 +178,14 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
 
   String _locationDetailText(AlarmSetting alarm) {
     if (!alarm.locationEnabled) return '';
-    final locationText = (alarm.locationLabel?.trim().isNotEmpty ?? false)
-        ? alarm.locationLabel!.trim()
-        : '위치 알림 사용';
-    final trigger = alarm.notifyOnEnter && alarm.notifyOnExit
-        ? '진입/이탈'
-        : alarm.notifyOnEnter
-            ? '진입'
-            : alarm.notifyOnExit
-                ? '이탈'
-                : '미설정';
-    return '$locationText · $trigger';
+    final label = alarm.locationLabel?.trim();
+    final address = alarm.locationAddress?.trim();
+    if ((label?.isNotEmpty ?? false) && (address?.isNotEmpty ?? false)) {
+      return '$label, $address';
+    }
+    if (label?.isNotEmpty ?? false) return label!;
+    if (address?.isNotEmpty ?? false) return address!;
+    return '위치 알림 사용';
   }
 
   @override
@@ -400,13 +397,20 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
   bool _locationEnabled = false;
   bool _notifyOnEnter = true;
   bool _notifyOnExit = false;
-  int _locationRadiusMeters = 120;
+  int _locationRadiusMeters = 100;
   List<int> _weekdays = const [1, 2, 3, 4, 5, 6, 7];
   double? _latitude;
   double? _longitude;
   String? _locationLabel;
+  String? _locationAddress;
   DateTime _pickerTime = DateTime(2000, 1, 1, 9, 0);
   final TextEditingController _labelController = TextEditingController();
+
+  bool _isValidCoordinatePair(double? lat, double? lng) {
+    if (lat == null || lng == null) return false;
+    if (!lat.isFinite || !lng.isFinite) return false;
+    return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  }
 
   @override
   void initState() {
@@ -423,6 +427,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
     _latitude = widget.initialAlarm.latitude;
     _longitude = widget.initialAlarm.longitude;
     _locationLabel = widget.initialAlarm.locationLabel;
+    _locationAddress = widget.initialAlarm.locationAddress;
     _pickerTime = DateTime(2000, 1, 1, _hour, _minute);
     _labelController.text = widget.initialAlarm.label;
   }
@@ -453,15 +458,15 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
   Future<void> _pickLocation() async {
     final navigator = Navigator.of(context);
     final allowed = await AlarmNotificationService.instance.requestLocationPermission();
+    if (!mounted) return;
     if (!allowed) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('위치 권한을 허용해야 위치 알림을 설정할 수 있어요.')),
       );
       return;
     }
 
-    final initial = (_latitude != null && _longitude != null)
+    final initial = _isValidCoordinatePair(_latitude, _longitude)
         ? LatLng(_latitude!, _longitude!)
         : null;
 
@@ -470,6 +475,10 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
         builder: (_) => MapPicker(
           initial: initial,
           initialTime: TimeOfDay(hour: _hour, minute: _minute),
+          enableLocationLabel: true,
+          initialLocationLabel: _locationLabel,
+          showSavedMarkers: false,
+          enableTimeSelection: false,
         ),
       ),
     );
@@ -480,6 +489,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
       _latitude = selected.latitude;
       _longitude = selected.longitude;
       _locationLabel = selected.location ?? selected.description;
+      _locationAddress = selected.description;
       _locationEnabled = true;
       if (!_notifyOnEnter && !_notifyOnExit) {
         _notifyOnEnter = true;
@@ -519,6 +529,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
           latitude: _latitude,
           longitude: _longitude,
           locationLabel: _locationLabel,
+          locationAddress: _locationAddress,
           locationRadiusMeters: _locationRadiusMeters,
           notifyOnEnter: _notifyOnEnter,
           notifyOnExit: _notifyOnExit,
@@ -574,6 +585,12 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
   @override
   Widget build(BuildContext context) {
     const labels = ['월', '화', '수', '목', '금', '토', '일'];
+    final hasLocation = _isValidCoordinatePair(_latitude, _longitude);
+    final locationLabelText = _locationLabel?.trim() ?? '';
+    final locationAddressText = _locationAddress?.trim() ?? '';
+    final resolvedLocationLabel = locationLabelText.isNotEmpty
+        ? locationLabelText
+        : (hasLocation ? '선택한 위치' : '위치를 선택해주세요.');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -667,74 +684,151 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                         const SizedBox(height: 8),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF6FAFE),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFD3E3F3)),
+                            color: const Color(0xFFF7FBFF),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: hasLocation
+                                  ? const Color(0xFFBBD6EE)
+                                  : const Color(0xFFD3E3F3),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                (_locationLabel?.trim().isNotEmpty ?? false)
-                                    ? _locationLabel!.trim()
-                                    : '위치를 선택해주세요.',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13.2,
-                                  color: Color(0xFF1E2C3A),
-                                  height: 1.3,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    resolvedLocationLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1A2E42),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: hasLocation
+                                          ? const Color(0xFFE4F2FF)
+                                          : const Color(0xFFF1F3F5),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      hasLocation ? '설정됨' : '미설정',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: hasLocation
+                                            ? const Color(0xFF1F5E93)
+                                            : const Color(0xFF7A8795),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 8),
-                              OutlinedButton.icon(
-                                onPressed: _pickLocation,
-                                icon: const Icon(Icons.map_outlined),
-                                label: Text(
-                                  (_latitude != null && _longitude != null)
-                                      ? '위치 다시 선택'
-                                      : '지도에서 위치 선택',
+                              const SizedBox(height: 10),
+                              if (locationAddressText.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  locationAddressText,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: Color(0xFF5D6A77),
+                                    height: 1.35,
+                                  ),
                                 ),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFF8BBCE6)),
+                              ] else if (!hasLocation) ...[
+                                const SizedBox(height: 4),
+                                const Text(
+                                  '지도에서 알림을 받을 장소를 선택해주세요.',
+                                  style: TextStyle(
+                                    fontSize: 12.3,
+                                    color: Color(0xFF7C8A98),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: _pickLocation,
+                                  icon: const Icon(Icons.map_outlined, size: 18),
+                                  label: Text(
+                                    hasLocation ? '위치 다시 선택' : '지도에서 위치 선택',
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2F8FD8),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 11,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Text(
-                          '약 ${_locationRadiusMeters}m',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        CheckboxListTile(
-                          dense: true,
-                          value: _notifyOnEnter,
-                          onChanged: (value) {
-                            setState(() => _notifyOnEnter = value == true);
-                          },
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('위치 진입 시 알림'),
-                          controlAffinity: ListTileControlAffinity.leading,
-                        ),
-                        CheckboxListTile(
-                          dense: true,
-                          value: _notifyOnExit,
-                          onChanged: (value) {
-                            setState(() => _notifyOnExit = value == true);
-                          },
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('위치 이탈 시 알림'),
-                          controlAffinity: ListTileControlAffinity.leading,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CheckboxListTile(
+                                dense: true,
+                                value: _notifyOnEnter,
+                                onChanged: (value) {
+                                  setState(() => _notifyOnEnter = value == true);
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                visualDensity: const VisualDensity(
+                                  horizontal: -4,
+                                  vertical: -3,
+                                ),
+                                title: const Text(
+                                  '위치 진입 시 알림',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                controlAffinity: ListTileControlAffinity.leading,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: CheckboxListTile(
+                                dense: true,
+                                value: _notifyOnExit,
+                                onChanged: (value) {
+                                  setState(() => _notifyOnExit = value == true);
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                visualDensity: const VisualDensity(
+                                  horizontal: -4,
+                                  vertical: -3,
+                                ),
+                                title: const Text(
+                                  '위치 이탈 시 알림',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                controlAffinity: ListTileControlAffinity.leading,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                       const SizedBox(height: 6),
+                      const Divider(height: 22),
                       _sectionTitle('반복 요일', Icons.repeat_rounded),
                       const SizedBox(height: 10),
                       Center(
@@ -814,12 +908,11 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                       ),
                       if (!widget.isNew) ...[
                         const SizedBox(height: 8),
-                        OutlinedButton(
+                        TextButton(
                           onPressed: _confirmDelete,
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),
                             foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('알림 삭제'),

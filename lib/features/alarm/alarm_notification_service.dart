@@ -27,6 +27,7 @@ class AlarmSetting {
   final double? latitude;
   final double? longitude;
   final String? locationLabel;
+  final String? locationAddress;
   final int locationRadiusMeters;
   final bool notifyOnEnter;
   final bool notifyOnExit;
@@ -43,7 +44,8 @@ class AlarmSetting {
     this.latitude,
     this.longitude,
     this.locationLabel,
-    this.locationRadiusMeters = 120,
+    this.locationAddress,
+    this.locationRadiusMeters = 100,
     this.notifyOnEnter = true,
     this.notifyOnExit = false,
   });
@@ -60,6 +62,7 @@ class AlarmSetting {
     double? latitude,
     double? longitude,
     String? locationLabel,
+    String? locationAddress,
     int? locationRadiusMeters,
     bool? notifyOnEnter,
     bool? notifyOnExit,
@@ -76,6 +79,7 @@ class AlarmSetting {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       locationLabel: locationLabel ?? this.locationLabel,
+      locationAddress: locationAddress ?? this.locationAddress,
       locationRadiusMeters: locationRadiusMeters ?? this.locationRadiusMeters,
       notifyOnEnter: notifyOnEnter ?? this.notifyOnEnter,
       notifyOnExit: notifyOnExit ?? this.notifyOnExit,
@@ -104,6 +108,8 @@ class AlarmSetting {
         'longitude': longitude,
         if (locationLabel != null && locationLabel!.trim().isNotEmpty)
           'label': locationLabel!.trim(),
+        if (locationAddress != null && locationAddress!.trim().isNotEmpty)
+          'address': locationAddress!.trim(),
         'radius_meters': locationRadiusMeters,
         'notify_on_enter': notifyOnEnter,
         'notify_on_exit': notifyOnExit,
@@ -161,8 +167,10 @@ class AlarmSetting {
       longitude: longitude,
       locationLabel:
           location['label']?.toString() ?? json['location_label']?.toString(),
+      locationAddress:
+          location['address']?.toString() ?? json['location_address']?.toString(),
       locationRadiusMeters:
-          _readInt(location['radius_meters'] ?? json['location_radius_meters'], fallback: 120)
+          _readInt(location['radius_meters'] ?? json['location_radius_meters'], fallback: 100)
               .clamp(30, 1000),
       notifyOnEnter: hasLocationObject
           ? location['notify_on_enter'] != false
@@ -336,6 +344,11 @@ class AlarmNotificationService {
       await _cancelAlarmSchedules(alarmId);
     }
     for (final alarm in alarms.where((a) => a.enabled)) {
+      final hasValidLocation =
+          alarm.locationEnabled && alarm.latitude != null && alarm.longitude != null;
+
+      // 위치 기반 알림은 지오펜스 콜백에서 시간 조건까지 함께 체크(AND)한다.
+      if (hasValidLocation) continue;
       await _scheduleAlarm(alarm);
     }
 
@@ -457,6 +470,11 @@ class AlarmNotificationService {
     final alarm = _locationAlarmMap[geofence.id];
     if (alarm == null || !alarm.enabled) return;
 
+    // AND 조건: 위치 이벤트 + 설정한 요일/시간 윈도우를 동시에 만족해야 알림.
+    if (!_isWithinScheduledWindow(alarm, DateTime.now())) {
+      return;
+    }
+
     final isEnter = geofenceStatus == GeofenceStatus.ENTER;
     final isExit = geofenceStatus == GeofenceStatus.EXIT;
     if ((isEnter && !alarm.notifyOnEnter) || (isExit && !alarm.notifyOnExit)) {
@@ -511,6 +529,16 @@ class AlarmNotificationService {
 
   void _onGeofenceError(dynamic error) {
     debugPrint('geofence stream error: $error');
+  }
+
+  bool _isWithinScheduledWindow(AlarmSetting alarm, DateTime now) {
+    final weekdays = alarm.weekdays.toSet().where((d) => d >= 1 && d <= 7).toSet();
+    if (!weekdays.contains(now.weekday)) return false;
+
+    final nowMinutes = now.hour * 60 + now.minute;
+    final alarmMinutes = alarm.hour * 60 + alarm.minute;
+    final difference = (nowMinutes - alarmMinutes).abs();
+    return difference <= 5; // ±5분 윈도우
   }
 
   tz.TZDateTime _nextInstanceForWeekday({

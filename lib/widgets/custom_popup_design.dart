@@ -78,38 +78,47 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
   @override
   Widget build(BuildContext context) {
     final bool singleAction = widget.negativeText == null;
+    final media = MediaQuery.of(context);
+    final maxDialogHeight = ((media.size.height - media.viewInsets.bottom) * 0.78)
+        .clamp(280.0, 720.0)
+        .toDouble();
 
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(28, 60, 28, 28),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-              image:
-                  widget.backgroundAsset != null
-                      ? DecorationImage(
-                        image: AssetImage(widget.backgroundAsset!),
-                        fit: BoxFit.cover,
-                        opacity: 0.15,
-                      )
-                      : null,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxDialogHeight),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(28, 60, 28, 28),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
+                    blurRadius: 30,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+                image:
+                    widget.backgroundAsset != null
+                        ? DecorationImage(
+                          image: AssetImage(widget.backgroundAsset!),
+                          fit: BoxFit.cover,
+                          opacity: 0.15,
+                        )
+                        : null,
+              ),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                 TextLine(
                   widget.title,
                   textAlign: TextAlign.center,
@@ -207,84 +216,86 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                     ),
                   ),
 
-                const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                // ✅ 버튼 영역
-                if (singleAction)
-                  SizedBox(
-                    width: double.infinity,
-                    child: _buildButton(
-                      label: widget.positiveText,
-                      onPressed: _handlePositivePressed,
-                      isPrimary: true,
-                    ),
-                  )
-                else
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          child: _buildButton(
-                            label: widget.negativeText!,
-                            onPressed: widget.onNegativePressed ?? () {},
-                            isPrimary: false,
-                          ),
+                    // ✅ 버튼 영역
+                    if (singleAction)
+                      SizedBox(
+                        width: double.infinity,
+                        child: _buildButton(
+                          label: widget.positiveText,
+                          onPressed: _handlePositivePressed,
+                          isPrimary: true,
                         ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          child: _buildButton(
-                            label: widget.positiveText,
-                            onPressed: _handlePositivePressed,
-                            isPrimary: true,
+                      )
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              child: _buildButton(
+                                label: widget.negativeText!,
+                                onPressed: widget.onNegativePressed ?? () {},
+                                isPrimary: false,
+                              ),
+                            ),
                           ),
-                        ),
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              child: _buildButton(
+                                label: widget.positiveText,
+                                onPressed: _handlePositivePressed,
+                                isPrimary: true,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-
-          // 상단 아이콘
-          Positioned(
-            top: -40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF74D2FF).withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
                   ],
-                ),
-                child: ClipOval(
-                  child:
-                      widget.iconAsset != null
-                          ? Image.asset(widget.iconAsset!, fit: BoxFit.cover)
-                          : const Icon(
-                            Icons.auto_awesome,
-                            color: Colors.white,
-                            size: 36,
-                          ),
                 ),
               ),
             ),
-          ),
-        ],
+
+            // 상단 아이콘
+            Positioned(
+              top: -40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF74D2FF).withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child:
+                        widget.iconAsset != null
+                            ? Image.asset(widget.iconAsset!, fit: BoxFit.cover)
+                            : const Icon(
+                              Icons.auto_awesome,
+                              color: Colors.white,
+                              size: 36,
+                            ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

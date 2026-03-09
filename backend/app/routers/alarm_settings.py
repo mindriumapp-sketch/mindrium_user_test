@@ -51,7 +51,7 @@ def _normalize_location(raw: dict) -> Optional[dict]:
     if isinstance(raw.get("location"), dict):
         location = dict(raw["location"])
         if "radius_meters" not in location:
-            location["radius_meters"] = 120
+            location["radius_meters"] = 100
         if "notify_on_enter" not in location:
             location["notify_on_enter"] = True
         if "notify_on_exit" not in location:
@@ -69,7 +69,10 @@ def _normalize_location(raw: dict) -> Optional[dict]:
         "latitude": latitude,
         "longitude": longitude,
         "label": raw.get("location_label"),
-        "radius_meters": max(30, min(_read_int(raw.get("location_radius_meters"), 120), 1000)),
+        "address": raw.get("location_address")
+        or raw.get("address_name")
+        or raw.get("location_desc"),
+        "radius_meters": max(30, min(_read_int(raw.get("location_radius_meters"), 100), 1000)),
         "notify_on_enter": raw.get("notify_on_enter") is not False,
         "notify_on_exit": raw.get("notify_on_exit") is True,
     }

@@ -11,6 +11,10 @@ from schemas.sud import SudScoreResponse  # 경로 맞게
 class LocTimeBase(BaseModel):
     time: Optional[str] = None
     location: Optional[str] = None
+    location_label: Optional[str] = None
+    location_desc: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class LocTimeCreate(LocTimeBase):
@@ -20,6 +24,10 @@ class LocTimeCreate(LocTimeBase):
 class LocTimeUpdate(BaseModel):
     time: Optional[str] = None
     location: Optional[str] = None
+    location_label: Optional[str] = None
+    location_desc: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     client_timestamp: datetime
 
 

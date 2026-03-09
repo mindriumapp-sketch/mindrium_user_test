@@ -139,6 +139,13 @@ def merge_unique_str_list(
     return result
 
 
+def _read_float(raw: Any) -> Optional[float]:
+    try:
+        return float(raw)
+    except Exception:
+        return None
+
+
 # ---------- DiaryChip 직렬화 ----------
 
 def _serialize_chip(raw: Any) -> Optional[dict]:
@@ -188,6 +195,10 @@ def _serialize_loc_time(doc: dict) -> dict:
         "id": doc.get("id") or doc.get("alarm_id"),
         "time": doc.get("time", ""),
         "location": doc.get("location") or doc.get("location_desc"),
+        "location_label": doc.get("location_label"),
+        "location_desc": doc.get("location_desc"),
+        "latitude": doc.get("latitude"),
+        "longitude": doc.get("longitude"),
     }
 
 
@@ -203,13 +214,25 @@ def _normalize_single_loc_time(value: Any, now_utc: datetime) -> Optional[dict]:
     doc = dict(value or {})
     loc_time_id = doc.get("id") or doc.get("alarm_id") or f"loc_time_{uuid.uuid4().hex[:6]}"
     time_value = doc.get("time")
-    location_value = doc.get("location") or doc.get("location_desc")
+    location_desc = doc.get("location_desc") or doc.get("description")
+    location_value = doc.get("location") or location_desc
+    location_label = doc.get("location_label")
+    if location_label is None and location_value is not None and location_desc is not None:
+        if str(location_value) != str(location_desc):
+            location_label = location_value
+    latitude = _read_float(doc.get("latitude"))
+    longitude = _read_float(doc.get("longitude"))
 
-    return {
+    normalized = {
         "id": str(loc_time_id),
         "time": time_value,
         "location": location_value,
+        "location_label": location_label,
+        "location_desc": location_desc,
+        "latitude": latitude,
+        "longitude": longitude,
     }
+    return {k: v for k, v in normalized.items() if v is not None}
 
 
 def _normalize_loc_time(raw) -> Optional[dict]:
@@ -325,6 +348,8 @@ async def create_diary(
             else last.get("before_sud")
         )
 
+    loc_time_doc = _normalize_loc_time(payload.loc_time or payload.alarms)
+
     # 2) DiaryChip 필드들은 dict로 저장
     diary_doc = {
         "user_id": user_id,
@@ -339,7 +364,7 @@ async def create_diary(
 
         "sud_scores": sud_entries,
         "latest_sud": latest_sud,
-        "loc_time": _normalize_loc_time(payload.loc_time or payload.alarms),
+        "loc_time": loc_time_doc,
         "latitude": payload.latitude,
         "longitude": payload.longitude,
         "address_name": payload.address_name,
@@ -622,7 +647,28 @@ async def upsert_loc_time(
         "id": (current.get("id") if current else None) or f"loc_time_{uuid.uuid4().hex[:6]}",
         "time": update_data.get("time", current.get("time") if current else None),
         "location": update_data.get("location", current.get("location") if current else None),
+        "location_label": update_data.get(
+            "location_label",
+            current.get("location_label") if current else None,
+        ),
+        "location_desc": update_data.get(
+            "location_desc",
+            current.get("location_desc") if current else None,
+        ),
+        "latitude": _read_float(
+            update_data.get(
+                "latitude",
+                current.get("latitude") if current else None,
+            )
+        ),
+        "longitude": _read_float(
+            update_data.get(
+                "longitude",
+                current.get("longitude") if current else None,
+            )
+        ),
     }
+    loc_time_doc = {k: v for k, v in loc_time_doc.items() if v is not None}
 
     await collection.update_one(
         {"diary_id": diary_id, "user_id": user_id},

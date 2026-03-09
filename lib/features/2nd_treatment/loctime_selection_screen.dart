@@ -87,8 +87,12 @@ class _LocTimeSelectionScreenState
       final minute = int.tryParse(parts[1]) ?? 0;
       tod = TimeOfDay(hour: hour, minute: minute);
     }
-    final location = locTime['location']?.toString() ??
+    final location =
+        locTime['location_label']?.toString() ??
+        locTime['location']?.toString() ??
         locTime['location_desc']?.toString();
+    final description = locTime['location_desc']?.toString() ??
+        locTime['location']?.toString();
 
     return LocTimeSetting(
       id: locTime['id']?.toString() ?? locTime['alarm_id']?.toString(),
@@ -98,7 +102,9 @@ class _LocTimeSelectionScreenState
       weekdays: const [],
       reminderMinutes: null,
       location: location,
-      description: location,
+      description: description,
+      latitude: _readDouble(locTime['latitude']),
+      longitude: _readDouble(locTime['longitude']),
       notifyEnter: false,
       notifyExit: false,
       cause: widget.label,
@@ -106,12 +112,26 @@ class _LocTimeSelectionScreenState
   }
 
   Map<String, dynamic> _locTimePayload(LocTimeSetting setting) {
+    final locationLabel = setting.location?.trim();
+    final locationDesc = setting.description?.trim();
+    final resolvedLocation = (locationLabel != null && locationLabel.isNotEmpty)
+        ? locationLabel
+        : locationDesc;
+
     final map = <String, dynamic>{
       'time':
       setting.time == null
           ? null
           : '${setting.time!.hour.toString().padLeft(2, '0')}:${setting.time!.minute.toString().padLeft(2, '0')}',
-      'location': setting.location ?? setting.description,
+      'location': resolvedLocation,
+      'location_label': (locationLabel != null && locationLabel.isNotEmpty)
+          ? locationLabel
+          : null,
+      'location_desc': (locationDesc != null && locationDesc.isNotEmpty)
+          ? locationDesc
+          : null,
+      'latitude': setting.latitude,
+      'longitude': setting.longitude,
     };
 
     map.removeWhere((key, value) => value == null);
@@ -419,6 +439,8 @@ class _LocTimeSelectionScreenState
         builder: (_) => MapPicker(
           initial: initialLatLng,
           initialTime: _draftTime?.time ?? _draftLocation?.time,
+          enableLocationLabel: true,
+          initialLocationLabel: _draftLocation?.location,
         ),
       ),
     );
@@ -700,6 +722,12 @@ class _LocTimeSelectionScreenState
 
 
   // 📍 위치 + 동의 + 타임아웃까지 한 번에 처리하는 헬퍼
+  double? _readDouble(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    if (raw is String) return double.tryParse(raw);
+    return null;
+  }
+
   Future<Position?> _getPositionWithConsent(BuildContext ctx) async {
     if (!mounted) return null;
 
