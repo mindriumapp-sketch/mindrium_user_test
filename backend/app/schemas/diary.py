@@ -53,6 +53,7 @@ class DiaryChip(BaseModel):
 
 class DiaryBase(BaseModel):
     group_id: Optional[str] = None
+    route: Optional[Literal["notification", "today_task", "solve"]] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)
@@ -67,8 +68,6 @@ class DiaryBase(BaseModel):
 class DiaryCreate(DiaryBase):
     sud_scores: List[Any] = Field(default_factory=list)
     loc_time: Optional[Any] = None
-    # 이전 payload 호환용 (권장: loc_time 사용)
-    alarms: Optional[List[Any]] = None
     client_timestamp: datetime
 
 
@@ -82,8 +81,6 @@ class DiaryUpdate(BaseModel):
     alternative_thoughts: Optional[List[str]] = None
 
     loc_time: Optional[Any] = None
-    # 이전 payload 호환용 (권장: loc_time 사용)
-    alarms: Optional[List[Any]] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     address_name: Optional[str] = None
@@ -103,6 +100,7 @@ class DiaryResponse(DiaryBase):
 class DiarySummaryResponse(BaseModel):
     diary_id: str
     group_id: Optional[str] = None
+    route: Optional[Literal["notification", "today_task", "solve"]] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)

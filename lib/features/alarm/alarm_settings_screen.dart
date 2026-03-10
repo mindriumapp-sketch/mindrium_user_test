@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode;
-import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/map_picker.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'alarm_notification_service.dart';
 
@@ -25,7 +24,7 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
   final Uuid _uuid = const Uuid();
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
-  late final AlarmSettingsApi _alarmApi = AlarmSettingsApi(_apiClient);
+  late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   bool _isLoading = true;
   List<AlarmSetting> _alarms = [];
@@ -38,21 +37,18 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
 
   Future<void> _load() async {
     await _service.initialize();
-    List<AlarmSetting> alarms;
+    List<AlarmSetting> alarms = const [];
+
     try {
-      final remote = await _alarmApi.listAlarmSettings();
-      alarms = remote.map(AlarmSetting.fromJson).toList()
-        ..sort(_compareAlarm);
+      final rows = await _alarmSettingsApi.listAlarmSettings();
+      alarms = rows.map(AlarmSetting.fromJson).toList()..sort(_compareAlarm);
       await _service.saveAlarms(alarms);
-    } on DioException catch (e) {
-      debugPrint('알림 설정 서버 조회 실패: ${e.message}');
-      alarms = await _service.loadAlarms();
-      await _service.syncAlarms(alarms);
     } catch (e) {
-      debugPrint('알림 설정 조회 실패(unknown): $e');
+      debugPrint('알림 설정 서버 조회 실패(로컬 사용): $e');
       alarms = await _service.loadAlarms();
       await _service.syncAlarms(alarms);
     }
+
     if (!mounted) return;
 
     setState(() {
@@ -64,29 +60,21 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
   Future<void> _persist(List<AlarmSetting> alarms) async {
     final copied = List<AlarmSetting>.from(alarms)..sort(_compareAlarm);
     setState(() => _alarms = copied);
-    await _service.saveAlarms(copied);
+
     try {
-      await _alarmApi.replaceAlarmSettings(
+      final savedRows = await _alarmSettingsApi.replaceAlarmSettings(
         copied.map((alarm) => alarm.toJson()).toList(),
       );
-    } on DioException catch (e) {
-      if (!mounted) return;
-      final message = e.response?.data is Map
-          ? e.response?.data['detail']?.toString()
-          : e.message;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '서버 저장에 실패했습니다. 기기에는 저장되었습니다.'
-            '${message == null || message.isEmpty ? '' : ' ($message)'}',
-          ),
-        ),
-      );
+      final synced = savedRows.map(AlarmSetting.fromJson).toList()
+        ..sort(_compareAlarm);
+
+      if (mounted) {
+        setState(() => _alarms = synced);
+      }
+      await _service.saveAlarms(synced);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('서버 저장에 실패했습니다. 기기에는 저장되었습니다.')),
-      );
+      debugPrint('알림 설정 서버 저장 실패(로컬만 저장): $e');
+      await _service.saveAlarms(copied);
     }
   }
 

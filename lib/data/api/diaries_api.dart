@@ -41,8 +41,7 @@ class DiariesApi {
     List<Map<String, dynamic>> consequenceB = const [],  // List<DiaryChip>
     List<String> alternativeThoughts = const [],
     Map<String, dynamic>? locTime,
-    @Deprecated('Use locTime instead.')
-    List<Map<String, dynamic>> alarms = const [],
+    String? route,
     double? latitude,
     double? longitude,
     String? addressName,
@@ -56,7 +55,8 @@ class DiariesApi {
       'consequence_emotion': consequenceE,
       'consequence_action': consequenceB,
       'alternative_thoughts': alternativeThoughts,
-      'loc_time': locTime ?? (alarms.isNotEmpty ? alarms.last : null),
+      'loc_time': locTime,
+      if (route != null) 'route': route,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (addressName != null) 'address_name': addressName,
@@ -248,38 +248,6 @@ class DiariesApi {
   );
 
   Future<void> deleteAllLocTime(
-    String diaryId, {
-    DateTime? clientTimestamp,
-  }) => deleteLocTime(diaryId, clientTimestamp: clientTimestamp);
-
-  Future<List<Map<String, dynamic>>> listAlarms(String diaryId) =>
-      listLocTime(diaryId);
-
-  Future<Map<String, dynamic>> createAlarm(
-    String diaryId,
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) => createLocTime(diaryId, body, clientTimestamp: clientTimestamp);
-
-  Future<Map<String, dynamic>> updateAlarm(
-    String diaryId,
-    String alarmId,
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) => updateLocTime(
-    diaryId,
-    alarmId,
-    body,
-    clientTimestamp: clientTimestamp,
-  );
-
-  Future<void> deleteAlarm(
-    String diaryId,
-    String alarmId, {
-    DateTime? clientTimestamp,
-  }) => deleteLocTime(diaryId, clientTimestamp: clientTimestamp);
-
-  Future<void> deleteAllAlarms(
     String diaryId, {
     DateTime? clientTimestamp,
   }) => deleteLocTime(diaryId, clientTimestamp: clientTimestamp);

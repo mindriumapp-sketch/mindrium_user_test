@@ -21,6 +21,7 @@ class AbcInputScreen extends StatefulWidget {
   final bool showGuide;
   final String? abcId;
   final String? origin;
+  final String? diaryRoute;
   final int? beforeSud;
   final String? sessionId;
 
@@ -31,6 +32,7 @@ class AbcInputScreen extends StatefulWidget {
     this.showGuide = true,
     this.abcId,
     this.origin,
+    this.diaryRoute,
     this.beforeSud,
     this.sessionId,
   });
@@ -489,6 +491,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               behaviorChips: behaviorSelected,
               isExampleMode: widget.isExampleMode,
               origin: widget.origin,
+              diaryRoute: widget.diaryRoute,
               beforeSud: widget.beforeSud,
               abcId: widget.abcId,
               sudId: null,

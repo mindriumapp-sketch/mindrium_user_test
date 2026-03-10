@@ -272,6 +272,7 @@ def _serialize_diary(doc: dict) -> dict:
     return {
         "diary_id": diary_id,
         "group_id": doc.get("group_id"),
+        "route": doc.get("route"),
 
         # DiaryChip 구조 필드들
         "activation": _serialize_chip(doc.get("activation")),
@@ -311,6 +312,7 @@ def _serialize_diary_summary(doc: dict) -> dict:
     return {
         "diary_id": doc.get("diary_id"),
         "group_id": doc.get("group_id"),
+        "route": doc.get("route"),
         "activation": _serialize_chip(doc.get("activation")),
         "belief": _serialize_chip_list(doc.get("belief")),
         "consequence_physical": _serialize_chip_list(doc.get("consequence_physical")),
@@ -348,13 +350,14 @@ async def create_diary(
             else last.get("before_sud")
         )
 
-    loc_time_doc = _normalize_loc_time(payload.loc_time or payload.alarms)
+    loc_time_doc = _normalize_loc_time(payload.loc_time)
 
     # 2) DiaryChip 필드들은 dict로 저장
     diary_doc = {
         "user_id": user_id,
         "diary_id": f"diary_{uuid.uuid4().hex[:8]}",
         "group_id": group_id,
+        "route": payload.route,
 
         "activation": payload.activation.model_dump(),
         "belief": [chip.model_dump() for chip in payload.belief],
@@ -545,15 +548,12 @@ async def update_diary(
     new_group_id = update_data.get("group_id", old_group_id)
 
     set_fields: Dict[str, Any] = {}
+    unset_fields: Dict[str, str] = {}
 
     # 1) loc_time 들어오면 normalize 후 전체 교체
     if "loc_time" in update_data:
         set_fields["loc_time"] = _normalize_loc_time(update_data.pop("loc_time"))
-        set_fields["alarms"] = []
-    elif "alarms" in update_data:
-        # 이전 payload 호환
-        set_fields["loc_time"] = _normalize_loc_time(update_data.pop("alarms"))
-        set_fields["alarms"] = []
+        unset_fields["alarms"] = ""
 
     # 2) 나머지 필드(activation, belief, consequence_*, 좌표 등)는
     #    이미 model_dump 된 dict/list[dict]라 그대로 덮어쓰기
@@ -564,9 +564,13 @@ async def update_diary(
     set_fields["updated_at"] = now_utc
     set_fields["client_timestamp"] = client_ts_utc
 
+    update_query: Dict[str, Any] = {"$set": set_fields}
+    if unset_fields:
+        update_query["$unset"] = unset_fields
+
     updated_doc = await collection.find_one_and_update(
         {"diary_id": diary_id, "user_id": user_id},
-        {"$set": set_fields},
+        update_query,
         return_document=ReturnDocument.AFTER,
     )
 
@@ -675,10 +679,11 @@ async def upsert_loc_time(
         {
             "$set": {
                 "loc_time": loc_time_doc,
-                # 단건 모델로 정리하면서 legacy alarms는 비움
-                "alarms": [],
                 "updated_at": now_utc,
                 "client_timestamp": client_ts_utc,
+            },
+            "$unset": {
+                "alarms": "",
             },
         },
     )
@@ -702,10 +707,11 @@ async def delete_loc_time(
         {
             "$set": {
                 "loc_time": None,
-                # fallback 조회에서 다시 보이지 않게 legacy alarms도 정리
-                "alarms": [],
                 "updated_at": now_utc,
                 "client_timestamp": client_ts_utc,
+            },
+            "$unset": {
+                "alarms": "",
             },
         },
     )

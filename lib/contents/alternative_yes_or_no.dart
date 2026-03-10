@@ -11,7 +11,9 @@ class AltYesOrNo extends StatelessWidget {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId = args['abcId'] as String?;
     final dynamic rawOrigin = args['origin'];
-    final String origin = rawOrigin is String ? rawOrigin : 'apply';
+    final String origin = rawOrigin is String
+        ? (rawOrigin == 'solve' ? 'apply' : rawOrigin)
+        : 'apply';
 
     return InnerBtnCardScreen(
       appBarTitle: '대체 생각 진행',

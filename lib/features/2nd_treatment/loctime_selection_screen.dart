@@ -22,6 +22,7 @@ class LocTimeSelectionScreen extends StatefulWidget {
   final String abcId;
   final String? loctimeId;
   final String? origin;
+  final String? diaryRoute;
   final String? sessionId;
   final String? sudId;
   final int? beforeSud;
@@ -39,6 +40,7 @@ class LocTimeSelectionScreen extends StatefulWidget {
     this.label,
     this.loctimeId,
     this.origin,
+    this.diaryRoute,
     this.sessionId,
     this.sudId,
     this.beforeSud,
@@ -74,6 +76,20 @@ class _LocTimeSelectionScreenState
   bool _noLocTime = false;
   bool _isSaving = false; // 저장 중 상태
   bool _openedLocationPickerOnEntry = false;
+
+  String? _resolveDiaryRoute() {
+    final route = widget.diaryRoute?.trim();
+    if (route != null && route.isNotEmpty) {
+      return route;
+    }
+    if (widget.origin == 'daily') {
+      return 'today_task';
+    }
+    if (widget.origin == 'apply' || widget.origin == 'solve') {
+      return 'solve';
+    }
+    return null;
+  }
 
   // ====== LocTime <-> LocTimeSetting 변환 ======
 
@@ -164,6 +180,7 @@ class _LocTimeSelectionScreenState
           consequenceE: emotion,
           consequenceB: behavior,
           alternativeThoughts: const [],
+          route: _resolveDiaryRoute(),
         );
         diaryId = created['diary_id']?.toString();
       } else {
@@ -186,6 +203,7 @@ class _LocTimeSelectionScreenState
               consequenceE: emotion,
               consequenceB: behavior,
               alternativeThoughts: const [],
+              route: _resolveDiaryRoute(),
             );
             diaryId = created['diary_id']?.toString();
           } else {

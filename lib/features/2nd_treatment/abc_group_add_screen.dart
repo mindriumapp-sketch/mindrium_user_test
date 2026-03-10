@@ -104,7 +104,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   }
 
   bool get _shouldContinueTherapyFlow =>
-      (widget.origin == 'apply' || widget.origin == 'solve' || widget.origin == 'daily') &&
+      (widget.origin == 'apply' || widget.origin == 'daily') &&
           widget.diaryId != null;
 
   Future<void> _navigateAfterGroupSelection() async {
@@ -115,15 +115,16 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       return;
     }
 
+    final normalizedOrigin = widget.origin == 'solve' ? 'apply' : widget.origin;
     final flow = context.read<ApplyOrSolveFlow>()
       ..syncFromArgs({
-        'origin': widget.origin,
+        'origin': normalizedOrigin,
         'diaryId': widget.diaryId,
         'beforeSud': widget.beforeSud,
         'sudId': widget.sudId,
         'diary': widget.diary,
       });
-    flow.setOrigin(widget.origin);
+    flow.setOrigin(normalizedOrigin);
     flow.setDiaryId(widget.diaryId);
     if (widget.beforeSud != null) flow.setBeforeSud(widget.beforeSud);
     if (widget.sudId != null) flow.setSudId(widget.sudId);
@@ -133,15 +134,15 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       'diaryId': widget.diaryId,
       if (widget.beforeSud != null) 'beforeSud': widget.beforeSud,
       if (widget.diary != null) 'diary': widget.diary,
-      if (widget.origin != null) 'origin': widget.origin,
+      if (normalizedOrigin != null) 'origin': normalizedOrigin,
       if (widget.sudId != null) 'sudId': widget.sudId,
     };
     
-    debugPrint('[Group_add] origin=${widget.origin}');
+    debugPrint('[Group_add] origin=$normalizedOrigin');
 
-    if (widget.origin == 'solve' || widget.origin == 'apply') {
-    final userProvider = context.read<UserProvider>();
-    final week = userProvider.lastCompletedWeek;
+    if (normalizedOrigin == 'apply') {
+      final userProvider = context.read<UserProvider>();
+      final week = userProvider.lastCompletedWeek;
       if (!mounted) return;
       final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
       Navigator.pushReplacementNamed(
@@ -149,6 +150,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         route,
         arguments: args,
       );
+      return;
     }
     Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }

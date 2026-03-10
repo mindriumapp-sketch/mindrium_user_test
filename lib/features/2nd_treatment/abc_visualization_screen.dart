@@ -32,6 +32,7 @@ class AbcVisualizationScreen extends StatefulWidget {
   /// 예시 모드 여부
   final bool isExampleMode;
   final String? origin;
+  final String? diaryRoute;
   final String? abcId;
   final int? beforeSud;
   final String? sudId;
@@ -45,6 +46,7 @@ class AbcVisualizationScreen extends StatefulWidget {
     required this.behaviorChips,
     required this.isExampleMode,
     this.origin,
+    this.diaryRoute,
     this.abcId,
     this.beforeSud,
     this.sessionId,
@@ -225,6 +227,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
           abcId: widget.abcId ?? '',
           label: resolvedLabel.isNotEmpty ? resolvedLabel : null,
           origin: widget.origin,
+          diaryRoute: widget.diaryRoute,
           sessionId: widget.sessionId,
           sudId: widget.sudId,
           beforeSud: widget.beforeSud,

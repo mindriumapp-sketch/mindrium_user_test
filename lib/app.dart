@@ -9,7 +9,7 @@ import 'package:gad_app_team/contents/filtered_diary_select.dart';
 import 'package:gad_app_team/contents/diary_yes_or_no.dart';
 import 'package:gad_app_team/contents/relax_or_alternative.dart';
 import 'package:gad_app_team/contents/relax_yes_or_no.dart';
-import 'package:gad_app_team/contents/similar_activation.dart';
+import 'package:gad_app_team/contents/solve_entry_choice.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_result_screen.dart';
 // import 'package:gad_app_team/features/screen_time/screen_time_page.dart';
 
@@ -54,12 +54,11 @@ import 'package:gad_app_team/contents/after_sud_screen.dart';
 // Navigation screen imports
 import 'package:gad_app_team/navigation/screen/home_screen.dart';
 import 'package:gad_app_team/navigation/screen/myinfo_screen.dart';
+import 'package:gad_app_team/navigation/app_navigator_key.dart';
 
 import 'features/menu/archive/character_battle.dart';
 import 'features/menu/archive/sea_archive_page.dart';
 import 'features/7th_treatment/week7_add_display_screen.dart';
-
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// 🌊 Mindrium 메인 앱 클래스 (전역 폰트 NotoSansKR 적용)
 class MyApp extends StatelessWidget {
@@ -68,7 +67,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey,
+      navigatorKey: appNavigatorKey,
       navigatorObservers: [week7RouteObserver],
       debugShowCheckedModeBanner: false,
       title: 'Mindrium',
@@ -180,11 +179,11 @@ class MyApp extends StatelessWidget {
         },
         '/relaxation_score': (context) => const RelaxationScoreScreen(),
         '/before_sud': (context) => const BeforeSudRatingScreen(),
+        '/solve_entry_choice': (context) => const SolveEntryChoiceScreen(),
         '/after_sud': (context) => const AfterSudRatingScreen(),
         "/diary_relax_home": (context) => const DiaryOrRelaxOrHome(),
         '/diary_yes_or_no': (context) => const DiaryYesOrNo(),
         "/diary_select": (context) => const DiarySelectScreen(),
-        "/similar_activation": (context) => const SimilarActivationScreen(),
         "/relax_or_alternative": (context) => const RelaxOrAlternativePage(),
         "/relax_yes_or_no": (context) => const RelaxYesOrNo(),
         "/alt_yes_or_no": (context) => const AltYesOrNo(),
@@ -210,6 +209,7 @@ class MyApp extends StatelessWidget {
             isExampleMode: args['isExampleMode'] as bool? ?? false,
             abcId: args['abcId'] as String?,
             origin: args['origin'] as String?,
+            diaryRoute: args['diaryRoute'] as String?,
             beforeSud: beforeSud,
           );
         },

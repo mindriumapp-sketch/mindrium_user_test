@@ -16,6 +16,7 @@ import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 
 import 'package:gad_app_team/utils/text_line_utils.dart';
 
@@ -118,7 +119,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
     final flow = context.read<ApplyOrSolveFlow>();
     flow.syncFromArgs(args, notify: false);
 
-    final String origin = (args['origin'] as String?) ?? flow.origin;
+    final String origin = flow.origin;
     final String? routeAbcId = args['abcId'] as String?;
     final String? abcId = widget.abcId ?? flow.diaryId ?? routeAbcId;
     final bool hasAbcId = abcId?.isNotEmpty ?? false;
@@ -141,10 +142,11 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
           if (!context.mounted) return;
           flow.setBeforeSud(_sud);
 
-          if (!hasAbcId && (origin == 'apply' || origin == 'solve')) {
+          if (!hasAbcId) {
+            final nextRoute = origin == 'daily' ? '/abc' : '/solve_entry_choice';
             Navigator.pushReplacementNamed(
               context,
-              '/diary_yes_or_no',
+              nextRoute,
               arguments: {
                 ...flow.toArgs(),
                 'origin': origin,
@@ -176,9 +178,13 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
           if (sudId.isNotEmpty) flow.setSudId(sudId);
 
           if (_sud > 2) {
+            final completedWeeks = context.read<UserProvider>().lastCompletedWeek;
+            final nextRoute = completedWeeks >= 4
+                ? '/relax_or_alternative'
+                : '/relax_yes_or_no';
             Navigator.pushReplacementNamed(
               context,
-              '/similar_activation',
+              nextRoute,
               arguments: {
                 ...flow.toArgs(),
                 'abcId': ensuredAbcId,

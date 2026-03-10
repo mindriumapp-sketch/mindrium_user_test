@@ -11,9 +11,12 @@ import 'package:geofence_service/geofence_service.dart'
         Location;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:gad_app_team/data/apply_solve_provider.dart';
+import 'package:gad_app_team/navigation/app_navigator_key.dart';
 
 class AlarmSetting {
   final String id;
@@ -218,6 +221,7 @@ class AlarmNotificationService {
   bool _geofenceListenerBound = false;
   final Map<String, AlarmSetting> _locationAlarmMap = {};
   final Map<String, DateTime> _lastLocationNotifyAt = {};
+  Map<String, dynamic>? _pendingTapPayload;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -233,7 +237,10 @@ class AlarmNotificationService {
       macOS: iosSettings,
     );
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: _onDidReceiveNotificationResponse,
+    );
 
     const channel = AndroidNotificationChannel(
       _channelId,
@@ -249,6 +256,13 @@ class AlarmNotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(channel);
+
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      _handleNotificationTapPayload(
+        launchDetails?.notificationResponse?.payload,
+      );
+    }
 
     _initialized = true;
   }
@@ -277,6 +291,80 @@ class AlarmNotificationService {
           MacOSFlutterLocalNotificationsPlugin
         >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
+  }
+
+  void handlePendingNotificationTap() {
+    final pending = _pendingTapPayload;
+    if (pending == null) return;
+    if (_tryNavigateToApplyFlow(pending)) {
+      _pendingTapPayload = null;
+    }
+  }
+
+  void _onDidReceiveNotificationResponse(NotificationResponse response) {
+    _handleNotificationTapPayload(response.payload);
+  }
+
+  void _handleNotificationTapPayload(String? payloadRaw) {
+    final payload = _decodeNotificationPayload(payloadRaw);
+    final action = payload['action']?.toString() ?? 'start_apply';
+    if (action != 'start_apply' && action != 'apply') {
+      return;
+    }
+
+    if (_tryNavigateToApplyFlow(payload)) {
+      _pendingTapPayload = null;
+    } else {
+      _pendingTapPayload = payload;
+    }
+  }
+
+  Map<String, dynamic> _decodeNotificationPayload(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return const {'action': 'start_apply'};
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((k, v) => MapEntry(k.toString(), v));
+      }
+    } catch (_) {
+      // ignore
+    }
+    return const {'action': 'start_apply'};
+  }
+
+  bool _tryNavigateToApplyFlow(Map<String, dynamic> payload) {
+    final context = appNavigatorKey.currentContext;
+    final navigator = appNavigatorKey.currentState;
+    if (context == null || navigator == null) {
+      return false;
+    }
+
+    final flow = Provider.of<ApplyOrSolveFlow>(context, listen: false);
+    flow.clear();
+    flow.setOrigin('apply');
+    flow.setDiaryRoute('notification');
+
+    final args = <String, dynamic>{
+      ...flow.toArgs(),
+      'origin': 'apply',
+    };
+    final alarmId = payload['alarm_id']?.toString();
+    if (alarmId != null && alarmId.isNotEmpty) {
+      args['alarmId'] = alarmId;
+    }
+
+    navigator.pushNamed('/before_sud', arguments: args);
+    return true;
+  }
+
+  String _buildTapPayload(String alarmId) {
+    return jsonEncode({
+      'action': 'start_apply',
+      'alarm_id': alarmId,
+    });
   }
 
   Future<bool> requestLocationPermission() async {
@@ -397,6 +485,7 @@ class AlarmNotificationService {
             presentSound: true,
           ),
         ),
+        payload: _buildTapPayload(alarm.id),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
@@ -524,6 +613,7 @@ class AlarmNotificationService {
           presentSound: true,
         ),
       ),
+      payload: _buildTapPayload(alarm.id),
     );
   }
 
