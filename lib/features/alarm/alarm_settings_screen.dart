@@ -11,6 +11,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'alarm_notification_service.dart';
+import 'alarm_settings_sync_helper.dart';
 
 class AlarmSettingsScreen extends StatefulWidget {
   const AlarmSettingsScreen({super.key});
@@ -40,9 +41,11 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
     List<AlarmSetting> alarms = const [];
 
     try {
-      final rows = await _alarmSettingsApi.listAlarmSettings();
-      alarms = rows.map(AlarmSetting.fromJson).toList()..sort(_compareAlarm);
-      await _service.saveAlarms(alarms);
+      final remote = await AlarmSettingsSyncHelper.fetchAndSync(
+        api: _alarmSettingsApi,
+        service: _service,
+      );
+      alarms = List<AlarmSetting>.from(remote)..sort(_compareAlarm);
     } catch (e) {
       debugPrint('알림 설정 서버 조회 실패(로컬 사용): $e');
       alarms = await _service.loadAlarms();
@@ -62,16 +65,17 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
     setState(() => _alarms = copied);
 
     try {
-      final savedRows = await _alarmSettingsApi.replaceAlarmSettings(
-        copied.map((alarm) => alarm.toJson()).toList(),
+      final synced = await AlarmSettingsSyncHelper.replaceAndSync(
+        api: _alarmSettingsApi,
+        alarms: copied,
+        service: _service,
       );
-      final synced = savedRows.map(AlarmSetting.fromJson).toList()
+      final sortedSynced = List<AlarmSetting>.from(synced)
         ..sort(_compareAlarm);
 
       if (mounted) {
-        setState(() => _alarms = synced);
+        setState(() => _alarms = sortedSynced);
       }
-      await _service.saveAlarms(synced);
     } catch (e) {
       debugPrint('알림 설정 서버 저장 실패(로컬만 저장): $e');
       await _service.saveAlarms(copied);

@@ -72,7 +72,7 @@ class _LocTimeSelectionScreenState
 
   RepeatOption _repeatOption = RepeatOption.daily;
   final Set<int> _selectedWeekdays = {};
-  Duration _reminderDuration = const Duration(hours: 0, minutes: 0);
+  final Duration _reminderDuration = const Duration(hours: 0, minutes: 0);
   bool _noLocTime = false;
   bool _isSaving = false; // 저장 중 상태
   bool _openedLocationPickerOnEntry = false;
@@ -713,11 +713,13 @@ class _LocTimeSelectionScreenState
 
   void _handlePostSaveNavigation(String diaryId) {
     if (!mounted) return;
+    final resolvedDiaryRoute = _resolveDiaryRoute();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => AbcGroupAddScreen(
           origin: widget.origin ?? 'etc',
+          diaryRoute: resolvedDiaryRoute,
           diaryId: diaryId,
           label: widget.label,
           sessionId: widget.sessionId,

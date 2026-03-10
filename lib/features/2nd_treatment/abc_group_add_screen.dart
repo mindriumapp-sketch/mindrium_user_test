@@ -10,6 +10,9 @@ import '../../data/storage/token_storage.dart';
 import '../../data/api/api_client.dart';
 import '../../data/api/worry_groups_api.dart';
 import '../../data/api/diaries_api.dart';
+import '../../data/api/alarm_settings_api.dart';
+import '../alarm/alarm_notification_service.dart';
+import '../alarm/alarm_settings_sync_helper.dart';
 import 'abc_group_character_screen.dart';
 import '../../data/apply_solve_provider.dart';
 
@@ -17,6 +20,7 @@ class AbcGroupAddScreen extends StatefulWidget {
   final String? label;
   final String? diaryId;
   final String? origin;
+  final String? diaryRoute;
   final int? beforeSud;
   final String? sudId;
   final String? diary;
@@ -27,6 +31,7 @@ class AbcGroupAddScreen extends StatefulWidget {
     this.label,
     this.diaryId,
     this.origin,
+    this.diaryRoute,
     this.beforeSud,
     this.sudId,
     this.diary,
@@ -42,10 +47,13 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final WorryGroupsApi _worryGroupsApi = WorryGroupsApi(_apiClient);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
+  late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
+  final AlarmNotificationService _alarmService = AlarmNotificationService.instance;
 
   String? _selectedGroupId;
   List<Map<String, dynamic>> _groups = [];
   bool _isLoading = true;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -107,6 +115,132 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       (widget.origin == 'apply' || widget.origin == 'daily') &&
           widget.diaryId != null;
 
+  String? _resolveDiaryRoute() {
+    final route = widget.diaryRoute?.trim();
+    if (route != null && route.isNotEmpty) {
+      return route;
+    }
+    if (widget.origin == 'daily') {
+      return 'today_task';
+    }
+    if (widget.origin == 'apply' || widget.origin == 'solve') {
+      return 'solve';
+    }
+    return null;
+  }
+
+  double? _readDouble(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    if (raw is String) return double.tryParse(raw);
+    return null;
+  }
+
+  TimeOfDay? _parseTimeOfDay(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Future<void> _maybeOfferSolveLocTimeAlarm(String? diaryRoute) async {
+    if (!mounted) return;
+    if (diaryRoute != 'solve') return;
+
+    final diaryId = widget.diaryId;
+    if (diaryId == null || diaryId.isEmpty) return;
+
+    Map<String, dynamic>? locTime;
+    try {
+      locTime = await _diariesApi.getLocTime(diaryId);
+    } catch (e) {
+      debugPrint('⚠️ 일기 loc_time 조회 실패: $e');
+      return;
+    }
+
+    if (!mounted || locTime == null) return;
+
+    final timeOfDay = _parseTimeOfDay(locTime['time']?.toString());
+    final latitude = _readDouble(locTime['latitude']);
+    final longitude = _readDouble(locTime['longitude']);
+    if (timeOfDay == null || latitude == null || longitude == null) return;
+
+    final locationAddressRaw =
+        (locTime['location_desc'] ?? locTime['location'])?.toString().trim();
+    final resolvedAddress =
+        (locationAddressRaw != null && locationAddressRaw.isNotEmpty)
+        ? locationAddressRaw
+        : '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+
+    final localizations = MaterialLocalizations.of(context);
+    final formattedTime = localizations.formatTimeOfDay(
+      timeOfDay,
+      alwaysUse24HourFormat: MediaQuery.of(context).alwaysUse24HourFormat,
+    );
+
+    final shouldSet = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => CustomPopupDesign(
+        title: '알림 설정',
+        message:
+            '마지막에 기록한 위치/시간으로 알림을 설정할까요?\n'
+            '주소: $resolvedAddress\n'
+            '시간: $formattedTime',
+        positiveText: '설정',
+        negativeText: '아니오',
+        backgroundAsset: null,
+        iconAsset: null,
+        onPositivePressed: () => Navigator.pop(dialogCtx, true),
+        onNegativePressed: () => Navigator.pop(dialogCtx, false),
+      ),
+    );
+    if (shouldSet != true || !mounted) return;
+
+    final alarmId = 'solve_loctime_$diaryId';
+    final alarmLabel = (widget.label?.trim().isNotEmpty ?? false)
+        ? '${widget.label!.trim()} 알림'
+        : 'Mindrium 알림';
+
+    try {
+      final newAlarm = AlarmSetting(
+        id: alarmId,
+        hour: timeOfDay.hour,
+        minute: timeOfDay.minute,
+        label: alarmLabel,
+        enabled: true,
+        weekdays: const [1, 2, 3, 4, 5, 6, 7],
+        vibration: true,
+        locationEnabled: true,
+        latitude: latitude,
+        longitude: longitude,
+        locationLabel: null,
+        locationAddress: resolvedAddress,
+        locationRadiusMeters: 100,
+        notifyOnEnter: true,
+        notifyOnExit: false,
+      );
+
+      await AlarmSettingsSyncHelper.upsertAndSync(
+        api: _alarmSettingsApi,
+        alarm: newAlarm,
+        service: _alarmService,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('위치/시간 알림이 설정되었습니다.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('알림 설정 저장에 실패했습니다: $e')),
+      );
+    }
+  }
+
   Future<void> _navigateAfterGroupSelection() async {
     if (!mounted) return;
 
@@ -116,15 +250,18 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     }
 
     final normalizedOrigin = widget.origin == 'solve' ? 'apply' : widget.origin;
+    final resolvedDiaryRoute = _resolveDiaryRoute();
     final flow = context.read<ApplyOrSolveFlow>()
       ..syncFromArgs({
         'origin': normalizedOrigin,
+        'diaryRoute': resolvedDiaryRoute,
         'diaryId': widget.diaryId,
         'beforeSud': widget.beforeSud,
         'sudId': widget.sudId,
         'diary': widget.diary,
       });
     flow.setOrigin(normalizedOrigin);
+    flow.setDiaryRoute(resolvedDiaryRoute);
     flow.setDiaryId(widget.diaryId);
     if (widget.beforeSud != null) flow.setBeforeSud(widget.beforeSud);
     if (widget.sudId != null) flow.setSudId(widget.sudId);
@@ -139,6 +276,9 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     };
     
     debugPrint('[Group_add] origin=$normalizedOrigin');
+
+    await _maybeOfferSolveLocTimeAlarm(resolvedDiaryRoute);
+    if (!mounted) return;
 
     if (normalizedOrigin == 'apply') {
       final userProvider = context.read<UserProvider>();
@@ -831,56 +971,65 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
             child: NavigationButtons(
               leftLabel: '이전',
               rightLabel: '다음',
-              onBack: () => Navigator.pop(context),
-              onNext: () async {
-                if (_selectedGroupId == null || widget.diaryId == null) return;
+              onBack: _isSubmitting ? null : () => Navigator.pop(context),
+              onNext:
+                  (_selectedGroupId == null ||
+                      widget.diaryId == null ||
+                      _isSubmitting)
+                  ? null
+                  : () async {
+                      setState(() => _isSubmitting = true);
+                      try {
+                        debugPrint(
+                          '🔵 그룹 업데이트 시작: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
+                        );
 
-                try {
-                  debugPrint(
-                    '🔵 그룹 업데이트 시작: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
-                  );
+                        // ✅ 백엔드 diaries 스키마: group_id(문자열)
+                        await _diariesApi.updateDiary(widget.diaryId!, {
+                          'group_id': _selectedGroupId,
+                        });
 
-                  // ✅ 백엔드 diaries 스키마: group_id(문자열)
-                  await _diariesApi.updateDiary(widget.diaryId!, {
-                    'group_id': _selectedGroupId,
-                  });
-
-                  debugPrint(
-                    '✅ 일기 그룹 할당 완료: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
-                  );
-                } on DioException catch (e, stackTrace) {
-                  debugPrint(
-                    '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
-                  );
-                  debugPrint('Response data: ${e.response?.data}');
-                  debugPrint('Request: PUT /diaries/${widget.diaryId}');
-                  debugPrint(
-                    'Body: {group_id: $_selectedGroupId}',
-                  );
-                  debugPrint('Error message: ${e.message}');
-                  debugPrint('Stack trace: $stackTrace');
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '그룹 할당 실패: ${e.response?.data ?? e.message}',
-                      ),
-                    ),
-                  );
-                  return;
-                } catch (e, stackTrace) {
-                  debugPrint('❌ 일기 그룹 할당 실패: $e');
-                  debugPrint('Stack trace: $stackTrace');
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('그룹 할당 실패: $e')));
-                  return;
-                }
-
-                if (!context.mounted) return;
-                await _navigateAfterGroupSelection();
-              },
+                        debugPrint(
+                          '✅ 일기 그룹 할당 완료: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
+                        );
+                        if (!context.mounted) return;
+                        await _navigateAfterGroupSelection();
+                      } on DioException catch (e, stackTrace) {
+                        debugPrint(
+                          '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
+                        );
+                        debugPrint('Response data: ${e.response?.data}');
+                        debugPrint('Request: PUT /diaries/${widget.diaryId}');
+                        debugPrint(
+                          'Body: {group_id: $_selectedGroupId}',
+                        );
+                        debugPrint('Error message: ${e.message}');
+                        debugPrint('Stack trace: $stackTrace');
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '그룹 할당 실패: ${e.response?.data ?? e.message}',
+                            ),
+                          ),
+                        );
+                        return;
+                      } catch (e, stackTrace) {
+                        debugPrint('❌ 일기 그룹 할당 실패: $e');
+                        debugPrint('Stack trace: $stackTrace');
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('그룹 할당 실패: $e')));
+                        return;
+                      } finally {
+                        if (mounted) {
+                          setState(() => _isSubmitting = false);
+                        } else {
+                          _isSubmitting = false;
+                        }
+                      }
+                    },
             ),
           ),
         ),
