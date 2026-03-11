@@ -26,6 +26,7 @@ router = APIRouter(prefix="/edu-sessions", tags=["edu-sessions"])
 
 EDU_SESSION_COLLECTION = "edu_sessions"
 USER_COLLECTION = "users"
+RELAXATION_COLLECTION = "relaxation_tasks"
 
 
 # ========= 공통 직렬화 =========
@@ -39,8 +40,8 @@ def _serialize_session(doc: dict) -> dict:
         "session_id": doc.get("session_id"),
         "week_number": doc.get("week_number"),
         "diary_id": doc.get("diary_id"),
-        "total_screens": doc.get("total_screens"),
-        "last_screen_idx": doc.get("last_screen_idx"),
+        "total_stages": doc.get("total_stages"),
+        "last_stage_idx": doc.get("last_stage_idx"),
         "completed": bool(doc.get("completed", False)),
         "start_time": parse_datetime_value(doc.get("start_time")),
         "end_time": parse_datetime_value(doc.get("end_time")),
@@ -72,21 +73,22 @@ async def _update_last_completed_week_if_needed(
     last_completed_week / last_completed_at 갱신 규칙:
 
     - completed == True 이고
-    - last_screen_idx 가 "마지막 화면"까지 간 세션만 인정
-      (1-based 라고 가정해서 last_screen_idx >= total_screens)
+    - last_stage_idx 가 "마지막 화면"까지 간 세션만 인정
+      (1-based 라고 가정해서 last_stage_idx >= total_stages)
+    - 해당 주차 이완(task_id=week{n}_education)이 완료(end_time != null)된 경우만 인정
     - 기존 last_completed_week 보다 '더 큰' 주차만 갱신
     """
     if not common.completed:
         return
 
-    if common.total_screens is None or common.total_screens <= 0:
+    if common.total_stages is None or common.total_stages <= 0:
         return
 
-    if common.last_screen_idx is None:
+    if common.last_stage_idx is None:
         return
 
-    # 1-based index (마지막 화면 번호 = total_screens)
-    if common.last_screen_idx < common.total_screens:
+    # 1-based index (마지막 화면 번호 = total_stages)
+    if common.last_stage_idx < common.total_stages:
         # 아직 끝까지 안 간 세션
         return
 
@@ -101,6 +103,18 @@ async def _update_last_completed_week_if_needed(
 
     current_last = user_doc.get("last_completed_week")
     new_week = common.week_number
+
+    # 주차 완료 인정은 "CBT 완료 + 해당 주차 이완 완료"를 모두 만족해야 함
+    relax_task_id = f"week{new_week}_education"
+    relax_doc = await db[RELAXATION_COLLECTION].find_one(
+        {
+            "user_id": user_id,
+            "task_id": relax_task_id,
+            "end_time": {"$ne": None},
+        }
+    )
+    if not relax_doc:
+        return
 
     # 이미 더 높은(혹은 같은) 주차를 완료했다면 갱신 안 함
     if current_last is not None and new_week <= current_last:
@@ -348,8 +362,8 @@ async def update_edu_session(
         common = EduSessionCommonIn(
             week_number=doc.get("week_number"),
             diary_id=doc.get("diary_id"),
-            total_screens=doc.get("total_screens"),
-            last_screen_idx=doc.get("last_screen_idx"),
+            total_stages=doc.get("total_stages"),
+            last_stage_idx=doc.get("last_stage_idx"),
             completed=bool(doc.get("completed", False)),
             start_time=parse_datetime_value(doc.get("start_time")),
             end_time=parse_datetime_value(doc.get("end_time")),

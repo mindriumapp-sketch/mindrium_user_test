@@ -3,11 +3,14 @@ import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 
 import '../../widgets/custom_appbar.dart';
 import '../../widgets/navigation_button.dart';
 import '../../data/storage/token_storage.dart';
 import '../../data/api/api_client.dart';
+import '../../data/api/edu_sessions_api.dart';
+import '../../data/api/relaxation_api.dart';
 import '../../data/api/worry_groups_api.dart';
 import '../../data/api/diaries_api.dart';
 import '../../data/api/alarm_settings_api.dart';
@@ -35,7 +38,7 @@ class AbcGroupAddScreen extends StatefulWidget {
     this.beforeSud,
     this.sudId,
     this.diary,
-    this.sessionId
+    this.sessionId,
   });
 
   @override
@@ -84,31 +87,27 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   /// diary_count / avg_sud 를 그대로 사용
   Future<Map<String, dynamic>> _loadGroupDetails(String groupId) async {
     final group = _groups.firstWhere(
-          (g) => g['group_id']?.toString() == groupId,
+      (g) => g['group_id']?.toString() == groupId,
       orElse: () => <String, dynamic>{},
     );
 
     if (group.isEmpty) {
-      return {
-        'group': <String, dynamic>{},
-        'diaryCount': 0,
-        'avgScore': 0.0,
-      };
+      return {'group': <String, dynamic>{}, 'diaryCount': 0, 'avgScore': 0.0};
     }
 
     final diaryCountRaw = group['diary_count'];
     final avgSudRaw = group['avg_sud'];
 
     final diaryCount =
-    diaryCountRaw is num ? diaryCountRaw.toInt() : int.tryParse('$diaryCountRaw') ?? 0;
+        diaryCountRaw is num
+            ? diaryCountRaw.toInt()
+            : int.tryParse('$diaryCountRaw') ?? 0;
     final avgScore =
-    avgSudRaw is num ? avgSudRaw.toDouble() : double.tryParse('$avgSudRaw') ?? 0.0;
+        avgSudRaw is num
+            ? avgSudRaw.toDouble()
+            : double.tryParse('$avgSudRaw') ?? 0.0;
 
-    return {
-      'group': group,
-      'diaryCount': diaryCount,
-      'avgScore': avgScore,
-    };
+    return {'group': group, 'diaryCount': diaryCount, 'avgScore': avgScore};
   }
 
   bool get _shouldContinueTherapyFlow =>
@@ -564,35 +563,35 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         margin: const EdgeInsets.all(8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(
-            colors: [
-              Color(0xFFE0F2FF),
-              Color(0xFFF0F9FF),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
-              : LinearGradient(
-            colors: [
-              Colors.white.withValues(alpha: 0.85),
-              Colors.white.withValues(alpha: 0.75),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient:
+              isSelected
+                  ? const LinearGradient(
+                    colors: [Color(0xFFE0F2FF), Color(0xFFF0F9FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                  : LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.85),
+                      Colors.white.withValues(alpha: 0.75),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
           borderRadius: BorderRadius.circular(20),
-          border: isSelected
-              ? Border.all(color: const Color(0xFF5B9FD3), width: 2.5)
-              : Border.all(
-            color: Colors.white.withValues(alpha: 0.9),
-            width: 1.5,
-          ),
+          border:
+              isSelected
+                  ? Border.all(color: const Color(0xFF5B9FD3), width: 2.5)
+                  : Border.all(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    width: 1.5,
+                  ),
           boxShadow: [
             BoxShadow(
-              color: isSelected
-                  ? const Color(0xFF5B9FD3).withValues(alpha: 0.35)
-                  : Colors.black.withValues(alpha: 0.06),
+              color:
+                  isSelected
+                      ? const Color(0xFF5B9FD3).withValues(alpha: 0.35)
+                      : Colors.black.withValues(alpha: 0.06),
               blurRadius: isSelected ? 24 : 16,
               spreadRadius: isSelected ? 2 : 0,
               offset: Offset(0, isSelected ? 10 : 6),
@@ -623,16 +622,18 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: isSelected
-                          ? const LinearGradient(
-                        colors: [Color(0xFFFFFFFF), Color(0xFFF5FAFF)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                          : null,
-                      color: isSelected
-                          ? null
-                          : Colors.white.withValues(alpha: 0.7),
+                      gradient:
+                          isSelected
+                              ? const LinearGradient(
+                                colors: [Color(0xFFFFFFFF), Color(0xFFF5FAFF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                              : null,
+                      color:
+                          isSelected
+                              ? null
+                              : Colors.white.withValues(alpha: 0.7),
                       boxShadow: [
                         BoxShadow(
                           color: isSelected
@@ -730,43 +731,44 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: _isLoading
-                          ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF5B9FD3),
-                          strokeWidth: 3,
-                        ),
-                      )
-                          : GridView.count(
-                        padding: const EdgeInsets.all(16),
-                        crossAxisCount: 3,
-                        childAspectRatio: 0.82,
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: ClampingScrollPhysics(),
-                        ),
-                        children: [
-                          _buildAddCard(),
-                          for (final group in _groups)
-                            Builder(
-                              builder: (_) {
-                                final groupIdStr =
-                                    group['group_id']?.toString() ?? '';
-                                final isSelected =
-                                    _selectedGroupId == groupIdStr;
-                                return _buildGroupCard(
-                                  group: group,
-                                  isSelected: isSelected,
-                                  onTap: () {
-                                    setState(
-                                          () =>
-                                      _selectedGroupId = groupIdStr,
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                        ],
-                      ),
+                      child:
+                          _isLoading
+                              ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF5B9FD3),
+                                  strokeWidth: 3,
+                                ),
+                              )
+                              : GridView.count(
+                                padding: const EdgeInsets.all(16),
+                                crossAxisCount: 3,
+                                childAspectRatio: 0.82,
+                                physics: const AlwaysScrollableScrollPhysics(
+                                  parent: ClampingScrollPhysics(),
+                                ),
+                                children: [
+                                  _buildAddCard(),
+                                  for (final group in _groups)
+                                    Builder(
+                                      builder: (_) {
+                                        final groupIdStr =
+                                            group['group_id']?.toString() ?? '';
+                                        final isSelected =
+                                            _selectedGroupId == groupIdStr;
+                                        return _buildGroupCard(
+                                          group: group,
+                                          isSelected: isSelected,
+                                          onTap: () {
+                                            setState(
+                                              () =>
+                                                  _selectedGroupId = groupIdStr,
+                                            );
+                                          },
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
                     ),
                     if (_selectedGroupId != null) ...[
                       const SizedBox(height: 20),
@@ -793,7 +795,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
 
                             final details = snapshot.data!;
                             final data =
-                            details['group'] as Map<String, dynamic>;
+                                details['group'] as Map<String, dynamic>;
                             final count = details['diaryCount'] as int;
                             final avgScore = details['avgScore'] as double;
 
@@ -1038,33 +1040,71 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   }
 
   void _showStartDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => CustomPopupDesign(
-        title: '이완 활동 안내',
-        message:
-        '이어서 이완 활동을 진행하시겠습니까?',
-        positiveText: '확인',
-        negativeText: null,
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () async {
-          Navigator.pop(context);
-          Navigator.pushReplacementNamed(
-            context,
-            '/relaxation_education',
-            arguments: {
-              'sessionId': widget.sessionId,
-              'taskId': 'week2_education',
-              'weekNumber': 2,
-              //TODO: week1 임시
-              'mp3Asset': 'week1.mp3',
-              'riveAsset': 'week1.riv',
-            },
+    () async {
+      final client = ApiClient(tokens: TokenStorage());
+      final eduApi = EduSessionsApi(client);
+      final relaxApi = RelaxationApi(client);
+
+      try {
+        await eduApi.completeWeekSession(
+          weekNumber: 2,
+          totalStages: 15,
+          sessionId: widget.sessionId,
+        );
+        if (mounted) {
+          context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
+            weekNumber: 2,
+            cbtDone: true,
+            educationDoneWeek: true,
+            lastEducationAt: DateTime.now(),
           );
-        },
-      ),
-    );
+        }
+      } catch (e) {
+        debugPrint('[Week2Final] edu-session 완료 처리 실패: $e');
+      }
+
+      bool isRelaxDone = false;
+      try {
+        isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(2);
+      } catch (e) {
+        debugPrint('[Week2Final] relaxation 완료 조회 실패: $e');
+      }
+
+      if (!mounted) return;
+      final nav = Navigator.of(context);
+
+      if (isRelaxDone) {
+        nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+        return;
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (_) => CustomPopupDesign(
+              title: '이완 연습 이어서 하기',
+              message: '오늘 학습을 잘 마쳤어요.\n이완 연습까지 이어서 진행해볼까요?',
+              positiveText: '이어하기',
+              autoPositiveAfter: const Duration(seconds: 10),
+              negativeText: null,
+              backgroundAsset: null,
+              iconAsset: null,
+              onPositivePressed: () {
+                nav.pop();
+                nav.pushReplacementNamed(
+                  '/relaxation_education',
+                  arguments: {
+                    'sessionId': widget.sessionId,
+                    'taskId': 'week2_education',
+                    'weekNumber': 2,
+                    'mp3Asset': 'week2.mp3',
+                    'riveAsset': 'week2.riv',
+                  },
+                );
+              },
+            ),
+      );
+    }();
   }
 }

@@ -2,6 +2,12 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 
 // ✅ 튜토리얼 공용 디자인: 배경/카드/네비게이션 포함
 import 'package:gad_app_team/widgets/tutorial_design.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:gad_app_team/data/api/relaxation_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:provider/provider.dart';
 
 // ✅ 커스텀 팝업 디자인
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
@@ -24,13 +30,12 @@ class Week4FinishScreen extends StatelessWidget {
 
   bool get _reduced =>
       (isFromAfterSud == true) &&
-          (beforeSud != null) &&
-          (afterSud != null) &&
-          (beforeSud! > afterSud!);
+      (beforeSud != null) &&
+      (afterSud != null) &&
+      (beforeSud! > afterSud!);
 
   @override
   Widget build(BuildContext context) {
-
     // 기존 문구 그대로 유지
     final String successText =
         '축하합니다! \n\n불안의 정도가 $beforeSud에서 $afterSud로 낮아졌네요. \n도움이 되는 생각을 찾아보는 과정을 통해 불안을 줄이는데 성공하셨습니다.';
@@ -46,35 +51,65 @@ class Week4FinishScreen extends StatelessWidget {
       cardTitle: '불안 완화 결과',
       onBack: () => Navigator.pop(context),
       onNext: () async {
-        // ⛳ 팝업을 커스텀 디자인으로 교체 (로직 동일: 닫히면 다음 화면으로 이동)
-        await showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (ctx) => CustomPopupDesign(
-            title: '이완 음성 안내 시작',
-            message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-            positiveText: '확인',
-            onPositivePressed: () async {
-              Navigator.of(ctx).pop();
-              //await EduProgress.markWeekDone(4);
-            },
-            negativeText: null,           // ✅ 취소 숨김
-            onNegativePressed: null,      // ✅ 필요 없음
-            // backgroundAsset: 'assets/image/popup_bg.png',
-            // iconAsset: 'assets/image/jellyfish_smart.png',
-          ),
-        );
+        final client = ApiClient(tokens: TokenStorage());
+        final eduApi = EduSessionsApi(client);
+        final relaxApi = RelaxationApi(client);
+
+        try {
+          await eduApi.completeWeekSession(weekNumber: 4, totalStages: 12);
+          if (context.mounted) {
+            context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
+              weekNumber: 4,
+              cbtDone: true,
+              educationDoneWeek: true,
+              lastEducationAt: DateTime.now(),
+            );
+          }
+        } catch (e) {
+          debugPrint('[Week4Finish] edu-session 완료 처리 실패: $e');
+        }
+
+        bool isRelaxDone = false;
+        try {
+          isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(4);
+        } catch (e) {
+          debugPrint('[Week4Finish] relaxation 완료 조회 실패: $e');
+        }
 
         if (!context.mounted) return;
-        Navigator.pushReplacementNamed(
-          context,
-          '/relaxation_education',
-          arguments: {
-            'taskId': 'week4_education',
-            'weekNumber': 4,
-            'mp3Asset': 'week4.mp3',
-            'riveAsset': 'week4.riv',
-          },
+        if (isRelaxDone) {
+          Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+          return;
+        }
+
+        // ⛳ 팝업을 커스텀 디자인으로 교체 (로직 동일: 닫히면 다음 화면으로 이동)
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (ctx) => CustomPopupDesign(
+                title: '이완 연습 이어서 하기',
+                message: '오늘 학습을 잘 마쳤어요.\n이완 연습까지 이어서 진행해볼까요?',
+                positiveText: '이어하기',
+                autoPositiveAfter: const Duration(seconds: 10),
+                onPositivePressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/relaxation_education',
+                    arguments: {
+                      'taskId': 'week4_education',
+                      'weekNumber': 4,
+                      'mp3Asset': 'week4.mp3',
+                      'riveAsset': 'week4.riv',
+                    },
+                  );
+                },
+                negativeText: null, // ✅ 취소 숨김
+                onNegativePressed: null, // ✅ 필요 없음
+                // backgroundAsset: 'assets/image/popup_bg.png',
+                // iconAsset: 'assets/image/jellyfish_smart.png',
+              ),
         );
       },
 

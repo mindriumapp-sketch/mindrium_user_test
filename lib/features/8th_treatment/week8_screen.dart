@@ -1,5 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/features/value_start.dart';
+import 'package:gad_app_team/features/session_start.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_roadmap_screen.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -49,7 +49,8 @@ class _Week8ScreenState extends State<Week8Screen> {
       // 기존 세션 사용
       final existing = await _week8Api.fetchWeek8Session();
       final existingId =
-          existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+          existing?['session_id']?.toString() ??
+          existing?['sessionId']?.toString();
       if (existingId != null && existingId.isNotEmpty) {
         if (!mounted) return;
         setState(() {
@@ -91,7 +92,7 @@ class _Week8ScreenState extends State<Week8Screen> {
             ? '$_userName님의 8주간 여정을 진심으로 축하드립니다. Mindrium 교육 프로그램을 모두 완료하셨습니다. 이제 불안을 효과적으로 관리할 수 있는 다양한 기법들을 익히셨습니다.\n지금까지 달려온 과정을 미처 인식하지 못할 수도 있지만, 이 모든 성과는 오직 $_userName님께서 스스로 이루어낸 것입니다.'
             : '8주간의 여정을 진심으로 축하드립니다. Mindrium 교육 프로그램을 모두 완료하셨습니다. 이제 불안을 효과적으로 관리할 수 있는 다양한 기법들을 익히셨습니다. 지금까지 달려온 과정을 미처 인식하지 못할 수도 있지만, 이 모든 성과는 오직 당신께서 스스로 이루어낸 것입니다.';
 
-    return ValueStartScreen(
+    return SessionStartScreen(
       weekNumber: 8,
       weekTitle: 'Mindrium 교육 프로그램을\n모두 완료하셨습니다!',
       weekDescription: weekDescription,

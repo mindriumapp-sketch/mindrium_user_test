@@ -238,6 +238,11 @@ flutter:
     - assets/education_data/week1_relaxation_3.json
     - assets/education_data/week1_relaxation_4.json
     - assets/education_data/week1_relaxation_5.json
+    - assets/education_data/week2_relaxation_1.json
+    - assets/education_data/week2_relaxation_2.json
+    - assets/education_data/week2_relaxation_3.json
+    - assets/education_data/week2_relaxation_4.json
+    - assets/education_data/week2_relaxation_5.json
 
     - assets/relaxation/week1.riv
     - assets/relaxation/week1.mp3
@@ -260,10 +265,6 @@ flutter:
 
     - assets/image/alternative thoughts.png
     - assets/image/imagination.png
-
-    # chatbot assets
-    - assets/images/
-    - assets/data/
 
 flutter_native_splash:
   color: "#F9F5F9"

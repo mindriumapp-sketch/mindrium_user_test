@@ -1,5 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/features/value_start.dart';
+import 'package:gad_app_team/features/session_start.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_abc_screen.dart';
 
 class Week4Screen extends StatefulWidget {
@@ -18,7 +18,7 @@ class _Week4ScreenState extends State<Week4Screen> {
     final String? abcId = args['abcId'] as String?;
     final int? sud = args['sud'] as int?;
 
-    return ValueStartScreen(
+    return SessionStartScreen(
       weekNumber: 4,
       weekTitle: '인지 왜곡을 찾아보겠습니다.',
       weekDescription:

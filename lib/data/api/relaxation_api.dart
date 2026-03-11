@@ -222,4 +222,13 @@ class RelaxationApi {
       message: 'Invalid /relaxation_tasks/task-summary response',
     );
   }
+
+  Future<bool> isWeekEducationTaskCompleted(int weekNumber) async {
+    final summary = await getRelaxationTaskSummary(
+      taskId: 'week${weekNumber}_education',
+    );
+    final completedRaw = summary['completedSessions'];
+    final completedSessions = completedRaw is num ? completedRaw.toInt() : 0;
+    return completedSessions > 0;
+  }
 }

@@ -8,7 +8,6 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/1st_treatment/week1_value_goal_screen.dart';
 import 'package:gad_app_team/features/menu/education/education_screen.dart';
 
-
 class Week1Screen extends StatefulWidget {
   final String? sessionId;
   const Week1Screen({super.key, this.sessionId});
@@ -59,15 +58,15 @@ class _Week1ScreenState extends State<Week1Screen> {
       final client = ApiClient(tokens: tokens);
       final eduApi = EduSessionsApi(client);
 
-      const int totalScreens = 6;
+      const int totalStages = 6;
 
-      /// TODO: edu sessions  lastScreenIndex 어떻게 업데이트할지 정해야 함..
+      /// TODO: edu sessions  lastStageIndex 어떻게 업데이트할지 정해야 함..
       /// 혹시 중요 페이지에서 필드 추가하는 거 외에... 마지막...탈출할 때만 인덱스 업데이트하는 게 가능할지...
       final res = await eduApi.createCommonSession(
         weekNumber: 1,
-        totalScreens: totalScreens,
-        lastScreenIndex: 1,        // 시작할 때는 1번 화면 기준
-        completed: false,          // 시작 시점에는 미완료
+        totalStages: totalStages,
+        lastStageIndex: 1, // 시작할 때는 1번 화면 기준
+        completed: false, // 시작 시점에는 미완료
         startTime: DateTime.now(), // 지금 시간
         endTime: null,
       );
@@ -95,9 +94,7 @@ class _Week1ScreenState extends State<Week1Screen> {
 
     // 유저 정보 자체가 아직이면 로딩
     if (!user.isUserLoaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final vg = user.valueGoal;
@@ -109,9 +106,6 @@ class _Week1ScreenState extends State<Week1Screen> {
     }
 
     // 🔹 핵심 가치 있음: 1주차 교육 화면
-    return EducationScreen(
-      sessionId: _sessionId,
-      isRelax: true,
-    );
+    return EducationScreen(sessionId: _sessionId, isRelax: true);
   }
 }

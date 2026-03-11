@@ -1,4 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'dart:async';
 
 class CustomPopupDesign extends StatefulWidget {
   final String title;
@@ -19,6 +20,7 @@ class CustomPopupDesign extends StatefulWidget {
   final int? inputMaxLength;
   final String inputMaxLengthErrorText;
   final String? Function(String text)? inputValidator;
+  final Duration? autoPositiveAfter;
 
   const CustomPopupDesign({
     super.key,
@@ -38,14 +40,64 @@ class CustomPopupDesign extends StatefulWidget {
     this.inputMaxLength,
     this.inputMaxLengthErrorText = '입력 길이를 확인해주세요.',
     this.inputValidator,
+    this.autoPositiveAfter,
   });
 
   @override
   State<CustomPopupDesign> createState() => _CustomPopupDesignState();
 }
 
-class _CustomPopupDesignState extends State<CustomPopupDesign> {
+class _CustomPopupDesignState extends State<CustomPopupDesign>
+    with SingleTickerProviderStateMixin {
   String? _inputErrorText;
+  Timer? _autoTimer;
+  Timer? _countdownTimer;
+  AnimationController? _progressController;
+  bool _actionTaken = false;
+  int? _remainingSeconds;
+
+  @override
+  void initState() {
+    super.initState();
+    final delay = widget.autoPositiveAfter;
+    if (delay != null) {
+      _progressController = AnimationController(vsync: this, duration: delay)
+        ..forward();
+
+      final initialSeconds = (delay.inMilliseconds / 1000).ceil().clamp(
+        1,
+        9999,
+      );
+      _remainingSeconds = initialSeconds;
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted || _actionTaken) {
+          timer.cancel();
+          return;
+        }
+        final current = _remainingSeconds ?? 0;
+        if (current <= 0) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          _remainingSeconds = current - 1;
+        });
+      });
+
+      _autoTimer = Timer(delay, () {
+        if (!mounted || _actionTaken) return;
+        _handlePositivePressed();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    _countdownTimer?.cancel();
+    _progressController?.dispose();
+    super.dispose();
+  }
 
   String? _validateInput(String rawText) {
     final text = rawText.trim();
@@ -63,6 +115,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
   }
 
   void _handlePositivePressed() {
+    if (_actionTaken) return;
     if (widget.enableInput && widget.controller != null) {
       final error = _validateInput(widget.controller!.text);
       if (error != null) {
@@ -72,7 +125,20 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
         return;
       }
     }
+    _actionTaken = true;
+    _autoTimer?.cancel();
+    _countdownTimer?.cancel();
+    _progressController?.stop();
     widget.onPositivePressed();
+  }
+
+  void _handleNegativePressed() {
+    if (_actionTaken) return;
+    _actionTaken = true;
+    _autoTimer?.cancel();
+    _countdownTimer?.cancel();
+    _progressController?.stop();
+    (widget.onNegativePressed ?? () {})();
   }
 
   @override
@@ -203,11 +269,10 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                       ),
                     ),
                   ),
-                ]
-                else
+                ] else
                   TextLine(
                     widget.message,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.left,
                     style: const TextStyle(
                       fontFamily: 'NotoSansKR',
                       fontSize: 15,
@@ -215,49 +280,69 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                       height: 1.5,
                     ),
                   ),
+                if (_remainingSeconds != null) ...[
+                  const SizedBox(height: 8),
+                  TextLine(
+                    widget.negativeText == null
+                        ? '${_remainingSeconds!}초 이내 자동으로 이동합니다.'
+                        : '${_remainingSeconds!}초 이내 선택이 없으면 자동으로 진행됩니다.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'NotoSansKR',
+                      fontSize: 13,
+                      color: Color(0xFF346C93),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
 
                     const SizedBox(height: 28),
 
-                    // ✅ 버튼 영역
-                    if (singleAction)
-                      SizedBox(
-                        width: double.infinity,
-                        child: _buildButton(
-                          label: widget.positiveText,
-                          onPressed: _handlePositivePressed,
-                          isPrimary: true,
+                // ✅ 버튼 영역
+                if (singleAction)
+                  SizedBox(
+                    width: double.infinity,
+                    child: _buildButton(
+                      label: widget.positiveText,
+                      onPressed: _handlePositivePressed,
+                      isPrimary: true,
+                      showAutoProgress:
+                          widget.autoPositiveAfter != null && !_actionTaken,
+                    ),
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          child: _buildButton(
+                            label: widget.negativeText!,
+                            onPressed: _handleNegativePressed,
+                            isPrimary: false,
+                            showAutoProgress: false,
+                          ),
                         ),
-                      )
-                    else
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 6),
-                              child: _buildButton(
-                                label: widget.negativeText!,
-                                onPressed: widget.onNegativePressed ?? () {},
-                                isPrimary: false,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 6),
-                              child: _buildButton(
-                                label: widget.positiveText,
-                                onPressed: _handlePositivePressed,
-                                isPrimary: true,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
-                  ],
-                ),
-              ),
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          child: _buildButton(
+                            label: widget.positiveText,
+                            onPressed: _handlePositivePressed,
+                            isPrimary: true,
+                            showAutoProgress:
+                                widget.autoPositiveAfter != null &&
+                                !_actionTaken,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
+          ),
 
             // 상단 아이콘
             Positioned(
@@ -304,6 +389,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
     required String label,
     required VoidCallback onPressed,
     required bool isPrimary,
+    required bool showAutoProgress,
   }) {
     return ElevatedButton(
       onPressed: onPressed,
@@ -320,14 +406,50 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                   : const BorderSide(color: Color(0xFF74D2FF), width: 1.2),
         ),
       ),
-      child: TextLine(
-        label,
-        style: const TextStyle(
-          fontFamily: 'NotoSansKR',
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      child:
+          isPrimary && showAutoProgress && _progressController != null
+              ? AnimatedBuilder(
+                animation: _progressController!,
+                builder: (context, _) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 22,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: _progressController!.value,
+                              child: Container(color: const Color(0xFF5ABFEF)),
+                            ),
+                          ),
+                          Center(
+                            child: TextLine(
+                              label,
+                              style: const TextStyle(
+                                fontFamily: 'NotoSansKR',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              )
+              : TextLine(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'NotoSansKR',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
     );
   }
 }

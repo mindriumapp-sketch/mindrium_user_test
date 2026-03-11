@@ -60,8 +60,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // 3) 오늘의 할 일 로딩 ( /users/me/todaytask )
       await todayTaskProvider.loadTodayTask();
+      // 4) 현재 주차 세션 완료 상태 선동기화(교육 탭 플리커 방지)
+      await todayTaskProvider.syncEducationWeekStatus(userProvider.currentWeek);
 
-      // 4) SharedPreferences (기존 로직 유지)
+      // 5) SharedPreferences (기존 로직 유지)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('uid', userProvider.userId);
@@ -72,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // 5) 설문 여부 보고 분기
+      // 6) 설문 여부 보고 분기
       final hasSurvey = userProvider.surveyCompleted;
       Navigator.pushReplacementNamed(
         context,

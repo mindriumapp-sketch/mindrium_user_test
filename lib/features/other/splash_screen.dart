@@ -42,6 +42,8 @@ class _SplashScreenState extends State<SplashScreen> {
       await userProvider.loadUserData(dayCounter: dayCounter);
       // 2) 오늘의 할 일 초기 로딩
       await todayTaskProvider.loadTodayTask();
+      // 3) 현재 주차의 CBT/이완 세션 완료 상태 선동기화(교육 탭 플리커 방지)
+      await todayTaskProvider.syncEducationWeekStatus(userProvider.currentWeek);
 
       return userProvider.isUserLoaded;
     } catch (e) {

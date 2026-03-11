@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -36,25 +37,6 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _ProgressSnapshot {
-  final int currentWeek;
-  final int completedWeeks;
-  final int totalWeeks;
-  final int totalDiaries;
-  final int totalRelaxations;
-
-  const _ProgressSnapshot({
-    required this.currentWeek,
-    required this.completedWeeks,
-    required this.totalWeeks,
-    required this.totalDiaries,
-    required this.totalRelaxations,
-  });
-
-  double get percent => totalWeeks == 0 ? 0 : completedWeeks / totalWeeks;
-  String get percentLabel => '${(percent * 100).round()}%';
-}
-
 class _HomeScreenState extends State<HomeScreen> {
   static const MethodChannel _widgetLaunchChannel =
       MethodChannel('mindrium/widget_launch');
@@ -62,7 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
       EventChannel('mindrium/widget_launch_events');
 
   int _selectedIndex = 0;
-  static const int _kTotalWeeks = 8;
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final AlarmSettingsApi _alarmApi = AlarmSettingsApi(_apiClient);
+  late final UserDataApi _userDataApi = UserDataApi(_apiClient);
 
   bool _permissionsChecked = false;
   Future<void>? _permissionFuture;
@@ -100,39 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _widgetLaunchSubscription?.cancel();
     super.dispose();
-  }
-
-  // ===================== 진행도: UserProvider에서만 읽기 =====================
-
-  _ProgressSnapshot _buildProgressFromUser(UserProvider user) {
-    // last_completed_week → 0~_kTotalWeeks 로 정규화
-    var completedWeeks = user.lastCompletedWeek;
-    if (completedWeeks < 0) completedWeeks = 0;
-    if (completedWeeks > _kTotalWeeks) completedWeeks = _kTotalWeeks;
-
-    final totalDiaries = user.totalDiaries;
-    final totalRelaxations = user.totalRelaxations;
-    final currentWeek = user.currentWeek; // 서버 계산 값 그대로 사용
-
-    return _ProgressSnapshot(
-      currentWeek: currentWeek,
-      completedWeeks: completedWeeks,
-      totalWeeks: _kTotalWeeks,
-      totalDiaries: totalDiaries,
-      totalRelaxations: totalRelaxations,
-    );
-  }
-
-  String joinDaysText(UserDayCounter counter, DateTime? fallbackCreatedAt) {
-    if (counter.isUserLoaded) {
-      return '가입한 지 ${counter.daysSinceJoin}일째';
-    }
-    final created = fallbackCreatedAt;
-    if (created == null) {
-      return '가입 정보 없음';
-    }
-    final days = DateTime.now().difference(created).inDays + 1;
-    return '가입한 지 ${days > 0 ? days : 1}일째';
   }
 
   void _onDestinationSelected(int index) =>
@@ -360,21 +312,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // 3️⃣ 여기까지 왔으면 최소 한 번은 유저 + todayTask가 로딩된 상태
-    final progressData = _buildProgressFromUser(user);
     _syncWidgetStatsIfNeeded(user);
 
     debugPrint(
-      'currentWeek: ${progressData.currentWeek}, '
-          'doneCount: ${progressData.completedWeeks}, '
-          'progress: ${progressData.percent}',
+      'currentWeek: ${user.currentWeek}, '
+      'doneCount: ${user.lastCompletedWeek}, ',
     );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         _buildHeader(),
-        const SizedBox(height: 8),
-        _buildProgressCard(progressData),
+        const SizedBox(height: 16),
+        _buildValueGoalCard(),
         const SizedBox(height: 8),
         _buildTaskSection(),
         const SizedBox(height: 8),
@@ -387,7 +337,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader() {
     final user = context.watch<UserProvider>();
-    final dayCounter = context.watch<UserDayCounter>();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -400,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// 💬 “안녕하세요,\nOOO님 환영합니다!”
+                /// 💬 “OOO님 환영합니다!”
                 RichText(
                   text: TextSpan(
                     style: const TextStyle(
@@ -417,18 +366,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   overflow: TextOverflow.visible,
                   softWrap: false,
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    joinDaysText(dayCounter, user.createdAt),
-                    style: const TextStyle(
-                      color: Colors.black54,
-                      fontSize: 13,
-                      fontFamily: 'Noto Sans KR',
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -482,66 +419,150 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ===================== 진행도 카드 =====================
+  // ===================== 오늘의 할 일 =====================
 
-  Widget _buildProgressCard(_ProgressSnapshot progressData) {
-    return _WhiteCard(
+  Widget _buildValueGoalCard() {
+    final user = context.watch<UserProvider>();
+    final dayCounter = context.watch<UserDayCounter>();
+
+    final valueGoal = (user.valueGoal ?? '').trim();
+    final hasValueGoal = valueGoal.isNotEmpty;
+    final safeValueGoal = hasValueGoal ? valueGoal : '핵심 가치를 설정해 보세요.';
+    final dayNo = dayCounter.daysSinceJoin > 0 ? dayCounter.daysSinceJoin : 1;
+
+    return _trainingCard(
+      title: '핵심 가치: $safeValueGoal',
+      description: '$dayNo일째 목표를 향해 가고 있어요.',
+      color: const Color(0xFFEFF7FF),
+      trailing: _buildDayCalendar(dayNo),
+      onTap: _showValueGoalEditor,
+      chipLabel: '수정',
+      onChipTap: _showValueGoalEditor,
+    );
+  }
+
+  Widget _buildDayCalendar(int dayNo) {
+    return Container(
+      width: 78,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFA9CFF5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          Stack(
+            clipBehavior: Clip.none,
             children: [
-              const Text(
-                '치료 진행 상황',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF74B8F4),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(15),
+                    topRight: Radius.circular(15),
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                progressData.percentLabel,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
+                child: const Center(
+                  child: Text(
+                    'DAY',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progressData.percent,
-              minHeight: 10,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF00AEEF),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$dayNo일차',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF263C69),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _ProgressChip(
-                label: '다이어리',
-                value: progressData.totalDiaries.toString(),
-              ),
-              const SizedBox(width: 8),
-              _ProgressChip(
-                label: '이완 훈련',
-                value: progressData.totalRelaxations.toString(),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  // ===================== 오늘의 할 일 =====================
+  Future<void> _showValueGoalEditor() async {
+    final user = context.read<UserProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final controller = TextEditingController(
+      text: (user.valueGoal ?? '').trim(),
+    );
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('핵심 가치 수정'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 500,
+            decoration: const InputDecoration(hintText: '핵심 가치를 입력해 주세요'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => navigator.pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                if (value.isEmpty) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('핵심 가치를 입력해 주세요.')),
+                  );
+                  return;
+                }
+                navigator.pop(value);
+              },
+              child: const Text('저장'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (result == null) return;
+
+    try {
+      await _userDataApi.updateValueGoal(result);
+      if (!mounted) return;
+      context.read<UserProvider>().setValueGoalLocally(result);
+      messenger.showSnackBar(const SnackBar(content: Text('핵심 가치가 수정되었습니다.')));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('핵심 가치 수정 실패: $e')));
+    }
+  }
 
   Widget _buildTaskSection() {
     final todayTask = context.watch<TodayTaskProvider>();
@@ -563,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final List<_DailyTask> todayTasks = [
       _DailyTask(
-        title: '일기 작성',
+        title: '오늘의 일기 작성',
         isDone: todayTask.diaryDone,
         onTap: () {
           final flow = context.read<ApplyOrSolveFlow>();
@@ -586,11 +607,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () {
           // weekNumber 기반으로 taskId / asset 이름들 구성
           final taskId = 'week${weekNumber}_daily';
-          //TODO: 
-          // final mp3Asset = 'week$weekNumber.mp3';
-          // final riveAsset = 'week$weekNumber.riv';
-          final mp3Asset = 'noti.mp3';
-          final riveAsset = 'noti.riv';
+          final mp3Asset = 'week$weekNumber.mp3';
+          final riveAsset = 'week$weekNumber.riv';
 
           navigator.pushNamed(
             '/relaxation_noti',
@@ -605,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       _DailyTask(
-        title: '교육',
+        title: '이번주 교육 활동',
         isDone: todayTask.educationDoneWeek,
         onTap: () {
           final user = context.read<UserProvider>();
@@ -618,11 +636,9 @@ class _HomeScreenState extends State<HomeScreen> {
             index = weekScreens.length - 1;
           }
 
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => weekScreens[index],
-            ),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => weekScreens[index]));
         },
       ),
     ];
@@ -641,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
           ...todayTasks.map(
-                (t) => Padding(
+            (t) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _buildTaskCard(t),
             ),
@@ -654,7 +670,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTaskCard(_DailyTask task) {
     final isDone = task.isDone;
     final imagePath =
-    isDone ? 'assets/image/finish.png' : 'assets/image/progressing.png';
+        isDone ? 'assets/image/finish.png' : 'assets/image/progressing.png';
     final bgColor = isDone ? const Color(0xFFFFE5E9) : const Color(0xFFD9F3FF);
 
     return InkWell(
@@ -665,10 +681,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: 52,
             height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: bgColor,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: bgColor),
             padding: const EdgeInsets.all(10),
             child: Image.asset(imagePath, fit: BoxFit.contain),
           ),
@@ -691,24 +704,43 @@ class _HomeScreenState extends State<HomeScreen> {
   // ===================== 교육/훈련 섹션 =====================
 
   Widget _buildTrainingSection() {
-    final userProvider = context.read<UserProvider>();
-    final completedWeeks = userProvider.lastCompletedWeek;
-    final bool canSolve = completedWeeks >= 4;
-    const baseColor = Color(0xFFFFE2E8);
-    final cardColor = canSolve ? baseColor : baseColor.withValues(alpha: .55);
+    // final userProvider = context.read<UserProvider>();
+    // final completedWeeks = userProvider.lastCompletedWeek;
+    // final bool canSolve = completedWeeks >= 4;
+    // const baseColor = Color(0xFFFFE2E8);
+    // final cardColor = canSolve ? baseColor : baseColor.withValues(alpha: .55);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _trainingCard(
-          title: '불안 해결하기',
-          description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
-          color: cardColor,
-          imagePath: 'assets/image/pink1.png',
-          onTap: _startApplyFlow,
-        ),
-        
-        const SizedBox(height: 8),
+        // _trainingCard(
+        //   title: '불안 해결하기',
+        //   description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
+        //   color: cardColor,
+        //   imagePath: 'assets/image/pink1.png',
+        //   onTap: () {
+        //     if (!canSolve) {
+        //       ScaffoldMessenger.of(context).showSnackBar(
+        //         const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
+        //       );
+        //       return;
+        //     }
+        //     final flow = context.read<ApplyOrSolveFlow>();
+        //     // 기존 상태 초기화 후 solve 흐름 세팅
+        //     flow.clear();
+        //     flow.setOrigin('solve');
+        //     Navigator.pushNamed(
+        //       context,
+        //       '/before_sud',
+        //       arguments: {
+        //         ...flow.toArgs(),
+        //         'origin': 'solve',
+        //       },
+        //     );
+        //   },
+        // ),
+
+        // const SizedBox(height: 8),
         _trainingCard(
           title: '알림 설정',
           description: '문구...', //TODO: 알림 설정 문구 고민
@@ -726,9 +758,15 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required String description,
     required Color color,
-    required String imagePath,
+    String? imagePath,
+    Widget? trailing,
+    String? chipLabel,
+    VoidCallback? onChipTap,
+    Widget? bodyTopWidget,
     required VoidCallback onTap,
   }) {
+    final bool hasChip = chipLabel != null && chipLabel.isNotEmpty;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
@@ -740,15 +778,51 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      if (hasChip)
+                        InkWell(
+                          onTap: onChipTap,
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: const Color(0xFFA6CDEF),
+                              ),
+                            ),
+                            child: Text(
+                              chipLabel,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2A5D8F),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  if (bodyTopWidget != null) ...[
+                    const SizedBox(height: 8),
+                    bodyTopWidget,
+                  ],
+                  const SizedBox(height: 10),
                   Text(
                     protectKoreanWords(description),
                     style: const TextStyle(
@@ -761,7 +835,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            Image.asset(imagePath, width: 80, fit: BoxFit.contain),
+            trailing ??
+                (imagePath == null
+                    ? const SizedBox.shrink()
+                    : Image.asset(imagePath, width: 80, fit: BoxFit.contain)),
           ],
         ),
       ),
@@ -797,53 +874,10 @@ class _WhiteCard extends StatelessWidget {
   }
 }
 
-class _ProgressChip extends StatelessWidget {
-  final String label;
-  final String value;
-  const _ProgressChip({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F6FF),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.black54,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DailyTask {
   final String title;
   final bool isDone;
   final VoidCallback? onTap;
 
-  const _DailyTask({
-    required this.title,
-    required this.isDone,
-    this.onTap,
-  });
+  const _DailyTask({required this.title, required this.isDone, this.onTap});
 }

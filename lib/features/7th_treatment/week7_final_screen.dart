@@ -5,7 +5,10 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
+import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:provider/provider.dart';
 
 class Week7FinalScreen extends StatefulWidget {
   const Week7FinalScreen({super.key});
@@ -17,6 +20,7 @@ class Week7FinalScreen extends StatefulWidget {
 class _Week7FinalScreenState extends State<Week7FinalScreen> {
   late final ApiClient _apiClient;
   late final Week7Api _week7Api;
+  late final RelaxationApi _relaxationApi;
   bool _isCompleting = false;
   String? _sessionId;
 
@@ -25,6 +29,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
     _week7Api = Week7Api(_apiClient);
+    _relaxationApi = RelaxationApi(_apiClient);
   }
 
   @override
@@ -110,9 +115,9 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
                                     fontFamily: 'Noto Sans KR',
                                   ),
                                 ),
-                              ]
-                            )
-                          )
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -122,9 +127,10 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
                 // ⛵ 네비게이션 버튼 (기존 로직 그대로 유지)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
-                    onNext: _isCompleting ? null : () => _showStartDialog(context),
+                    onNext:
+                        _isCompleting ? null : () => _showStartDialog(context),
                   ),
                 ),
               ],
@@ -152,6 +158,14 @@ child: NavigationButtons(
           lastScreenIndex: 0,
           totalScreens: 1,
         );
+        if (ctx.mounted) {
+          ctx.read<TodayTaskProvider>().setEducationWeekSessionLocally(
+            weekNumber: 7,
+            cbtDone: true,
+            educationDoneWeek: true,
+            lastEducationAt: DateTime.now(),
+          );
+        }
       } catch (e) {
         debugPrint('7주차 완료 상태 저장 실패: $e');
         // 에러가 발생해도 다음 화면으로 진행
@@ -164,31 +178,44 @@ child: NavigationButtons(
 
     if (!mounted || !ctx.mounted) return;
 
+    bool isRelaxDone = false;
+    try {
+      isRelaxDone = await _relaxationApi.isWeekEducationTaskCompleted(7);
+    } catch (e) {
+      debugPrint('[Week7Final] relaxation 완료 조회 실패: $e');
+    }
+
+    if (!mounted || !ctx.mounted) return;
+    if (isRelaxDone) {
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
     showDialog(
       context: ctx,
       barrierDismissible: false,
-      builder: (_) => CustomPopupDesign(
-        title: '이완 음성 안내 시작',
-        message:
-        '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-        positiveText: '확인',
-        negativeText: null,
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () {
-          nav.pop();
-          nav.pushReplacementNamed(
-            '/relaxation_education',
-            arguments: {
-              'taskId': 'week7_education',
-              'weekNumber': 7,
-              //TODO: noti 임시
-              'mp3Asset': 'noti.mp3',
-              'riveAsset': 'noti.riv',
+      builder:
+          (_) => CustomPopupDesign(
+            title: '이완 연습 이어서 하기',
+            message: '오늘 학습을 잘 마쳤어요.\n이완 연습까지 이어서 진행해볼까요?',
+            positiveText: '이어하기',
+            autoPositiveAfter: const Duration(seconds: 10),
+            negativeText: null,
+            backgroundAsset: null,
+            iconAsset: null,
+            onPositivePressed: () {
+              nav.pop();
+              nav.pushReplacementNamed(
+                '/relaxation_education',
+                arguments: {
+                  'taskId': 'week7_education',
+                  'weekNumber': 7,
+                  'mp3Asset': 'week7.mp3',
+                  'riveAsset': 'week7.riv',
+                },
+              );
             },
-          );
-        },
-      ),
+          ),
     );
   }
 
@@ -197,7 +224,8 @@ child: NavigationButtons(
 
     final existing = await _week7Api.fetchWeek7Session();
     final existingId =
-        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+        existing?['session_id']?.toString() ??
+        existing?['sessionId']?.toString();
     if (existingId != null && existingId.isNotEmpty) {
       _sessionId = existingId;
       return existingId;

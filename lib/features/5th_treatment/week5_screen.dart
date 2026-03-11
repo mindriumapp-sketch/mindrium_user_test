@@ -1,5 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/features/value_start.dart';
+import 'package:gad_app_team/features/session_start.dart';
 import 'package:gad_app_team/features/5th_treatment/week5_guide_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
@@ -10,10 +10,7 @@ import 'package:gad_app_team/data/user_provider.dart';
 class Week5Screen extends StatefulWidget {
   final String? sessionId;
 
-  const Week5Screen({
-    super.key,
-    this.sessionId,
-  });
+  const Week5Screen({super.key, this.sessionId});
 
   @override
   State<Week5Screen> createState() => _Week5ScreenState();
@@ -65,14 +62,14 @@ class _Week5ScreenState extends State<Week5Screen> {
       final eduApi = EduSessionsApi(client);
 
       // ⚠️ 실제 week5 플로우에 맞게 수정 가능
-      const int totalScreens = 12;
+      const int totalStages = 12;
 
       // Week3랑 같은 계열이면 이 메소드 있을 가능성 큼
       final res = await eduApi.createWeek3or5Session(
         weekNumber: 5,
-        totalScreens: totalScreens,
-        lastScreenIndex: 1,        // Week5Screen 진입 시 = 1번 화면
-        completed: false,          // 아직 미완료
+        totalStages: totalStages,
+        lastStageIndex: 1, // Week5Screen 진입 시 = 1번 화면
+        completed: false, // 아직 미완료
         startTime: DateTime.now(), // 지금 시간
         endTime: null,
       );
@@ -83,7 +80,9 @@ class _Week5ScreenState extends State<Week5Screen> {
         _sessionId = res['session_id'];
       });
 
-      debugPrint('[Week5Screen] edu-sessions create 성공 (week=5, id=$_sessionId)');
+      debugPrint(
+        '[Week5Screen] edu-sessions create 성공 (week=5, id=$_sessionId)',
+      );
     } catch (e) {
       if (!mounted) return;
       debugPrint('[Week5Screen] edu-sessions create 실패: $e');
@@ -93,14 +92,12 @@ class _Week5ScreenState extends State<Week5Screen> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueStartScreen(
+    return SessionStartScreen(
       weekNumber: 5,
       weekTitle: '불안 직면과 회피에 대해 알아보겠습니다.',
       weekDescription:
-      '이번 주차에서는 불안을 직면하는 것과 회피하는 것의 차이점을 배워보겠습니다. 성인 여성의 상황을 예시로 살펴볼게요.',
-      nextPageBuilder: () => Week5GuideScreen(
-        sessionId: _sessionId,
-      ),
+          '이번 주차에서는 불안을 직면하는 것과 회피하는 것의 차이점을 배워보겠습니다. 성인 여성의 상황을 예시로 살펴볼게요.',
+      nextPageBuilder: () => Week5GuideScreen(sessionId: _sessionId),
     );
   }
 }

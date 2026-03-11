@@ -39,10 +39,11 @@ class _SeaArchivePageState extends State<SeaArchivePage>
     final access = await _tokens.access;
     if (access == null) return [];
     try {
-      final groups = await _worryGroupsApi.getArchivedGroups();
+      // 기본 조회는 archived != true 그룹만 내려옴
+      final groups = await _worryGroupsApi.listWorryGroups();
       return groups;
     } catch (e) {
-      debugPrint('아카이브 그룹을 불러오지 못했습니다: $e');
+      debugPrint('worry_groups(archived=false) 로드 실패: $e');
       return [];
     }
   }
