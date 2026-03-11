@@ -166,6 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return const SeaArchivePage();
       case 3:
         return const MyInfoScreen();
+      case 4:
+        return const MyInfoScreen();
       default:
         return _homePage();
     }

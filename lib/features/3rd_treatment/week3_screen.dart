@@ -1,7 +1,7 @@
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/value_start.dart';
-import 'package:gad_app_team/features/3rd_treatment/week3_belief_screen.dart';
+import 'package:gad_app_team/features/3rd_treatment/week3_classification_screen.dart';
 // week3_screen.dart
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -97,8 +97,8 @@ class _Week3ScreenState extends State<Week3Screen> {
       weekNumber: 3,
       weekTitle: '자기 대화(Self Talk) 기법을 익혀보겠습니다.',
       weekDescription:
-      '이번 주차에서는 부정적인 자기 대화를 긍정적으로 바꾸는 방법을 배워보겠습니다. 성인 여성의 상황을 예시로 살펴볼게요.',
-      nextPageBuilder: () => Week3BeliefScreen(sessionId: _sessionId),
+      '이번 주차에서는 예시 생각들을 보며, 핵심 가치를 이루기 위해 도움이 되는 생각인지 아닌지 구분하며 배워보겠습니다.',
+      nextPageBuilder: () => Week3ClassificationScreen(sessionId: _sessionId),
     );
   }
 }

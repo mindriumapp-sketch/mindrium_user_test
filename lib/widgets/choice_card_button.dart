@@ -5,7 +5,7 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 enum ChoiceType {
   healthy,
   anxious,
-  helpful,   // Week3: 도움이 되는 생각
+  helpful, // Week3: 도움이 되는 생각
   unhelpful, // Week3: 도움이 되지 않는 생각
   other,
   another,

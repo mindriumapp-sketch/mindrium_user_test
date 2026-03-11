@@ -1,8 +1,6 @@
-// lib/features/3rd_treatment/week3_imagination.dart
-
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/chips_editor.dart';
-import 'week3_explain_alternative_thoughts.dart';
+import 'package:gad_app_team/features/3rd_treatment/week3_alternative_thoughts.dart';
 
 // ⭐ 더블 카드 레이아웃
 import 'package:gad_app_team/widgets/top_btm_card.dart';
@@ -10,22 +8,18 @@ import 'package:gad_app_team/widgets/top_btm_card.dart';
 class Week3ImaginationScreen extends StatefulWidget {
   final String? sessionId;
 
-  const Week3ImaginationScreen({
-    super.key,
-    required this.sessionId,
-  });
+  const Week3ImaginationScreen({super.key, required this.sessionId});
 
   @override
-  State<Week3ImaginationScreen> createState() =>
-      _Week3ImaginationScreenState();
+  State<Week3ImaginationScreen> createState() => _Week3ImaginationScreenState();
 }
 
 class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
-  final GlobalKey<ChipsEditorState> _chipsKey = GlobalKey<ChipsEditorState>();
-  List<String> _chips = [];
+  final TextEditingController _textController = TextEditingController();
+  String _inputText = '';
 
-  void _onChipsChanged(List<String> v) {
-    setState(() => _chips = v);
+  void _onTextChanged(String value) {
+    setState(() => _inputText = value.trim());
   }
 
   // ───────── 상단 카드 내용 ─────────
@@ -48,7 +42,7 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
           ),
           SizedBox(height: 12),
           Text(
-            '불안할 때 떠오르는 최악의 상황이나 걱정되는 장면을 솔직하게 적어보세요.',
+            '불안할 때 떠오르는 생각이나 걱정되는 부분들을 편하게 적어보세요.',
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w200,
@@ -68,24 +62,41 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ChipsEditor(
-          key: _chipsKey,
-          initial: const [],
-          onChanged: _onChipsChanged,
-          minHeight: 150,
-          maxWidthFactor: 0.78,
-          emptyIcon: const Icon(
-            Icons.edit_note_rounded,
-            size: 64,
-            color: Colors.black45,
+        Container(
+          constraints: const BoxConstraints(minHeight: 190),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: const Color(0xFF8ED8F8).withValues(alpha: 0.65),
+              width: 1.4,
+            ),
           ),
-          emptyText: const Text(
-            '여기에 입력한 내용이 표시됩니다',
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.grey,
-              fontWeight: FontWeight.w400,
+          child: TextField(
+            controller: _textController,
+            onChanged: _onTextChanged,
+            maxLines: 8,
+            minLines: 8,
+            textInputAction: TextInputAction.newline,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.6,
+              color: Color(0xFF2C3E50),
+              fontWeight: FontWeight.w500,
               fontFamily: 'Noto Sans KR',
+            ),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: '예: 발표 중에 말을 더듬어서 사람들이 이상하게 볼까 봐 걱정돼요.',
+              hintStyle: TextStyle(
+                fontSize: 15,
+                height: 1.6,
+                color: Color(0xFF8AA0B4),
+                fontWeight: FontWeight.w400,
+                fontFamily: 'Noto Sans KR',
+              ),
+              isCollapsed: true,
             ),
           ),
         ),
@@ -94,25 +105,30 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
     );
   }
 
-  // ───────── 다음 화면 이동 (백엔드/로직 유지) ─────────
   void _goNext() {
-    _chipsKey.currentState?.unfocusAndCommit();
-    final values = _chipsKey.currentState?.values ?? _chips;
+    FocusScope.of(context).unfocus();
+    final value = _textController.text.trim();
 
-    // ✅ 입력된 칩이 없으면 넘어가지 않도록 안전장치
-    if (values.isEmpty) return;
+    if (value.isEmpty) return;
 
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => Week3ExplainAlternativeThoughtsScreen(
-          sessionId: widget.sessionId,
-          chips: values,
-        ),
+        pageBuilder:
+            (_, __, ___) => Week3AlternativeThoughtsScreen(
+              sessionId: widget.sessionId,
+              previousChips: [value],
+            ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 
   @override
@@ -121,13 +137,12 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
       appBarTitle: 'Self Talk',
       topChild: _buildTopPanel(),
       // 가운데 말풍선 텍스트
-      middleBannerText:
-      '아래 영역을 탭하면 항목이 추가돼요!\n엔터 또는 바깥 터치로 확정됩니다',
+      middleBannerText: '아래 입력창에 떠오르는 생각을 자유롭게 적어보세요.',
       bottomChild: _buildBottomPanel(),
       onBack: () => Navigator.pop(context),
 
       // ✅ 칩이 없으면 onNext를 null로 넘겨서 버튼 비활성화
-      onNext: _chips.isNotEmpty ? _goNext : null,
+      onNext: _inputText.isNotEmpty ? _goNext : null,
 
       // 3주차 원래 하단 민트 느낌
       btmcardColor: const Color(0xFF7DD9E8).withValues(alpha: 0.25),

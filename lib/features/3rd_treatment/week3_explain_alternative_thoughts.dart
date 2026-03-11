@@ -3,7 +3,7 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // <-- ApplyDesign
 import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/features/3rd_treatment/week3_alternative_thoughts.dart';
+import 'package:gad_app_team/features/3rd_treatment/week3_imagination.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 
 class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
@@ -49,7 +49,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
     /// ApplyDesign 이 전체 레이아웃(배경/앱바/카드/네비)을 처리
     return ApplyDesign(
       appBarTitle: 'Self Talk',
-      cardTitle: '대체 생각 배우기',
+      cardTitle: '도움이 되는 생각 배우기',
 
       // 카드 내부 실제 콘텐츠
       child: Column(
@@ -62,8 +62,12 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
                 Image.asset('assets/image/question_icon.png', width: 36, height: 36),
                 const SizedBox(height: 16),
                 Text(
-                  protectKoreanWords('추가로 작성하신 불안한 상황을 보면서 대체 생각이 무엇인지 배워 볼까요?'),
-                  style: TextStyle(
+                  protectKoreanWords(
+                    chips.isEmpty
+                        ? '도움이 되는 생각이 무엇인지 먼저 배워 볼까요?'
+                        : '추가로 작성하신 불안한 상황을 보면서 대체 생각이 무엇인지 배워 볼까요?',
+                  ),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Noto Sans KR',
@@ -81,8 +85,9 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
             runSpacing: 4,
             children: [
               if (chips.isEmpty)
+                // 현재 설명 화면 뒤에 불안한 상황을 적게 되는 흐름을 안내
                 TextLine(
-                  "$userName님은 (이)라는 일이 일어날 것 같다고 상상했습니다.\n이제 이런 불안한 생각을 조금 더 도움이 되는 생각으로 바꿔볼 수 있을까요?",
+                  '아래 예시를 읽어본 후, 불안한 상황을 떠올리고 그에 대한 도움이 되는 생각을 해보는 시간을 가질 거예요.',
                   style: mainTextStyle,
                 )
               else ...[
@@ -94,8 +99,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
                         (e) => WidgetSpan(
                           alignment: PlaceholderAlignment.middle,
                           child: Padding(
-                            padding:
-                                const EdgeInsets.only(right: 4.0, bottom: 2.0),
+                            padding: const EdgeInsets.only(right: 4.0, bottom: 2.0),
                             child: highlightedText("'$e'"),
                           ),
                         ),
@@ -168,10 +172,12 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
               ),
             ),
           ),
+          // 설명 화면 이후에는 불안한 상황을 적게 되므로 안내를 변경
           Center(
             child: Text(
-              protectKoreanWords("\n이제 위의 예시를 참고해서\n당신만의 대체 생각을 적어볼까요?"),
-              style: TextStyle(
+              protectKoreanWords(
+                  "\n이제 위의 예시를 참고해서\n당신만의 불안한 생각을 적어볼까요?"),
+              style: const TextStyle(
                 fontSize: 15.5,
                 color: Colors.indigo,
                 fontWeight: FontWeight.bold,
@@ -189,9 +195,8 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => Week3AlternativeThoughtsScreen(
+            pageBuilder: (_, __, ___) => Week3ImaginationScreen(
               sessionId: sessionId,
-              previousChips: chips,
             ),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,

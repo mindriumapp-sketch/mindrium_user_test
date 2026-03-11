@@ -25,41 +25,16 @@ class ValueStartScreen extends StatefulWidget {
 }
 
 class _ValueStartScreenState extends State<ValueStartScreen> {
-  final PageController _page = PageController();
-  int _index = 0;
-
   static const Color _navy = Color(0xFF263C69);
   static const Color _blue = Color(0xFF339DF1);
 
-  @override
-  void dispose() {
-    _page.dispose(); // ✅ PageController 방탄
-    super.dispose();
-  }
-
   void _goNextOrStart() {
-    if (_index == 0) {
-      _page.nextPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => widget.nextPageBuilder(),
-        ),
-      );
-    }
-  }
-
-  void _goPrev() {
-    if (_index > 0) {
-      _page.previousPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-      );
-    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => widget.nextPageBuilder(),
+      ),
+    );
   }
 
   @override
@@ -74,9 +49,6 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-
-    final String name =
-    (user.userName.isNotEmpty) ? user.userName : '사용자';
 
     // TODO: 핵심 가치 수정은 마이페이지에서만 가능하게 둘지 여부 (설명 문구 추가할지 등)
     final String valueGoal = (user.valueGoal != null &&
@@ -104,26 +76,14 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
             child: Column(
               children: [
                 Expanded(
-                  child: PageView(
-                    controller: _page,
-                    onPageChanged: (i) => setState(() => _index = i),
-                    children: [
-                      _WelcomePage(
-                        maxWidth: maxCardWidth,
-                        navy: _navy,
-                        blue: _blue,
-                        name: name,
-                        value: valueGoal,
-                        weekDescription: widget.weekDescription,
-                      ),
-                      _GuidePage(
-                        maxWidth: maxCardWidth,
-                        navy: _navy,
-                        title: '${widget.weekNumber}주차 활동 안내',
-                        subtitle: widget.weekTitle,
-                        weekNumber: widget.weekNumber,
-                      ),
-                    ],
+                  child: _WelcomePage(
+                    maxWidth: maxCardWidth,
+                    navy: _navy,
+                    blue: _blue,
+                    value: valueGoal,
+                    weekDescription: widget.weekDescription,
+                    guideTitle: '${widget.weekNumber}주차 활동 안내',
+                    weekNumber: widget.weekNumber,
                   ),
                 ),
                 Padding(
@@ -132,11 +92,11 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: _index == 0 ? null : _goPrev,
+                          onPressed: null,
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             backgroundColor: Colors.white.withValues(
-                              alpha: _index == 0 ? 0.5 : 1,
+                              alpha: 0.5,
                             ),
                             side: BorderSide(
                               color: Colors.white.withValues(alpha: 0.8),
@@ -148,8 +108,7 @@ class _ValueStartScreenState extends State<ValueStartScreen> {
                           child: Text(
                             '이 전',
                             style: TextStyle(
-                              color:
-                              _index == 0 ? Colors.black38 : _blue,
+                              color: Colors.black38,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -224,17 +183,19 @@ class _WelcomePage extends StatelessWidget {
   final double maxWidth;
   final Color navy;
   final Color blue;
-  final String name;
   final String value;
   final String weekDescription;
+  final String guideTitle;
+  final int weekNumber;
 
   const _WelcomePage({
     required this.maxWidth,
     required this.navy,
     required this.blue,
-    required this.name,
     required this.value,
     required this.weekDescription,
+    required this.guideTitle,
+    required this.weekNumber,
   });
 
   static const double _badgeWidth = 254.0;
@@ -247,7 +208,7 @@ class _WelcomePage extends StatelessWidget {
         child: _OutlinedCard(
           child: BlueWhiteCard(
             maxWidth: maxWidth,
-            title: '$name님, 환영합니다!',
+            title: guideTitle,
             titleStyle: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -263,8 +224,9 @@ class _WelcomePage extends StatelessWidget {
             dividerColor: const Color(0xFFE8EDF4),
             dividerWidth: 240,
             titleTopGap: 10,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 16),
                 Stack(
@@ -324,67 +286,6 @@ class _WelcomePage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 80),
-                Text(
-                  protectKoreanWords(weekDescription),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: navy,
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GuidePage extends StatelessWidget {
-  final double maxWidth;
-  final Color navy;
-  final String title;
-  final String subtitle;
-  final int weekNumber;
-
-  const _GuidePage({
-    required this.maxWidth,
-    required this.navy,
-    required this.title,
-    required this.subtitle,
-    required this.weekNumber,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(34, 0, 34, 0),
-      child: Center(
-        child: _OutlinedCard(
-          child: BlueWhiteCard(
-            maxWidth: maxWidth,
-            title: title,
-            titleStyle: TextStyle(
-              color: navy,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-            outerColor: Colors.transparent,
-            outerRadius: 22,
-            outerExpand: EdgeInsets.zero,
-            innerColor: Colors.white,
-            innerRadius: 20,
-            innerPadding:
-            const EdgeInsets.fromLTRB(28, 26, 28, 26),
-            dividerColor: const Color(0xFFE8EDF4),
-            dividerWidth: 240,
-            titleTopGap: 10,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 12),
                 Image.asset(
                   weekNumber == 8
                       ? 'assets/image/jellyfish_8th.png'
@@ -394,18 +295,17 @@ class _GuidePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  protectKoreanWords(subtitle),
+                  protectKoreanWords(weekDescription),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: navy,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                     height: 1.5,
-                    decoration: TextDecoration.none,
                   ),
                 ),
                 const SizedBox(height: 8),
               ],
+            ),
             ),
           ),
         ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
@@ -18,8 +17,9 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  static final RegExp _passwordRegex =
-      RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,20}$');
+  static final RegExp _passwordRegex = RegExp(
+    r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,20}$',
+  );
   static const String _passwordPolicyMessage =
       '비밀번호는 8~20자이며, 영문자/숫자/특수문자를 각각 1자 이상 포함해야 합니다.';
 
@@ -38,9 +38,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _signup() async {
@@ -52,8 +52,14 @@ class _SignupScreenState extends State<SignupScreen> {
     final code = codeController.text.trim();
 
     // (변경) phone 필수
-    if ([email, name, phone, password, confirmPassword, code]
-        .any((e) => e.isEmpty)) {
+    if ([
+      email,
+      name,
+      phone,
+      password,
+      confirmPassword,
+      code,
+    ].any((e) => e.isEmpty)) {
       _showError('모든 필드를 입력해주세요.');
       return;
     }
@@ -88,13 +94,14 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.')),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.')));
+      Navigator.pushReplacementNamed(
+        context,
+        '/login',
+        arguments: {'email': email, 'password': password},
       );
-      Navigator.pushReplacementNamed(context, '/login', arguments: {
-        'email': email,
-        'password': password,
-      });
     } catch (e, stack) {
       _showError('회원가입 실패: $e');
       debugPrint('Signup error: $e');
@@ -214,8 +221,10 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           SizedBox(height: 6),
           Text('• 8~20자 길이', style: TextStyle(color: Colors.black87)),
-          Text('• 영문자, 숫자, 특수문자를 각각 1자 이상 포함',
-              style: TextStyle(color: Colors.black87)),
+          Text(
+            '• 영문자, 숫자, 특수문자를 각각 1자 이상 포함',
+            style: TextStyle(color: Colors.black87),
+          ),
         ],
       ),
     );
