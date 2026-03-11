@@ -54,12 +54,11 @@
             </intent-filter>
         </receiver>
 
-        <!-- ─────────────────────────────────────────────────────────────────────────── -->
-        <!-- Home Widget 플러그인 관련: 위젯 브로드캐스트 리시버 등록 -->
+        <!-- Home Widget: 빠른 불안 해결 위젯 -->
         <receiver
-            android:name="dev.fluttercommunity.plus.home_widget.HomeWidgetReceiver"
+            android:name=".QuickApplyWidgetProvider"
             android:exported="true"
-            android:label="MyWidget">
+            android:label="Mindrium Quick Apply">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
             </intent-filter>
@@ -67,14 +66,6 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/home_widget_provider"/>
         </receiver>
-
-        <!-- Home Widget 플러그인 관련: 백그라운드 서비스 등록 -->
-        <service
-            android:name="dev.fluttercommunity.plus.home_widget.HomeWidgetService"
-            android:permission="android.permission.BIND_JOB_SERVICE"
-            android:exported="true"/>
-
-        <!-- ─────────────────────────────────────────────────────────────────────────── -->
 
     </application>
 

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -53,11 +56,20 @@ class _ProgressSnapshot {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const MethodChannel _widgetLaunchChannel =
+      MethodChannel('mindrium/widget_launch');
+  static const EventChannel _widgetLaunchEventChannel =
+      EventChannel('mindrium/widget_launch_events');
+
   int _selectedIndex = 0;
   static const int _kTotalWeeks = 8;
 
   bool _permissionsChecked = false;
   Future<void>? _permissionFuture;
+  StreamSubscription<dynamic>? _widgetLaunchSubscription;
+  bool _checkedInitialWidgetAction = false;
+  int? _lastSyncedDiaryCount;
+  int? _lastSyncedRelaxationCount;
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
@@ -78,6 +90,16 @@ class _HomeScreenState extends State<HomeScreen> {
         await user.loadUserData(dayCounter: dayCounter);
       }
     });
+    _listenWidgetLaunchEvents();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleInitialWidgetLaunchAction();
+    });
+  }
+
+  @override
+  void dispose() {
+    _widgetLaunchSubscription?.cancel();
+    super.dispose();
   }
 
   // ===================== 진행도: UserProvider에서만 읽기 =====================
@@ -115,6 +137,96 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onDestinationSelected(int index) =>
       setState(() => _selectedIndex = index);
+
+  void _startApplyFlow() {
+    final completedWeeks = context.read<UserProvider>().lastCompletedWeek;
+    final bool canSolve = completedWeeks >= 4;
+    if (!canSolve) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
+      );
+      return;
+    }
+
+    final flow = context.read<ApplyOrSolveFlow>();
+    flow.clear();
+    flow.setOrigin('apply');
+    flow.setDiaryRoute('solve');
+    Navigator.pushNamed(
+      context,
+      '/before_sud',
+      arguments: {
+        ...flow.toArgs(),
+        'origin': 'apply',
+      },
+    );
+  }
+
+  Future<void> _handleInitialWidgetLaunchAction() async {
+    if (_checkedInitialWidgetAction) return;
+    _checkedInitialWidgetAction = true;
+
+    try {
+      final action = await _widgetLaunchChannel.invokeMethod<String>(
+        'getInitialLaunchAction',
+      );
+      _handleWidgetLaunchAction(action);
+    } on PlatformException catch (e) {
+      debugPrint('초기 위젯 액션 조회 실패: ${e.message}');
+    }
+  }
+
+  void _listenWidgetLaunchEvents() {
+    _widgetLaunchSubscription =
+        _widgetLaunchEventChannel.receiveBroadcastStream().listen(
+      (dynamic event) {
+        final action = event?.toString();
+        _handleWidgetLaunchAction(action);
+      },
+      onError: (Object error) {
+        debugPrint('위젯 액션 스트림 수신 실패: $error');
+      },
+    );
+  }
+
+  void _handleWidgetLaunchAction(String? action) {
+    if (!mounted) return;
+    final normalizedAction = action?.trim();
+    if (normalizedAction != 'start_apply') return;
+
+    if (_selectedIndex != 0) {
+      setState(() => _selectedIndex = 0);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _startApplyFlow();
+    });
+  }
+
+  void _syncWidgetStatsIfNeeded(UserProvider user) {
+    final diaryCount = user.totalDiaries;
+    final relaxationCount = user.totalRelaxations;
+    if (_lastSyncedDiaryCount == diaryCount &&
+        _lastSyncedRelaxationCount == relaxationCount) {
+      return;
+    }
+
+    _lastSyncedDiaryCount = diaryCount;
+    _lastSyncedRelaxationCount = relaxationCount;
+
+    _widgetLaunchChannel
+        .invokeMethod<bool>(
+      'updateWidgetStats',
+      {
+        'diaryCount': diaryCount,
+        'relaxationCount': relaxationCount,
+      },
+    )
+        .catchError((Object error) {
+      debugPrint('위젯 통계 동기화 실패: $error');
+      return false;
+    });
+  }
 
   // ===================== build =====================
 
@@ -249,6 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 3️⃣ 여기까지 왔으면 최소 한 번은 유저 + todayTask가 로딩된 상태
     final progressData = _buildProgressFromUser(user);
+    _syncWidgetStatsIfNeeded(user);
 
     debugPrint(
       'currentWeek: ${progressData.currentWeek}, '
@@ -592,27 +705,7 @@ class _HomeScreenState extends State<HomeScreen> {
           description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
           color: cardColor,
           imagePath: 'assets/image/pink1.png',
-          onTap: () {
-            if (!canSolve) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
-              );
-              return;
-            }
-            final flow = context.read<ApplyOrSolveFlow>();
-            // 기존 상태 초기화 후 공통 흐름 세팅
-            flow.clear();
-            flow.setOrigin('apply');
-            flow.setDiaryRoute('solve');
-            Navigator.pushNamed(
-              context,
-              '/before_sud',
-              arguments: {
-                ...flow.toArgs(),
-                'origin': 'apply',
-              },
-            );
-          },
+          onTap: _startApplyFlow,
         ),
         
         const SizedBox(height: 8),
