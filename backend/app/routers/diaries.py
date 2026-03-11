@@ -18,10 +18,9 @@ from schemas.diary import (
     DiaryUpdate,
     DiaryResponse,
     DiarySummaryResponse,
-    AlarmCreate,
-    AlarmUpdate,
-    AlarmDelete,
-    AlarmResponse,
+    LocTimeUpdate,
+    LocTimeDelete,
+    LocTimeResponse,
 )
 
 router = APIRouter(prefix="/diaries", tags=["diaries"])
@@ -140,6 +139,13 @@ def merge_unique_str_list(
     return result
 
 
+def _read_float(raw: Any) -> Optional[float]:
+    try:
+        return float(raw)
+    except Exception:
+        return None
+
+
 # ---------- DiaryChip 직렬화 ----------
 
 def _serialize_chip(raw: Any) -> Optional[dict]:
@@ -182,73 +188,91 @@ def _serialize_chip_list(raw: Any) -> List[dict]:
     return out
 
 
-# ---------- 알람 직렬화/정규화 ----------
+# ---------- 위치/시간 직렬화/정규화 ----------
 
-def _serialize_alarm(doc: dict) -> dict:
+def _serialize_loc_time(doc: dict) -> dict:
     return {
-        "alarm_id": doc.get("alarm_id"),
+        "id": doc.get("id") or doc.get("alarm_id"),
         "time": doc.get("time", ""),
+        "location": doc.get("location") or doc.get("location_desc"),
+        "location_label": doc.get("location_label"),
         "location_desc": doc.get("location_desc"),
-        "repeat_option": doc.get("repeat_option"),
-        "weekdays": doc.get("weekdays", []),
-        "reminder_minutes": doc.get("reminder_minutes"),
-        "enter": doc.get("enter", False),
-        "exit": doc.get("exit", False),
-        "created_at": parse_datetime_value(doc.get("created_at")),
-        "updated_at": parse_datetime_value(doc.get("updated_at")),
+        "latitude": doc.get("latitude"),
+        "longitude": doc.get("longitude"),
     }
 
 
-def _normalize_single_alarm(value: Any, now_utc: datetime) -> Optional[dict]:
+def _normalize_single_loc_time(value: Any, now_utc: datetime) -> Optional[dict]:
     """
-    개별 alarm 엔트리 하나를 정규화.
+    개별 loc_time 엔트리 하나를 정규화.
     - dict가 아니면 무시
-    - alarm_id / created_at / updated_at 채워 넣기
+    - 이전 alarm_id/location_desc 형태도 자동 변환
     """
     if not isinstance(value, dict):
         return None
 
     doc = dict(value or {})
-    doc["alarm_id"] = doc.get("alarm_id") or f"alarm_{uuid.uuid4().hex[:6]}"
+    loc_time_id = doc.get("id") or doc.get("alarm_id") or f"loc_time_{uuid.uuid4().hex[:6]}"
+    time_value = doc.get("time")
+    location_desc = doc.get("location_desc") or doc.get("description")
+    location_value = doc.get("location") or location_desc
+    location_label = doc.get("location_label")
+    if location_label is None and location_value is not None and location_desc is not None:
+        if str(location_value) != str(location_desc):
+            location_label = location_value
+    latitude = _read_float(doc.get("latitude"))
+    longitude = _read_float(doc.get("longitude"))
 
-    created_raw = doc.get("created_at") or doc.get("updated_at")
-    doc["created_at"] = parse_datetime_value(created_raw, fallback=now_utc)
-    doc["updated_at"] = parse_datetime_value(doc.get("updated_at"), fallback=now_utc)
-    return doc
+    normalized = {
+        "id": str(loc_time_id),
+        "time": time_value,
+        "location": location_value,
+        "location_label": location_label,
+        "location_desc": location_desc,
+        "latitude": latitude,
+        "longitude": longitude,
+    }
+    return {k: v for k, v in normalized.items() if v is not None}
 
 
-def _normalize_alarms(raw) -> List[dict]:
+def _normalize_loc_time(raw) -> Optional[dict]:
     """
-    - dict 또는 list 형태로 들어오는 알람 배열을
-      내부적으로 일관된 리스트[dict]로 정규화.
+    loc_time를 단일 객체로 정규화.
+    - dict면 그대로 정규화
+    - list면 마지막 유효 엔트리 1개만 선택
+    - 이전 alarms(dict/list) 구조도 자동 변환
     """
-    normalized: List[dict] = []
     now_utc = datetime.now(timezone.utc)
 
     if isinstance(raw, dict):
-        iterable = raw.values()
-    elif isinstance(raw, list):
-        iterable = raw
-    else:
-        iterable = []
+        if {"id", "alarm_id", "time", "location", "location_desc"} & set(raw.keys()):
+            return _normalize_single_loc_time(raw, now_utc)
+        for value in reversed(list(raw.values())):
+            doc = _normalize_single_loc_time(value, now_utc)
+            if doc is not None:
+                return doc
+        return None
 
-    for value in iterable:
-        doc = _normalize_single_alarm(value, now_utc)
-        if doc is not None:
-            normalized.append(doc)
+    if isinstance(raw, list):
+        for value in reversed(raw):
+            doc = _normalize_single_loc_time(value, now_utc)
+            if doc is not None:
+                return doc
+        return None
 
-    normalized.sort(key=lambda d: d["created_at"])
-    return normalized
+    return None
 
 
 # ---------- 직렬화 (Diary) ----------
 
 def _serialize_diary(doc: dict) -> dict:
     diary_id = doc.get("diary_id")
+    normalized_loc_time = _normalize_loc_time(doc.get("loc_time", doc.get("alarms", [])))
 
     return {
         "diary_id": diary_id,
         "group_id": doc.get("group_id"),
+        "route": doc.get("route"),
 
         # DiaryChip 구조 필드들
         "activation": _serialize_chip(doc.get("activation")),
@@ -270,12 +294,11 @@ def _serialize_diary(doc: dict) -> dict:
 
         "alternative_thoughts": doc.get("alternative_thoughts", []),
 
-        # 알람 리스트 -> AlarmResponse 리스트
-        "alarms": [
-            AlarmResponse(**_serialize_alarm(entry))
-            for entry in (doc.get("alarms") or [])
-            if isinstance(entry, dict)
-        ],
+        "loc_time": (
+            LocTimeResponse(**_serialize_loc_time(normalized_loc_time))
+            if isinstance(normalized_loc_time, dict)
+            else None
+        ),
 
         "latitude": doc.get("latitude"),
         "longitude": doc.get("longitude"),
@@ -289,6 +312,7 @@ def _serialize_diary_summary(doc: dict) -> dict:
     return {
         "diary_id": doc.get("diary_id"),
         "group_id": doc.get("group_id"),
+        "route": doc.get("route"),
         "activation": _serialize_chip(doc.get("activation")),
         "belief": _serialize_chip_list(doc.get("belief")),
         "consequence_physical": _serialize_chip_list(doc.get("consequence_physical")),
@@ -326,11 +350,14 @@ async def create_diary(
             else last.get("before_sud")
         )
 
+    loc_time_doc = _normalize_loc_time(payload.loc_time)
+
     # 2) DiaryChip 필드들은 dict로 저장
     diary_doc = {
         "user_id": user_id,
         "diary_id": f"diary_{uuid.uuid4().hex[:8]}",
         "group_id": group_id,
+        "route": payload.route,
 
         "activation": payload.activation.model_dump(),
         "belief": [chip.model_dump() for chip in payload.belief],
@@ -340,7 +367,7 @@ async def create_diary(
 
         "sud_scores": sud_entries,
         "latest_sud": latest_sud,
-        "alarms": _normalize_alarms(payload.alarms),
+        "loc_time": loc_time_doc,
         "latitude": payload.latitude,
         "longitude": payload.longitude,
         "address_name": payload.address_name,
@@ -373,7 +400,7 @@ async def list_diaries(
 ):
     """
     전체 일기 목록 (풀 데이터) 반환.
-    sud_scores / alarms / alternative_thoughts 포함.
+    sud_scores / loc_time / alternative_thoughts 포함.
     """
     collection = db[DIARY_COLLECTION]
     query = _build_diary_query(
@@ -400,7 +427,7 @@ async def list_diary_summaries(
     """
     일기 목록 요약용 엔드포인트.
     - 리스트 화면 / 히스토리 타일 등에서 사용.
-    - sud_scores / alarms 등 무거운 배열은 가져오지 않고,
+    - sud_scores / loc_time 등 무거운 배열은 가져오지 않고,
       latest_sud, 주요 텍스트/칩 필드만 포함.
     """
     collection = db[DIARY_COLLECTION]
@@ -503,6 +530,7 @@ async def update_diary(
         {"diary_id": diary_id, "user_id": user_id},
         {
             "alternative_thoughts": 1,
+            "loc_time": 1,
             "alarms": 1,
             "group_id": 1,
             "latest_sud": 1,
@@ -520,10 +548,12 @@ async def update_diary(
     new_group_id = update_data.get("group_id", old_group_id)
 
     set_fields: Dict[str, Any] = {}
+    unset_fields: Dict[str, str] = {}
 
-    # 1) 알람 들어오면 normalize 후 전체 교체
-    if "alarms" in update_data:
-        set_fields["alarms"] = _normalize_alarms(update_data.pop("alarms"))
+    # 1) loc_time 들어오면 normalize 후 전체 교체
+    if "loc_time" in update_data:
+        set_fields["loc_time"] = _normalize_loc_time(update_data.pop("loc_time"))
+        unset_fields["alarms"] = ""
 
     # 2) 나머지 필드(activation, belief, consequence_*, 좌표 등)는
     #    이미 model_dump 된 dict/list[dict]라 그대로 덮어쓰기
@@ -534,9 +564,13 @@ async def update_diary(
     set_fields["updated_at"] = now_utc
     set_fields["client_timestamp"] = client_ts_utc
 
+    update_query: Dict[str, Any] = {"$set": set_fields}
+    if unset_fields:
+        update_query["$unset"] = unset_fields
+
     updated_doc = await collection.find_one_and_update(
         {"diary_id": diary_id, "user_id": user_id},
-        {"$set": set_fields},
+        update_query,
         return_document=ReturnDocument.AFTER,
     )
 
@@ -564,10 +598,11 @@ async def update_diary(
     return DiaryResponse(**_serialize_diary(updated_doc))
 
 
-# ---------- 알람 서브엔드포인트 ----------
+# ---------- 위치/시간 서브엔드포인트 ----------
 
-@router.get("/{diary_id}/alarms", response_model=List[AlarmResponse])
-async def list_alarms(
+
+@router.get("/{diary_id}/loc_time", response_model=Optional[LocTimeResponse])
+async def get_loc_time(
     diary_id: str,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -575,67 +610,21 @@ async def list_alarms(
     collection = db[DIARY_COLLECTION]
     diary = await collection.find_one(
         {"diary_id": diary_id, "user_id": user_id},
-        {"alarms": 1},
+        {"loc_time": 1, "alarms": 1},
     )
     if not diary:
         raise HTTPException(status_code=404, detail="Diary not found")
 
-    alarms = _normalize_alarms(diary.get("alarms", []))
-    return [AlarmResponse(**_serialize_alarm(a)) for a in alarms]
+    normalized = _normalize_loc_time(diary.get("loc_time", diary.get("alarms", [])))
+    if normalized is None:
+        return None
+    return LocTimeResponse(**_serialize_loc_time(normalized))
 
 
-@router.post(
-    "/{diary_id}/alarms",
-    response_model=AlarmResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_alarm(
+@router.put("/{diary_id}/loc_time", response_model=LocTimeResponse)
+async def upsert_loc_time(
     diary_id: str,
-    payload: AlarmCreate,
-    db=Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
-):
-    collection = db[DIARY_COLLECTION]
-
-    now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
-
-    alarm_id = f"alarm_{uuid.uuid4().hex[:6]}"
-    alarm_doc = {
-        "alarm_id": alarm_id,
-        "time": payload.time,
-        "location_desc": payload.location_desc,
-        "repeat_option": payload.repeat_option,
-        "weekdays": payload.weekdays,
-        "reminder_minutes": payload.reminder_minutes,
-        "enter": payload.enter,
-        "exit": payload.exit,
-        "created_at": now_utc,
-        "updated_at": now_utc,
-    }
-
-    result = await collection.update_one(
-        {"diary_id": diary_id, "user_id": user_id},
-        {
-            "$push": {"alarms": alarm_doc},
-            "$set": {
-                "updated_at": now_utc,
-                "client_timestamp": client_ts_utc,
-            },
-        },
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Diary not found")
-
-    return AlarmResponse(**_serialize_alarm(alarm_doc))
-
-
-@router.put("/{diary_id}/alarms/{alarm_id}", response_model=AlarmResponse)
-async def update_alarm(
-    diary_id: str,
-    alarm_id: str,
-    payload: AlarmUpdate,
+    payload: LocTimeUpdate,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
@@ -650,44 +639,62 @@ async def update_alarm(
     collection = db[DIARY_COLLECTION]
     now_utc = datetime.now(timezone.utc)
     client_ts_utc = ensure_utc(payload.client_timestamp)
+    existing = await collection.find_one(
+        {"diary_id": diary_id, "user_id": user_id},
+        {"loc_time": 1, "alarms": 1},
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Diary not found")
 
-    # $set dot notation으로 업데이트할 필드 맵 생성
-    set_fields = {
-        f"alarms.$.{key}": value for key, value in update_data.items()
+    current = _normalize_loc_time(existing.get("loc_time", existing.get("alarms", [])))
+    loc_time_doc = {
+        "id": (current.get("id") if current else None) or f"loc_time_{uuid.uuid4().hex[:6]}",
+        "time": update_data.get("time", current.get("time") if current else None),
+        "location": update_data.get("location", current.get("location") if current else None),
+        "location_label": update_data.get(
+            "location_label",
+            current.get("location_label") if current else None,
+        ),
+        "location_desc": update_data.get(
+            "location_desc",
+            current.get("location_desc") if current else None,
+        ),
+        "latitude": _read_float(
+            update_data.get(
+                "latitude",
+                current.get("latitude") if current else None,
+            )
+        ),
+        "longitude": _read_float(
+            update_data.get(
+                "longitude",
+                current.get("longitude") if current else None,
+            )
+        ),
     }
-    set_fields["alarms.$.updated_at"] = now_utc
-    set_fields["updated_at"] = now_utc
-    set_fields["client_timestamp"] = client_ts_utc
+    loc_time_doc = {k: v for k, v in loc_time_doc.items() if v is not None}
 
-    updated_doc = await collection.find_one_and_update(
+    await collection.update_one(
+        {"diary_id": diary_id, "user_id": user_id},
         {
-            "diary_id": diary_id,
-            "user_id": user_id,
-            "alarms.alarm_id": alarm_id,
+            "$set": {
+                "loc_time": loc_time_doc,
+                "updated_at": now_utc,
+                "client_timestamp": client_ts_utc,
+            },
+            "$unset": {
+                "alarms": "",
+            },
         },
-        {"$set": set_fields},
-        return_document=ReturnDocument.AFTER,
     )
 
-    if not updated_doc:
-        raise HTTPException(status_code=404, detail="Diary or Alarm not found")
-
-    updated_alarm = next(
-        (a for a in updated_doc.get("alarms", []) if a.get("alarm_id") == alarm_id),
-        None,
-    )
-
-    if updated_alarm is None:
-        raise HTTPException(status_code=500, detail="Updated alarm not found in document")
-
-    return AlarmResponse(**_serialize_alarm(updated_alarm))
+    return LocTimeResponse(**_serialize_loc_time(loc_time_doc))
 
 
-@router.delete("/{diary_id}/alarms/{alarm_id}", status_code=status.HTTP_200_OK)
-async def delete_alarm(
+@router.delete("/{diary_id}/loc_time", status_code=status.HTTP_200_OK)
+async def delete_loc_time(
     diary_id: str,
-    alarm_id: str,
-    payload: AlarmDelete,
+    payload: LocTimeDelete,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
@@ -698,40 +705,13 @@ async def delete_alarm(
     result = await collection.update_one(
         {"diary_id": diary_id, "user_id": user_id},
         {
-            "$pull": {"alarms": {"alarm_id": alarm_id}},
             "$set": {
+                "loc_time": None,
                 "updated_at": now_utc,
                 "client_timestamp": client_ts_utc,
             },
-        },
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Diary not found")
-
-    return {
-        "client_timestamp": client_ts_utc,
-        "deleted_at": now_utc,
-    }
-
-@router.delete("/{diary_id}/alarms", status_code=status.HTTP_200_OK)
-async def delete_alarms(
-        diary_id: str,
-        payload: AlarmDelete,
-        db=Depends(get_db),
-        user_id: str = Depends(get_current_user_id),
-):
-    collection = db[DIARY_COLLECTION]
-    now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
-
-    result = await collection.update_one(
-        {"diary_id": diary_id, "user_id": user_id},
-        {
-            "$set": {
-                "alarms": [],
-                "updated_at": now_utc,
-                "client_timestamp": client_ts_utc,
+            "$unset": {
+                "alarms": "",
             },
         },
     )

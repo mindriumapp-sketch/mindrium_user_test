@@ -6,6 +6,8 @@ class NavigationButtons extends StatelessWidget {
   final String rightLabel;
   final VoidCallback? onNext;
   final VoidCallback? onBack;
+  final EdgeInsetsGeometry padding;
+  final double buttonVerticalPadding;
 
   const NavigationButtons({
     super.key,
@@ -13,6 +15,8 @@ class NavigationButtons extends StatelessWidget {
     this.rightLabel = '다음',
     this.onNext,
     this.onBack,
+    this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 8),
+    this.buttonVerticalPadding = 11,
   });
 
   @override
@@ -28,7 +32,7 @@ class NavigationButtons extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+      padding: padding,
       color: Colors.transparent,
       child: Row(
         children: [
@@ -46,7 +50,7 @@ class NavigationButtons extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(borderRadius),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: buttonVerticalPadding),
                 textStyle: const TextStyle(
                   fontSize: fontSize,
                   fontWeight: FontWeight.w700,
@@ -85,7 +89,7 @@ class NavigationButtons extends StatelessWidget {
                   ),
                 ),
                 padding: WidgetStateProperty.all(
-                  const EdgeInsets.symmetric(vertical: 16),
+                  EdgeInsets.symmetric(vertical: buttonVerticalPadding),
                 ),
                 textStyle: WidgetStateProperty.all(
                   const TextStyle(

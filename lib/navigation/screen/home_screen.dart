@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -7,6 +6,10 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
+import 'package:gad_app_team/data/api/alarm_settings_api.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
@@ -55,6 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _permissionsChecked = false;
   Future<void>? _permissionFuture;
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   @override
   void initState() {
@@ -183,16 +189,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_permissionsChecked) return;
 
     final perms = <Permission>[
-      Permission.notification,
       Permission.locationWhenInUse,
+      Permission.notification,
     ];
-
-    if (Platform.isAndroid) {
-      perms.addAll([
-        Permission.scheduleExactAlarm,
-        Permission.activityRecognition,
-      ]);
-    }
 
     for (final perm in perms) {
       if (!await perm.isGranted) {
@@ -200,7 +199,34 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
+    // 알림 관련(플러그인/플랫폼) 권한은 홈 화면에서 선요청.
+    await AlarmNotificationService.instance.requestPermissions();
+    await _syncAlarmSchedulesBestEffort();
+    AlarmNotificationService.instance.handlePendingNotificationTap();
+
     _permissionsChecked = true;
+  }
+
+  Future<void> _syncAlarmSchedulesBestEffort() async {
+    final service = AlarmNotificationService.instance;
+    try {
+      final rows = await _alarmSettingsApi.listAlarmSettings();
+      final alarms = rows.map(AlarmSetting.fromJson).toList()
+        ..sort((a, b) {
+          final aMinutes = a.hour * 60 + a.minute;
+          final bMinutes = b.hour * 60 + b.minute;
+          if (aMinutes != bMinutes) return aMinutes.compareTo(bMinutes);
+          return a.id.compareTo(b.id);
+        });
+      await service.saveAlarms(alarms);
+    } catch (e) {
+      debugPrint('알림 설정 서버 동기화 실패(로컬 fallback): $e');
+      try {
+        await service.syncFromStorage();
+      } catch (fallbackError) {
+        debugPrint('알림 설정 로컬 동기화 실패: $fallbackError');
+      }
+    }
   }
 
   // ===================== 홈 탭 =====================
@@ -234,11 +260,11 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         _buildHeader(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 8),
         _buildProgressCard(progressData),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _buildTaskSection(),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _buildTrainingSection(),
       ],
     );
@@ -427,12 +453,16 @@ class _HomeScreenState extends State<HomeScreen> {
         title: '일기 작성',
         isDone: todayTask.diaryDone,
         onTap: () {
+          final flow = context.read<ApplyOrSolveFlow>();
+          flow.clear();
+          flow.setOrigin('daily');
+          flow.setDiaryRoute('today_task');
           Navigator.pushNamed(
             context,
-            '/abc',
+            '/before_sud',
             arguments: {
+              ...flow.toArgs(),
               'origin': 'daily',
-              'abcId': null,
             },
           );
         },
@@ -561,7 +591,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title: '불안 해결하기',
           description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
           color: cardColor,
-          imagePath: 'assets/image/pink2.png',
+          imagePath: 'assets/image/pink1.png',
           onTap: () {
             if (!canSolve) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -570,17 +600,29 @@ class _HomeScreenState extends State<HomeScreen> {
               return;
             }
             final flow = context.read<ApplyOrSolveFlow>();
-            // 기존 상태 초기화 후 solve 흐름 세팅
+            // 기존 상태 초기화 후 공통 흐름 세팅
             flow.clear();
-            flow.setOrigin('solve');
+            flow.setOrigin('apply');
+            flow.setDiaryRoute('solve');
             Navigator.pushNamed(
               context,
               '/before_sud',
               arguments: {
                 ...flow.toArgs(),
-                'origin': 'solve',
+                'origin': 'apply',
               },
             );
+          },
+        ),
+        
+        const SizedBox(height: 8),
+        _trainingCard(
+          title: '알림 설정',
+          description: '문구...', //TODO: 알림 설정 문구 고민
+          color: const Color(0xFFE4F3FF),
+          imagePath: 'assets/image/pink2.png',
+          onTap: () {
+            Navigator.pushNamed(context, '/alarm_settings');
           },
         ),
       ],

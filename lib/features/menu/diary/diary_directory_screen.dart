@@ -326,7 +326,6 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
                 return _DiaryCard(
                   entry: entry,
                   characterId: characterId,
-                  onAlarmUpdated: _loadDiaries,
                 );
               },
             ),
@@ -433,12 +432,10 @@ class _GroupFilter extends StatelessWidget {
 class _DiaryCard extends StatelessWidget {
   final Map<String, dynamic> entry;
   final int? characterId;
-  final Future<void> Function()? onAlarmUpdated;
 
   const _DiaryCard({
     required this.entry,
     required this.characterId,
-    this.onAlarmUpdated,
   });
 
   List<String> _chipLabels(dynamic raw) {
@@ -488,16 +485,21 @@ class _DiaryCard extends StatelessWidget {
     // latest_sud (int 또는 double 가능)
     final num? latestSud = entry['latest_sud'] as num?;
 
-    // 알람 리스트 정규화
-    final rawAlarms = entry['alarms'];
-    final alarms = (rawAlarms is List)
-        ? rawAlarms
-        .whereType<Map>()
-        .map((raw) =>
-        raw.map((k, v) => MapEntry(k.toString(), v)))
-        .toList()
-        .cast<Map<String, dynamic>>()
-        : <Map<String, dynamic>>[];
+    // 위치/시간 단건 정규화 (구 alarms 배열 fallback 지원)
+    final rawLocTime = entry['loc_time'] ?? entry['alarms'];
+    Map<String, dynamic>? locTimeEntry;
+    if (rawLocTime is Map) {
+      locTimeEntry = rawLocTime.map((k, v) => MapEntry(k.toString(), v));
+    } else if (rawLocTime is List && rawLocTime.isNotEmpty) {
+      final mapped = rawLocTime
+          .whereType<Map>()
+          .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
+          .toList()
+          .cast<Map<String, dynamic>>();
+      if (mapped.isNotEmpty) {
+        locTimeEntry = mapped.last;
+      }
+    }
 
     final addressName = entry['address_name']?.toString();
 
@@ -610,24 +612,7 @@ class _DiaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _AlarmSection(
-              alarms: alarms,
-              onEdit: () async {
-                await Navigator.pushNamed(
-                  context,
-                  '/noti_select',
-                  arguments: {
-                    'fromDirectory': true,
-                    'abcId': entry['diary_id'],
-                    'label': activationLabel,
-                    'origin': 'diary_directory',
-                  },
-                );
-                if (onAlarmUpdated != null) {
-                  await onAlarmUpdated!();
-                }
-              },
-            ),
+            _AlarmSection(locTimeEntry: locTimeEntry),
             if (addressName != null && addressName.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildSection(
@@ -734,47 +719,25 @@ class _SudScoreBar extends StatelessWidget {
 /// 알람 섹션
 /// ----------------------
 class _AlarmSection extends StatelessWidget {
-  final List<Map<String, dynamic>> alarms;
-  final VoidCallback? onEdit;
+  final Map<String, dynamic>? locTimeEntry;
 
   const _AlarmSection({
-    required this.alarms,
-    this.onEdit,
+    required this.locTimeEntry,
   });
-
-  static const List<String> _weekdayNames = [
-    '월',
-    '화',
-    '수',
-    '목',
-    '금',
-    '토',
-    '일',
-  ];
-
-  String _weekdayLabel(int dayNumber) {
-    if (dayNumber < 1 || dayNumber > 7) return '$dayNumber';
-    return _weekdayNames[dayNumber - 1];
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (alarms.isEmpty) {
+    if (locTimeEntry == null) {
       return _buildSection(
         context: context,
-        icon: Icons.notifications_none,
-        title: '알림 정보',
+        icon: Icons.access_time_outlined,
+        title: '위치/시간 정보',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '설정된 알림이 없습니다.',
+              '설정된 위치/시간이 없습니다.',
               style: TextStyle(color: Color(0xFF1B405C)),
-            ),
-            const SizedBox(height: 8),
-            _AlarmActionButton(
-              label: '알림 추가',
-              onPressed: onEdit,
             ),
           ],
         ),
@@ -783,159 +746,50 @@ class _AlarmSection extends StatelessWidget {
 
     return _buildSection(
       context: context,
-      icon: Icons.notifications_active_outlined,
-      title: '알림 정보',
+      icon: Icons.alarm_on_outlined,
+      title: '위치/시간 정보',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ...alarms.asMap().entries.map((entry) {
-            final map = entry.value;
-            final location = map['location_desc'] ??
-                map['location'] ??
-                map['address_name'] ??
-                map['addressName'] ??
-                '-';
-            final notifyEnter =
-                map['enter'] == true || map['notifyEnter'] == true;
-            final notifyExit =
-                map['exit'] == true || map['notifyExit'] == true;
+          Builder(
+            builder: (_) {
+              final map = locTimeEntry!;
+              final location = map['location'] ??
+                  map['location_desc'] ??
+                  map['address_name'] ??
+                  map['addressName'] ??
+                  '-';
+              final time = map['time'] ?? map['scheduledTime'] ?? '-';
 
-            final condition = notifyEnter && notifyExit
-                ? '입장/퇴장'
-                : notifyEnter
-                ? '입장 시'
-                : notifyExit
-                ? '퇴장 시'
-                : '';
-
-            final time = map['time'] ?? map['scheduledTime'] ?? '-';
-
-            final repeatOption =
-            (map['repeat_option'] ?? map['repeatOption'] ?? '')
-                .toString();
-
-            final rawWeekdays = (map['weekdays'] ??
-                map['weekDays']) as List<dynamic>?;
-
-            final weekDays = rawWeekdays
-                ?.map(
-                  (e) => e is num
-                  ? e.toInt()
-                  : int.tryParse('$e') ?? 0,
-            )
-                .where((d) => d > 0 && d <= 7)
-                .toList() ??
-                const [];
-
-            final reminderMinutes = map['reminder_minutes'];
-
-            final repeatText = repeatOption == 'weekly'
-                ? (weekDays.isNotEmpty
-                ? '매주 (${weekDays.map(_weekdayLabel).join(', ')})'
-                : '매주')
-                : '매일';
-
-            final reminderText =
-            reminderMinutes is num && reminderMinutes > 0
-                ? '알림 ${reminderMinutes.toInt()}분 후'
-                : null;
-
-            final locationDisplay =
-            condition.isNotEmpty && location != '-'
-                ? '$location ($condition)'
-                : condition.isNotEmpty
-                ? condition
-                : location.toString();
-
-            return Container(
-              margin: EdgeInsets.only(
-                top: entry.key > 0 ? 10 : 0,
-              ),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FBFF),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFF4A8CCB),
+              return Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FBFF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF4A8CCB),
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _infoRow(
-                    Icons.location_on_outlined,
-                    '위치',
-                    locationDisplay,
-                  ),
-                  const SizedBox(height: 6),
-                  _infoRow(
-                    Icons.access_time_outlined,
-                    '시간',
-                    time.toString(),
-                  ),
-                  const SizedBox(height: 6),
-                  _infoRow(Icons.repeat, '반복', repeatText),
-                  if (reminderText != null) ...[
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _infoRow(
+                      Icons.location_on_outlined,
+                      '위치',
+                      location.toString(),
+                    ),
                     const SizedBox(height: 6),
                     _infoRow(
-                      Icons.alarm,
-                      '다시 알림',
-                      reminderText,
+                      Icons.access_time_outlined,
+                      '시간',
+                      time.toString(),
                     ),
                   ],
-                ],
-              ),
-            );
-          }),
-          const SizedBox(height: 8),
-          _AlarmActionButton(
-            label: '알림 수정',
-            onPressed: onEdit,
+                ),
+              );
+            },
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AlarmActionButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-
-  const _AlarmActionButton({
-    required this.label,
-    this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const accent = Color(0xFF5B9FD3);
-    return Align(
-      alignment: Alignment.centerRight,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: accent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 10,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        icon: const Icon(
-          Icons.notifications_active_outlined,
-          color: Colors.white,
-        ),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        onPressed: onPressed,
       ),
     );
   }

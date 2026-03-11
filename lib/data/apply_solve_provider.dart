@@ -13,7 +13,8 @@ class AbcDiaryLocation {
 }
 
 class ApplyOrSolveFlow extends ChangeNotifier {
-  String? _origin; // 'apply' | 'solve' | 'daily'
+  String? _origin; // 'apply' | 'daily'
+  String? _diaryRoute; // 'notification' | 'today_task' | 'solve'
   String? _sessionId;
   String? _diaryId; // = abcId
   String? _groupId;
@@ -22,8 +23,16 @@ class ApplyOrSolveFlow extends ChangeNotifier {
   dynamic _diary; // 'new' or diary summary map
   AbcDiaryLocation? _diaryLocation;
 
+  static String? _normalizeOrigin(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    if (trimmed == 'solve') return 'apply';
+    return trimmed;
+  }
+
   // ───── getters ─────
   String get origin => _origin ?? 'edu';
+  String? get diaryRoute => _diaryRoute;
   String? get sessionId => _sessionId;
   String? get diaryId => _diaryId;
   String? get groupId => _groupId;
@@ -57,7 +66,18 @@ class ApplyOrSolveFlow extends ChangeNotifier {
     }
 
     if (override || _origin == null) {
-      setValue<String>(castValue<String>(args['origin']), (v) => _origin = v);
+      setValue<String>(
+        _normalizeOrigin(
+          castValue<String>(args['origin']) ?? asString(args['origin']),
+        ),
+        (v) => _origin = v,
+      );
+    }
+    if (override || _diaryRoute == null) {
+      setValue<String>(
+        castValue<String>(args['diaryRoute']) ?? asString(args['diaryRoute']),
+        (v) => _diaryRoute = v,
+      );
     }
     if (override || _sessionId == null) {
       setValue<String>(castValue<String>(args['sessionId']),
@@ -109,6 +129,7 @@ class ApplyOrSolveFlow extends ChangeNotifier {
   Map<String, dynamic> toArgs() {
     return {
       'origin': origin,
+      if (_diaryRoute != null) 'diaryRoute': _diaryRoute,
       if (_sessionId != null) 'sessionId': _sessionId,
       if (_diaryId != null) 'abcId': _diaryId,
       if (_groupId != null) 'groupId': _groupId,
@@ -117,10 +138,17 @@ class ApplyOrSolveFlow extends ChangeNotifier {
     };
   }
 
-  // 외부에서 강제로 세팅하고 싶을 때 (알림에서 진입 등)
+  // 외부에서 강제로 세팅하고 싶을 때 (위치/시간에서 진입 등)
   void setOrigin(String? value) {
-    if (value == _origin) return;
-    _origin = value;
+    final normalized = _normalizeOrigin(value);
+    if (normalized == _origin) return;
+    _origin = normalized;
+    notifyListeners();
+  }
+
+  void setDiaryRoute(String? value) {
+    if (value == _diaryRoute) return;
+    _diaryRoute = value;
     notifyListeners();
   }
 
@@ -156,11 +184,14 @@ class ApplyOrSolveFlow extends ChangeNotifier {
 
   void clear() {
     _origin = null;
+    _diaryRoute = null;
     _sessionId = null;
     _diaryId = null;
     _groupId = null;
     _beforeSud = null;
     _sudId = null;
+    _diary = null;
+    _diaryLocation = null;
     notifyListeners();
   }
 }

@@ -40,7 +40,8 @@ class DiariesApi {
     List<Map<String, dynamic>> consequenceE = const [],  // List<DiaryChip>
     List<Map<String, dynamic>> consequenceB = const [],  // List<DiaryChip>
     List<String> alternativeThoughts = const [],
-    List<Map<String, dynamic>> alarms = const [],
+    Map<String, dynamic>? locTime,
+    String? route,
     double? latitude,
     double? longitude,
     String? addressName,
@@ -54,7 +55,8 @@ class DiariesApi {
       'consequence_emotion': consequenceE,
       'consequence_action': consequenceB,
       'alternative_thoughts': alternativeThoughts,
-      'alarms': alarms,
+      'loc_time': locTime,
+      if (route != null) 'route': route,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (addressName != null) 'address_name': addressName,
@@ -163,23 +165,27 @@ class DiariesApi {
     );
   }
 
-  Future<List<Map<String, dynamic>>> listAlarms(String diaryId) async {
-    final res = await _client.dio.get('/diaries/$diaryId/alarms');
+  Future<Map<String, dynamic>?> getLocTime(String diaryId) async {
+    final res = await _client.dio.get('/diaries/$diaryId/loc_time');
     final data = res.data;
+    if (data == null) return null;
+    if (data is Map) {
+      return data.map((k, v) => MapEntry(k.toString(), v));
+    }
     if (data is List) {
-      return data
+      final mapped = data
           .whereType<Map>()
           .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
-          .toList()
-          .cast<Map<String, dynamic>>();
+          .toList();
+      return mapped.isEmpty ? null : mapped.last.cast<String, dynamic>();
     }
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /diaries/{id}/alarms response',
+      message: 'Invalid /diaries/{id}/loc_time response',
     );
   }
 
-  Future<Map<String, dynamic>> createAlarm(
+  Future<Map<String, dynamic>> upsertLocTime(
       String diaryId,
       Map<String, dynamic> body, {
         DateTime? clientTimestamp,
@@ -189,53 +195,16 @@ class DiariesApi {
       clientTimestamp: clientTimestamp,
     );
 
-    final res =
-    await _client.dio.post('/diaries/$diaryId/alarms', data: payload);
+    final res = await _client.dio.put('/diaries/$diaryId/loc_time', data: payload);
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /diaries/{id}/alarms create response',
+      message: 'Invalid /diaries/{id}/loc_time upsert response',
     );
   }
 
-  Future<Map<String, dynamic>> updateAlarm(
-      String diaryId,
-      String alarmId,
-      Map<String, dynamic> body, {
-        DateTime? clientTimestamp,
-      }) async {
-    final payload = _withClientTimestamp(
-      body,
-      clientTimestamp: clientTimestamp,
-    );
-    final res = await _client.dio
-        .put('/diaries/$diaryId/alarms/$alarmId', data: payload);
-    final data = res.data;
-    if (data is Map<String, dynamic>) return data;
-    throw DioException(
-      requestOptions: res.requestOptions,
-      message: 'Invalid /diaries/{id}/alarms/{alarm_id} response',
-    );
-  }
-
-  Future<void> deleteAlarm(
-      String diaryId,
-      String alarmId, {
-        DateTime? clientTimestamp,
-      }) async {
-    final payload = _withClientTimestamp(
-      <String, dynamic>{},
-      clientTimestamp: clientTimestamp,
-    );
-
-    await _client.dio.delete(
-      '/diaries/$diaryId/alarms/$alarmId',
-      data: payload,
-    );
-  }
-
-  Future<void> deleteAllAlarms(
+  Future<void> deleteLocTime(
       String diaryId, {
         DateTime? clientTimestamp,
       }) async {
@@ -245,8 +214,41 @@ class DiariesApi {
     );
 
     await _client.dio.delete(
-      '/diaries/$diaryId/alarms',
+      '/diaries/$diaryId/loc_time',
       data: payload,
     );
   }
+
+  // ---- Backward compatibility wrappers ----
+  Future<List<Map<String, dynamic>>> listLocTime(String diaryId) async {
+    final single = await getLocTime(diaryId);
+    if (single == null) return const [];
+    return [single];
+  }
+
+  Future<Map<String, dynamic>> createLocTime(
+    String diaryId,
+    Map<String, dynamic> body, {
+    DateTime? clientTimestamp,
+  }) => upsertLocTime(
+    diaryId,
+    body,
+    clientTimestamp: clientTimestamp,
+  );
+
+  Future<Map<String, dynamic>> updateLocTime(
+    String diaryId,
+    String locTimeId,
+    Map<String, dynamic> body, {
+    DateTime? clientTimestamp,
+  }) => upsertLocTime(
+    diaryId,
+    body,
+    clientTimestamp: clientTimestamp,
+  );
+
+  Future<void> deleteAllLocTime(
+    String diaryId, {
+    DateTime? clientTimestamp,
+  }) => deleteLocTime(diaryId, clientTimestamp: clientTimestamp);
 }

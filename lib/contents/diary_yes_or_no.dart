@@ -19,10 +19,23 @@ import 'package:provider/provider.dart';
 class DiaryYesOrNo extends StatelessWidget {
   const DiaryYesOrNo({super.key});
 
+  String? _resolveDiaryRoute(ApplyOrSolveFlow flow, String origin) {
+    final route = flow.diaryRoute?.trim();
+    if (route != null && route.isNotEmpty) {
+      return route;
+    }
+    if (origin == 'daily') {
+      return 'today_task';
+    }
+    if (origin == 'apply' || origin == 'solve') {
+      return 'solve';
+    }
+    return null;
+  }
+
   Future<void> _handleNo(BuildContext context, Map args, dynamic diary) async {
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
-    final rawOrigin = args['origin'];
-    final origin = rawOrigin is String ? rawOrigin : flow.origin;
+    final origin = flow.origin;
     final tokens = TokenStorage();
     final access = await tokens.access;
     if (access == null) {
@@ -154,7 +167,7 @@ class DiaryYesOrNo extends StatelessWidget {
         consequenceE: const [],
         consequenceB: const [],
         alternativeThoughts: const [],
-        alarms: const [],
+        route: _resolveDiaryRoute(flow, origin),
         latitude: pos?.latitude,
         longitude: pos?.longitude,
         addressName: addressKo,
@@ -224,8 +237,7 @@ class DiaryYesOrNo extends StatelessWidget {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
     final dynamic diary = args['diary'] ?? flow.diary;
-    final dynamic rawOrigin = args['origin'];
-    final String origin = rawOrigin is String ? rawOrigin : flow.origin;
+    final String origin = flow.origin;
 
     return InnerBtnCardScreen(
       appBarTitle: '걱정 일기 진행',

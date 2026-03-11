@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';

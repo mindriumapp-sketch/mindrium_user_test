@@ -299,8 +299,8 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: NavigationButtons(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     onNext: () {
                       Navigator.push(

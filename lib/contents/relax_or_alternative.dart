@@ -27,8 +27,7 @@ class RelaxOrAlternativePage extends StatelessWidget {
     final String? sudId = flow.sudId ?? args['sudId'] as String?;
     final int? beforeSud = flow.beforeSud ?? args['beforeSud'] as int?;
     final dynamic diary = args['diary'] ?? flow.diary;
-    final dynamic rawOrigin = args['origin'];
-    final String origin = rawOrigin is String ? rawOrigin : flow.origin;
+    final String origin = flow.origin;
 
     return InnerBtnCardScreen(
       appBarTitle: '다음 단계 선택',

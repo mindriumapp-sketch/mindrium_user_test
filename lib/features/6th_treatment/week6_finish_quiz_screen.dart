@@ -364,8 +364,8 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
 
                 // 아래 네비게이션 (항상 바닥)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: NavigationButtons(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                     leftLabel: '이전',
                     rightLabel: '다음',
                     onBack: () {

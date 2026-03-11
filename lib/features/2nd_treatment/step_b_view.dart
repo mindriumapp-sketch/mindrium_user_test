@@ -37,7 +37,12 @@ class StepBView extends StatefulWidget {
 }
 
 class _StepBViewState extends State<StepBView> {
-  String _bannerMessage = "아래에 '넘어질까봐 두려움' 칩을 눌러 \n선택해보세요!";
+  String _bannerMessage = "아래에서 '넘어질까봐 두려움'을 선택해보세요!";
+
+  String get _guideMessage {
+    if (widget.isExampleMode) return _bannerMessage;
+    return "그 순간 떠오른 생각(B)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,16 +54,10 @@ class _StepBViewState extends State<StepBView> {
         children: [
           AbcStepCard(
             activeIndex: 1,
-            smallText: '그 상황에서 어떤 생각을\n했는지 적어봐요',
-            bigText: '그때 어떤 생각이\n들었나요?',
+            smallText: '그 상황에서 떠오른 생각을 확인해요',
+            bigText: '그 순간,\n어떤 생각이 들었나요?',
           ),
           const SizedBox(height: 40),
-
-          // ✅ 예시 모드 전용 배너
-          if (widget.isExampleMode) ...[
-            JellyfishBanner(message: _bannerMessage),
-            const SizedBox(height: 30),
-          ],
 
           // ✅ 칩 그리드 (chipId 기반, 다중 선택 가능)
           AbcChipsDesign(
@@ -83,8 +82,8 @@ class _StepBViewState extends State<StepBView> {
                 setState(() {
                   _bannerMessage =
                   (selected && label == '넘어질까봐 두려움')
-                      ? "선택한 뒤 아래의 '다음' 버튼을 눌러주세요!"
-                      : "아래에 '넘어질까봐 두려움' 칩을 눌러 \n선택해보세요!";
+                      ? "좋아요! 이제 아래의 '다음' 버튼을 눌러주세요."
+                      : "아래에서 '넘어질까봐 두려움'을 선택해보세요!";
                 });
               }
             },
@@ -94,6 +93,9 @@ class _StepBViewState extends State<StepBView> {
             // "+추가": 텍스트 입력 팝업은 상위(AbcInputScreen)에서
             onChipAdd: widget.isExampleMode ? null : widget.onAddBelief,
           ),
+          const SizedBox(height: 20),
+          // ✅ 단계 고정 해파리 가이드 (칩 하단 고정)
+          JellyfishBanner(message: _guideMessage),
           const SizedBox(height: 50),
         ],
       ),

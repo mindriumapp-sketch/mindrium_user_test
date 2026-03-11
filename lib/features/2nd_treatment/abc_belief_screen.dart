@@ -11,15 +11,15 @@ class AbcBeliefScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const descriptionText =
-        "막 자전거에 올라타서 페달을 밟으려는 순간, 균형이 살짝 흔들렸고 "
-        "‘넘어질 것 같아…’ 라는 생각이 들었어요.\n"
-        "예전에 자전거 타다 넘어져서 다쳤던 기억이 갑자기 떠올랐고, "
-        "그때의 아픔이 다시 느껴지는 것 같았어요.";
+        "페달을 밟으려는 순간 균형이 살짝 흔들리자,\n"
+        "‘넘어질 것 같아’, ‘또 다치면 어떡하지?’라는 생각이 들었어요.\n"
+        "예전에 넘어졌던 기억이 떠오르면서 불안한 생각(B)이 더 커졌어요.";
 
     return AbcActivateDesign(
       appBarTitle: 'ABC 모델',
       descriptionText: descriptionText,
       scenarioImage: 'assets/image/belief.png',
+      memoHeightFactor: 0.75,
       onBack: () => Navigator.pop(context),
       onNext: () {
         Navigator.push(

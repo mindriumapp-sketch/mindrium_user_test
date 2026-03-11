@@ -434,8 +434,8 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
 
                 // 아래: 항상 바닥에 붙는 네비게이션
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: NavigationButtons(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                     leftLabel: '이전',
                     rightLabel: '다음',
                     onBack: _previousSentence,  // 여기서 Navigator.pop 대신 호출

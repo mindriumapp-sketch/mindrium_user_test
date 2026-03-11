@@ -1,8 +1,8 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutor_design.dart'; // ✅ 방금 주신 디자인 파일
-import 'package:gad_app_team/features/2nd_treatment/abc_practice_screen.dart';
+import 'package:gad_app_team/features/2nd_treatment/abc_input_screen.dart';
 
-/// 🌊 5주차 - 불안 직면 VS 회피 (AbcActivateDesign 적용)
+/// 🌊 ABC 모델 - C단계 (Consequence)
 class AbcConsequenceScreen extends StatelessWidget {
   final String? sessionId;
   const AbcConsequenceScreen({super.key, this.sessionId});
@@ -13,9 +13,10 @@ class AbcConsequenceScreen extends StatelessWidget {
       appBarTitle: 'ABC 모델',
       scenarioImage: 'assets/image/week2_scenario3.jpg', // ✅ 시각 자료 (원하시는 걸로 교체 가능)
       descriptionText:
-          '걱정이 많아지면서 신체적으로도 여러 증상이 나타났습니다.\n'
-          '평소에는 느끼지 못했던 어깨와 목의 뻐근함이 거의 매일 지속되고,\n'
-          '마치 온몸에 힘이 들어간 것처럼 긴장된 상태가 계속됩니다.',
+          '그 생각이 든 뒤 몸과 마음, 행동에도 변화가 나타났어요.\n'
+          '심장이 빨리 뛰고 몸이 긴장됐고(신체), 불안과 두려움이 커졌어요(감정).\n'
+          '결국 자전거를 타지 않고 피하게 됐어요(행동). 이것이 결과(C)예요.',
+      memoHeightFactor: 0.75,
 
       /// 🔙 뒤로가기
       onBack: () => Navigator.pop(context),
@@ -25,7 +26,12 @@ class AbcConsequenceScreen extends StatelessWidget {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => AbcPracticeScreen(sessionId: sessionId),
+            pageBuilder: (_, __, ___) =>
+                AbcInputScreen(
+                  isExampleMode: false,
+                  showGuide: false,
+                  sessionId: sessionId,
+                ),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

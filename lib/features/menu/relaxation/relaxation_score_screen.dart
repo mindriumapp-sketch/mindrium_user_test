@@ -61,7 +61,7 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
       ..syncFromArgs(args, override: true, notify: false);
     final String? abcId = args['taskId'] as String? ?? flow.diaryId;
     final String? relaxId = args['relaxId'] as String?;
-    final String origin = args['origin'] as String? ?? flow.origin;
+    final String origin = flow.origin;
     final String? sudId = args['sudId'] as String? ?? flow.sudId;
 
     final userProvider = context.watch<UserProvider>();
@@ -115,22 +115,7 @@ class _RelaxationScoreScreenState extends State<RelaxationScoreScreen> {
           return;
         }
 
-        if (origin == 'solve') {
-          Navigator.pushNamed(
-            context,
-            '/alt_yes_or_no',
-            arguments: {
-              ...flow.toArgs(),
-              'abcId': abcId,
-              'diary': args['diary'],
-              'beforeSud': args['beforeSud'],
-              'sudId': args['sudId']
-            },
-          );
-          return;
-        } else {
-          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-        }
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       },
 
       // ─── 카드 내부 콘텐츠 (BeforeSud 구조에 맞춤) ───

@@ -72,7 +72,8 @@ class Week4ClassificationResultScreen extends StatelessWidget {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
     final String? abcId_  = args['abcId'] as String? ?? flow.diaryId;
-    final String origin  = args['origin'] as String? ?? flow.origin;
+    final String rawOrigin = args['origin'] as String? ?? flow.origin;
+    final String origin = rawOrigin == 'solve' ? 'apply' : rawOrigin;
     final dynamic diary   = args['diary'] ?? flow.diary;
     final bool isFromApply = origin == 'apply';
 

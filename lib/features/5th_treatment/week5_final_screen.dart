@@ -98,8 +98,8 @@ class Week5FinalScreen extends StatelessWidget {
 
                 // ⛵ 네비게이션 버튼 (기존 로직 그대로 유지)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: NavigationButtons(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     onNext: () => _showStartDialog(context, sessionId),
                   ),

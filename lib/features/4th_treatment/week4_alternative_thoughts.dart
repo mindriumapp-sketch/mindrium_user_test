@@ -128,8 +128,11 @@ class _Week4AlternativeThoughtsScreenState
                 final routeArgs =
                     ModalRoute.of(context)?.settings.arguments as Map? ?? {};
                 final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(routeArgs);
-                final String originArg =
-                    widget.origin ?? routeArgs['origin'] as String? ?? flow.origin;
+                final String originArg = (() {
+                  final rawOrigin =
+                      widget.origin ?? routeArgs['origin'] as String? ?? flow.origin;
+                  return rawOrigin == 'solve' ? 'apply' : rawOrigin;
+                })();
                 final dynamic diaryArg =
                     widget.diary ?? routeArgs['diary'] ?? flow.diary;
                 final String? abcIdArg =
@@ -146,7 +149,7 @@ class _Week4AlternativeThoughtsScreenState
                 ]);
 
                 // 저장
-                if (originArg == 'apply' || originArg == 'solve') {
+                if (originArg == 'apply') {
                   await _saveAlternativeThoughts();
                 }
                 

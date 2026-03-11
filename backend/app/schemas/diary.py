@@ -1,43 +1,42 @@
 from datetime import datetime
-from typing import List, Optional, Any, Literal
+from typing import Any, List, Literal, Optional
+
 from pydantic import BaseModel, Field
+
 from schemas.sud import SudScoreResponse  # 경로 맞게
 
-# ---------- Alarm ----------
+# ---------- LocTime ----------
 
-class AlarmBase(BaseModel):
+
+class LocTimeBase(BaseModel):
     time: Optional[str] = None
+    location: Optional[str] = None
+    location_label: Optional[str] = None
     location_desc: Optional[str] = None
-    repeat_option: Optional[str] = None
-    weekdays: List[int] = Field(default_factory=list)
-    reminder_minutes: Optional[int] = None
-    enter: bool = False
-    exit: bool = False
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
-class AlarmCreate(AlarmBase):
+class LocTimeCreate(LocTimeBase):
     client_timestamp: datetime
 
 
-class AlarmUpdate(BaseModel):
+class LocTimeUpdate(BaseModel):
     time: Optional[str] = None
+    location: Optional[str] = None
+    location_label: Optional[str] = None
     location_desc: Optional[str] = None
-    repeat_option: Optional[str] = None
-    weekdays: Optional[List[int]] = None
-    reminder_minutes: Optional[int] = None
-    enter: Optional[bool] = None
-    exit: Optional[bool] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     client_timestamp: datetime
 
 
-class AlarmDelete(BaseModel):
+class LocTimeDelete(BaseModel):
     client_timestamp: datetime
 
 
-class AlarmResponse(AlarmBase):
-    alarm_id: str
-    created_at: datetime
-    updated_at: datetime
+class LocTimeResponse(LocTimeBase):
+    id: str
 
 
 # ---------- Diary chips ----------
@@ -54,6 +53,7 @@ class DiaryChip(BaseModel):
 
 class DiaryBase(BaseModel):
     group_id: Optional[str] = None
+    route: Optional[Literal["notification", "today_task", "solve"]] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)
@@ -67,7 +67,7 @@ class DiaryBase(BaseModel):
 
 class DiaryCreate(DiaryBase):
     sud_scores: List[Any] = Field(default_factory=list)
-    alarms: List[Any] = Field(default_factory=list)
+    loc_time: Optional[Any] = None
     client_timestamp: datetime
 
 
@@ -80,7 +80,7 @@ class DiaryUpdate(BaseModel):
     consequence_action: Optional[List[DiaryChip]] = None
     alternative_thoughts: Optional[List[str]] = None
 
-    alarms: Optional[List[Any]] = None
+    loc_time: Optional[Any] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     address_name: Optional[str] = None
@@ -94,12 +94,13 @@ class DiaryResponse(DiaryBase):
     latest_sud: Optional[int] = None
 
     sud_scores: List[SudScoreResponse] = Field(default_factory=list)
-    alarms: List[AlarmResponse] = Field(default_factory=list)
+    loc_time: Optional[LocTimeResponse] = None
 
 
 class DiarySummaryResponse(BaseModel):
     diary_id: str
     group_id: Optional[str] = None
+    route: Optional[Literal["notification", "today_task", "solve"]] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)

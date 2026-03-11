@@ -12,15 +12,15 @@ import 'relaxation_education.dart' show relaxationTitleForWeek;
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
-/// 알림 재생 화면 상단 타이틀
-/// - weekNumber가 있으면: 그 주차 이완 타이틀 그대로 사용 (숙제 알림)
-/// - weekNumber가 없으면: 일기 기반 이완 알림
+/// 위치/시간 재생 화면 상단 타이틀
+/// - weekNumber가 있으면: 그 주차 이완 타이틀 그대로 사용 (숙제 위치/시간)
+/// - weekNumber가 없으면: 일기 기반 이완 위치/시간
 String notiTitle(String taskId, int? weekNumber) {
-  // 숙제 알림: 주차 정보가 들어온 경우
+  // 숙제 위치/시간: 주차 정보가 들어온 경우
   if (weekNumber != null) {
     return relaxationTitleForWeek(weekNumber);
   }
-  // 일기 기반 알림: 주차 정보 없음
+  // 일기 기반 위치/시간: 주차 정보 없음
   return '이완 활동';
 }
 

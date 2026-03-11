@@ -120,32 +120,6 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
     );
   }
 
-  // ✅ 위치 수집 동의 팝업
-  Future<void> _askLocationConsent() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => CustomPopupDesign(
-        title: "위치 정보 수집 동의",
-        message: "현재 위치 정보를 함께 저장하시겠습니까?",
-        positiveText: "동의",
-        negativeText: "거부",
-        iconAsset: "assets/image/dialog_fish.png",
-        backgroundAsset: "assets/image/sea_bg_3d.png",
-        onPositivePressed: () async {
-          Navigator.pop(ctx);
-          await Future.delayed(const Duration(milliseconds: 150));
-          await _saveAndGoToAdd(withLocation: true);
-        },
-        onNegativePressed: () async {
-          Navigator.pop(ctx);
-          await Future.delayed(const Duration(milliseconds: 150));
-          await _saveAndGoToAdd(withLocation: false);
-        },
-      ),
-    );
-  }
-
   List<Map<String, dynamic>> _mapGridItems(List<GridItem> items) {
     return items
         .map((e) => e.label.trim())
@@ -163,7 +137,7 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
   }
 
   // ✅ FastAPI 저장 + 화면 이동
-  Future<void> _saveAndGoToAdd({required bool withLocation}) async {
+  Future<void> _saveAndGoToAdd() async {
     setState(() => _isSaving = true);
 
     try {
@@ -197,23 +171,18 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
       final behaviorChips = _mapStringChips(widget.selectedBehaviorChips);
 
       Position? pos;
-      if (withLocation) {
-        try {
-          LocationPermission perm = await Geolocator.checkPermission();
-          if (perm == LocationPermission.denied) {
-            perm = await Geolocator.requestPermission();
-          }
-          if (perm == LocationPermission.always ||
-              perm == LocationPermission.whileInUse) {
-            pos = await Geolocator.getCurrentPosition(
-              locationSettings: const LocationSettings(
-                accuracy: LocationAccuracy.low,
-              ),
-            );
-          }
-        } catch (e) {
-          debugPrint("위치 획득 실패: $e");
+      try {
+        final perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.always ||
+            perm == LocationPermission.whileInUse) {
+          pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.low,
+            ),
+          );
         }
+      } catch (e) {
+        debugPrint("위치 획득 실패: $e");
       }
 
       Map<String, dynamic> diary;
@@ -227,7 +196,6 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
           consequenceE: emotionChips,
           consequenceB: behaviorChips,
           alternativeThoughts: const [],
-          alarms: const [],
           latitude: pos?.latitude,
           longitude: pos?.longitude,
         );
@@ -241,7 +209,6 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
           'consequence_emotion': emotionChips,
           'consequence_action': behaviorChips,
           'alternative_thoughts': const [],
-          'alarms': const [],
           if (pos != null) 'latitude': pos.latitude,
           if (pos != null) 'longitude': pos.longitude,
         };
@@ -329,7 +296,7 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
             onPositivePressed: () async {
               Navigator.pop(dialogCtx);
               await Future.delayed(const Duration(milliseconds: 150));
-              _askLocationConsent();
+              _saveAndGoToAdd();
             },
             onNegativePressed: () {
               Navigator.pop(dialogCtx);

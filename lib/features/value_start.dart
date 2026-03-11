@@ -10,6 +10,7 @@ class ValueStartScreen extends StatefulWidget {
   final int weekNumber;
   final String weekTitle;
   final String weekDescription;
+  final bool mergeValueAndGuide;
   final Widget Function() nextPageBuilder;
 
   const ValueStartScreen({
@@ -17,6 +18,7 @@ class ValueStartScreen extends StatefulWidget {
     required this.weekNumber,
     required this.weekTitle,
     required this.weekDescription,
+    this.mergeValueAndGuide = false,
     required this.nextPageBuilder,
   });
 

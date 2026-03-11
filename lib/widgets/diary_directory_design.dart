@@ -69,7 +69,7 @@ class DiaryArchiveCard extends StatelessWidget {
   final String belief;
   final Widget sudBar;
   final String? diaryDetail;
-  final Widget notificationsBuilder;
+  final Widget locTimeBuilder;
 
   const DiaryArchiveCard({
     super.key,
@@ -79,7 +79,7 @@ class DiaryArchiveCard extends StatelessWidget {
     required this.belief,
     required this.sudBar,
     this.diaryDetail,
-    required this.notificationsBuilder,
+    required this.locTimeBuilder,
   });
 
   @override
@@ -123,7 +123,7 @@ class DiaryArchiveCard extends StatelessWidget {
             ),
           ],
           const Divider(),
-          notificationsBuilder,
+          locTimeBuilder,
         ],
       ),
     );

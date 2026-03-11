@@ -79,22 +79,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
               children: [
                 _buildGlassCard(
-                  title: '알림 설정',
+                  title: '위치/시간 설정',
                   child: Column(
                     children: [
                       _buildSwitchTile(
-                        '치료 일정 알림',
+                        '치료 일정 위치/시간',
                         _isTaskReminderOn,
                         (value) => setState(() => _isTaskReminderOn = value),
                       ),
                       _buildSwitchTile(
-                        '숙제 제출 알림',
+                        '숙제 제출 위치/시간',
                         _isHomeworkReminderOn,
                         (value) =>
                             setState(() => _isHomeworkReminderOn = value),
                       ),
                       _buildSwitchTile(
-                        '리포트 생성 알림',
+                        '리포트 생성 위치/시간',
                         _isReportReminderOn,
                         (value) => setState(() => _isReportReminderOn = value),
                       ),

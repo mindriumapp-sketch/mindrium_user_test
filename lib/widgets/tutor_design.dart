@@ -116,8 +116,8 @@ class AbcActivateDesign extends StatelessWidget {
                 ),
                 // 아래: 항상 고정되는 네비게이션
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: NavigationButtons(onBack: onBack, onNext: onNext),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+child: NavigationButtons(onBack: onBack, onNext: onNext),
                 ),
               ],
             ),

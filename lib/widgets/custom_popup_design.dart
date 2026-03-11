@@ -16,6 +16,9 @@ class CustomPopupDesign extends StatefulWidget {
   final bool enableInput;
   final TextEditingController? controller;
   final String inputHint;
+  final int? inputMaxLength;
+  final String inputMaxLengthErrorText;
+  final String? Function(String text)? inputValidator;
 
   const CustomPopupDesign({
     super.key,
@@ -32,6 +35,9 @@ class CustomPopupDesign extends StatefulWidget {
     this.enableInput = false, // ✅ 기본은 비활성화
     this.controller,
     this.inputHint = '내용을 입력하세요',
+    this.inputMaxLength,
+    this.inputMaxLengthErrorText = '입력 길이를 확인해주세요.',
+    this.inputValidator,
   });
 
   @override
@@ -39,41 +45,80 @@ class CustomPopupDesign extends StatefulWidget {
 }
 
 class _CustomPopupDesignState extends State<CustomPopupDesign> {
+  String? _inputErrorText;
+
+  String? _validateInput(String rawText) {
+    final text = rawText.trim();
+
+    final maxLength = widget.inputMaxLength;
+    if (maxLength != null && text.length > maxLength) {
+      return widget.inputMaxLengthErrorText;
+    }
+
+    if (widget.inputValidator != null) {
+      return widget.inputValidator!(text);
+    }
+
+    return null;
+  }
+
+  void _handlePositivePressed() {
+    if (widget.enableInput && widget.controller != null) {
+      final error = _validateInput(widget.controller!.text);
+      if (error != null) {
+        setState(() {
+          _inputErrorText = error;
+        });
+        return;
+      }
+    }
+    widget.onPositivePressed();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool singleAction = widget.negativeText == null;
+    final media = MediaQuery.of(context);
+    final maxDialogHeight = ((media.size.height - media.viewInsets.bottom) * 0.78)
+        .clamp(280.0, 720.0)
+        .toDouble();
 
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(28, 60, 28, 28),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-              image:
-                  widget.backgroundAsset != null
-                      ? DecorationImage(
-                        image: AssetImage(widget.backgroundAsset!),
-                        fit: BoxFit.cover,
-                        opacity: 0.15,
-                      )
-                      : null,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxDialogHeight),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(28, 60, 28, 28),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
+                    blurRadius: 30,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+                image:
+                    widget.backgroundAsset != null
+                        ? DecorationImage(
+                          image: AssetImage(widget.backgroundAsset!),
+                          fit: BoxFit.cover,
+                          opacity: 0.15,
+                        )
+                        : null,
+              ),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                 TextLine(
                   widget.title,
                   textAlign: TextAlign.center,
@@ -119,6 +164,13 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                     child: TextField(
                       controller: widget.controller,
                       maxLines: 1,
+                      onChanged: (value) {
+                        if (_inputErrorText == null) return;
+                        final error = _validateInput(value);
+                        if (error == null) {
+                          setState(() => _inputErrorText = null);
+                        }
+                      },
                       cursorColor: const Color(0xFF74D2FF),
                       style: const TextStyle(
                         fontFamily: 'NotoSansKR',
@@ -134,7 +186,24 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                         border: InputBorder.none,
                       ),
                     ),
-                  )
+                  ),
+                if (widget.enableInput &&
+                    widget.controller != null &&
+                    _inputErrorText != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextLine(
+                      _inputErrorText!,
+                      style: const TextStyle(
+                        fontFamily: 'NotoSansKR',
+                        fontSize: 12,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ]
                 else
                   TextLine(
                     widget.message,
@@ -147,84 +216,86 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                     ),
                   ),
 
-                const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                // ✅ 버튼 영역
-                if (singleAction)
-                  SizedBox(
-                    width: double.infinity,
-                    child: _buildButton(
-                      label: widget.positiveText,
-                      onPressed: widget.onPositivePressed,
-                      isPrimary: true,
-                    ),
-                  )
-                else
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          child: _buildButton(
-                            label: widget.negativeText!,
-                            onPressed: widget.onNegativePressed ?? () {},
-                            isPrimary: false,
-                          ),
+                    // ✅ 버튼 영역
+                    if (singleAction)
+                      SizedBox(
+                        width: double.infinity,
+                        child: _buildButton(
+                          label: widget.positiveText,
+                          onPressed: _handlePositivePressed,
+                          isPrimary: true,
                         ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          child: _buildButton(
-                            label: widget.positiveText,
-                            onPressed: widget.onPositivePressed,
-                            isPrimary: true,
+                      )
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              child: _buildButton(
+                                label: widget.negativeText!,
+                                onPressed: widget.onNegativePressed ?? () {},
+                                isPrimary: false,
+                              ),
+                            ),
                           ),
-                        ),
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              child: _buildButton(
+                                label: widget.positiveText,
+                                onPressed: _handlePositivePressed,
+                                isPrimary: true,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-
-          // 상단 아이콘
-          Positioned(
-            top: -40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF74D2FF).withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
                   ],
-                ),
-                child: ClipOval(
-                  child:
-                      widget.iconAsset != null
-                          ? Image.asset(widget.iconAsset!, fit: BoxFit.cover)
-                          : const Icon(
-                            Icons.auto_awesome,
-                            color: Colors.white,
-                            size: 36,
-                          ),
                 ),
               ),
             ),
-          ),
-        ],
+
+            // 상단 아이콘
+            Positioned(
+              top: -40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF74D2FF).withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child:
+                        widget.iconAsset != null
+                            ? Image.asset(widget.iconAsset!, fit: BoxFit.cover)
+                            : const Icon(
+                              Icons.auto_awesome,
+                              color: Colors.white,
+                              size: 36,
+                            ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

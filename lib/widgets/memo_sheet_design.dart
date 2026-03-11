@@ -10,9 +10,14 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 class MemoFullDesign extends StatelessWidget {
   final String appBarTitle;
   final Widget child;
+  final Widget? topWidget;
+  final EdgeInsetsGeometry topWidgetPadding;
   final VoidCallback? onBack;
   final VoidCallback? onNext;
   final String rightLabel;
+  final EdgeInsetsGeometry navigationPadding;
+  final EdgeInsetsGeometry navigationButtonsPadding;
+  final double navigationButtonVerticalPadding;
   final EdgeInsetsGeometry contentPadding;
   final double? memoHeight;
   final int appBarTitleMaxLines;
@@ -22,9 +27,14 @@ class MemoFullDesign extends StatelessWidget {
     super.key,
     required this.appBarTitle,
     required this.child,
+    this.topWidget,
+    this.topWidgetPadding = const EdgeInsets.fromLTRB(24, 12, 24, 0),
     required this.onBack,
     required this.onNext,
     this.rightLabel = '다음',
+    this.navigationPadding = const EdgeInsets.fromLTRB(24, 0, 24, 8),
+    this.navigationButtonsPadding = const EdgeInsets.fromLTRB(16, 4, 16, 8),
+    this.navigationButtonVerticalPadding = 11,
     this.contentPadding = const EdgeInsets.symmetric(
       horizontal: 24,
       vertical: 32,
@@ -64,6 +74,12 @@ class MemoFullDesign extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
+                if (topWidget != null)
+                  Padding(
+                    padding: topWidgetPadding,
+                    child: topWidget!,
+                  ),
+
                 // 👆 위쪽: 중앙에 메모장
                 Expanded(
                   child: Center(
@@ -102,11 +118,13 @@ class MemoFullDesign extends StatelessWidget {
 
                 // 👇 아래: 항상 바닥에 붙어 있는 네비게이션
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  padding: navigationPadding,
                   child: NavigationButtons(
                     onBack: onBack,
                     onNext: onNext,
                     rightLabel: rightLabel,
+                    padding: navigationButtonsPadding,
+                    buttonVerticalPadding: navigationButtonVerticalPadding,
                   ),
                 ),
               ],
