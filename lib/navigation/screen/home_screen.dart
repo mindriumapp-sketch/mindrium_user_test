@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
-import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -46,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
-  late final UserDataApi _userDataApi = UserDataApi(_apiClient);
 
   bool _permissionsChecked = false;
   Future<void>? _permissionFuture;
@@ -65,7 +63,6 @@ class _HomeScreenState extends State<HomeScreen> {
     //    - Splash/Login에서 이미 다 해줬다고 가정
     Future.microtask(() async {
       await _ensureCorePermissions();
-      //TODO: 일기 개수 업데이트
       if (mounted) {
         final user = context.read<UserProvider>();
         final dayCounter = context.read<UserDayCounter>();
@@ -424,17 +421,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final valueGoal = (user.valueGoal ?? '').trim();
     final hasValueGoal = valueGoal.isNotEmpty;
-    final safeValueGoal = hasValueGoal ? valueGoal : '핵심 가치를 설정해 보세요.';
     final dayNo = dayCounter.daysSinceJoin > 0 ? dayCounter.daysSinceJoin : 1;
 
     return _trainingCard(
-      title: '핵심 가치: $safeValueGoal',
-      description: '$dayNo일째 목표를 향해 가고 있어요.',
+      title: '핵심 가치',
+      description: hasValueGoal ? '$dayNo일째 $valueGoal를 향해 가고 있어요.' : '핵심 가치를 설정해 보세요.',
       color: const Color(0xFFEFF7FF),
       trailing: _buildDayCalendar(dayNo),
-      onTap: _showValueGoalEditor,
-      chipLabel: '수정',
-      onChipTap: _showValueGoalEditor,
     );
   }
 
@@ -502,63 +495,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _showValueGoalEditor() async {
-    final user = context.read<UserProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    final controller = TextEditingController(
-      text: (user.valueGoal ?? '').trim(),
-    );
-
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('핵심 가치 수정'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: 500,
-            decoration: const InputDecoration(hintText: '핵심 가치를 입력해 주세요'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => navigator.pop(),
-              child: const Text('취소'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final value = controller.text.trim();
-                if (value.isEmpty) {
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('핵심 가치를 입력해 주세요.')),
-                  );
-                  return;
-                }
-                navigator.pop(value);
-              },
-              child: const Text('저장'),
-            ),
-          ],
-        );
-      },
-    );
-
-    controller.dispose();
-
-    if (result == null) return;
-
-    try {
-      await _userDataApi.updateValueGoal(result);
-      if (!mounted) return;
-      context.read<UserProvider>().setValueGoalLocally(result);
-      messenger.showSnackBar(const SnackBar(content: Text('핵심 가치가 수정되었습니다.')));
-    } catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('핵심 가치 수정 실패: $e')));
-    }
   }
 
   Widget _buildTaskSection() {
@@ -760,7 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? chipLabel,
     VoidCallback? onChipTap,
     Widget? bodyTopWidget,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
     final bool hasChip = chipLabel != null && chipLabel.isNotEmpty;
 
