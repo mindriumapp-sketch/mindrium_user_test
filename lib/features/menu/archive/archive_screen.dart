@@ -46,10 +46,14 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       // 보관일 최근순 정렬
       archived.sort((a, b) {
         final aDate =
-            DateTime.tryParse(a['archived_at']?.toString() ?? '') ??
+            DateTime.tryParse(
+              (a['archived_at'] ?? a['updated_at'])?.toString() ?? '',
+            ) ??
             DateTime(0);
         final bDate =
-            DateTime.tryParse(b['archived_at']?.toString() ?? '') ??
+            DateTime.tryParse(
+              (b['archived_at'] ?? b['updated_at'])?.toString() ?? '',
+            ) ??
             DateTime(0);
         return bDate.compareTo(aDate);
       });
@@ -468,7 +472,9 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
     final title = group['group_title']?.toString() ?? '';
     final contents = group['group_contents']?.toString() ?? '';
     final archivedAt =
-        DateTime.tryParse(group['archived_at']?.toString() ?? '') ??
+        DateTime.tryParse(
+          (group['archived_at'] ?? group['updated_at'])?.toString() ?? '',
+        ) ??
         DateTime.now();
     final archivedStr = DateFormat('yyyy.MM.dd').format(archivedAt);
     final count = group['diary_count'] ?? 0;
@@ -552,7 +558,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                     children: [
                       Text(
                         title,
-                        maxLines: 2,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
@@ -562,35 +568,38 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                           letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEAF1FF),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFD6E2FF)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.calendar_today_rounded,
-                              size: 14,
-                              color: Color(0xFF496AC6),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '보관일: $archivedStr',
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
+                      const SizedBox(height: 4),
+                      Transform.translate(
+                        offset: const Offset(0, -2),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAF1FF),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFD6E2FF)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                size: 14,
                                 color: Color(0xFF496AC6),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 6),
+                              Text(
+                                '보관일: $archivedStr',
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF496AC6),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
