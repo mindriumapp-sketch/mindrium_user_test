@@ -12,32 +12,32 @@ class HomeWidgetTutorialController {
   static const List<HomeWidgetTutorialStep> tutorialSteps = [
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_1.png',
-      title: '위젯 추가하기',
+      title: '위젯 추가하기(1)',
       description: '홈 화면 빈 공간을 길게 눌러서 메뉴를 열어주세요.',
     ),
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_2.png',
-      title: 'Mindrium 위젯 찾기',
+      title: '위젯 추가하기(2)',
       description: '메뉴에서 위젯을 찾아 클릭해 주세요.',
     ),
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_3.png',
-      title: '원하는 크기 선택',
+      title: 'Mindrium 위젯 찾기',
       description: '위젯 목록에서 Mindrium을 찾아 선택합니다.',
     ),
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_4.png',
-      title: '위젯 배치 완료',
+      title: '위젯 크기 고르기',
       description: '위젯 크기를 고른 뒤 클릭해 주세요.',
     ),
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_5.png',
-      title: '빠른 실행 사용',
+      title: '위젯 추가하기',
       description: '[+ Add] 버튼을 눌러 홈 화면에 위젯을 추가해 주세요. ',
     ),
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_6.png',
-      title: '설정 확인',
+      title: '위젯 사용하기',
       description: '홈 화면에서 진행 현황을 확인하세요.\n클릭 시 불안 해결하기 활동을 진행할 수 있어요.',
     ),
   ];
