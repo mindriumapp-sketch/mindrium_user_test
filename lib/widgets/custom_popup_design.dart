@@ -204,7 +204,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign>
                       ),
                       const SizedBox(height: 20),
                     ],
-
+                    const SizedBox(height: 16),
                     // ✅ 입력 필드 or 메시지
                     if (widget.enableInput && widget.controller != null)
                       Container(

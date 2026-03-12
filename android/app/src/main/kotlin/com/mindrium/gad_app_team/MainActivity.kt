@@ -27,7 +27,14 @@ class MainActivity : FlutterActivity() {
                         val diaryCount = parseIntArg(call.argument<Any?>("diaryCount"))
                         val relaxationCount =
                             parseIntArg(call.argument<Any?>("relaxationCount"))
-                        QuickApplyWidgetProvider.saveStats(this, diaryCount, relaxationCount)
+                        val completedWeeks =
+                            parseIntArg(call.argument<Any?>("completedWeeks"))
+                        QuickApplyWidgetProvider.saveStats(
+                            this,
+                            diaryCount,
+                            relaxationCount,
+                            completedWeeks,
+                        )
                         QuickApplyWidgetProvider.updateAllWidgets(this)
                         result.success(true)
                     }

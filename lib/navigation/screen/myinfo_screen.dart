@@ -83,9 +83,9 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       createdAt = userProvider.createdAt;
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('내 정보를 불러오지 못했습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('내 정보를 불러오지 못했습니다.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -110,12 +110,11 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       if (!mounted) return;
       setState(() => _screenTimeLoading = false);
       if (showError) {
-        final message = e.response?.data is Map
-            ? e.response?.data['detail']?.toString()
-            : e.message;
-        _showScreenTimeError(
-          message ?? '스크린타임 요약을 불러오지 못했어요.',
-        );
+        final message =
+            e.response?.data is Map
+                ? e.response?.data['detail']?.toString()
+                : e.message;
+        _showScreenTimeError(message ?? '스크린타임 요약을 불러오지 못했어요.');
       }
     } catch (_) {
       if (!mounted) return;
@@ -128,8 +127,9 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   void _showScreenTimeError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _updateUserData() async {
@@ -163,8 +163,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         userProvider.updateUserName(trimmedName);
       }
 
-      if (valueGoal.isNotEmpty &&
-          valueGoal != (userProvider.valueGoal ?? '')) {
+      if (valueGoal.isNotEmpty && valueGoal != (userProvider.valueGoal ?? '')) {
         await _userDataApi.updateValueGoal(valueGoal);
         userProvider.setValueGoalLocally(valueGoal);
       }
@@ -191,9 +190,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       });
     } on DioException catch (e) {
       if (!mounted) return;
-      final message = e.response?.data is Map
-          ? e.response?.data['detail']?.toString()
-          : e.message;
+      final message =
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
       _showSnack('업데이트 실패: ${message ?? '오류가 발생했습니다.'}');
     } catch (e) {
       if (!mounted) return;
@@ -205,8 +205,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   void _showSnack(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(text)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _logout() async {
@@ -230,31 +229,31 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   @override
   Widget build(BuildContext context) {
-    const Color softWhite = Color(0xF8FFFFFF);
     const Color deepNavy = Color(0xFF1E2F3F);
     const Color skyBlue = Color(0xFF63C6EC);
-    const Color cardBorder = Color(0xFFE7EEF4);
-    const Color mutedText = Color(0xFF728292);
-    const Color sectionBg = Color(0xFCFFFFFF);
 
     final double maxCardWidth = MediaQuery.of(context).size.width - 32;
 
-    final String joinDateText = createdAt != null
-        ? DateFormat('yyyy년 MM월 dd일').format(createdAt!)
-        : '가입일 정보 없음';
+    final String joinDateText =
+        createdAt != null
+            ? DateFormat('yyyy년 MM월 dd일').format(createdAt!)
+            : '가입일 정보 없음';
 
     final userProvider = context.watch<UserProvider>();
-    final String displayName = nameController.text.trim().isNotEmpty
-        ? nameController.text.trim()
-        : userProvider.userName;
-    final String displayEmail = emailController.text.trim().isNotEmpty
-        ? emailController.text.trim()
-        : userProvider.userEmail;
-    final String displayValueGoal = valueGoalController.text.trim().isNotEmpty
-        ? valueGoalController.text.trim()
-        : (userProvider.valueGoal?.trim().isNotEmpty == true
-            ? userProvider.valueGoal!.trim()
-            : '아직 설정된 핵심 가치가 없어요.');
+    final String displayName =
+        nameController.text.trim().isNotEmpty
+            ? nameController.text.trim()
+            : userProvider.userName;
+    final String displayEmail =
+        emailController.text.trim().isNotEmpty
+            ? emailController.text.trim()
+            : userProvider.userEmail;
+    final String displayValueGoal =
+        valueGoalController.text.trim().isNotEmpty
+            ? valueGoalController.text.trim()
+            : (userProvider.valueGoal?.trim().isNotEmpty == true
+                ? userProvider.valueGoal!.trim()
+                : '아직 설정된 핵심 가치가 없어요.');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -316,9 +315,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                           ),
                           const SizedBox(height: 14),
                           _buildProgressSnapshotCard(
-                            streakText: createdAt != null
-                                ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)}일째'
-                                : '기록 준비 중',
+                            streakText:
+                                createdAt != null
+                                    ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)}일째'
+                                    : '기록 준비 중',
                           ),
                           const SizedBox(height: 14),
                           _buildSectionShell(
@@ -329,13 +329,17 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                                 _buildPrimaryActionRow(
                                   icon: Icons.edit_outlined,
                                   title: '프로필 수정',
-                                  subtitle: isEditing
-                                      ? '현재 편집 모드입니다. 수정 후 저장해 주세요.'
-                                      : '이름과 핵심 가치를 수정할 수 있어요.',
+                                  subtitle:
+                                      isEditing
+                                          ? '현재 편집 모드입니다. 수정 후 저장해 주세요.'
+                                          : '이름과 핵심 가치를 수정할 수 있어요.',
                                   badge: isEditing ? '편집 중' : '수정',
-                                  onTap: isLoading
-                                      ? null
-                                      : () => setState(() => isEditing = !isEditing),
+                                  onTap:
+                                      isLoading
+                                          ? null
+                                          : () => setState(
+                                            () => isEditing = !isEditing,
+                                          ),
                                 ),
                                 if (isEditing) ...[
                                   const SizedBox(height: 12),
@@ -366,12 +370,16 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                                         width: double.infinity,
                                         height: 48,
                                         child: ElevatedButton(
-                                          onPressed: isLoading ? null : _updateUserData,
+                                          onPressed:
+                                              isLoading
+                                                  ? null
+                                                  : _updateUserData,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: skyBlue,
                                             elevation: 0,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(14),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
                                             ),
                                           ),
                                           child: const Text(
@@ -406,14 +414,17 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                                 _buildPrimaryActionRow(
                                   icon: Icons.lock_outline,
                                   title: '비밀번호 변경',
-                                  subtitle: showPasswordFields
-                                      ? '현재 비밀번호와 새 비밀번호를 입력해 주세요.'
-                                      : '비밀번호를 변경하고 계정을 안전하게 관리하세요.',
+                                  subtitle:
+                                      showPasswordFields
+                                          ? '현재 비밀번호와 새 비밀번호를 입력해 주세요.'
+                                          : '비밀번호를 변경하고 계정을 안전하게 관리하세요.',
                                   badge: showPasswordFields ? '열림' : '관리',
-                                  onTap: isLoading
-                                      ? null
-                                      : () => setState(() {
-                                            showPasswordFields = !showPasswordFields;
+                                  onTap:
+                                      isLoading
+                                          ? null
+                                          : () => setState(() {
+                                            showPasswordFields =
+                                                !showPasswordFields;
                                           }),
                                 ),
                                 if (showPasswordFields) ...[
@@ -445,12 +456,16 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                                         width: double.infinity,
                                         height: 48,
                                         child: ElevatedButton(
-                                          onPressed: isLoading ? null : _updateUserData,
+                                          onPressed:
+                                              isLoading
+                                                  ? null
+                                                  : _updateUserData,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: deepNavy,
                                             elevation: 0,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(14),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
                                             ),
                                           ),
                                           child: const Text(
@@ -740,14 +755,14 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         decoration: BoxDecoration(
-          color: isDestructive
-              ? const Color(0xFFFFFAFB)
-              : const Color(0xFFF8FBFD),
+          color:
+              isDestructive ? const Color(0xFFFFFAFB) : const Color(0xFFF8FBFD),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isDestructive
-                ? const Color(0xFFFFE5E8)
-                : const Color(0xFFE8EEF3),
+            color:
+                isDestructive
+                    ? const Color(0xFFFFE5E8)
+                    : const Color(0xFFE8EEF3),
           ),
         ),
         child: Row(
@@ -756,9 +771,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: isDestructive
-                    ? const Color(0xFFFFF1F3)
-                    : const Color(0xFFEFF7FB),
+                color:
+                    isDestructive
+                        ? const Color(0xFFFFF1F3)
+                        : const Color(0xFFEFF7FB),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, size: 21, color: accent),
@@ -796,11 +812,15 @@ class _MyInfoScreenState extends State<MyInfoScreen>
               children: [
                 if (badge != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDestructive
-                          ? const Color(0xFFFFF1F3)
-                          : const Color(0xFFEFF7FB),
+                      color:
+                          isDestructive
+                              ? const Color(0xFFFFF1F3)
+                              : const Color(0xFFEFF7FB),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -827,9 +847,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     );
   }
 
-  Widget _buildFormPanel({
-    required List<Widget> children,
-  }) {
+  Widget _buildFormPanel({required List<Widget> children}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -838,15 +856,11 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE8EEF3)),
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
-  Widget _buildProgressSnapshotCard({
-    required String streakText,
-  }) {
+  Widget _buildProgressSnapshotCard({required String streakText}) {
     return Row(
       children: [
         Expanded(
@@ -902,9 +916,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
           if (_screenTimeLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 18),
-              child: Center(
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else if (summary == null)
             Column(
@@ -1066,8 +1078,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF004C73)),
         filled: true,
-        fillColor:
-            enabled ? const Color(0xFFF5FBFF) : const Color(0xFFEFF7FA),
+        fillColor: enabled ? const Color(0xFFF5FBFF) : const Color(0xFFEFF7FA),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Color(0xFFD9EEFF)),
@@ -1078,10 +1089,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: Color(0xFF89D4F5),
-            width: 1.6,
-          ),
+          borderSide: const BorderSide(color: Color(0xFF89D4F5), width: 1.6),
         ),
       ),
     );

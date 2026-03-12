@@ -13,6 +13,8 @@ import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_controller.dart';
+import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_dialog.dart';
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
@@ -37,14 +39,35 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const MethodChannel _widgetLaunchChannel =
-      MethodChannel('mindrium/widget_launch');
-  static const EventChannel _widgetLaunchEventChannel =
-      EventChannel('mindrium/widget_launch_events');
+  static const MethodChannel _widgetLaunchChannel = MethodChannel(
+    'mindrium/widget_launch',
+  );
+  static const EventChannel _widgetLaunchEventChannel = EventChannel(
+    'mindrium/widget_launch_events',
+  );
+  static const String _week2LockedMessage = '2주차 교육 완료 후 이용할 수 있어요.';
+  static const String _alarmCardEnabledTitle = '알림 설정';
+  static const String _alarmCardDisabledTitle = '알림 설정 (잠금)';
+  static const String _alarmCardEnabledDescription =
+      '규칙적인 루틴을 위해 알림 시간을 설정해 보세요.';
+  static const String _alarmCardDisabledDescription = _week2LockedMessage;
+  static const Color _alarmCardBaseColor = Color(0xFFE4F3FF);
+  static const List<Widget> _weekScreens = [
+    Week1Screen(),
+    Week2Screen(),
+    Week3Screen(),
+    Week4Screen(),
+    Week5Screen(),
+    Week6Screen(),
+    Week7Screen(),
+    Week8Screen(),
+  ];
 
   int _selectedIndex = 0;
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  final HomeWidgetTutorialController _widgetTutorialController =
+      HomeWidgetTutorialController();
 
   bool _permissionsChecked = false;
   Future<void>? _permissionFuture;
@@ -52,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _checkedInitialWidgetAction = false;
   int? _lastSyncedDiaryCount;
   int? _lastSyncedRelaxationCount;
+  int? _lastSyncedCompletedWeeks;
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   @override
@@ -84,13 +108,25 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onDestinationSelected(int index) =>
       setState(() => _selectedIndex = index);
 
+  void _showWeek2LockedSnackBar() {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text(_week2LockedMessage)));
+  }
+
+  Future<void> _showWidgetTutorialFromTempButton() async {
+    await HomeWidgetTutorialDialog.show(
+      context,
+      steps: HomeWidgetTutorialController.tutorialSteps,
+    );
+  }
+
   void _startApplyFlow() {
     final completedWeeks = context.read<UserProvider>().lastCompletedWeek;
-    final bool canSolve = completedWeeks >= 4;
+    final bool canSolve =
+        completedWeeks >= HomeWidgetTutorialController.unlockWeek;
     if (!canSolve) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
-      );
+      _showWeek2LockedSnackBar();
       return;
     }
 
@@ -101,10 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.pushNamed(
       context,
       '/before_sud',
-      arguments: {
-        ...flow.toArgs(),
-        'origin': 'apply',
-      },
+      arguments: {...flow.toArgs(), 'origin': 'apply'},
     );
   }
 
@@ -123,16 +156,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _listenWidgetLaunchEvents() {
-    _widgetLaunchSubscription =
-        _widgetLaunchEventChannel.receiveBroadcastStream().listen(
-      (dynamic event) {
-        final action = event?.toString();
-        _handleWidgetLaunchAction(action);
-      },
-      onError: (Object error) {
-        debugPrint('위젯 액션 스트림 수신 실패: $error');
-      },
-    );
+    _widgetLaunchSubscription = _widgetLaunchEventChannel
+        .receiveBroadcastStream()
+        .listen(
+          (dynamic event) {
+            final action = event?.toString();
+            _handleWidgetLaunchAction(action);
+          },
+          onError: (Object error) {
+            debugPrint('위젯 액션 스트림 수신 실패: $error');
+          },
+        );
   }
 
   void _handleWidgetLaunchAction(String? action) {
@@ -152,26 +186,27 @@ class _HomeScreenState extends State<HomeScreen> {
   void _syncWidgetStatsIfNeeded(UserProvider user) {
     final diaryCount = user.totalDiaries;
     final relaxationCount = user.totalRelaxations;
+    final completedWeeks = user.lastCompletedWeek;
     if (_lastSyncedDiaryCount == diaryCount &&
-        _lastSyncedRelaxationCount == relaxationCount) {
+        _lastSyncedRelaxationCount == relaxationCount &&
+        _lastSyncedCompletedWeeks == completedWeeks) {
       return;
     }
 
     _lastSyncedDiaryCount = diaryCount;
     _lastSyncedRelaxationCount = relaxationCount;
+    _lastSyncedCompletedWeeks = completedWeeks;
 
     _widgetLaunchChannel
-        .invokeMethod<bool>(
-      'updateWidgetStats',
-      {
-        'diaryCount': diaryCount,
-        'relaxationCount': relaxationCount,
-      },
-    )
+        .invokeMethod<bool>('updateWidgetStats', {
+          'diaryCount': diaryCount,
+          'relaxationCount': relaxationCount,
+          'completedWeeks': completedWeeks,
+        })
         .catchError((Object error) {
-      debugPrint('위젯 통계 동기화 실패: $error');
-      return false;
-    });
+          debugPrint('위젯 통계 동기화 실패: $error');
+          return false;
+        });
   }
 
   // ===================== build =====================
@@ -269,13 +304,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final service = AlarmNotificationService.instance;
     try {
       final rows = await _alarmSettingsApi.listAlarmSettings();
-      final alarms = rows.map(AlarmSetting.fromJson).toList()
-        ..sort((a, b) {
-          final aMinutes = a.hour * 60 + a.minute;
-          final bMinutes = b.hour * 60 + b.minute;
-          if (aMinutes != bMinutes) return aMinutes.compareTo(bMinutes);
-          return a.id.compareTo(b.id);
-        });
+      final alarms =
+          rows.map(AlarmSetting.fromJson).toList()..sort((a, b) {
+            final aMinutes = a.hour * 60 + a.minute;
+            final bMinutes = b.hour * 60 + b.minute;
+            if (aMinutes != bMinutes) return aMinutes.compareTo(bMinutes);
+            return a.id.compareTo(b.id);
+          });
       await service.saveAlarms(alarms);
     } catch (e) {
       debugPrint('알림 설정 서버 동기화 실패(로컬 fallback): $e');
@@ -307,6 +342,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 3️⃣ 여기까지 왔으면 최소 한 번은 유저 + todayTask가 로딩된 상태
     _syncWidgetStatsIfNeeded(user);
+    _widgetTutorialController.scheduleIfEligible(
+      context: context,
+      completedWeeks: user.lastCompletedWeek,
+      userId: user.userId,
+    );
 
     debugPrint(
       'currentWeek: ${user.currentWeek}, '
@@ -317,12 +357,14 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         _buildHeader(),
+        const SizedBox(height: 8),
+        _buildTempWidgetGuideButton(),
         const SizedBox(height: 16),
         _buildValueGoalCard(),
         const SizedBox(height: 8),
-        _buildTaskSection(),
+        _buildTaskSection(user: user, todayTask: todayTask),
         const SizedBox(height: 8),
-        _buildTrainingSection(),
+        _buildTrainingSection(completedWeeks: user.lastCompletedWeek),
       ],
     );
   }
@@ -383,6 +425,26 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTempWidgetGuideButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: OutlinedButton.icon(
+        onPressed: _showWidgetTutorialFromTempButton,
+        icon: const Icon(Icons.help_outline_rounded, size: 18),
+        label: const Text('위젯 가이드 보기 (임시)'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF1B3A57),
+          backgroundColor: const Color(0xFFF2F8FF),
+          side: const BorderSide(color: Color(0xFFBFD8EE)),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
       ),
     );
   }
@@ -497,23 +559,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTaskSection() {
-    final todayTask = context.watch<TodayTaskProvider>();
+  Widget _buildTaskSection({
+    required UserProvider user,
+    required TodayTaskProvider todayTask,
+  }) {
     final navigator = Navigator.of(context);
-
-    final user = context.read<UserProvider>();
     final weekNumber = user.currentWeek;
-
-    final List<Widget> weekScreens = const [
-      Week1Screen(),
-      Week2Screen(),
-      Week3Screen(),
-      Week4Screen(),
-      Week5Screen(),
-      Week6Screen(),
-      Week7Screen(),
-      Week8Screen(),
-    ];
 
     final List<_DailyTask> todayTasks = [
       _DailyTask(
@@ -527,10 +578,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.pushNamed(
             context,
             '/before_sud',
-            arguments: {
-              ...flow.toArgs(),
-              'origin': 'daily',
-            },
+            arguments: {...flow.toArgs(), 'origin': 'daily'},
           );
         },
       ),
@@ -538,18 +586,16 @@ class _HomeScreenState extends State<HomeScreen> {
         title: '이완',
         isDone: todayTask.relaxationDone,
         onTap: () {
-          // weekNumber 기반으로 taskId / asset 이름들 구성
           final taskId = 'week${weekNumber}_daily';
-          final mp3Asset = 'week$weekNumber.mp3';
-          final riveAsset = 'week$weekNumber.riv';
+          final assets = _resolveRelaxationAssets(weekNumber);
 
           navigator.pushNamed(
             '/relaxation_noti',
             arguments: {
               'taskId': taskId,
               'weekNumber': weekNumber,
-              'mp3Asset': mp3Asset,
-              'riveAsset': riveAsset,
+              'mp3Asset': assets['mp3Asset']!,
+              'riveAsset': assets['riveAsset']!,
               'nextPage': '/home',
             },
           );
@@ -559,19 +605,18 @@ class _HomeScreenState extends State<HomeScreen> {
         title: '이번주 교육 활동',
         isDone: todayTask.educationDoneWeek,
         onTap: () {
-          final user = context.read<UserProvider>();
-          var weekNumber = user.currentWeek; // 1~8이라고 가정
+          final selectedWeek = user.currentWeek; // 1~8이라고 가정
 
           // 안전하게 인덱스 계산
-          var index = weekNumber - 1;
+          var index = selectedWeek - 1;
           if (index < 0) index = 0;
-          if (index >= weekScreens.length) {
-            index = weekScreens.length - 1;
+          if (index >= _weekScreens.length) {
+            index = _weekScreens.length - 1;
           }
 
           Navigator.of(
             context,
-          ).push(MaterialPageRoute(builder: (_) => weekScreens[index]));
+          ).push(MaterialPageRoute(builder: (_) => _weekScreens[index]));
         },
       ),
     ];
@@ -598,6 +643,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Map<String, String> _resolveRelaxationAssets(int weekNumber) {
+    // 주차별 에셋 도입 전까지 공통 에셋을 사용한다.
+    switch (weekNumber) {
+      default:
+        return const {'mp3Asset': 'noti.mp3', 'riveAsset': 'noti.riv'};
+    }
   }
 
   Widget _buildTaskCard(_DailyTask task) {
@@ -636,50 +689,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ===================== 교육/훈련 섹션 =====================
 
-  Widget _buildTrainingSection() {
-    // final userProvider = context.read<UserProvider>();
-    // final completedWeeks = userProvider.lastCompletedWeek;
-    // final bool canSolve = completedWeeks >= 4;
-    // const baseColor = Color(0xFFFFE2E8);
-    // final cardColor = canSolve ? baseColor : baseColor.withValues(alpha: .55);
+  Widget _buildTrainingSection({required int completedWeeks}) {
+    final canUseAlarmSettings =
+        completedWeeks >= HomeWidgetTutorialController.unlockWeek;
+    final alarmCardColor =
+        canUseAlarmSettings
+            ? _alarmCardBaseColor
+            : _alarmCardBaseColor.withValues(alpha: .55);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // _trainingCard(
-        //   title: '불안 해결하기',
-        //   description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
-        //   color: cardColor,
-        //   imagePath: 'assets/image/pink1.png',
-        //   onTap: () {
-        //     if (!canSolve) {
-        //       ScaffoldMessenger.of(context).showSnackBar(
-        //         const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
-        //       );
-        //       return;
-        //     }
-        //     final flow = context.read<ApplyOrSolveFlow>();
-        //     // 기존 상태 초기화 후 solve 흐름 세팅
-        //     flow.clear();
-        //     flow.setOrigin('solve');
-        //     Navigator.pushNamed(
-        //       context,
-        //       '/before_sud',
-        //       arguments: {
-        //         ...flow.toArgs(),
-        //         'origin': 'solve',
-        //       },
-        //     );
-        //   },
-        // ),
-
-        // const SizedBox(height: 8),
         _trainingCard(
-          title: '알림 설정',
-          description: '문구...', //TODO: 알림 설정 문구 고민
-          color: const Color(0xFFE4F3FF),
+          title:
+              canUseAlarmSettings
+                  ? _alarmCardEnabledTitle
+                  : _alarmCardDisabledTitle,
+          description:
+              canUseAlarmSettings
+                  ? _alarmCardEnabledDescription
+                  : _alarmCardDisabledDescription,
+          color: alarmCardColor,
           imagePath: 'assets/image/pink2.png',
           onTap: () {
+            if (!canUseAlarmSettings) {
+              _showWeek2LockedSnackBar();
+              return;
+            }
             Navigator.pushNamed(context, '/alarm_settings');
           },
         ),

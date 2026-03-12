@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode;
 import 'package:uuid/uuid.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/map_picker.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
@@ -12,6 +13,28 @@ import 'package:latlong2/latlong.dart';
 
 import 'alarm_notification_service.dart';
 import 'alarm_settings_sync_helper.dart';
+
+Future<void> _showAlarmGuideDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder:
+        (dialogContext) => CustomPopupDesign(
+          title: '알림 설정 도움말',
+          message:
+              '1) 오른쪽 아래 [알림 추가] 버튼으로 새 알림을 만들 수 있어요.\n'
+              '2) 목록 카드를 누르면 알림 이름/시간/반복 요일을 수정할 수 있고, 요일은 최소 1개 이상 선택해야 저장됩니다.\n'
+              '3) 목록의 스위치로 알림을 바로 켜고 끌 수 있어요.\n'
+              '4) 위치 기반 알림을 켜면 지도에서 위치를 선택하고, 진입/이탈 조건을 1개 이상 선택해야 합니다.\n'
+              '5) 목록 카드에서 왼쪽으로 밀거나 수정 화면의 [알림 삭제]로 삭제할 수 있어요.',
+          positiveText: '확인',
+          negativeText: null,
+          backgroundAsset: null,
+          iconAsset: null,
+          onPositivePressed: () => Navigator.pop(dialogContext),
+        ),
+  );
+}
 
 class AlarmSettingsScreen extends StatefulWidget {
   const AlarmSettingsScreen({super.key});
@@ -70,8 +93,7 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
         alarms: copied,
         service: _service,
       );
-      final sortedSynced = List<AlarmSetting>.from(synced)
-        ..sort(_compareAlarm);
+      final sortedSynced = List<AlarmSetting>.from(synced)..sort(_compareAlarm);
 
       if (mounted) {
         setState(() => _alarms = sortedSynced);
@@ -96,10 +118,7 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
 
     final result = await Navigator.of(context).push<_AlarmEditResult>(
       MaterialPageRoute(
-        builder: (_) => _AlarmEditScreen(
-          initialAlarm: newAlarm,
-          isNew: true,
-        ),
+        builder: (_) => _AlarmEditScreen(initialAlarm: newAlarm, isNew: true),
       ),
     );
     if (!mounted || result == null) return;
@@ -112,10 +131,7 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
   Future<void> _editAlarm(AlarmSetting alarm) async {
     final result = await Navigator.of(context).push<_AlarmEditResult>(
       MaterialPageRoute(
-        builder: (_) => _AlarmEditScreen(
-          initialAlarm: alarm,
-          isNew: false,
-        ),
+        builder: (_) => _AlarmEditScreen(initialAlarm: alarm, isNew: false),
       ),
     );
     if (!mounted || result == null) return;
@@ -185,121 +201,127 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: '알림 설정',
         confirmOnBack: false,
         confirmOnHome: false,
+        actionIconGap: 6,
+        extraIcon: Icons.help_outline_rounded,
+        onExtraPressed: () {
+          _showAlarmGuideDialog(context);
+        },
       ),
       body: Stack(
         fit: StackFit.expand,
         children: [
           const _MindriumBackground(),
           SafeArea(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _alarms.isEmpty
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _alarms.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                        itemCount: _alarms.length,
-                        itemBuilder: (context, index) {
-                          final alarm = _alarms[index];
-                          return Dismissible(
-                            key: ValueKey(alarm.id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade300,
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: const Icon(
-                                Icons.delete_outline_rounded,
-                                color: Colors.white,
-                              ),
-                            ),
-                            onDismissed: (_) => _delete(alarm.id),
-                            child: InkWell(
-                              onTap: () => _editAlarm(alarm),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      itemCount: _alarms.length,
+                      itemBuilder: (context, index) {
+                        final alarm = _alarms[index];
+                        return Dismissible(
+                          key: ValueKey(alarm.id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade300,
                               borderRadius: BorderRadius.circular(18),
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.08),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _formatTime(context, alarm),
-                                            style: const TextStyle(
-                                              fontSize: 34,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.black,
-                                            ),
+                            ),
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                          onDismissed: (_) => _delete(alarm.id),
+                          child: InkWell(
+                            onTap: () => _editAlarm(alarm),
+                            borderRadius: BorderRadius.circular(18),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _formatTime(context, alarm),
+                                          style: const TextStyle(
+                                            fontSize: 34,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.black,
                                           ),
-                                          const SizedBox(height: 4),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          alarm.label,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _repeatText(alarm),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                        if (alarm.locationEnabled) ...[
+                                          const SizedBox(height: 2),
                                           Text(
-                                            alarm.label,
+                                            _locationDetailText(alarm),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.black87,
+                                              fontSize: 12,
+                                              color: Color(0xFF3C78A8),
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            _repeatText(alarm),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.black54,
-                                            ),
-                                          ),
-                                          if (alarm.locationEnabled) ...[
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              _locationDetailText(alarm),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Color(0xFF3C78A8),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
                                         ],
-                                      ),
+                                      ],
                                     ),
-                                    Switch(
-                                      value: alarm.enabled,
-                                      onChanged: (value) => _toggle(alarm, value),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  Switch(
+                                    value: alarm.enabled,
+                                    onChanged: (value) => _toggle(alarm, value),
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
+                    ),
           ),
           Positioned(
             right: 18,
@@ -360,19 +382,16 @@ class _AlarmEditResult {
   final String? deleteId;
 
   const _AlarmEditResult.save(this.alarm)
-      : action = _AlarmEditAction.save,
-        deleteId = null;
+    : action = _AlarmEditAction.save,
+      deleteId = null;
 
   const _AlarmEditResult.delete(this.deleteId)
-      : action = _AlarmEditAction.delete,
-        alarm = null;
+    : action = _AlarmEditAction.delete,
+      alarm = null;
 }
 
 class _AlarmEditScreen extends StatefulWidget {
-  const _AlarmEditScreen({
-    required this.initialAlarm,
-    required this.isNew,
-  });
+  const _AlarmEditScreen({required this.initialAlarm, required this.isNew});
 
   final AlarmSetting initialAlarm;
   final bool isNew;
@@ -434,9 +453,9 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
     final copied = List<int>.from(_weekdays);
     if (copied.contains(day)) {
       if (copied.length == 1) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('요일은 최소 1개 이상 선택해야 합니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('요일은 최소 1개 이상 선택해야 합니다.')));
         return;
       }
       copied.remove(day);
@@ -449,7 +468,8 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
 
   Future<void> _pickLocation() async {
     final navigator = Navigator.of(context);
-    final allowed = await AlarmNotificationService.instance.requestLocationPermission();
+    final allowed =
+        await AlarmNotificationService.instance.requestLocationPermission();
     if (!mounted) return;
     if (!allowed) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -458,20 +478,22 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
       return;
     }
 
-    final initial = _isValidCoordinatePair(_latitude, _longitude)
-        ? LatLng(_latitude!, _longitude!)
-        : null;
+    final initial =
+        _isValidCoordinatePair(_latitude, _longitude)
+            ? LatLng(_latitude!, _longitude!)
+            : null;
 
     final selected = await navigator.push<LocTimeSetting>(
       MaterialPageRoute(
-        builder: (_) => MapPicker(
-          initial: initial,
-          initialTime: TimeOfDay(hour: _hour, minute: _minute),
-          enableLocationLabel: true,
-          initialLocationLabel: _locationLabel,
-          showSavedMarkers: false,
-          enableTimeSelection: false,
-        ),
+        builder:
+            (_) => MapPicker(
+              initial: initial,
+              initialTime: TimeOfDay(hour: _hour, minute: _minute),
+              enableLocationLabel: true,
+              initialLocationLabel: _locationLabel,
+              showSavedMarkers: false,
+              enableTimeSelection: false,
+            ),
       ),
     );
 
@@ -490,9 +512,10 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
   }
 
   void _save() {
-    final label = _labelController.text.trim().isEmpty
-        ? 'Mindrium 알림'
-        : _labelController.text.trim();
+    final label =
+        _labelController.text.trim().isEmpty
+            ? 'Mindrium 알림'
+            : _labelController.text.trim();
 
     if (_locationEnabled && (_latitude == null || _longitude == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -580,9 +603,10 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
     final hasLocation = _isValidCoordinatePair(_latitude, _longitude);
     final locationLabelText = _locationLabel?.trim() ?? '';
     final locationAddressText = _locationAddress?.trim() ?? '';
-    final resolvedLocationLabel = locationLabelText.isNotEmpty
-        ? locationLabelText
-        : (hasLocation ? '선택한 위치' : '위치를 선택해주세요.');
+    final resolvedLocationLabel =
+        locationLabelText.isNotEmpty
+            ? locationLabelText
+            : (hasLocation ? '선택한 위치' : '위치를 선택해주세요.');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -591,6 +615,11 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
         title: '알림 설정',
         confirmOnBack: false,
         confirmOnHome: false,
+        actionIconGap: 6,
+        extraIcon: Icons.help_outline_rounded,
+        onExtraPressed: () {
+          _showAlarmGuideDialog(context);
+        },
       ),
       body: Stack(
         fit: StackFit.expand,
@@ -631,34 +660,34 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                       _sectionTitle('시간', Icons.access_time_rounded),
                       const SizedBox(height: 8),
                       Column(
-                          children: [
-                            const SizedBox(height: 6),
-                            SizedBox(
-                              height: 156,
-                              child: CupertinoDatePicker(
-                                mode: CupertinoDatePickerMode.time,
-                                use24hFormat:
-                                    MediaQuery.of(context).alwaysUse24HourFormat,
-                                initialDateTime: _pickerTime,
-                                onDateTimeChanged: (dt) {
-                                  final next = DateTime(
-                                    2000,
-                                    1,
-                                    1,
-                                    dt.hour,
-                                    dt.minute,
-                                  );
-                                  setState(() {
-                                    _pickerTime = next;
-                                    _hour = dt.hour;
-                                    _minute = dt.minute;
-                                  });
-                                },
-                              ),
+                        children: [
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: 156,
+                            child: CupertinoDatePicker(
+                              mode: CupertinoDatePickerMode.time,
+                              use24hFormat:
+                                  MediaQuery.of(context).alwaysUse24HourFormat,
+                              initialDateTime: _pickerTime,
+                              onDateTimeChanged: (dt) {
+                                final next = DateTime(
+                                  2000,
+                                  1,
+                                  1,
+                                  dt.hour,
+                                  dt.minute,
+                                );
+                                setState(() {
+                                  _pickerTime = next;
+                                  _hour = dt.hour;
+                                  _minute = dt.minute;
+                                });
+                              },
                             ),
-                          ],
-                        ),
-                      
+                          ),
+                        ],
+                      ),
+
                       const SizedBox(height: 8),
                       const Divider(height: 22),
                       _sectionTitle('위치', Icons.place_outlined),
@@ -681,9 +710,10 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                             color: const Color(0xFFF7FBFF),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: hasLocation
-                                  ? const Color(0xFFBBD6EE)
-                                  : const Color(0xFFD3E3F3),
+                              color:
+                                  hasLocation
+                                      ? const Color(0xFFBBD6EE)
+                                      : const Color(0xFFD3E3F3),
                             ),
                           ),
                           child: Column(
@@ -708,9 +738,10 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: hasLocation
-                                          ? const Color(0xFFE4F2FF)
-                                          : const Color(0xFFF1F3F5),
+                                      color:
+                                          hasLocation
+                                              ? const Color(0xFFE4F2FF)
+                                              : const Color(0xFFF1F3F5),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
                                     child: Text(
@@ -718,9 +749,10 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                                       style: TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w700,
-                                        color: hasLocation
-                                            ? const Color(0xFF1F5E93)
-                                            : const Color(0xFF7A8795),
+                                        color:
+                                            hasLocation
+                                                ? const Color(0xFF1F5E93)
+                                                : const Color(0xFF7A8795),
                                       ),
                                     ),
                                   ),
@@ -754,7 +786,10 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                                 width: double.infinity,
                                 child: FilledButton.icon(
                                   onPressed: _pickLocation,
-                                  icon: const Icon(Icons.map_outlined, size: 18),
+                                  icon: const Icon(
+                                    Icons.map_outlined,
+                                    size: 18,
+                                  ),
                                   label: Text(
                                     hasLocation ? '위치 다시 선택' : '지도에서 위치 선택',
                                   ),
@@ -782,7 +817,9 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                                 dense: true,
                                 value: _notifyOnEnter,
                                 onChanged: (value) {
-                                  setState(() => _notifyOnEnter = value == true);
+                                  setState(
+                                    () => _notifyOnEnter = value == true,
+                                  );
                                 },
                                 contentPadding: EdgeInsets.zero,
                                 visualDensity: const VisualDensity(
@@ -793,7 +830,8 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                                   '위치 진입 시 알림',
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                controlAffinity: ListTileControlAffinity.leading,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -813,7 +851,8 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                                   '위치 이탈 시 알림',
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                controlAffinity: ListTileControlAffinity.leading,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
                               ),
                             ),
                           ],
@@ -841,21 +880,24 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                                 horizontal: -2,
                                 vertical: -2,
                               ),
-                              labelPadding:
-                                  const EdgeInsets.symmetric(horizontal: 5),
+                              labelPadding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                              ),
                               selectedColor: const Color(0xFFD8ECFF),
                               backgroundColor: const Color(0xFFF4F7FB),
                               side: BorderSide(
-                                color: selected
-                                    ? const Color(0xFF79AEE0)
-                                    : const Color(0xFFD5DEE8),
+                                color:
+                                    selected
+                                        ? const Color(0xFF79AEE0)
+                                        : const Color(0xFFD5DEE8),
                               ),
                               labelStyle: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12.5,
-                                color: selected
-                                    ? const Color(0xFF1F5E93)
-                                    : const Color(0xFF5B6A79),
+                                color:
+                                    selected
+                                        ? const Color(0xFF1F5E93)
+                                        : const Color(0xFF5B6A79),
                               ),
                               onSelected: (_) => _toggleWeekday(day),
                             );
@@ -873,7 +915,9 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2F8FD8).withValues(alpha: 0.28),
+                              color: const Color(
+                                0xFF2F8FD8,
+                              ).withValues(alpha: 0.28),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),

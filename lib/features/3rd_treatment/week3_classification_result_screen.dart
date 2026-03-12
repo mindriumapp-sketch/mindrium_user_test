@@ -1,7 +1,6 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
-import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_classification_detail_screen.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_explain_alternative_thoughts.dart';

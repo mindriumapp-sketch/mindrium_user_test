@@ -1,5 +1,4 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/widgets/chips_editor.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_alternative_thoughts.dart';
 
 // ⭐ 더블 카드 레이아웃

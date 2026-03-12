@@ -4,7 +4,6 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/q_quiz_card.dart';
 import 'package:gad_app_team/widgets/q_jellyfish_notice.dart';
-import 'package:gad_app_team/widgets/choice_card_button.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_classification_result_screen.dart';
 
 // edu-sessions 저장용
@@ -104,8 +103,7 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
       'wrongReason': '실수를 지나치게 두려워하지 않도록 도와주는 현실적인 생각이에요.',
     },
     {
-      'text':
-          '나는 완벽하지 않아도 괜찮다\n(사람들은 완벽한 사람보다는 따뜻하고 친절한 사람을 더 좋아한다)',
+      'text': '나는 완벽하지 않아도 괜찮다\n(사람들은 완벽한 사람보다는 따뜻하고 친절한 사람을 더 좋아한다)',
       'type': 'healthy',
       'wrongReason': '완벽해야 한다는 부담을 덜어주고 자신을 조금 더 너그럽게 보게 해줘요.',
     },
@@ -175,15 +173,18 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
       final classificationQuiz = <String, dynamic>{
         'correct_count': correctCount,
         'total_count': totalCount,
-        'results': quizResults
-            .map((item) => {
-          'text': item['text'],
-          'correct_type': item['correctType'],
-          'user_choice': item['userChoice'],
-          'is_correct': item['isCorrect'],
-          'wrongReason': item['wrongReason'],
-        })
-            .toList(),
+        'results':
+            quizResults
+                .map(
+                  (item) => {
+                    'text': item['text'],
+                    'correct_type': item['correctType'],
+                    'user_choice': item['userChoice'],
+                    'is_correct': item['isCorrect'],
+                    'wrongReason': item['wrongReason'],
+                  },
+                )
+                .toList(),
       };
 
       await eduApi.updateEduSession(
@@ -226,7 +227,10 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
       'correctType': current['type'],
       'userChoice': selected,
       'isCorrect': correct,
-      'wrongReason': wrongReasonVal is String ? wrongReasonVal : (wrongReasonVal?.toString() ?? ''),
+      'wrongReason':
+          wrongReasonVal is String
+              ? wrongReasonVal
+              : (wrongReasonVal?.toString() ?? ''),
     });
 
     if (currentIndex < shuffledSentences.length - 1) {
@@ -242,12 +246,13 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              Week3ClassificationResultScreen(
-                sessionId: widget.sessionId,
-                correctCount: correctCount,
-                quizResults: quizResults,
-              ),
+          pageBuilder:
+              (context, animation, secondaryAnimation) =>
+                  Week3ClassificationResultScreen(
+                    sessionId: widget.sessionId,
+                    correctCount: correctCount,
+                    quizResults: quizResults,
+                  ),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -268,17 +273,16 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
     required Color backgroundColor,
     required VoidCallback onPressed,
   }) {
-    final Color effectiveBackground = isDimmed
-        ? const Color(0xFFDCE5EB)
-        : backgroundColor;
-    final Color shadowColor = isSelected
-        ? backgroundColor.withValues(alpha: 0.34)
-        : Colors.black.withValues(alpha: 0.08);
+    final Color effectiveBackground =
+        isDimmed ? const Color(0xFFDCE5EB) : backgroundColor;
+    final Color shadowColor =
+        isSelected
+            ? backgroundColor.withValues(alpha: 0.34)
+            : Colors.black.withValues(alpha: 0.08);
     final double scale = isSelected ? 1.0 : 0.985;
     final double borderWidth = isSelected ? 2.0 : 0.0;
-    final Color borderColor = isSelected
-        ? Colors.white.withValues(alpha: 0.90)
-        : Colors.transparent;
+    final Color borderColor =
+        isSelected ? Colors.white.withValues(alpha: 0.90) : Colors.transparent;
 
     return AnimatedScale(
       scale: scale,
@@ -292,10 +296,7 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
         decoration: BoxDecoration(
           color: effectiveBackground,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: borderColor,
-            width: borderWidth,
-          ),
+          border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: [
             BoxShadow(
               color: shadowColor,
@@ -319,7 +320,8 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
                       label,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: isDimmed ? const Color(0xFF7C8D99) : Colors.white,
+                        color:
+                            isDimmed ? const Color(0xFF7C8D99) : Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                         fontFamily: 'Noto Sans KR',
@@ -335,7 +337,8 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
       ),
     );
   }
-   /// 직전 문제로 이동하는 메서드
+
+  /// 직전 문제로 이동하는 메서드
   void _previousSentence() {
     // 0번째보다 큰 경우에만 이전 문제로 돌아감
     if (currentIndex > 0 && quizResults.isNotEmpty) {
@@ -411,7 +414,9 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
                             _buildSelectableChoiceButton(
                               label: '도움이 되는 생각',
                               isSelected: selectedChoice == 'healthy',
-                              isDimmed: selectedChoice != null && selectedChoice != 'healthy',
+                              isDimmed:
+                                  selectedChoice != null &&
+                                  selectedChoice != 'healthy',
                               backgroundColor: const Color(0xFF1FA4F0),
                               onPressed: () => _selectAnswer('healthy'),
                             ),
@@ -419,7 +424,9 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
                             _buildSelectableChoiceButton(
                               label: '도움이 되지 않는 생각',
                               isSelected: selectedChoice == 'anxious',
-                              isDimmed: selectedChoice != null && selectedChoice != 'anxious',
+                              isDimmed:
+                                  selectedChoice != null &&
+                                  selectedChoice != 'anxious',
                               backgroundColor: const Color(0xFFF3A2AD),
                               onPressed: () => _selectAnswer('anxious'),
                             ),
@@ -435,10 +442,10 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
                 // 아래: 항상 바닥에 붙는 네비게이션
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     leftLabel: '이전',
                     rightLabel: '다음',
-                    onBack: _previousSentence,  // 여기서 Navigator.pop 대신 호출
+                    onBack: _previousSentence, // 여기서 Navigator.pop 대신 호출
                     onNext: () async => _nextSentence(),
                   ),
                 ),
