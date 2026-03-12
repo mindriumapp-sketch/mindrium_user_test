@@ -145,9 +145,10 @@ class _CustomPopupDesignState extends State<CustomPopupDesign>
   Widget build(BuildContext context) {
     final bool singleAction = widget.negativeText == null;
     final media = MediaQuery.of(context);
-    final maxDialogHeight = ((media.size.height - media.viewInsets.bottom) * 0.78)
-        .clamp(280.0, 720.0)
-        .toDouble();
+    final maxDialogHeight =
+        ((media.size.height - media.viewInsets.bottom) * 0.78)
+            .clamp(280.0, 720.0)
+            .toDouble();
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -185,165 +186,165 @@ class _CustomPopupDesignState extends State<CustomPopupDesign>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                TextLine(
-                  widget.title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'NotoSansKR',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1B3A57),
-                  ),
-                ),
-
-                if (widget.highlightText.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _FoldedMemoTag(
-                    text: widget.highlightText,
-                    memoBgAsset: widget.memoBgAsset,
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                // ✅ 입력 필드 or 메시지
-                if (widget.enableInput && widget.controller != null)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: const Color(0xFF74D2FF),
-                        width: 1.3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF74D2FF).withValues(alpha: 0.1),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    child: TextField(
-                      controller: widget.controller,
-                      maxLines: 1,
-                      onChanged: (value) {
-                        if (_inputErrorText == null) return;
-                        final error = _validateInput(value);
-                        if (error == null) {
-                          setState(() => _inputErrorText = null);
-                        }
-                      },
-                      cursorColor: const Color(0xFF74D2FF),
+                    TextLine(
+                      widget.title,
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontFamily: 'NotoSansKR',
-                        fontSize: 15,
-                        color: Color(0xFF356D91),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1B3A57),
                       ),
-                      decoration: InputDecoration(
-                        hintText: widget.inputHint,
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF9BBFD6),
-                          fontSize: 14,
+                    ),
+                    if (widget.highlightText.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _FoldedMemoTag(
+                        text: widget.highlightText,
+                        memoBgAsset: widget.memoBgAsset,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // ✅ 입력 필드 or 메시지
+                    if (widget.enableInput && widget.controller != null)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFF74D2FF),
+                            width: 1.3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF74D2FF,
+                              ).withValues(alpha: 0.1),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                if (widget.enableInput &&
-                    widget.controller != null &&
-                    _inputErrorText != null) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextLine(
-                      _inputErrorText!,
-                      style: const TextStyle(
-                        fontFamily: 'NotoSansKR',
-                        fontSize: 12,
-                        color: Colors.red,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ] else
-                  TextLine(
-                    widget.message,
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                      fontFamily: 'NotoSansKR',
-                      fontSize: 15,
-                      color: Color(0xFF356D91),
-                      height: 1.5,
-                    ),
-                  ),
-                if (_remainingSeconds != null) ...[
-                  const SizedBox(height: 8),
-                  TextLine(
-                    widget.negativeText == null
-                        ? '${_remainingSeconds!}초 이내 자동으로 이동합니다.'
-                        : '${_remainingSeconds!}초 이내 선택이 없으면 자동으로 진행됩니다.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: 'NotoSansKR',
-                      fontSize: 13,
-                      color: Color(0xFF346C93),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-
-                    const SizedBox(height: 28),
-
-                // ✅ 버튼 영역
-                if (singleAction)
-                  SizedBox(
-                    width: double.infinity,
-                    child: _buildButton(
-                      label: widget.positiveText,
-                      onPressed: _handlePositivePressed,
-                      isPrimary: true,
-                      showAutoProgress:
-                          widget.autoPositiveAfter != null && !_actionTaken,
-                    ),
-                  )
-                else
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          child: _buildButton(
-                            label: widget.negativeText!,
-                            onPressed: _handleNegativePressed,
-                            isPrimary: false,
-                            showAutoProgress: false,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        child: TextField(
+                          controller: widget.controller,
+                          maxLines: 1,
+                          onChanged: (value) {
+                            if (_inputErrorText == null) return;
+                            final error = _validateInput(value);
+                            if (error == null) {
+                              setState(() => _inputErrorText = null);
+                            }
+                          },
+                          cursorColor: const Color(0xFF74D2FF),
+                          style: const TextStyle(
+                            fontFamily: 'NotoSansKR',
+                            fontSize: 15,
+                            color: Color(0xFF356D91),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: widget.inputHint,
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF9BBFD6),
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          child: _buildButton(
-                            label: widget.positiveText,
-                            onPressed: _handlePositivePressed,
-                            isPrimary: true,
-                            showAutoProgress:
-                                widget.autoPositiveAfter != null &&
-                                !_actionTaken,
+                    if (widget.enableInput &&
+                        widget.controller != null &&
+                        _inputErrorText != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextLine(
+                          _inputErrorText!,
+                          style: const TextStyle(
+                            fontFamily: 'NotoSansKR',
+                            fontSize: 12,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                      ),
+                    ] else
+                      TextLine(
+                        widget.message,
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          fontFamily: 'NotoSansKR',
+                          fontSize: 15,
+                          color: Color(0xFF356D91),
+                          height: 1.5,
+                        ),
+                      ),
+                    if (_remainingSeconds != null) ...[
+                      const SizedBox(height: 8),
+                      TextLine(
+                        widget.negativeText == null
+                            ? '${_remainingSeconds!}초 이내 자동으로 이동합니다.'
+                            : '${_remainingSeconds!}초 이내 선택이 없으면 자동으로 진행됩니다.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'NotoSansKR',
+                          fontSize: 13,
+                          color: Color(0xFF346C93),
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
-                  ),
-              ],
-            ),
-          ),
+                    const SizedBox(height: 28),
 
+                    // ✅ 버튼 영역
+                    if (singleAction)
+                      SizedBox(
+                        width: double.infinity,
+                        child: _buildButton(
+                          label: widget.positiveText,
+                          onPressed: _handlePositivePressed,
+                          isPrimary: true,
+                          showAutoProgress:
+                              widget.autoPositiveAfter != null && !_actionTaken,
+                        ),
+                      )
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              child: _buildButton(
+                                label: widget.negativeText!,
+                                onPressed: _handleNegativePressed,
+                                isPrimary: false,
+                                showAutoProgress: false,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              child: _buildButton(
+                                label: widget.positiveText,
+                                onPressed: _handlePositivePressed,
+                                isPrimary: true,
+                                showAutoProgress:
+                                    widget.autoPositiveAfter != null &&
+                                    !_actionTaken,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
             // 상단 아이콘
             Positioned(
               top: -40,
@@ -406,50 +407,14 @@ class _CustomPopupDesignState extends State<CustomPopupDesign>
                   : const BorderSide(color: Color(0xFF74D2FF), width: 1.2),
         ),
       ),
-      child:
-          isPrimary && showAutoProgress && _progressController != null
-              ? AnimatedBuilder(
-                animation: _progressController!,
-                builder: (context, _) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 22,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(
-                              widthFactor: _progressController!.value,
-                              child: Container(color: const Color(0xFF5ABFEF)),
-                            ),
-                          ),
-                          Center(
-                            child: TextLine(
-                              label,
-                              style: const TextStyle(
-                                fontFamily: 'NotoSansKR',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              )
-              : TextLine(
-                label,
-                style: const TextStyle(
-                  fontFamily: 'NotoSansKR',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+      child: TextLine(
+        label,
+        style: const TextStyle(
+          fontFamily: 'NotoSansKR',
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

@@ -46,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
-  late final AlarmSettingsApi _alarmApi = AlarmSettingsApi(_apiClient);
   late final UserDataApi _userDataApi = UserDataApi(_apiClient);
 
   bool _permissionsChecked = false;
@@ -55,8 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _checkedInitialWidgetAction = false;
   int? _lastSyncedDiaryCount;
   int? _lastSyncedRelaxationCount;
-  final TokenStorage _tokens = TokenStorage();
-  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   @override
