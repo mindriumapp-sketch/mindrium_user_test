@@ -18,7 +18,7 @@ class HomeWidgetTutorialController {
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_2.png',
       title: '위젯 추가하기(2)',
-      description: '메뉴에서 위젯을 찾아 클릭해 주세요.',
+      description: '메뉴에서 Widget(위젯)을 찾아 클릭해 주세요.',
     ),
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_3.png',
