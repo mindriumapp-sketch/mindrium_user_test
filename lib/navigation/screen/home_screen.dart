@@ -263,8 +263,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 실제 내용
-          SafeArea(child: _buildBody()),
+          // 실제 내용 (Mindrium 탭은 status bar까지 배경 덮음)
+          SafeArea(
+            top: _selectedIndex != 2,
+            child: _buildBody(),
+          ),
 
           // 네비게이션 바
           Align(

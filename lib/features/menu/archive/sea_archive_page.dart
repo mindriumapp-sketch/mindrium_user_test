@@ -74,14 +74,17 @@ class _SeaArchivePageState extends State<SeaArchivePage>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final bottomSafe = MediaQuery.of(context).padding.bottom;
+    final padding = MediaQuery.of(context).padding;
+    final bottomSafe = padding.bottom;
+    final topSafe = padding.top;
 
     //하단 네비 게이 높이를 직접 지정 (고정값)
     const double navBarHeight = 64.0; // 아이콘 + padding 고려
 
     const double guideTextTop = 60.0;
     const double guideTextHeight = 80.0;
-    final double avoidTop = guideTextTop + guideTextHeight;
+    final double guideTopWithSafe = guideTextTop + topSafe;
+    final double avoidTop = guideTopWithSafe + guideTextHeight;
     final double avoidBottom = navBarHeight + bottomSafe;
     final fishArea = Size(size.width, size.height - avoidBottom);
 
@@ -143,9 +146,9 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                         },
                       ),
 
-                    //안내 문구
+                    //안내 문구 (status bar 아래에 배치)
                     Positioned(
-                      top: 60,
+                      top: guideTopWithSafe,
                       left: 20,
                       right: 20,
                       child: Center(
