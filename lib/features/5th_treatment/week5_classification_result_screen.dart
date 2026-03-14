@@ -1,8 +1,9 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
-import 'package:gad_app_team/widgets/round_card.dart';
+import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/features/5th_treatment/week5_classification_detail_screen.dart';
-import 'week5_imagination.dart';
+import 'package:gad_app_team/features/5th_treatment/week5_explain_confront_avoid.dart';
 
 class Week5ClassificationResultScreen extends StatelessWidget {
   final String? sessionId;
@@ -19,90 +20,271 @@ class Week5ClassificationResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 💡 배경색 제거 (body Stack으로 처리)
-      // backgroundColor: const Color(0xFFFBF8FF),
-      extendBodyBehindAppBar: true, // AppBar 뒤까지 배경 확장
-
-      body: Stack( // 💡 Stack 추가
+      extendBodyBehindAppBar: true,
+      appBar: const CustomAppBar(title: '불안 직면 VS 회피'),
+      body: Stack(
         fit: StackFit.expand,
         children: [
-          // 🌊 화면 전체 배경 (0.35) - 배경 이미지 추가
-          Opacity(
-            opacity: 0.65,
-            child: Image.asset('assets/image/eduhome.png', fit: BoxFit.cover),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFEAF7FF),
+                  Color(0xFFF7FCFF),
+                ],
+              ),
+            ),
           ),
-
+          Opacity(
+            opacity: 0.18,
+            child: Image.asset(
+              'assets/image/eduhome.png',
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
           SafeArea(
             child: Column(
               children: [
                 Expanded(
-                  // 💡 SingleChildScrollView를 Center로 감싸고 padding 조정
                   child: Center(
                     child: SingleChildScrollView(
-                      // 💡 수직 패딩 추가하여 중앙보다 약간 아래로 내릴 수 있는 여지 확보
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center, // Center 위젯이 있으므로 불필요하지만 유지
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // ───────── 결과 카드
-                          RoundCard( // NotebookPage였을 경우 NotebookPage로 변경
-                            margin: EdgeInsets.zero, // Center 위젯 사용 시 마진 제거
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 36, // 상하 패딩을 늘려 카드 크기를 키웁니다.
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // 💡 축하 이미지 크기 조정
-                                Image.asset(
-                                  'assets/image/congrats.png',
-                                  width: 140, // 이미지 크기를 줄여 중앙으로 모이게 합니다.
-                                  height: 140,
-                                  fit: BoxFit.contain,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.72),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.75),
+                                width: 1.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 22,
+                                  offset: const Offset(0, 10),
                                 ),
-                                const SizedBox(height: 22),
-                                Text(
-                                  // ** 굵게 표시를 위해 \n 제거 후 TextSpan 사용 (더 깔끔한 방식)
-                                  '20개의 문항 중\n$correctCount개 맞았어요!',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.4,
-                                    color: Colors.black87,
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF19C37D).withOpacity(0.14),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.auto_awesome_rounded,
+                                    color: Color(0xFF19C37D),
+                                    size: 22,
                                   ),
                                 ),
-                                const SizedBox(height: 18),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => Week3ClassificationDetailScreen(
-                                            quizResults: quizResults,
-                                          ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: const [
+                                      Text(
+                                        '이번 연습 결과',
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF243B53),
+                                          fontFamily: 'Noto Sans KR',
                                         ),
-                                      );
-                                    },
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 10),
-                                      foregroundColor: const Color(0x7F263C69),
-                                    ),
-                                    child: const Text(
-                                      '클릭하여 선택한 내용을 확인해보세요.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.39,
                                       ),
-                                    ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        '정답 수를 확인하고, 선택한 내용을 다시 돌아보세요.',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          height: 1.45,
+                                          color: Color(0xFF5B7083),
+                                          fontFamily: 'Noto Sans KR',
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.80),
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.85),
+                                width: 1.3,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 14),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 30,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 108,
+                                    height: 108,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: const Color(0xFF19C37D).withOpacity(0.10),
+                                    ),
+                                    child: Center(
+                                      child: Image.asset(
+                                        'assets/image/congrats.png',
+                                        width: 72,
+                                        height: 72,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 22),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF2F7FB),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      '분류 연습 완료',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF4F6475),
+                                        fontFamily: 'Noto Sans KR',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    '$correctCount개의 문항을 맞혔어요!',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.35,
+                                      color: Color(0xFF1F2D3D),
+                                      fontFamily: 'Noto Sans KR',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  const Text(
+                                    '불안 직면 행동과 회피 행동을\n차분히 다시 살펴보며 연습을 이어가보세요.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.6,
+                                      color: Color(0xFF5B7083),
+                                      fontFamily: 'Noto Sans KR',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 22),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF19C37D).withOpacity(0.10),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFF19C37D).withOpacity(0.16),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: const [
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          color: Color(0xFF19C37D),
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            '선택한 답을 확인하면서 내 행동 패턴을 점검해보세요.',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              height: 1.45,
+                                              color: Color(0xFF2D5B4F),
+                                              fontFamily: 'Noto Sans KR',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        if (quizResults.isEmpty) {
+                                          BlueBanner.show(
+                                            context,
+                                            '표시할 결과가 없어요. 퀴즈를 먼저 진행해 주세요.',
+                                          );
+                                          return;
+                                        }
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                Week5ClassificationDetailScreen(
+                                              quizResults: quizResults,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        elevation: 0,
+                                        backgroundColor: const Color(0xFF263C69),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(18),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        '선택한 내용 자세히 보기',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          fontFamily: 'Noto Sans KR',
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -110,17 +292,16 @@ class Week5ClassificationResultScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // ⛵ 하단 네비게이션 버튼 (기존 위치 유지)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     onNext: () {
                       Navigator.push(
                         context,
                         PageRouteBuilder(
-                          pageBuilder: (_, __, ___) => Week5ImaginationScreen(
+                          pageBuilder: (_, __, ___) =>
+                              Week5ExplainConfrontAvoidScreen(
                             sessionId: sessionId,
                             quizResults: quizResults,
                             correctCount: correctCount,

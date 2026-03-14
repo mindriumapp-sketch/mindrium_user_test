@@ -131,7 +131,7 @@ class MyApp extends StatelessWidget {
         '/home_edu': (_) => const HomeScreen(initialIndex: 1),
         '/home_mindrium': (_) => const HomeScreen(initialIndex: 2),
         '/home_mypage': (_) => const HomeScreen(initialIndex: 3),
-        '/home_settings': (_) => const HomeScreen(initialIndex: 4),
+        '/home_settings': (_) => const HomeScreen(initialIndex: 3), // 설정 제거 → 마이페이지로 리다이렉트
         '/myinfo': (context) => const MyInfoScreen(),
         '/contents': (context) => const ContentScreen(),
         '/settings': (context) => const SettingsScreen(),

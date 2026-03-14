@@ -3,11 +3,13 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 class JellyfishNotice extends StatelessWidget {
   final String? feedback;
   final Color? feedbackColor;
+  final TextAlign textAlign;
 
   const JellyfishNotice({
     super.key,
     this.feedback,
     this.feedbackColor,
+    this.textAlign = TextAlign.center,
   });
 
   @override
@@ -46,7 +48,7 @@ class JellyfishNotice extends StatelessWidget {
                     child: Text(
                       feedback ??
                           '지금은 위 생각에 대해 얼마나 강하게 믿고 계시나요? 아래 슬라이더를 조절하고 [ 다음 ]을 눌러주세요.',
-                      textAlign: TextAlign.center,
+                      textAlign: textAlign,
                       style: TextStyle(
                         color: feedback != null
                             ? feedbackColor

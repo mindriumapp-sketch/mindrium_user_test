@@ -1,9 +1,10 @@
-import 'package:gad_app_team/utils/text_line_material.dart';
+/// 🫧 환경설정 화면 — 앱 설정, 고객지원, 서비스 정보, 계정
+import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/auth_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
 
-/// 🫧 마인드리움 스타일 설정 화면
-/// - 배경: eduhome.png
-/// - 카드: 반투명 글라스, 부드러운 그림자
-/// - 버튼/스위치: 파스텔 블루 톤
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -12,234 +13,343 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isTaskReminderOn = true;
-  bool _isHomeworkReminderOn = true;
-  bool _isReportReminderOn = true;
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final AuthApi _authApi = AuthApi(_apiClient, _tokens);
 
-  final _subjectController = TextEditingController();
-  final _messageController = TextEditingController();
+  bool _isLoggingOut = false;
 
-  // 🎨 색상 팔레트 (Mindrium 테마)
-  final Color deepSea = const Color(0xFF004C73);
-  final Color aquaBlue = const Color(0xFF00B8D9);
-  final Color glassWhite = Colors.white.withValues(alpha: 0.75);
-
-  void _sendInquiry() {
-    final subject = _subjectController.text;
-    final message = _messageController.text;
-
-    if (subject.isNotEmpty && message.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('문의가 접수되었습니다.'),
-          backgroundColor: deepSea,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      _subjectController.clear();
-      _messageController.clear();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('모든 항목을 입력해주세요.'),
-          backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  Future<void> _logout() async {
+    final navigator = Navigator.of(context);
+    setState(() => _isLoggingOut = true);
+    try {
+      await _authApi.logout();
+      if (!mounted) return;
+      navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
     }
+  }
+
+  void _showComingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('준비 중입니다.')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
           '설정',
           style: TextStyle(
+            color: Color(0xFF1E2F3F),
+            fontWeight: FontWeight.w700,
             fontFamily: 'Noto Sans KR',
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.white,
           ),
         ),
-        backgroundColor: deepSea.withValues(alpha: 0.6),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          color: const Color(0xFF1E2F3F),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 🫧 배경: eduhome.png
-          Image.asset('assets/images/eduhome.png', fit: BoxFit.cover),
-
-          // 🌊 내용
-          SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              children: [
-                _buildGlassCard(
-                  title: '위치/시간 설정',
-                  child: Column(
-                    children: [
-                      _buildSwitchTile(
-                        '치료 일정 위치/시간',
-                        _isTaskReminderOn,
-                        (value) => setState(() => _isTaskReminderOn = value),
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset('assets/image/eduhome.png', fit: BoxFit.cover),
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xAAFFFFFF), Color(0x66FFFFFF)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
                       ),
-                      _buildSwitchTile(
-                        '숙제 제출 위치/시간',
-                        _isHomeworkReminderOn,
-                        (value) =>
-                            setState(() => _isHomeworkReminderOn = value),
-                      ),
-                      _buildSwitchTile(
-                        '리포트 생성 위치/시간',
-                        _isReportReminderOn,
-                        (value) => setState(() => _isReportReminderOn = value),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                _buildGlassCard(
-                  title: '고객센터 문의',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildInputField('문의 제목', _subjectController),
-                      const SizedBox(height: 12),
-                      _buildInputField(
-                        '문의 내용',
-                        _messageController,
-                        maxLines: 4,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildAquaButton('전송하기', _sendInquiry),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildSectionShell(
+                    title: '앱 설정',
+                    child: Column(
+                      children: [
+                        _buildMenuRow(
+                          icon: Icons.notifications_none_rounded,
+                          title: '알림 설정',
+                          subtitle: '푸시 알림 수신 여부와 알림 방식을 설정할 수 있어요.',
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/alarm_settings'),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuRow(
+                          icon: Icons.tune_rounded,
+                          title: '권한 설정',
+                          subtitle:
+                              '알림, 저장공간 등 앱에서 사용하는 권한을 확인해보세요.',
+                          showDivider: false,
+                          onTap: () => openAppSettings(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildSectionShell(
+                    title: '고객지원',
+                    child: Column(
+                      children: [
+                        _buildMenuRow(
+                          icon: Icons.edit_outlined,
+                          title: '의견 보내기',
+                          subtitle: '불편했던 점이나 개선 의견을 남길 수 있어요.',
+                          onTap: _showComingSoon,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuRow(
+                          icon: Icons.campaign_outlined,
+                          title: '공지사항',
+                          subtitle: '서비스 업데이트와 주요 안내를 확인해보세요.',
+                          onTap: _showComingSoon,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuRow(
+                          icon: Icons.help_outline_rounded,
+                          title: '자주 묻는 질문',
+                          subtitle: '많이 궁금해하는 질문과 답변을 모아두었어요.',
+                          showDivider: false,
+                          onTap: _showComingSoon,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildSectionShell(
+                    title: '서비스 정보',
+                    child: Column(
+                      children: [
+                        _buildMenuRow(
+                          icon: Icons.description_outlined,
+                          title: '약관 및 정책',
+                          subtitle:
+                              '서비스 이용과 관련된 약관 및 정책을 확인할 수 있어요.',
+                          onTap: _showComingSoon,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuRow(
+                          icon: Icons.code_rounded,
+                          title: '오픈소스 라이선스',
+                          subtitle:
+                              '앱에서 사용 중인 오픈소스 라이선스 정보를 확인할 수 있어요.',
+                          onTap: _showComingSoon,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuRow(
+                          icon: Icons.info_outline_rounded,
+                          title: '앱 정보',
+                          subtitle: '현재 앱 버전과 기본 정보를 확인할 수 있어요.',
+                          showDivider: false,
+                          onTap: _showComingSoon,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildSectionShell(
+                    title: '계정',
+                    child: Column(
+                      children: [
+                        _buildMenuRow(
+                          icon: Icons.manage_accounts_outlined,
+                          title: '계정 관리',
+                          subtitle:
+                              '로그인 방식과 연결된 계정 정보를 확인할 수 있어요.',
+                          onTap: _showComingSoon,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuRow(
+                          icon: Icons.lock_outline_rounded,
+                          title: '비밀번호 변경',
+                          subtitle:
+                              '현재 비밀번호를 새로운 비밀번호로 변경할 수 있어요.',
+                          onTap: _showComingSoon,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuRow(
+                          icon: Icons.logout_rounded,
+                          title: '로그아웃',
+                          subtitle: '현재 계정에서 안전하게 로그아웃합니다.',
+                          onTap: _isLoggingOut ? null : _logout,
+                          isDestructive: true,
+                          showDivider: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isLoggingOut)
+            Container(
+              color: Colors.black26,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF5B9FD3),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  // 🩵 카드
-  Widget _buildGlassCard({required String title, required Widget child}) {
+  Widget _buildSectionShell({
+    required String title,
+    required Widget child,
+  }) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
       decoration: BoxDecoration(
-        color: glassWhite,
+        color: const Color(0xFCFFFFFF),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFFE5EDF4)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black12.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Color(0x0D000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Noto Sans KR',
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Color(0xFF004C73),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1E2F3F),
+                fontFamily: 'Noto Sans KR',
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           child,
         ],
       ),
     );
   }
 
-  // 🩵 토글 스위치
-  Widget _buildSwitchTile(
-    String title,
-    bool value,
-    ValueChanged<bool> onChanged,
-  ) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontFamily: 'Noto Sans KR',
-              color: Color(0xFF013A56),
-            ),
-          ),
-          Switch(
-            value: value,
-            activeThumbColor: aquaBlue,
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: Colors.white54,
-            trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 🩵 입력 필드
-  Widget _buildInputField(
-    String label,
-    TextEditingController controller, {
-    int maxLines = 1,
+  Widget _buildMenuRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+    bool isDestructive = false,
+    bool showDivider = true,
   }) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      style: const TextStyle(fontSize: 15, fontFamily: 'Noto Sans KR'),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Color(0xFF004C73)),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.85),
-        enabledBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Color(0xFFBDEAFD), width: 1.2),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: aquaBlue, width: 1.6),
-          borderRadius: BorderRadius.circular(14),
-        ),
-      ),
-    );
-  }
+    final Color accentColor =
+        isDestructive ? const Color(0xFFD85B66) : const Color(0xFF2C4154);
+    final Color iconBgColor =
+        isDestructive ? const Color(0xFFFFF1F3) : const Color(0xFFF1F7FB);
 
-  // 🩵 버튼
-  Widget _buildAquaButton(String text, VoidCallback onPressed) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: aquaBlue,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 3,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Noto Sans KR',
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(0, 14, 0, 14),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, size: 22, color: accentColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: accentColor,
+                            fontFamily: 'Noto Sans KR',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            height: 1.45,
+                            color: Color(0xFF8A97A3),
+                            fontFamily: 'Noto Sans KR',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: isDestructive
+                        ? const Color(0xFFD85B66)
+                        : const Color(0xFFA0ACB7),
+                    size: 26,
+                  ),
+                ),
+              ],
+            ),
+            if (showDivider) ...[
+              const SizedBox(height: 14),
+              const Divider(
+                height: 1,
+                thickness: 1,
+                color: Color(0xFFE7EDF2),
+              ),
+            ],
+          ],
         ),
       ),
-      onPressed: onPressed,
-      child: Text(text),
     );
   }
 }

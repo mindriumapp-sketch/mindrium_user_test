@@ -11,6 +11,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/api/screen_time_api.dart';
 import 'package:gad_app_team/data/models/screen_time_summary.dart';
+import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
 
 class MyInfoScreen extends StatefulWidget {
   const MyInfoScreen({super.key});
@@ -46,12 +47,45 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   ScreenTimeSummary? _screenTimeSummary;
   bool _screenTimeLoading = true;
 
+  List<Map<String, dynamic>> _archivedGroups = [];
+  bool _archiveLoading = true;
+  String? _selectedArchiveGroupId;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _loadScreenTimeSummary();
+    _loadArchivedGroups();
+  }
+
+  Future<void> _loadArchivedGroups() async {
+    try {
+      final response = await _apiClient.dio.get('/worry-groups/archived');
+      final archived =
+          (response.data as List?)?.cast<Map<String, dynamic>>() ?? [];
+      archived.sort((a, b) {
+        final aDate =
+            DateTime.tryParse(a['archived_at']?.toString() ?? '') ??
+            DateTime(0);
+        final bDate =
+            DateTime.tryParse(b['archived_at']?.toString() ?? '') ??
+            DateTime(0);
+        return bDate.compareTo(aDate);
+      });
+      if (mounted) {
+        setState(() {
+          _archivedGroups = archived;
+          _archiveLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ 아카이브 그룹 불러오기 실패: $e');
+      if (mounted) {
+        setState(() => _archiveLoading = false);
+      }
+    }
   }
 
   @override
@@ -209,19 +243,6 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         .showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> _logout() async {
-    final navigator = Navigator.of(context);
-
-    setState(() => isLoading = true);
-    try {
-      await _authApi.logout();
-      if (!mounted) return;
-      navigator.pushNamedAndRemoveUntil('/login', (route) => false);
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-    }
-  }
-
   int daysBetween(DateTime a, DateTime b) {
     final da = DateTime(a.year, a.month, a.day);
     final db = DateTime(b.year, b.month, b.day);
@@ -230,14 +251,11 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   @override
   Widget build(BuildContext context) {
-    const Color softWhite = Color(0xF8FFFFFF);
     const Color deepNavy = Color(0xFF1E2F3F);
-    const Color skyBlue = Color(0xFF63C6EC);
-    const Color cardBorder = Color(0xFFE7EEF4);
-    const Color mutedText = Color(0xFF728292);
-    const Color sectionBg = Color(0xFCFFFFFF);
 
     final double maxCardWidth = MediaQuery.of(context).size.width - 32;
+    final double bottomSafeInset = MediaQuery.of(context).padding.bottom;
+    const double extraBottomScrollSpace = 110.0;
 
     final String joinDateText = createdAt != null
         ? DateFormat('yyyy년 MM월 dd일').format(createdAt!)
@@ -261,46 +279,45 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
-          '내 정보',
+          '마이페이지',
           style: TextStyle(
             color: deepNavy,
             fontWeight: FontWeight.w700,
             fontFamily: 'Noto Sans KR',
           ),
         ),
-        backgroundColor: Colors.white.withValues(alpha: 0.8),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: deepNavy),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              onPressed: () => Navigator.pushNamed(context, '/settings'),
+              icon: const Icon(
+                Icons.settings_rounded,
+                color: deepNavy,
+                size: 26,
+              ),
+              tooltip: '환경설정',
+            ),
+          ),
+        ],
       ),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/image/eduhome.png',
-              fit: BoxFit.cover,
-              opacity: const AlwaysStoppedAnimation(0.18),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFFF6FBFE).withValues(alpha: 0.90),
-                    const Color(0xFFEDF7FB).withValues(alpha: 0.84),
-                  ],
-                ),
-              ),
-            ),
-          ),
           SafeArea(
-            child: Center(
+            child: Align(
+              alignment: Alignment.topCenter,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  bottomSafeInset + extraBottomScrollSpace,
+                ),
                 child: SizedBox(
                   width: maxCardWidth,
                   child: Stack(
@@ -309,10 +326,13 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _buildProfileOverviewCard(
-                            name: displayName,
+                            name: '안녕하세요, ${displayName}님',
                             email: displayEmail,
                             valueGoal: displayValueGoal,
                             joinDateText: joinDateText,
+                            onEditTap: isLoading
+                                ? null
+                                : () => setState(() => isEditing = !isEditing),
                           ),
                           const SizedBox(height: 14),
                           _buildProgressSnapshotCard(
@@ -321,214 +341,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                                 : '기록 준비 중',
                           ),
                           const SizedBox(height: 14),
-                          _buildSectionShell(
-                            title: '프로필',
-                            subtitle: '내 정보와 핵심 가치를 관리해요.',
-                            child: Column(
-                              children: [
-                                _buildPrimaryActionRow(
-                                  icon: Icons.edit_outlined,
-                                  title: '프로필 수정',
-                                  subtitle: isEditing
-                                      ? '현재 편집 모드입니다. 수정 후 저장해 주세요.'
-                                      : '이름과 핵심 가치를 수정할 수 있어요.',
-                                  badge: isEditing ? '편집 중' : '수정',
-                                  onTap: isLoading
-                                      ? null
-                                      : () => setState(() => isEditing = !isEditing),
-                                ),
-                                if (isEditing) ...[
-                                  const SizedBox(height: 12),
-                                  _buildFormPanel(
-                                    children: [
-                                      _buildTextField(
-                                        controller: nameController,
-                                        label: '이름',
-                                        icon: Icons.person_outline,
-                                        enabled: !isLoading,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _buildTextField(
-                                        controller: emailController,
-                                        label: '이메일',
-                                        icon: Icons.email_outlined,
-                                        enabled: false,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _buildTextField(
-                                        controller: valueGoalController,
-                                        label: '나의 핵심 가치',
-                                        icon: Icons.favorite_outline,
-                                        enabled: !isLoading,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 48,
-                                        child: ElevatedButton(
-                                          onPressed: isLoading ? null : _updateUserData,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: skyBlue,
-                                            elevation: 0,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(14),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            '프로필 저장',
-                                            style: TextStyle(
-                                              fontFamily: 'Noto Sans KR',
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 15.5,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _buildSectionShell(
-                            title: '리포트',
-                            subtitle: '최근 활동과 요약 지표를 확인해요.',
-                            child: _buildScreenTimeCard(),
-                          ),
-                          const SizedBox(height: 14),
-                          _buildSectionShell(
-                            title: '계정 및 보안',
-                            subtitle: '보안 관련 설정을 관리해요.',
-                            child: Column(
-                              children: [
-                                _buildPrimaryActionRow(
-                                  icon: Icons.lock_outline,
-                                  title: '비밀번호 변경',
-                                  subtitle: showPasswordFields
-                                      ? '현재 비밀번호와 새 비밀번호를 입력해 주세요.'
-                                      : '비밀번호를 변경하고 계정을 안전하게 관리하세요.',
-                                  badge: showPasswordFields ? '열림' : '관리',
-                                  onTap: isLoading
-                                      ? null
-                                      : () => setState(() {
-                                            showPasswordFields = !showPasswordFields;
-                                          }),
-                                ),
-                                if (showPasswordFields) ...[
-                                  const SizedBox(height: 12),
-                                  _buildFormPanel(
-                                    children: [
-                                      _buildTextField(
-                                        controller: currentPasswordController,
-                                        label: '기존 비밀번호',
-                                        icon: Icons.lock_outline,
-                                        enabled: !isLoading,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _buildTextField(
-                                        controller: newPasswordController,
-                                        label: '새 비밀번호',
-                                        icon: Icons.lock_reset_outlined,
-                                        enabled: !isLoading,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _buildTextField(
-                                        controller: confirmPasswordController,
-                                        label: '새 비밀번호 확인',
-                                        icon: Icons.verified_user_outlined,
-                                        enabled: !isLoading,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 48,
-                                        child: ElevatedButton(
-                                          onPressed: isLoading ? null : _updateUserData,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: deepNavy,
-                                            elevation: 0,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(14),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            '비밀번호 변경 적용',
-                                            style: TextStyle(
-                                              fontFamily: 'Noto Sans KR',
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 15.5,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                                const SizedBox(height: 10),
-                                _buildPrimaryActionRow(
-                                  icon: Icons.devices_outlined,
-                                  title: '로그인 기기 관리',
-                                  subtitle: '추후 등록 기기 및 접속 이력을 확인할 수 있어요.',
-                                  badge: '준비 중',
-                                ),
-                                const SizedBox(height: 10),
-                                _buildPrimaryActionRow(
-                                  icon: Icons.logout,
-                                  title: '로그아웃',
-                                  subtitle: '현재 계정에서 안전하게 로그아웃합니다.',
-                                  badge: '실행',
-                                  onTap: isLoading ? null : _logout,
-                                  isDestructive: true,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _buildSectionShell(
-                            title: '설정 및 지원',
-                            subtitle: '추후 세부 화면으로 확장될 영역이에요.',
-                            child: Column(
-                              children: [
-                                _buildPrimaryActionRow(
-                                  icon: Icons.notifications_none,
-                                  title: '알림 설정',
-                                  subtitle: '푸시 알림 시간, 빈도, 수신 여부 관리',
-                                  badge: '준비 중',
-                                ),
-                                const SizedBox(height: 10),
-                                _buildPrimaryActionRow(
-                                  icon: Icons.bar_chart_rounded,
-                                  title: '상세 리포트',
-                                  subtitle: '주간/월간 감정 및 수행 변화 리포트 확인',
-                                  badge: '준비 중',
-                                ),
-                                const SizedBox(height: 10),
-                                _buildPrimaryActionRow(
-                                  icon: Icons.support_agent_outlined,
-                                  title: '문의하기',
-                                  subtitle: '오류 제보, 이용 문의, 고객 지원 연결',
-                                  badge: '준비 중',
-                                ),
-                                const SizedBox(height: 10),
-                                _buildPrimaryActionRow(
-                                  icon: Icons.privacy_tip_outlined,
-                                  title: '약관 및 개인정보 처리방침',
-                                  subtitle: '서비스 정책 및 개인정보 보호 관련 문서',
-                                  badge: '보기',
-                                ),
-                                const SizedBox(height: 10),
-                                _buildPrimaryActionRow(
-                                  icon: Icons.info_outline,
-                                  title: '앱 버전',
-                                  subtitle: '현재 버전 1.0.0 (UI placeholder)',
-                                  badge: '정보',
-                                ),
-                              ],
-                            ),
-                          ),
+                          _buildArchivedWorryFishSection(),
                         ],
                       ),
                       if (isLoading)
@@ -559,6 +372,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     required String email,
     required String valueGoal,
     required String joinDateText,
+    VoidCallback? onEditTap,
   }) {
     return Container(
       width: double.infinity,
@@ -579,21 +393,8 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF5FB),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.person_rounded,
-                  size: 28,
-                  color: Color(0xFF1E2F3F),
-                ),
-              ),
-              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -601,231 +402,149 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                     Text(
                       name,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF1E2F3F),
                         fontFamily: 'Noto Sans KR',
-                        height: 1.2,
+                        height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 10),
                     Text(
-                      email,
+                      '이메일 : ${email.isNotEmpty ? email : '-'}',
                       style: const TextStyle(
                         fontSize: 13.5,
-                        color: Color(0xFF728292),
+                        color: Color(0xFF8B97A3),
                         fontFamily: 'Noto Sans KR',
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7FAFC),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE9EFF4)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '나의 핵심 가치',
+              const SizedBox(width: 12),
+              TextButton(
+                onPressed: onEditTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF5C6470),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  '프로필 수정',
                   style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF81909D),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     fontFamily: 'Noto Sans KR',
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  valueGoal,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    height: 1.45,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF31485D),
-                    fontFamily: 'Noto Sans KR',
+              ),
+            ],
+          ),
+          if (isEditing) ...[
+            const SizedBox(height: 18),
+            _buildFormPanel(
+              children: [
+                _buildTextField(
+                  controller: nameController,
+                  label: '이름',
+                  icon: Icons.person_outline,
+                  enabled: !isLoading,
+                ),
+                const SizedBox(height: 14),
+                _buildTextField(
+                  controller: emailController,
+                  label: '이메일',
+                  icon: Icons.email_outlined,
+                  enabled: false,
+                ),
+                const SizedBox(height: 14),
+                _buildTextField(
+                  controller: valueGoalController,
+                  label: '나의 핵심 가치',
+                  icon: Icons.favorite_outline,
+                  enabled: !isLoading,
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : _updateUserData,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF63C6EC),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      '프로필 저장',
+                      style: TextStyle(
+                        fontFamily: 'Noto Sans KR',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15.5,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '가입일 $joinDateText',
-            style: const TextStyle(
-              fontSize: 12.5,
-              color: Color(0xFF8A98A4),
-              fontFamily: 'Noto Sans KR',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionShell({
-    required String title,
-    required String subtitle,
-    required Widget child,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      decoration: BoxDecoration(
-        color: const Color(0xFCFFFFFF),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE5EDF4)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E2F3F),
-              fontFamily: 'Noto Sans KR',
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13.5,
-              height: 1.45,
-              color: Color(0xFF728292),
-              fontFamily: 'Noto Sans KR',
-            ),
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrimaryActionRow({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    String? badge,
-    VoidCallback? onTap,
-    bool isDestructive = false,
-  }) {
-    final Color accent =
-        isDestructive ? const Color(0xFFE45B66) : const Color(0xFF1E2F3F);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        decoration: BoxDecoration(
-          color: isDestructive
-              ? const Color(0xFFFFFAFB)
-              : const Color(0xFFF8FBFD),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isDestructive
-                ? const Color(0xFFFFE5E8)
-                : const Color(0xFFE8EEF3),
-          ),
-        ),
-        child: Row(
-          children: [
+          ] else ...[
+            const SizedBox(height: 18),
             Container(
-              width: 42,
-              height: 42,
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
               decoration: BoxDecoration(
-                color: isDestructive
-                    ? const Color(0xFFFFF1F3)
-                    : const Color(0xFFEFF7FB),
-                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFFF7FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE9EFF4)),
               ),
-              child: Icon(icon, size: 21, color: accent),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
+                  const Text(
+                    '나의 핵심 가치',
                     style: TextStyle(
-                      fontSize: 16.5,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: accent,
+                      color: Color(0xFF81909D),
                       fontFamily: 'Noto Sans KR',
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   Text(
-                    subtitle,
+                    valueGoal,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13.5,
-                      height: 1.42,
-                      color: Color(0xFF728292),
+                      fontSize: 14.5,
+                      height: 1.45,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF31485D),
                       fontFamily: 'Noto Sans KR',
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: isDestructive
-                          ? const Color(0xFFFFF1F3)
-                          : const Color(0xFFEFF7FB),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      badge,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: accent.withValues(alpha: 0.72),
-                        fontFamily: 'Noto Sans KR',
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFFA9B5BF),
-                  size: 21,
-                ),
-              ],
+            const SizedBox(height: 10),
+            Text(
+              '가입일 $joinDateText',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: Color(0xFF8A98A4),
+                fontFamily: 'Noto Sans KR',
+              ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
+
 
   Widget _buildFormPanel({
     required List<Widget> children,
@@ -876,78 +595,536 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     );
   }
 
-  Widget _buildScreenTimeCard() {
-    final summary = _screenTimeSummary;
+  Widget _buildArchivedWorryFishSection() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FBFD),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE6EDF3)),
+        color: Colors.white.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            '리포트 요약',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              color: Color(0xFF1E2F3F),
-              fontFamily: 'Noto Sans KR',
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  '보관된 걱정 물고기',
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0E2C48),
+                    fontFamily: 'Noto Sans KR',
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F4FD),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF5B9FD3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  '총 ${_archivedGroups.length}개',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF5B9FD3),
+                    fontFamily: 'Noto Sans KR',
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          if (_screenTimeLoading)
+          const SizedBox(height: 16),
+          if (_archiveLoading)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18),
+              padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF5B9FD3),
+                    strokeWidth: 3,
+                  ),
+                ),
               ),
             )
-          else if (summary == null)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '요약을 불러오지 못했습니다.',
-                  style: TextStyle(color: Colors.black54),
-                ),
-                TextButton(
-                  onPressed: () => _loadScreenTimeSummary(showError: true),
-                  child: const Text('다시 시도'),
-                ),
-              ],
+          else if (_archivedGroups.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 80,
+                    color: const Color(0xFF5B9FD3).withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '보관된 걱정 그룹이 없습니다',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Color(0xFF1B405C),
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Noto Sans KR',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '걱정 물고기를 보관해보세요 🪸',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'Noto Sans KR',
+                    ),
+                  ),
+                ],
+              ),
             )
           else ...[
-            Row(
-              children: [
-                _metricTile('총 사용 시간', _formatDuration(summary.totalMinutes)),
-                const SizedBox(width: 10),
-                _metricTile('오늘', _formatDuration(summary.todayMinutes)),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final crossAxisCount = constraints.maxWidth > 600 ? 4 : 3;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    childAspectRatio: 0.82,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                  ),
+                  itemCount: _archivedGroups.length,
+                  itemBuilder: (context, index) {
+                    final group = _archivedGroups[index];
+                    final groupId = group['group_id']?.toString() ?? '';
+                    return _buildWorryFishCard(
+                      group: group,
+                      isSelected: _selectedArchiveGroupId == groupId,
+                      onTap: () {
+                        setState(() {
+                          if (_selectedArchiveGroupId == groupId) {
+                            _selectedArchiveGroupId = null;
+                          } else {
+                            _selectedArchiveGroupId = groupId;
+                          }
+                        });
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+            if (_selectedArchiveGroupId != null) const SizedBox(height: 24),
+            if (_selectedArchiveGroupId != null) _buildArchivedDetailCard(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorryFishCard({
+    required Map<String, dynamic> group,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final groupId = group['group_id']?.toString() ?? '';
+    final title = group['group_title']?.toString() ?? '';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [Color(0xFFE8F4FD), Color(0xFFF0F8FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.65),
+                    Colors.white.withValues(alpha: 0.55),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          borderRadius: BorderRadius.circular(20),
+          border: isSelected
+              ? Border.all(color: const Color(0xFF5B9FD3), width: 2.5)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? const Color(0xFF5B9FD3).withValues(alpha: 0.35)
+                  : Colors.black.withValues(alpha: 0.08),
+              blurRadius: isSelected ? 24 : 16,
+              spreadRadius: isSelected ? 2 : 0,
+              offset: Offset(0, isSelected ? 10 : 6),
+            ),
+            if (isSelected)
+              BoxShadow(
+                color: const Color(0xFF5B9FD3).withValues(alpha: 0.2),
+                blurRadius: 16,
+                spreadRadius: -2,
+                offset: const Offset(0, 0),
+              ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Center(
+                child: Hero(
+                  tag: 'character_$groupId',
+                  child: AnimatedScale(
+                    scale: isSelected ? 1.08 : 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                colors: [Color(0xFFFFFFFF), Color(0xFFF5FAFF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: isSelected ? null : Colors.white.withValues(alpha: 0.7),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isSelected
+                                ? const Color(0xFF5B9FD3).withValues(alpha: 0.3)
+                                : Colors.black.withValues(alpha: 0.05),
+                            blurRadius: isSelected ? 16 : 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: Image.asset(
+                        'assets/image/character${group['character_id']}.png',
+                        height: 60,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stack) => Icon(
+                          Icons.catching_pokemon,
+                          size: 50,
+                          color: isSelected
+                              ? const Color(0xFF5B9FD3)
+                              : Colors.grey.shade400,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                _metricTile('최근 7일', _formatDuration(summary.weekMinutes)),
-                const SizedBox(width: 10),
-                _metricTile('기록 횟수', '${summary.sessions}회'),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '추후 이 영역에는 주간 감정 변화, 수행률, 자기대화 패턴 요약이 함께 표시될 예정이에요.',
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12.8,
-                height: 1.45,
-                color: Color(0xFF7A8895),
+                fontWeight: FontWeight.w800,
+                fontSize: isSelected ? 13 : 12.5,
+                color: isSelected
+                    ? const Color(0xFF0E2C48)
+                    : const Color(0xFF4A5568),
+                height: 1.3,
+                letterSpacing: -0.2,
                 fontFamily: 'Noto Sans KR',
               ),
             ),
           ],
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArchivedDetailCard() {
+    if (_selectedArchiveGroupId == null) return const SizedBox.shrink();
+
+    final matches = _archivedGroups
+        .where((g) =>
+            (g['group_id']?.toString() ?? '') == _selectedArchiveGroupId)
+        .toList();
+    if (matches.isEmpty) return const SizedBox.shrink();
+
+    final group = matches.first;
+    final groupId = group['group_id']?.toString() ?? '';
+    final characterId = group['character_id'] ?? 0;
+    final title = group['group_title']?.toString() ?? '';
+    final contents = group['group_contents']?.toString() ?? '';
+    final archivedAt =
+        DateTime.tryParse(group['archived_at']?.toString() ?? '') ??
+        DateTime.now();
+    final archivedStr = DateFormat('yyyy.MM.dd').format(archivedAt);
+    final count = group['diary_count'] ?? 0;
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedArchiveGroupId = null),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFAFDFF), Color(0xFFFFFFFF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF5B9FD3), width: 2.3),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5B9FD3).withValues(alpha: 0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Hero(
+                  tag: 'detail_character_$groupId',
+                  child: Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFB8DAF5), Color(0xFFD4E7F7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5B9FD3).withValues(alpha: 0.25),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(5),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/image/character$characterId.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.catching_pokemon,
+                          size: 32,
+                          color: Color(0xFF0E2C48),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 19,
+                          color: Color(0xFF0E2C48),
+                          height: 1.3,
+                          letterSpacing: -0.3,
+                          fontFamily: 'Noto Sans KR',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF1FF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFD6E2FF)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 14,
+                              color: Color(0xFF496AC6),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '보관일: $archivedStr',
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF496AC6),
+                                fontFamily: 'Noto Sans KR',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6FAFF),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 3,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5B9FD3).withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      contents.isEmpty ? '저장된 설명이 없습니다.' : contents,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: const Color(0xFF1B405C),
+                        height: 1.58,
+                        fontWeight:
+                            contents.isEmpty
+                                ? FontWeight.w500
+                                : FontWeight.w600,
+                        fontFamily: 'Noto Sans KR',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ArchivedDiaryScreen(
+                      groupId: groupId,
+                      groupTitle: title,
+                      groupContents: contents,
+                      characterId: characterId,
+                      createdAt:
+                          DateTime.tryParse(group['created_at']?.toString() ?? '') ??
+                          DateTime.now(),
+                      archivedAt: archivedAt,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF5FF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      '일기',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF566370),
+                        fontFamily: 'Noto Sans KR',
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDFE8FF),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '$count개',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF4659C2),
+                          fontFamily: 'Noto Sans KR',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 22,
+                      color: Color(0xFF4659C2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -995,44 +1172,6 @@ class _MyInfoScreenState extends State<MyInfoScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _metricTile(String label, String value) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 13),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE7EDF3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF8794A0),
-                fontFamily: 'Noto Sans KR',
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1E2F3F),
-                fontFamily: 'Noto Sans KR',
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

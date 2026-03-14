@@ -1,4 +1,4 @@
-// lib/features/5th_treatment/week5_imagination_screen.dart
+// lib/features/5th_treatment/week5_imagination.dart
 import 'package:gad_app_team/utils/text_line_material.dart';
 
 // ✅ 공용 레이아웃 & 칩 에디터
@@ -25,12 +25,11 @@ class Week5ImaginationScreen extends StatefulWidget {
 }
 
 class _Week5ImaginationScreenState extends State<Week5ImaginationScreen> {
-  // ▶ ChipsEditor 상태 & 값
-  final _chipsKey = GlobalKey<ChipsEditorState>();
-  List<String> _chips = [];
+  final TextEditingController _textController = TextEditingController();
+  String _inputText = '';
 
-  void _onChipsChanged(List<String> v) {
-    setState(() => _chips = v);
+  void _onTextChanged(String value) {
+    setState(() => _inputText = value.trim());
   }
 
   // ─────────────────── 상단 패널 ───────────────────
@@ -66,30 +65,78 @@ class _Week5ImaginationScreenState extends State<Week5ImaginationScreen> {
     );
   }
 
-  // ─────────────────── 하단 패널 ───────────────────
   Widget _buildBottomPanel() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ChipsEditor(
-          key: _chipsKey,
-          initial: const [],          // 초기 칩이 있다면 전달
-          onChanged: _onChipsChanged, // 변경 콜백
-          minHeight: 150,
-          maxWidthFactor: 0.78,
-          emptyIcon: const Icon(
-            Icons.edit_note_rounded,
-            size: 64,
-            color: Colors.black45,
+        Container(
+          constraints: const BoxConstraints(minHeight: 190),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: const Color(0xFF8ED8F8).withValues(alpha: 0.65),
+              width: 1.4,
+            ),
           ),
-          emptyText: const Text(
-            '여기에 입력한 내용이 표시됩니다',
-            style: TextStyle(fontSize: 15, color: Colors.grey),
+          child: TextField(
+            controller: _textController,
+            onChanged: _onTextChanged,
+            maxLines: 8,
+            minLines: 8,
+            textInputAction: TextInputAction.newline,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.6,
+              color: Color(0xFF2C3E50),
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Noto Sans KR',
+            ),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: '예: 불안한 자리에 가면 말을 아끼고 빨리 끝나기만 바라게 돼요.',
+              hintStyle: TextStyle(
+                fontSize: 15,
+                height: 1.6,
+                color: Color(0xFF8AA0B4),
+                fontWeight: FontWeight.w400,
+                fontFamily: 'Noto Sans KR',
+              ),
+              isCollapsed: true,
+            ),
           ),
         ),
         const SizedBox(height: 8),
       ],
     );
+  }
+
+  void _goNext() {
+    FocusScope.of(context).unfocus();
+    final value = _textController.text.trim();
+
+    if (value.isEmpty) return;
+
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => Week5ConfrontAnxietyScreen(
+          sessionId: widget.sessionId,
+          previousChips: [value],
+          quizResults: widget.quizResults,
+          correctCount: widget.correctCount,
+        ),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 
   @override
@@ -101,22 +148,7 @@ class _Week5ImaginationScreenState extends State<Week5ImaginationScreen> {
 
         // ◀◀ 뒤로/다음 (기존 흐름 유지)
         onBack: () => Navigator.pop(context),
-        onNext: () {
-          final values = _chipsKey.currentState?.values ?? _chips;
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => Week5ConfrontAnxietyScreen(
-                sessionId: widget.sessionId,
-                previousChips: values,
-                quizResults: widget.quizResults,
-                correctCount: widget.correctCount,
-              ),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-        },
+        onNext: _inputText.isNotEmpty ? _goNext : null,
 
         // 레이아웃 옵션
         pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
@@ -126,7 +158,7 @@ class _Week5ImaginationScreenState extends State<Week5ImaginationScreen> {
         maxWidth: 980,
 
         // 패널 사이 말풍선(안내)
-        middleNoticeText: '아래 영역을 탭하면 항목이 추가돼요!\n엔터 또는 바깥 터치로 확정됩니다',
+        middleNoticeText: '아래 입력창에 떠오르는 행동을 자유롭게 적어보세요.',
 
         // 패널 색상(하단은 살짝 톤을 주어 입력영역 강조)
         topcardColor: Colors.white.withValues(alpha: 0.96),
