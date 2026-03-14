@@ -10,15 +10,14 @@ import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 
 // ───────────────────────────  LOCAL  ────────────────────────
+import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
+import 'package:gad_app_team/contents/apply_flow/sud_rating_content.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ★ ApplyDesign 가져오기
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/user_provider.dart';
-
-import 'package:gad_app_team/utils/text_line_utils.dart';
 
 /// SUD(0‒10)을 입력받아 저장하고, 점수에 따라 후속 행동을 안내하는 화면
 class BeforeSudRatingScreen extends StatefulWidget {
@@ -54,13 +53,9 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
       throw Exception('로그인이 필요합니다.');
     }
 
-    final res = await _sudApi.createSudScore(
-      diaryId: abcId,
-      beforeScore: _sud,
-    );
+    final res = await _sudApi.createSudScore(diaryId: abcId, beforeScore: _sud);
     return res;
   }
-
 
   Future<String> _loadGroupId(String abcId) async {
     try {
@@ -83,45 +78,22 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     });
-  }
-
-  // ────────────────────── 구간/스타일 유틸 ──────────────────────
-  static const _green = Color(0xFF4CAF50);
-  static const _yellow = Color(0xFFFFC107);
-  static const _red = Color(0xFFF44336);
-
-  // 3색 그룹 매핑 (0–2 초록 / 3–7 노랑 / 8–10 빨강)
-  Color get _accent {
-    if (_sud <= 2) return _green;
-    if (_sud <= 7) return _yellow;
-    return _red;
-  }
-
-  // 캡션
-  String get _caption {
-    if (_sud <= 2) return '평온해요';
-    if (_sud <= 4) return '약간 불안해요';
-    if (_sud <= 6) return '조금 불안해요';
-    if (_sud <= 8) return '불안해요';
-    return '많이 불안해요';
   }
 
   // ────────────────────────── UI ──────────────────────────
   @override
   Widget build(BuildContext context) {
-    final Object? rawArgs = ModalRoute.of(context)?.settings.arguments;
-    final Map<String, dynamic> args =
-        rawArgs is Map ? rawArgs.cast<String, dynamic>() : <String, dynamic>{};
-
-    final flow = context.read<ApplyOrSolveFlow>();
-    flow.syncFromArgs(args, notify: false);
-
-    final String origin = flow.origin;
-    final String? routeAbcId = args['abcId'] as String?;
-    final String? abcId = widget.abcId ?? flow.diaryId ?? routeAbcId;
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final flow = route.flow;
+    final String origin = route.origin;
+    final String? abcId = widget.abcId ?? route.abcId;
     final bool hasAbcId = abcId?.isNotEmpty ?? false;
 
     // ApplyDesign로 상단/본문/하단을 모두 구성 (eduhome.png 배경 포함)
@@ -143,15 +115,14 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
           flow.setBeforeSud(_sud);
 
           if (!hasAbcId) {
-            final nextRoute = origin == 'daily' ? '/abc' : '/solve_entry_choice';
+            final nextRoute =
+                origin == 'daily' ? '/abc' : '/solve_entry_choice';
             Navigator.pushReplacementNamed(
               context,
               nextRoute,
-              arguments: {
-                ...flow.toArgs(),
-                'origin': origin,
-                'beforeSud': _sud,
-              },
+              arguments: route.mergedArgs(
+                extra: {'origin': origin, 'beforeSud': _sud},
+              ),
             );
             return;
           }
@@ -178,38 +149,44 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
           if (sudId.isNotEmpty) flow.setSudId(sudId);
 
           if (_sud > 2) {
-            final completedWeeks = context.read<UserProvider>().lastCompletedWeek;
-            final nextRoute = completedWeeks >= 4
-                ? '/relax_or_alternative'
-                : '/relax_yes_or_no';
+            final completedWeeks =
+                context.read<UserProvider>().lastCompletedWeek;
+            final nextRoute =
+                completedWeeks >= 4
+                    ? '/relax_or_alternative'
+                    : '/relax_yes_or_no';
             Navigator.pushReplacementNamed(
               context,
               nextRoute,
-              arguments: {
-                ...flow.toArgs(),
-                'abcId': ensuredAbcId,
-                'groupId': groupId,
-                'beforeSud': _sud,
-                'sudId': sudId,
-              },
+              arguments: route.mergedArgs(
+                extra: {
+                  'abcId': ensuredAbcId,
+                  'groupId': groupId,
+                  'beforeSud': _sud,
+                  'sudId': sudId,
+                },
+              ),
             );
           } else {
             Navigator.pushReplacementNamed(
               context,
               '/diary_relax_home',
-              arguments: {
-                ...flow.toArgs(),
-                'abcId': ensuredAbcId,
-                'groupId': groupId,
-                'origin': origin,
-                'beforeSud': _sud,
-                'sudId': sudId,
-              },
+              arguments: route.mergedArgs(
+                extra: {
+                  'abcId': ensuredAbcId,
+                  'groupId': groupId,
+                  'origin': origin,
+                  'beforeSud': _sud,
+                  'sudId': sudId,
+                },
+              ),
             );
           }
         } on DioException catch (e) {
           final message =
-              e.response?.data is Map ? e.response?.data['detail']?.toString() : e.message;
+              e.response?.data is Map
+                  ? e.response?.data['detail']?.toString()
+                  : e.message;
           _showSnack('SUD를 저장하지 못했습니다: ${message ?? '알 수 없는 오류'}');
         } catch (e) {
           _showSnack('SUD를 저장하지 못했습니다: $e');
@@ -219,97 +196,9 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
       },
 
       // ─── 카드 내부 콘텐츠 ───
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 현재 점수(숫자)
-          Text(
-            '$_sud',
-            style: TextStyle(
-              fontSize: 64,
-              fontWeight: FontWeight.w900,
-              color: _accent,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // 아이콘
-          Icon(
-            _sud <= 2
-                ? Icons.sentiment_very_satisfied
-                : _sud >= 8
-                ? Icons.sentiment_very_dissatisfied_sharp
-                : Icons.sentiment_neutral,
-            size: 120,
-            color: _accent,
-          ),
-          const SizedBox(height: 6),
-
-          // 캡션
-          Text(
-            protectKoreanWords(_caption),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // 슬라이더
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  // 알약형 트랙
-                  trackShape: const RoundedRectSliderTrackShape(),
-                  trackHeight: 14,
-                  // 엄지
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 13,
-                    elevation: 2,
-                    pressedElevation: 4,
-                  ),
-                  overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 24,
-                  ),
-                  // 눈금 제거
-                  tickMarkShape: SliderTickMarkShape.noTickMark,
-                  activeTickMarkColor: Colors.transparent,
-                  inactiveTickMarkColor: Colors.transparent,
-                  // 색상
-                  activeTrackColor: _accent,
-                  inactiveTrackColor: _accent.withValues(alpha: 0.22),
-                  thumbColor: _accent,
-                  overlayColor: _accent.withValues(alpha: 0.16),
-                  // 값 라벨(항상 표시하려면 always)
-                  showValueIndicator: ShowValueIndicator.onDrag,
-                  valueIndicatorColor: _accent,
-                  valueIndicatorTextStyle: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                child: Slider(
-                  value: _sud.toDouble(),
-                  min: 0,
-                  max: 10,
-                  divisions: 10,
-                  label: '$_sud',
-                  onChanged: (v) => setState(() => _sud = v.round()),
-                ),
-              ),
-              const Row(
-                children: [
-                  Text('불안하지 않음', style: TextStyle(color: Colors.black87)),
-                  Spacer(),
-                  Text('불안함', style: TextStyle(color: Colors.black87)),
-                ],
-              ),
-            ],
-          ),
-        ],
+      child: SudRatingContent(
+        value: _sud,
+        onChanged: (value) => setState(() => _sud = value),
       ),
     );
   }

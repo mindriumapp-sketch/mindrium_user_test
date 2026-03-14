@@ -5,30 +5,24 @@
 //   RelaxOrAlternativePage → RelaxYesOrNo
 //     ├─ “예” → /relaxation_noti (이완 오디오 재생 화면)
 //     └─ “아니오” → /home (메인 홈 화면)
-// import 목록:
-//   dart:math                        → 이미지 크기 제한용 math.min()
-//   flutter/material.dart            → 기본 Flutter 위젯
-//   gad_app_team/widgets/inner_btn_card.dart → 카드형 2버튼 UI 위젯
-
-import 'dart:math' as math;
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/utils/text_line_utils.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_prompt_content.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
-import 'package:gad_app_team/data/apply_solve_provider.dart';
-import 'package:provider/provider.dart';
 
 class RelaxYesOrNo extends StatelessWidget {
   const RelaxYesOrNo({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
-    final String? abcId = flow.diaryId ?? args['abcId'] as String?;
-    final String? sudId = flow.sudId ?? args['sudId'] as String?;
-    final int? beforeSud = flow.beforeSud ?? args['beforeSud'] as int?;
-    final diary = args['diary'] ?? flow.diary;
-    final String origin = flow.origin;
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final String? abcId = route.abcId;
+    final String? sudId = route.sudId;
+    final int? beforeSud = route.beforeSud;
+    final String origin = route.origin;
 
     return InnerBtnCardScreen(
       appBarTitle: '이완 활동 진행',
@@ -39,17 +33,18 @@ class RelaxYesOrNo extends StatelessWidget {
         Navigator.pushNamed(
           context,
           '/relaxation_noti',
-          arguments: {
-            ...flow.toArgs(),
-            'taskId': abcId,
-            'mp3Asset': 'noti.mp3',
-            'riveAsset': 'noti.riv',
-            'nextPage': '/relaxation_score',
-            'diary': diary,
-            'origin': origin,
-            'beforeSud': beforeSud,
-            'sudId': sudId,
-          },
+          arguments: route.mergedArgs(
+            extra: {
+              'taskId': abcId,
+              'mp3Asset': 'noti.mp3',
+              'riveAsset': 'noti.riv',
+              'nextPage': '/relaxation_score',
+              'origin': origin,
+              'beforeSud': beforeSud,
+              'sudId': sudId,
+            },
+            includeDiary: true,
+          ),
         );
       },
       // “아니오” 버튼 → 홈 복귀
@@ -58,28 +53,8 @@ class RelaxYesOrNo extends StatelessWidget {
         Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
       },
       // 카드 내부 본문
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 4),
-          Image.asset(
-            'assets/image/pink3.png',
-            height: math.min(180, MediaQuery.of(context).size.width * 0.38),
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            protectKoreanWords('예를 누르면 이완 활동 페이지로 넘어가요!\n 아니오를 누르면 홈으로 돌아가요!'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w200,
-              color: Color(0xFF626262),
-              height: 1.8,
-              wordSpacing: 1.2,
-            ),
-          ),
-        ],
+      child: const ApplyFlowPromptContent(
+        message: '예를 누르면 이완 활동 페이지로 이동해요.\n아니오를 누르면 홈으로 돌아가요.',
       ),
     );
   }

@@ -10,24 +10,23 @@
 //   gad_app_team/widgets/custom_appbar.dart → 상단 공용 CustomAppBar 사용
 
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
-import 'package:gad_app_team/data/apply_solve_provider.dart';
-import 'package:provider/provider.dart';
 
 class DiaryOrRelaxOrHome extends StatelessWidget {
   const DiaryOrRelaxOrHome({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map?;
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
-    final String? abcId = flow.diaryId ??
-        args?['abcId'] as String? ??
-        args?['diaryId'] as String?;
-    final String? groupId = flow.groupId ?? args?['groupId'] as String?;
-    final String? taskId = abcId ?? groupId;
-    final int? beforeSud = flow.beforeSud ?? args?['beforeSud'] as int?;
-    final String? sudId = flow.sudId ?? args?['sudId'] as String?;
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final String? abcId = route.abcId;
+    final String? groupId = route.groupId;
+    final String? taskId = route.taskId;
+    final int? beforeSud = route.beforeSud;
+    final String? sudId = route.sudId;
 
     return InnerBtnCardScreen(
       appBarTitle: '다음 단계 선택',
@@ -40,17 +39,18 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
         Navigator.pushNamed(
           context,
           '/relaxation_noti',
-          arguments: {
-            ...flow.toArgs(),
-            'taskId': taskId,
-            if (abcId != null) 'abcId': abcId,
-            'mp3Asset': 'noti.mp3',
-            'riveAsset': 'noti.riv',
-            'nextPage': '/relaxation_score',
-            'origin': 'apply',
-            'beforeSud': beforeSud,
-            'sudId': sudId,
-          },
+          arguments: route.mergedArgs(
+            extra: {
+              'taskId': taskId,
+              if (abcId != null) 'abcId': abcId,
+              'mp3Asset': 'noti.mp3',
+              'riveAsset': 'noti.riv',
+              'nextPage': '/relaxation_score',
+              'origin': 'apply',
+              'beforeSud': beforeSud,
+              'sudId': sudId,
+            },
+          ),
         );
       },
       onSecondary: () {
@@ -67,7 +67,9 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                 Navigator.pushNamed(
                   context,
                   '/diary_select',
-                  arguments: {'groupId': groupId, 'beforeSud': beforeSud},
+                  arguments: route.mergedArgs(
+                    extra: {'groupId': groupId, 'beforeSud': beforeSud},
+                  ),
                 );
               },
               style: FilledButton.styleFrom(
@@ -83,7 +85,7 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Noto Sans KR',
-                  color: Colors.white
+                  color: Colors.white,
                 ),
               ),
             ),

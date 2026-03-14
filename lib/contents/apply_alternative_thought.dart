@@ -1,11 +1,11 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
 import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_alternative_thoughts.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
@@ -34,18 +34,27 @@ class _ApplyAlternativeThoughtScreenState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow =
-        context.read<ApplyOrSolveFlow>()
-          ..syncFromArgs(args, override: true, notify: false);
+    final rawArgs = ModalRoute.of(context)?.settings.arguments;
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: rawArgs,
+      override: true,
+      notify: false,
+    );
+    final flow = route.flow;
     if (!_didPostFrameSync) {
       _didPostFrameSync = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        flow.syncFromArgs(args, override: true);
+        ApplyFlowRouteData.read(
+          context,
+          rawArgs: rawArgs,
+          override: true,
+          notify: true,
+        );
       });
     }
-    _abcId = args['abcId'] as String? ?? flow.diaryId;
+    _abcId = route.abcId;
     if (_abcId != null) flow.setDiaryId(_abcId);
     if (_bList.isEmpty && !_loading) _fetchBeliefs();
   }
@@ -151,18 +160,19 @@ class _ApplyAlternativeThoughtScreenState
   void _onSelect(String b) {
     final all = _bList;
     final remaining = List<String>.from(all)..remove(b);
-    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
-    final diary = args['diary'] ?? flow.diary;
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final diary = route.diary;
     Navigator.push(
       context,
       MaterialPageRoute(
         settings: RouteSettings(
-          arguments: {
-            ...flow.toArgs(),
-            'origin': 'apply',
-            if (diary != null) 'diary': diary,
-          },
+          arguments: route.mergedArgs(
+            extra: {'origin': 'apply'},
+            includeDiary: true,
+          ),
         ),
         builder:
             (_) => Week4AlternativeThoughtsScreen(
@@ -184,6 +194,26 @@ class _ApplyAlternativeThoughtScreenState
     Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
   }
 
+  Widget _buildContent() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return _BeliefStatusMessage(message: _error!, color: Colors.red);
+    }
+    if (_bList.isEmpty) {
+      return const _BeliefStatusMessage(
+        message: '일기나 그룹에서 불러올 생각이 아직 없어요.\n다음에 다시 이어서 해도 괜찮아요.',
+        color: Colors.black54,
+      );
+    }
+    return _BeliefSelectionList(
+      beliefs: _bList,
+      selectedIndex: _selectedIndex,
+      onSelect: (index) => setState(() => _selectedIndex = index),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userName = context.read<UserProvider>().userName;
@@ -201,92 +231,111 @@ class _ApplyAlternativeThoughtScreenState
         if (_selectedIndex == null) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('생각을 선택해주세요.')));
+          ).showSnackBar(const SnackBar(content: Text('생각을 하나 선택해 주세요.')));
           return;
         }
         final b = _bList[_selectedIndex!];
         _onSelect(b);
       },
-      // ✅ 리스트 렌더링 복구 (Flexible + shrinkWrap)
-      child:
-          _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? Center(
-                child: Text(
-                  protectKoreanWords(_error!),
-                  style: const TextStyle(color: Colors.red, fontSize: 16),
-                ),
-              )
-              : _bList.isEmpty
-              ? Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  protectKoreanWords('일기/그룹에서 불러올 생각이 없습니다.'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.black54,
-                    fontSize: 15,
-                    fontFamily: 'Noto Sans KR',
-                  ),
-                ),
-              )
-              : SizedBox(
-                // ListView가 Flex가 아닌 부모 안에서 ParentData 오류를 내던 문제를
-                // 명시적 높이 박스로 감싸 해결
-                height: 320,
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: _bList.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final b = _bList[index];
-                    final selected = _selectedIndex == index;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() => _selectedIndex = index);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              selected
-                                  ? const Color(
-                                    0xFF47A6FF,
-                                  ).withValues(alpha: 0.15)
-                                  : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color:
-                                selected
-                                    ? const Color(0xFF47A6FF)
-                                    : Colors.grey.shade300,
-                            width: selected ? 2 : 1,
-                          ),
-                        ),
-                        child: Text(
-                          protectKoreanWords(b),
-                          style: TextStyle(
-                            fontSize: 15.5,
-                            color:
-                                selected
-                                    ? const Color(0xFF0B5394)
-                                    : Colors.black87,
-                            fontWeight:
-                                selected ? FontWeight.w600 : FontWeight.w400,
-                            fontFamily: 'Noto Sans KR',
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+      child: _buildContent(),
+    );
+  }
+}
+
+class _BeliefStatusMessage extends StatelessWidget {
+  const _BeliefStatusMessage({required this.message, required this.color});
+
+  final String message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Text(
+        protectKoreanWords(message),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: color,
+          fontSize: 15,
+          fontFamily: 'Noto Sans KR',
+        ),
+      ),
+    );
+  }
+}
+
+class _BeliefSelectionList extends StatelessWidget {
+  const _BeliefSelectionList({
+    required this.beliefs,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  final List<String> beliefs;
+  final int? selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 320,
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: beliefs.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          return _BeliefOptionTile(
+            belief: beliefs[index],
+            selected: selectedIndex == index,
+            onTap: () => onSelect(index),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BeliefOptionTile extends StatelessWidget {
+  const _BeliefOptionTile({
+    required this.belief,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String belief;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? const Color(0xFF47A6FF).withValues(alpha: 0.15)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? const Color(0xFF47A6FF) : Colors.grey.shade300,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          protectKoreanWords(belief),
+          style: TextStyle(
+            fontSize: 15.5,
+            color: selected ? const Color(0xFF0B5394) : Colors.black87,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            fontFamily: 'Noto Sans KR',
+          ),
+        ),
+      ),
     );
   }
 }

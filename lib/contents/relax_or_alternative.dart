@@ -4,30 +4,25 @@
 //   BeforeSudRatingScreen → RelaxOrAlternativePage
 //     ├─ “이완 활동” → /relaxation_noti (이완 오디오 재생 화면)
 //     └─ “대체 생각 작성” → /apply_alt_thought (대체 사고 적용 화면)
-// import 목록:
-//   dart:math                        → 이미지 크기 제한용 math.min()
-//   flutter/material.dart            → 기본 Flutter 위젯
-//   gad_app_team/widgets/custom_appbar.dart → 상단 공용 CustomAppBar (AppBar용)
-//   gad_app_team/widgets/inner_btn_card.dart → 카드형 2버튼 UI(InnerBtnCardScreen) 사용
-
-import 'dart:math' as math;
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_prompt_content.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
-import 'package:gad_app_team/data/apply_solve_provider.dart';
-import 'package:provider/provider.dart';
 
 class RelaxOrAlternativePage extends StatelessWidget {
   const RelaxOrAlternativePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
-    final String? abcId = flow.diaryId ?? args['abcId'] as String?;
-    final String? sudId = flow.sudId ?? args['sudId'] as String?;
-    final int? beforeSud = flow.beforeSud ?? args['beforeSud'] as int?;
-    final dynamic diary = args['diary'] ?? flow.diary;
-    final String origin = flow.origin;
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final String? abcId = route.abcId;
+    final String? sudId = route.sudId;
+    final int? beforeSud = route.beforeSud;
+    final dynamic diary = route.diary;
+    final String origin = route.origin;
 
     return InnerBtnCardScreen(
       appBarTitle: '다음 단계 선택',
@@ -38,17 +33,18 @@ class RelaxOrAlternativePage extends StatelessWidget {
         Navigator.pushNamed(
           context,
           '/relaxation_noti',
-          arguments: {
-            ...flow.toArgs(),
-            'taskId': abcId,
-            'mp3Asset': 'noti.mp3',
-            'riveAsset': 'noti.riv',
-            'nextPage': '/relaxation_score',
-            'diary': diary,
-            'origin': origin,
-            'beforeSud': beforeSud,
-            'sudId': sudId,
-          },
+          arguments: route.mergedArgs(
+            extra: {
+              'taskId': abcId,
+              'mp3Asset': 'noti.mp3',
+              'riveAsset': 'noti.riv',
+              'nextPage': '/relaxation_score',
+              'origin': origin,
+              'beforeSud': beforeSud,
+              'sudId': sudId,
+            },
+            includeDiary: true,
+          ),
         );
       },
       secondaryText: '대체 생각 작성',
@@ -59,28 +55,18 @@ class RelaxOrAlternativePage extends StatelessWidget {
         Navigator.pushNamed(
           context,
           '/apply_alt_thought',
-          arguments: {
-            ...flow.toArgs(),
-            'abcId': abcId,
-            'beforeSud': beforeSud,
-            'sudId': sudId,
-            'origin': origin,
-            if (diary != null) 'diary': diary,
-          },
+          arguments: route.mergedArgs(
+            extra: {
+              'abcId': abcId,
+              'beforeSud': beforeSud,
+              'sudId': sudId,
+              'origin': origin,
+            },
+            includeDiary: true,
+          ),
         );
       },
-      // 카드 안 본문
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 4),
-          Image.asset(
-            'assets/image/pink3.png',
-            height: math.min(180, MediaQuery.of(context).size.width * 0.38),
-            fit: BoxFit.contain,
-          ),
-        ],
-      ),
+      child: const ApplyFlowPromptContent(),
     );
   }
 }

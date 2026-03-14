@@ -2,19 +2,19 @@
 // ‘아니오’ 클릭 시 로딩중 표시 + FastAPI 저장 + 위치 timeout 안전 처리
 
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_prompt_content.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
 import 'package:dio/dio.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
+import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
-import 'package:gad_app_team/data/apply_solve_provider.dart';
-import 'package:provider/provider.dart';
 
 class DiaryYesOrNo extends StatelessWidget {
   const DiaryYesOrNo({super.key});
@@ -33,9 +33,14 @@ class DiaryYesOrNo extends StatelessWidget {
     return null;
   }
 
-  Future<void> _handleNo(BuildContext context, Map args, dynamic diary) async {
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
-    final origin = flow.origin;
+  Future<void> _handleNo(
+    BuildContext context,
+    Map<String, dynamic> args,
+    dynamic diary,
+  ) async {
+    final route = ApplyFlowRouteData.read(context, rawArgs: args);
+    final flow = route.flow;
+    final origin = route.origin;
     final tokens = TokenStorage();
     final access = await tokens.access;
     if (access == null) {
@@ -126,8 +131,7 @@ class DiaryYesOrNo extends StatelessWidget {
             if ((p.administrativeArea ?? '').trim().isNotEmpty)
               p.administrativeArea!.trim(),
             if ((p.locality ?? '').trim().isNotEmpty) p.locality!.trim(),
-            if ((p.subLocality ?? '').trim().isNotEmpty)
-              p.subLocality!.trim(),
+            if ((p.subLocality ?? '').trim().isNotEmpty) p.subLocality!.trim(),
             if ((p.thoroughfare ?? '').trim().isNotEmpty)
               p.thoroughfare!.trim(),
             if ((p.subThoroughfare ?? '').trim().isNotEmpty)
@@ -142,19 +146,10 @@ class DiaryYesOrNo extends StatelessWidget {
       }
     }
 
-    final activationLabel =
-        '자동 생성 일기 \n주소: ${addressKo ?? '확인되지 않음'}';
+    final activationLabel = '자동 생성 일기 \n주소: ${addressKo ?? '확인되지 않음'}';
     final activationChip = diariesApi.makeDiaryChip(label: activationLabel);
 
-    int? beforeSud;
-    final rawSud = args['beforeSud'];
-    if (rawSud is int) {
-      beforeSud = rawSud;
-    } else if (rawSud is num) {
-      beforeSud = rawSud.round();
-    } else if (rawSud is String) {
-      beforeSud = int.tryParse(rawSud);
-    }
+    final beforeSud = route.beforeSud;
     flow.setBeforeSud(beforeSud);
     flow.setOrigin(origin);
 
@@ -214,30 +209,33 @@ class DiaryYesOrNo extends StatelessWidget {
     } on DioException catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // 로딩창 닫기
-        final detail = e.response?.data is Map
-            ? (e.response?.data['detail']?.toString() ??
-                e.response?.data.toString())
-            : e.message;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 저장 중 오류가 발생했습니다: $detail')),
-        );
+        final detail =
+            e.response?.data is Map
+                ? (e.response?.data['detail']?.toString() ??
+                    e.response?.data.toString())
+                : e.message;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('데이터 저장 중 오류가 발생했습니다: $detail')));
       }
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // 로딩창 닫기
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 저장 중 오류가 발생했습니다: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('데이터 저장 중 오류가 발생했습니다: $e')));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
-    final dynamic diary = args['diary'] ?? flow.diary;
-    final String origin = flow.origin;
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final dynamic diary = route.diary;
+    final String origin = route.origin;
 
     return InnerBtnCardScreen(
       appBarTitle: '걱정 일기 진행',
@@ -247,40 +245,21 @@ class DiaryYesOrNo extends StatelessWidget {
         Navigator.pushNamed(
           context,
           '/abc',
-          arguments: {
-            ...flow.toArgs(),
-            'origin': origin,
-            'abcId': null,
-            if (diary != null) 'diary': diary,
-            'beforeSud': args['beforeSud'],
-          },
+          arguments: route.mergedArgs(
+            extra: {
+              'origin': origin,
+              'abcId': null,
+              'beforeSud': route.beforeSud,
+            },
+            includeDiary: true,
+          ),
         );
       },
       secondaryText: '아니오',
-      onSecondary: () => _handleNo(context, args, diary),
+      onSecondary: () => _handleNo(context, route.args, diary),
       backgroundAsset: 'assets/image/eduhome.png',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset(
-            'assets/image/pink3.png',
-            height: math.min(180, MediaQuery.of(context).size.width * 0.38),
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '예를 누르면 걱정일기 작성 페이지로 넘어가요!\n'
-            '아니오를 누르면 걱정그룹 추가 페이지로 넘어가요!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w200,
-              color: Color(0xFF626262),
-              height: 1.8,
-              wordSpacing: 1.2,
-            ),
-          ),
-        ],
+      child: const ApplyFlowPromptContent(
+        message: '예를 누르면 걱정 일기를 새로 작성해요.\n아니오를 누르면 걱정 그룹 추가로 넘어가요.',
       ),
     );
   }

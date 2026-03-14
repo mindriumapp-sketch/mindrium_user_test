@@ -1,19 +1,19 @@
-import 'dart:math' as math;
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
-import 'package:gad_app_team/utils/text_line_utils.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_prompt_content.dart';
+import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
 
 class AltYesOrNo extends StatelessWidget {
   const AltYesOrNo({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final String? abcId = args['abcId'] as String?;
-    final dynamic rawOrigin = args['origin'];
-    final String origin = rawOrigin is String
-        ? (rawOrigin == 'solve' ? 'apply' : rawOrigin)
-        : 'apply';
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final String? abcId = route.abcId;
+    final String origin = route.origin;
 
     return InnerBtnCardScreen(
       appBarTitle: '대체 생각 진행',
@@ -24,10 +24,10 @@ class AltYesOrNo extends StatelessWidget {
         Navigator.pushNamed(
           context,
           '/apply_alt_thought',
-          arguments: {
-            'taskId': abcId,
-            'origin': origin,
-          },
+          arguments: route.mergedArgs(
+            extra: {'taskId': abcId, 'origin': origin},
+            includeDiary: true,
+          ),
         );
       },
       // “아니오” 버튼 → 홈 복귀
@@ -36,28 +36,8 @@ class AltYesOrNo extends StatelessWidget {
         Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
       },
       // 카드 내부 본문
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 4),
-          Image.asset(
-            'assets/image/pink3.png',
-            height: math.min(180, MediaQuery.of(context).size.width * 0.38),
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            protectKoreanWords('예를 누르면 대체 생각 페이지로 넘어가요!\n 아니오를 누르면 홈으로 돌아가요!'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w200,
-              color: Color(0xFF626262),
-              height: 1.8,
-              wordSpacing: 1.2,
-            ),
-          ),
-        ],
+      child: const ApplyFlowPromptContent(
+        message: '예를 누르면 대체 생각 페이지로 이동해요.\n아니오를 누르면 홈으로 돌아가요.',
       ),
     );
   }
