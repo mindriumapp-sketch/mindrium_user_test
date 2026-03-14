@@ -586,7 +586,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         Expanded(
           child: _buildSnapshotTile(
             icon: Icons.local_fire_department_outlined,
-            label: '연속 참여',
+            label: '함께한 시간',
             value: streakText,
           ),
         ),
