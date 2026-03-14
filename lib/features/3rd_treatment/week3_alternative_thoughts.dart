@@ -1,6 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
-import 'package:gad_app_team/widgets/chips_editor.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_visual_screen.dart';
 
 // ⭐ 5주차에서 썼던 더블 카드 레이아웃
@@ -33,9 +32,8 @@ class _Week3AlternativeThoughtsScreenState
   // ───────── 상단 카드 내용 ─────────
   Widget _buildTopPanel() {
     // 앞 화면에서 입력한 불안한 생각을 가져옵니다.
-    final String negativeThought = widget.previousChips.isNotEmpty
-        ? widget.previousChips.join(', ')
-        : '';
+    final String negativeThought =
+        widget.previousChips.isNotEmpty ? widget.previousChips.join(', ') : '';
 
     return SizedBox(
       height: 150, // 위쪽 카드 높이 통일
@@ -133,10 +131,10 @@ class _Week3AlternativeThoughtsScreenState
       PageRouteBuilder(
         pageBuilder:
             (_, __, ___) => Week3VisualScreen(
-                  sessionId: widget.sessionId,
-                  previousChips: widget.previousChips,
-                  alternativeChips: [value],
-                ),
+              sessionId: widget.sessionId,
+              previousChips: widget.previousChips,
+              alternativeChips: [value],
+            ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),

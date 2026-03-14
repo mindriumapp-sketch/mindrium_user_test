@@ -183,6 +183,12 @@ flutter:
     - assets/image/week5_scenario1.jpg
     - assets/image/week5_scenario2.jpg
     - assets/image/week5_scenario3.jpg
+    - assets/image/widget_tutorial_1.png
+    - assets/image/widget_tutorial_2.png
+    - assets/image/widget_tutorial_3.png
+    - assets/image/widget_tutorial_4.png
+    - assets/image/widget_tutorial_5.png
+    - assets/image/widget_tutorial_6.png
 
 
 
@@ -238,6 +244,11 @@ flutter:
     - assets/education_data/week1_relaxation_3.json
     - assets/education_data/week1_relaxation_4.json
     - assets/education_data/week1_relaxation_5.json
+    - assets/education_data/week2_relaxation_1.json
+    - assets/education_data/week2_relaxation_2.json
+    - assets/education_data/week2_relaxation_3.json
+    - assets/education_data/week2_relaxation_4.json
+    - assets/education_data/week2_relaxation_5.json
 
     - assets/relaxation/week1.riv
     - assets/relaxation/week1.mp3
@@ -260,10 +271,6 @@ flutter:
 
     - assets/image/alternative thoughts.png
     - assets/image/imagination.png
-
-    # chatbot assets
-    - assets/images/
-    - assets/data/
 
 flutter_native_splash:
   color: "#F9F5F9"

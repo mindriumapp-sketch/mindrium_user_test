@@ -1,6 +1,6 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_guide_screen.dart';
-import 'package:gad_app_team/features/value_start.dart';
+import 'package:gad_app_team/features/session_start.dart';
 
 // ✅ edu_sessions create용 import
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -55,13 +55,13 @@ class _Week2ScreenState extends State<Week2Screen> {
       final client = ApiClient(tokens: tokens);
       final eduApi = EduSessionsApi(client);
 
-      // TODO: 실제 2주차 교육 슬라이드 수에 맞게 totalScreens 수정
-      const int totalScreens = 15;
+      // TODO: 실제 2주차 교육 슬라이드 수에 맞게 totalStages 수정
+      const int totalStages = 15;
 
       final res = await eduApi.createCommonSession(
         weekNumber: 2,
-        totalScreens: totalScreens,
-        lastScreenIndex: 1, // 시작 시 1번 화면
+        totalStages: totalStages,
+        lastStageIndex: 1, // 시작 시 1번 화면
         completed: false, // 시작 시점에는 미완료
         startTime: DateTime.now(), // 지금 시간
         endTime: null,
@@ -86,7 +86,7 @@ class _Week2ScreenState extends State<Week2Screen> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueStartScreen(
+    return SessionStartScreen(
       weekNumber: 2,
       weekTitle: 'ABC 모델을 통해 불안의 원인을 분석해보겠습니다.',
       weekDescription:

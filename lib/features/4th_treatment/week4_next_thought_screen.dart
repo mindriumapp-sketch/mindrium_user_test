@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_screen.dart';
+import 'package:gad_app_team/features/4th_treatment/week4_flow_prompt_widgets.dart';
 
 // ✅ ApplyDesign (배경 + AppBar + BlueWhiteCard + 하단 네비 버튼)
 import 'package:gad_app_team/widgets/tutorial_design.dart';
-import 'package:gad_app_team/widgets/ruled_paragraph.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -15,7 +15,6 @@ import 'package:gad_app_team/data/api/custom_tags_api.dart';
 
 class Week4NextThoughtScreen extends StatefulWidget {
   final List<String> remainingBList;
-  final int beforeSud;
   final List<String> allBList;
   final List<String>? alternativeThoughts;
   final bool isFromAnxietyScreen;
@@ -27,7 +26,6 @@ class Week4NextThoughtScreen extends StatefulWidget {
   const Week4NextThoughtScreen({
     super.key,
     required this.remainingBList,
-    required this.beforeSud,
     required this.allBList,
     this.alternativeThoughts,
     this.isFromAnxietyScreen = false,
@@ -91,9 +89,9 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _activatingEvent = (diary?['activating_events'] ??
-                diary?['activatingEvent'])
-            ?.toString();
+        _activatingEvent =
+            (diary?['activating_events'] ?? diary?['activatingEvent'])
+                ?.toString();
         _isLoading = false;
       });
     } catch (_) {
@@ -106,67 +104,30 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
   Widget build(BuildContext context) {
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
     final nextThought =
-    widget.remainingBList.isNotEmpty ? widget.remainingBList.first : '';
-
-    const double kRuleWidth = 220;
-
-    // 안내문 텍스트
-    final situationText = (_activatingEvent != null && _activatingEvent!.isNotEmpty)
-        ? "$userName님, \n잘 따라오고 계십니다!\n 다시 '$_activatingEvent' (이)라는 상황을 \n자세하게 상상해 보세요."
-        : '이때의 상황을 자세하게 상상해 보세요.';
-    final nextThoughtText =
-        "일기에 작성하셨던 또 다른 \n생각인 '$nextThought'에 대해 \n계속 진행해보겠습니다.";
-
-    final followingText = _showSituation ? situationText : nextThoughtText;
-    final followingTextStyle = TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.w500,
-      color: Colors.black,
-      height: 1.8,
-      letterSpacing: 0.8,
-      fontFamily: 'Noto Sans KR',
-    );
+        widget.remainingBList.isNotEmpty ? widget.remainingBList.first : '';
+    final situationText =
+        (_activatingEvent != null && _activatingEvent!.isNotEmpty)
+            ? '$_activatingEvent 상황'
+            : '이때의 상황을 떠올려보세요.';
+    final remainingCount = widget.remainingBList.length;
 
     // === 카드 안에 들어갈 본문 위젯 ===
-    final Widget body = _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const SizedBox(height: 24),
-        Image.asset(
-          'assets/image/think_blue.png',
-          height: 160,
-          filterQuality: FilterQuality.high,
-        ),
-        const SizedBox(height: 20),
-        // 메인 안내
-        RuledParagraph(
-          text: followingText,
-          textAlign: TextAlign.center,
-          style: followingTextStyle,
-          lineColor: const Color(0xFFE1E8F0),
-          lineThickness: 1.2,
-          lineGapBelow: 8,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          lineWidth: kRuleWidth,
-        ),
-
-        const SizedBox(height: 24),
-
-        // 카운트다운 안내
-        if (!_isNextEnabled)
-          Text(
-            '$_secondsLeft초 후에 다음 버튼이 활성화됩니다',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF9BA7B4),
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-          ),
-      ],
+    final Widget body = Week4FlowPromptBody(
+      title: _showSituation ? '같은 상황을 한 번 더 떠올려볼게요' : '다음 생각으로 이어가볼게요',
+      subtitle:
+          _showSituation
+              ? '$userName님이 적어주신 같은 상황 안에서, 이어지는 다른 생각도 차례대로 살펴볼 거예요.'
+              : '같은 상황에서 떠오른 또 다른 생각을 살펴보고 도움이 되는 생각을 계속 찾아볼게요.',
+      situationText: situationText,
+      thoughtText: _showSituation ? null : nextThought,
+      footerText:
+          _showSituation
+              ? '상황이 선명하지 않아도 괜찮아요. 떠오르는 만큼만 천천히 머물러보세요.'
+              : '준비가 되면 다음 버튼을 눌러 이 생각도 차근차근 살펴보세요.',
+      badgeText: remainingCount > 0 ? '남은 생각 $remainingCount개' : null,
+      isLoading: _isLoading,
+      secondsLeft: _isNextEnabled ? null : _secondsLeft,
+      waitingText: '$_secondsLeft초 후에 다음으로 넘어갈 수 있어요',
     );
 
     // === ApplyDesign 사용: 배경/앱바/중앙 BlueWhiteCard/하단 네비 버튼 ===
@@ -174,63 +135,86 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
       appBarTitle: '인지 왜곡 찾기',
       cardTitle: '그때 상황 다시 떠올리기',
       onBack: () => Navigator.pop(context),
-      onNext: _isNextEnabled
-          ? () async {
-        if (_showSituation) {
-          setState(() => _showSituation = false);
-          return;
-        }
-        final navigator = Navigator.of(context);
-        // 1) 새로 입력한 불안 생각을 일기 belief에 누적 + 커스텀 태그 저장
-        try {
-          final newThoughts = widget.isFromAnxietyScreen ? widget.addedAnxietyThoughts : <String>[];
-          if (newThoughts.isNotEmpty) {
-            final id = widget.abcId;
-            // diaryId가 없으면 최신으로 보정
-            final diary = (id != null && id.isNotEmpty)
-                ? await _diariesApi.getDiary(id)
-                : await _diariesApi.getLatestDiary();
-            final diaryId = diary['diaryId']?.toString();
-            if (diaryId != null && diaryId.isNotEmpty) {
-              final List<String> existingBelief = [
-                ...((diary['belief'] is List)
-                    ? (diary['belief'] as List).map((e) => e.toString())
-                    : diary['belief']?.toString().split(',') ?? <String>[]),
-              ].map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-              final toAdd = newThoughts.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-              final merged = <String>{...existingBelief, ...toAdd}.toList();
-              await _diariesApi.updateDiary(diaryId, {'belief': merged});
-              // 커스텀 태그(B)로도 저장
-              for (final t in toAdd) {
-                await _customTagsApi.createCustomTag(label: t, type: 'B');
-              }
-            }
-          }
-        } catch (_) {}
+      onNext:
+          _isNextEnabled
+              ? () async {
+                if (_showSituation) {
+                  setState(() => _showSituation = false);
+                  return;
+                }
+                final navigator = Navigator.of(context);
+                // 1) 새로 입력한 불안 생각을 일기 belief에 누적 + 커스텀 태그 저장
+                try {
+                  final newThoughts =
+                      widget.isFromAnxietyScreen
+                          ? widget.addedAnxietyThoughts
+                          : <String>[];
+                  if (newThoughts.isNotEmpty) {
+                    final id = widget.abcId;
+                    // diaryId가 없으면 최신으로 보정
+                    final diary =
+                        (id != null && id.isNotEmpty)
+                            ? await _diariesApi.getDiary(id)
+                            : await _diariesApi.getLatestDiary();
+                    final diaryId = diary['diaryId']?.toString();
+                    if (diaryId != null && diaryId.isNotEmpty) {
+                      final List<String> existingBelief =
+                          [
+                                ...((diary['belief'] is List)
+                                    ? (diary['belief'] as List).map(
+                                      (e) => e.toString(),
+                                    )
+                                    : diary['belief']?.toString().split(',') ??
+                                        <String>[]),
+                              ]
+                              .map((e) => e.trim())
+                              .where((e) => e.isNotEmpty)
+                              .toList();
+                      final toAdd =
+                          newThoughts
+                              .map((e) => e.trim())
+                              .where((e) => e.isNotEmpty)
+                              .toList();
+                      final merged =
+                          <String>{...existingBelief, ...toAdd}.toList();
+                      await _diariesApi.updateDiary(diaryId, {
+                        'belief': merged,
+                      });
+                      // 커스텀 태그(B)로도 저장
+                      for (final t in toAdd) {
+                        await _customTagsApi.createCustomTag(
+                          label: t,
+                          type: 'B',
+                        );
+                      }
+                    }
+                  }
+                } catch (_) {}
 
-        // 2) 다음 화면 이동
-        if (!mounted) return;
-        navigator.push(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => Week4ClassificationScreen(
-              bListInput: widget.isFromAnxietyScreen
-                  ? widget.addedAnxietyThoughts
-                  : widget.remainingBList,
-              beforeSud: widget.beforeSud,
-              allBList: widget.allBList,
-              alternativeThoughts: widget.alternativeThoughts,
-              isFromAnxietyScreen: widget.isFromAnxietyScreen,
-              existingAlternativeThoughts:
-              widget.existingAlternativeThoughts,
-              abcId: widget.abcId,
-              loopCount: widget.loopCount,
-            ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      }
-          : null,
+                // 2) 다음 화면 이동
+                if (!mounted) return;
+                navigator.push(
+                  PageRouteBuilder(
+                    pageBuilder:
+                        (_, __, ___) => Week4ClassificationScreen(
+                          bListInput:
+                              widget.isFromAnxietyScreen
+                                  ? widget.addedAnxietyThoughts
+                                  : widget.remainingBList,
+                          allBList: widget.allBList,
+                          alternativeThoughts: widget.alternativeThoughts,
+                          isFromAnxietyScreen: widget.isFromAnxietyScreen,
+                          existingAlternativeThoughts:
+                              widget.existingAlternativeThoughts,
+                          abcId: widget.abcId,
+                          loopCount: widget.loopCount,
+                        ),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                  ),
+                );
+              }
+              : null,
       child: body, // 비활성화 상태면 null 전달 → NavigationButtons에서 비활성 처리
     );
   }

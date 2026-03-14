@@ -1,5 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/features/value_start.dart';
+import 'package:gad_app_team/features/session_start.dart';
 import 'package:gad_app_team/features/6th_treatment/week6_abc_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
@@ -54,12 +54,12 @@ class _Week6ScreenState extends State<Week6Screen> {
       final client = ApiClient(tokens: tokens);
       final eduApi = EduSessionsApi(client);
 
-      const int totalScreens = 12;
+      const int totalStages = 12;
 
       final res = await eduApi.createCommonSession(
         weekNumber: 6,
-        totalScreens: totalScreens,
-        lastScreenIndex: 1,
+        totalStages: totalStages,
+        lastStageIndex: 1,
         completed: false,
         startTime: DateTime.now(),
         endTime: null,
@@ -71,7 +71,9 @@ class _Week6ScreenState extends State<Week6Screen> {
         _sessionId = (res['session_id'] as String?)?.trim();
       });
 
-      debugPrint('[Week6Screen] edu-sessions create 성공 (week=6, id=$_sessionId)');
+      debugPrint(
+        '[Week6Screen] edu-sessions create 성공 (week=6, id=$_sessionId)',
+      );
     } catch (e) {
       if (!mounted) return;
       debugPrint('[Week6Screen] edu-sessions create 실패: $e');
@@ -81,7 +83,7 @@ class _Week6ScreenState extends State<Week6Screen> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueStartScreen(
+    return SessionStartScreen(
       weekNumber: 6,
       weekTitle: '불안 직면과 회피를 실습해보겠습니다.',
       weekDescription:

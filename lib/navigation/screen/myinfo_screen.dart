@@ -342,6 +342,8 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                           ),
                           const SizedBox(height: 14),
                           _buildArchivedWorryFishSection(),
+                          const SizedBox(height: 14),
+                          _buildSettingsEntryCard(),
                         ],
                       ),
                       if (isLoading)
@@ -545,6 +547,76 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     );
   }
 
+  Widget _buildSettingsEntryCard() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/settings'),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
+        decoration: BoxDecoration(
+          color: const Color(0xFCFFFFFF),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFE5EDF4)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0D000000),
+              blurRadius: 16,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F7FB),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.settings_rounded,
+                size: 22,
+                color: Color(0xFF2C4154),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '환경설정',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2C4154),
+                      fontFamily: 'Noto Sans KR',
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '앱 설정, 고객지원, 서비스 정보, 계정을 관리해요.',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.45,
+                      color: Colors.grey.shade600,
+                      fontFamily: 'Noto Sans KR',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFA0ACB7),
+              size: 26,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildFormPanel({
     required List<Widget> children,

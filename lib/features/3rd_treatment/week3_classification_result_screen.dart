@@ -1,7 +1,6 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
-import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_classification_detail_screen.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_explain_alternative_thoughts.dart';
@@ -34,10 +33,7 @@ class Week3ClassificationResultScreen extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFEAF7FF),
-                  Color(0xFFF7FCFF),
-                ],
+                colors: [Color(0xFFEAF7FF), Color(0xFFF7FCFF)],
               ),
             ),
           ),
@@ -65,15 +61,15 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                             width: double.infinity,
                             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.72),
+                              color: Colors.white.withValues(alpha: 0.72),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.75),
+                                color: Colors.white.withValues(alpha: 0.75),
                                 width: 1.2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.06),
+                                  color: Colors.black.withValues(alpha: 0.06),
                                   blurRadius: 22,
                                   offset: const Offset(0, 10),
                                 ),
@@ -85,7 +81,9 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF19C37D).withOpacity(0.14),
+                                    color: const Color(
+                                      0xFF19C37D,
+                                    ).withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: const Icon(
@@ -97,7 +95,8 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: const [
                                       Text(
                                         '이번 연습 결과',
@@ -128,15 +127,15 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.80),
+                              color: Colors.white.withValues(alpha: 0.80),
                               borderRadius: BorderRadius.circular(32),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.85),
+                                color: Colors.white.withValues(alpha: 0.85),
                                 width: 1.3,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 28,
                                   offset: const Offset(0, 14),
                                 ),
@@ -155,7 +154,9 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                                     height: 108,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: const Color(0xFF19C37D).withOpacity(0.10),
+                                      color: const Color(
+                                        0xFF19C37D,
+                                      ).withValues(alpha: 0.10),
                                     ),
                                     child: Center(
                                       child: Image.asset(
@@ -218,10 +219,14 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                                       vertical: 14,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF19C37D).withOpacity(0.10),
+                                      color: const Color(
+                                        0xFF19C37D,
+                                      ).withValues(alpha: 0.10),
                                       borderRadius: BorderRadius.circular(18),
                                       border: Border.all(
-                                        color: const Color(0xFF19C37D).withOpacity(0.16),
+                                        color: const Color(
+                                          0xFF19C37D,
+                                        ).withValues(alpha: 0.16),
                                       ),
                                     ),
                                     child: Row(
@@ -263,20 +268,27 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (_) =>
-                                                Week3ClassificationDetailScreen(
-                                                  quizResults: quizResults,
-                                                ),
+                                            builder:
+                                                (_) =>
+                                                    Week3ClassificationDetailScreen(
+                                                      quizResults: quizResults,
+                                                    ),
                                           ),
                                         );
                                       },
                                       style: ElevatedButton.styleFrom(
                                         elevation: 0,
-                                        backgroundColor: const Color(0xFF263C69),
+                                        backgroundColor: const Color(
+                                          0xFF263C69,
+                                        ),
                                         foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(18),
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
                                         ),
                                       ),
                                       child: const Text(
@@ -300,17 +312,18 @@ class Week3ClassificationResultScreen extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     onNext: () {
                       Navigator.push(
                         context,
                         PageRouteBuilder(
-                          pageBuilder: (_, __, ___) =>
-                              Week3ExplainAlternativeThoughtsScreen(
-                            sessionId: sessionId,
-                            chips: const [],
-                          ),
+                          pageBuilder:
+                              (_, __, ___) =>
+                                  Week3ExplainAlternativeThoughtsScreen(
+                                    sessionId: sessionId,
+                                    chips: const [],
+                                  ),
                           transitionDuration: Duration.zero,
                           reverseTransitionDuration: Duration.zero,
                         ),

@@ -22,6 +22,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final PreferredSizeWidget? bottom; // ← 선택: 필요하면 하단 영역도 추가 가능
   final int maxTitleLines; // 긴 제목 줄바꿈 제어
   final TextAlign titleAlign; // 제목 정렬
+  final double actionIconGap; // extraIcon 과 home 아이콘 사이 간격
 
   const CustomAppBar({
     super.key,
@@ -40,6 +41,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.bottom, // ← 추가
     this.maxTitleLines = 1,
     this.titleAlign = TextAlign.start,
+    this.actionIconGap = 0,
   }) : assert(
          extraRoute == null || onExtraPressed == null,
          'extraRoute와 onExtraPressed는 둘 중 하나만 지정하세요.',
@@ -54,21 +56,21 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   Future<bool> _confirmExit(BuildContext context) async {
     return await showDialog<bool>(
-        context: context,
-        barrierColor: Colors.black.withAlpha(
-          60,
-        ), // ← withOpacity 대신 Alpha 직접 지정
-        barrierDismissible: false,
-        builder:
-            (_) => CustomPopupDesign(
-          title: '종료하시겠어요?',
-          message: '지금 종료하면 진행 상황이 저장되지 않을 수 있습니다',
-          onPositivePressed: () => Navigator.pop(context, true),
-          onNegativePressed: () => Navigator.pop(context, false),
-          positiveText: '나가기',
-          negativeText: '취소',
-        )
-    ) ??
+          context: context,
+          barrierColor: Colors.black.withAlpha(
+            60,
+          ), // ← withOpacity 대신 Alpha 직접 지정
+          barrierDismissible: false,
+          builder:
+              (_) => CustomPopupDesign(
+                title: '종료하시겠어요?',
+                message: '지금 종료하면 진행 상황이 저장되지 않을 수 있습니다',
+                onPositivePressed: () => Navigator.pop(context, true),
+                onNegativePressed: () => Navigator.pop(context, false),
+                positiveText: '나가기',
+                negativeText: '취소',
+              ),
+        ) ??
         false;
   }
 
@@ -110,7 +112,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         title,
         maxLines: maxTitleLines,
         softWrap: maxTitleLines > 1,
-        overflow: maxTitleLines > 1 ? TextOverflow.visible : TextOverflow.ellipsis,
+        overflow:
+            maxTitleLines > 1 ? TextOverflow.visible : TextOverflow.ellipsis,
         textAlign: titleAlign,
         textWidthBasis: TextWidthBasis.parent,
         style:
@@ -141,6 +144,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   },
             ),
           ),
+        if (extraIcon != null && showHome && actionIconGap > 0)
+          SizedBox(width: actionIconGap),
         if (showHome)
           Padding(
             padding: const EdgeInsets.only(right: 8),

@@ -1,128 +1,19 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:dio/dio.dart';
-import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/survey_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-
-/// --------- 스타일 ---------
-class _SColors {
-  static const black = AppColors.black;
-  // static const bodyMuted = Color(0xFF8F8F8F);
-  // static const labelDark = Color(0xFF2B2929);
-
-  // 카드 (불투명)
-  static const cardFill = Color(0xCCFFFFFF);
-  static const cardStroke = Color(0xFFD7E8FF);
-  static const cardRadius = AppSizes.borderRadius;
-  static const cardStrokeW = 2.0;
-
-  // 버튼
-  static const btnFill = Color(0xFF5DADEC);
-  static const btnText = AppColors.white;
-}
+import 'package:gad_app_team/widgets/tutorial_design.dart';
+import 'package:gad_app_team/widgets/blue_banner.dart';
 
 class _SText {
-  static const cardTitle = TextStyle(
-    fontSize: AppSizes.fontSize,
-    fontWeight: FontWeight.w700,
-    color: _SColors.black,
-    height: 1.35,
-  );
   static const intro = TextStyle(
     fontSize: AppSizes.fontSize,
     fontWeight: FontWeight.w400,
     color: Color.fromARGB(255, 72, 71, 71),
     height: 1.45,
   );
-  static const label = TextStyle(
-    fontSize: AppSizes.fontSize,
-    fontWeight: FontWeight.w500,
-    color: Color.fromARGB(255, 37, 35, 35),
-    height: 1.35,
-  );
-}
-
-class _FullScreenBackground extends StatelessWidget {
-  const _FullScreenBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: Image.asset(
-        'assets/image/home.png',
-        fit: BoxFit.fill,
-        alignment: Alignment.topCenter,
-      ),
-    );
-  }
-}
-
-/// --------- 카드 ---------
-class _SurveyCard extends StatelessWidget {
-  final String? title;
-  final Widget child;
-  const _SurveyCard({this.title, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _SColors.cardFill,
-        borderRadius: BorderRadius.circular(_SColors.cardRadius),
-        border: Border.all(
-          color: _SColors.cardStroke,
-          width: _SColors.cardStrokeW,
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title != null) ...[
-            Text(title!, style: _SText.cardTitle),
-            const SizedBox(height: 10),
-          ],
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-
-/// --------- 버튼 ---------
-class _PrimaryButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  const _PrimaryButton({required this.text, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _SColors.btnFill,
-          foregroundColor: _SColors.btnText,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          text,
-          style: _SText.label.copyWith(
-            color: _SColors.btnText,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// --------- 데이터 ---------
@@ -231,7 +122,10 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
           ),
           const SizedBox(height: 12),
           // 선택지
-          ...List.generate(kFrequencyOptions.length, (opt) => _buildOption(qIndex, opt)),
+          ...List.generate(
+            kFrequencyOptions.length,
+            (opt) => _buildOption(qIndex, opt),
+          ),
         ],
       ),
     );
@@ -272,7 +166,9 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
                 shape: BoxShape.circle,
                 color: selected ? const Color(0xFF74D2FF) : Colors.transparent,
                 border: Border.all(
-                  color: selected ? const Color(0xFF74D2FF) : const Color(0xFFCBD5E0),
+                  color: selected
+                      ? const Color(0xFF74D2FF)
+                      : const Color(0xFFCBD5E0),
                   width: 2,
                 ),
               ),
@@ -286,7 +182,9 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
               style: TextStyle(
                 fontFamily: 'NotoSansKR',
                 fontSize: 15,
-                color: selected ? const Color(0xFF1B3A57) : const Color(0xFF4A5568),
+                color: selected
+                    ? const Color(0xFF1B3A57)
+                    : const Color(0xFF4A5568),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -298,38 +196,24 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      appBar: CustomAppBar(title: '사전설문', showHome: false),
-      body: Stack(
+    return ApplyDesign(
+      appBarTitle: '사전설문',
+      cardTitle: 'Mindrium 시작 전\n현재 상태를 확인해요',
+      onBack: () => Navigator.pop(context),
+      onNext: _next,
+      rightLabel: '다음',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _FullScreenBackground(),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(30, 16, 30, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SurveyCard(
-                    title: 'PHQ-9 (우울 관련 질문)',
-                    child: const Text(
-                      "다음 질문들은 우울 정도를 평가하기 위한 검사입니다.\n"
-                      "이 척도는 전 세계적으로 널리 사용되는 'Patient Health Questionnaire-9' 척도의 한국어판이며, 총 9문항으로 구성되어 있습니다.\n\n"
-                      "최근 2주간, 얼마나 자주 다음과 같은 문제들로 곤란을 겪으셨습니까?",
-                      style: _SText.intro,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...List.generate(_questions.length, (qIndex) {
-                    return _buildQuestionCard(qIndex);
-                  }),
-                  const SizedBox(height: 16),
-                  _PrimaryButton(text: "다음", onPressed: _next),
-                ],
-              ),
-            ),
+          const JellyfishBanner(message: '지난 2주 동안의 우울 증상을\n아래 항목에 따라 평가해주세요.'),
+          const SizedBox(height: 18),
+          const Text(
+            "PHQ-9 (우울 관련 질문)\n"
+            "최근 2주간, 얼마나 자주 다음과 같은 문제들로 곤란을 겪으셨습니까?",
+            style: _SText.intro,
           ),
+          const SizedBox(height: 16),
+          ...List.generate(_questions.length, _buildQuestionCard),
         ],
       ),
     );
@@ -487,7 +371,10 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
           ),
           const SizedBox(height: 12),
           // 선택지
-          ...List.generate(kFrequencyOptions.length, (opt) => _buildGadOption(qIndex, opt)),
+          ...List.generate(
+            kFrequencyOptions.length,
+            (opt) => _buildGadOption(qIndex, opt),
+          ),
         ],
       ),
     );
@@ -528,7 +415,9 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
                 shape: BoxShape.circle,
                 color: selected ? const Color(0xFF74D2FF) : Colors.transparent,
                 border: Border.all(
-                  color: selected ? const Color(0xFF74D2FF) : const Color(0xFFCBD5E0),
+                  color: selected
+                      ? const Color(0xFF74D2FF)
+                      : const Color(0xFFCBD5E0),
                   width: 2,
                 ),
               ),
@@ -542,7 +431,9 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
               style: TextStyle(
                 fontFamily: 'NotoSansKR',
                 fontSize: 15,
-                color: selected ? const Color(0xFF1B3A57) : const Color(0xFF4A5568),
+                color: selected
+                    ? const Color(0xFF1B3A57)
+                    : const Color(0xFF4A5568),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -554,38 +445,24 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent, // PHQ-9와 동일: 배경 이미지 사용
-      appBar: CustomAppBar(title: '사전설문 (GAD-7)', showHome: false),
-      body: Stack(
+    return ApplyDesign(
+      appBarTitle: '사전설문',
+      cardTitle: 'Mindrium 시작 전\n현재 상태를 확인해요',
+      onBack: () => Navigator.pop(context),
+      onNext: _submit,
+      rightLabel: '완료',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _FullScreenBackground(),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(30, 16, 30, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SurveyCard(
-                    title: 'GAD-7 (불안 관련 질문)',
-                    child: const Text(
-                      "다음 질문들은 불안 정도를 평가하기 위한 검사입니다.\n"
-                      "이 척도는 전 세계적으로 널리 사용되는 'Generalized Anxiety Disorder-7' 척도의 한국어판이며, 총 7문항으로 구성되어 있습니다.\n\n"
-                      "최근 2주간, 얼마나 자주 다음과 같은 문제들로 곤란을 겪으셨습니까?",
-                      style: _SText.intro,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...List.generate(_gadQuestions.length, (qIndex) {
-                    return _buildGadQuestionCard(qIndex);
-                  }),
-                  const SizedBox(height: 16),
-                  _PrimaryButton(text: "완료", onPressed: _submit),
-                ],
-              ),
-            ),
+          const JellyfishBanner(message: '지난 2주 동안의 불안 증상을\n아래 항목에 따라 평가해주세요.'),
+          const SizedBox(height: 18),
+          const Text(
+            "GAD-7 (불안 관련 질문)\n"
+            "최근 2주간, 얼마나 자주 다음과 같은 문제들로 곤란을 겪으셨습니까?",
+            style: _SText.intro,
           ),
+          const SizedBox(height: 16),
+          ...List.generate(_gadQuestions.length, _buildGadQuestionCard),
         ],
       ),
     );

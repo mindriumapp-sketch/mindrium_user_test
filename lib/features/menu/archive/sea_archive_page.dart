@@ -6,6 +6,7 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
 
 class SeaArchivePage extends StatefulWidget {
   const SeaArchivePage({super.key});
@@ -39,10 +40,11 @@ class _SeaArchivePageState extends State<SeaArchivePage>
     final access = await _tokens.access;
     if (access == null) return [];
     try {
-      final groups = await _worryGroupsApi.getArchivedGroups();
+      // 기본 조회는 archived != true 그룹만 내려옴
+      final groups = await _worryGroupsApi.listWorryGroups();
       return groups;
     } catch (e) {
-      debugPrint('아카이브 그룹을 불러오지 못했습니다: $e');
+      debugPrint('worry_groups(archived=false) 로드 실패: $e');
       return [];
     }
   }
@@ -132,15 +134,11 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                         avoidBottom: 64,
                         avoidTop: avoidTop,
                         field: _fieldController!,
-                        onTap: (img, title, desc, createdAt) {
+                        onTap: (img, data) {
                           showDialog(
                             context: context,
                             builder:
-                                (_) => _FishInfoPopup(
-                                  title: title,
-                                  desc: desc,
-                                  image: img,
-                                ),
+                                (_) => _FishInfoPopup(image: img, data: data),
                           );
                         },
                       ),
@@ -228,7 +226,7 @@ class _SmoothFish extends StatefulWidget {
   final double avoidBottom;
   final double avoidTop;
   final FishFieldController field;
-  final void Function(ImageProvider, String, String, DateTime?) onTap;
+  final void Function(ImageProvider, Map<String, dynamic>) onTap;
 
   const _SmoothFish({
     required this.index,
@@ -348,15 +346,6 @@ class _SmoothFishState extends State<_SmoothFish>
     final img = AssetImage(
       'assets/image/character${data['character_id'] ?? data['group_id'] ?? 1}.png',
     );
-    final title = (data['group_title'] ?? '이름 없는 캐릭터').toString();
-    final desc = (data['group_contents'] ?? '').toString();
-    final createdAtRaw = data['created_at'];
-    DateTime? createdAt;
-    if (createdAtRaw is String) {
-      createdAt = DateTime.tryParse(createdAtRaw);
-    } else if (createdAtRaw is DateTime) {
-      createdAt = createdAtRaw;
-    }
 
     return Positioned(
       left: _pos.dx,
@@ -364,7 +353,7 @@ class _SmoothFishState extends State<_SmoothFish>
       child: RepaintBoundary(
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
-          onTap: () => widget.onTap(img, title, desc, createdAt),
+          onTap: () => widget.onTap(img, data),
           child: Transform(
             alignment: Alignment.center,
             transform: Matrix4.diagonal3Values(
@@ -381,69 +370,250 @@ class _SmoothFishState extends State<_SmoothFish>
 }
 
 class _FishInfoPopup extends StatelessWidget {
-  final String title;
-  final String desc;
   final ImageProvider image;
+  final Map<String, dynamic> data;
 
-  const _FishInfoPopup({
-    required this.title,
-    required this.desc,
-    required this.image,
-  });
+  const _FishInfoPopup({required this.image, required this.data});
+
+  DateTime? _asDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String _formatDate(DateTime? value) {
+    if (value == null) return '정보 없음';
+
+    final local = value.toLocal();
+    final year = local.year.toString().padLeft(4, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    return '$year.$month.$day';
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3FAFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD8EEF8)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF2D5B73),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0E2C48),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionText(String desc) {
+    return Text(
+      desc.isEmpty ? '저장된 설명이 없습니다.' : desc,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 14,
+        color: const Color(0xFF35546C),
+        height: 1.62,
+        fontWeight: desc.isEmpty ? FontWeight.w500 : FontWeight.w600,
+        letterSpacing: -0.1,
+      ),
+    );
+  }
+
+  void _openArchivedDiaries(
+    BuildContext context, {
+    required String groupId,
+    required String title,
+    required String desc,
+    required int characterId,
+    required DateTime createdAt,
+    required DateTime archivedAt,
+  }) {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (_) => ArchivedDiaryScreen(
+              groupId: groupId,
+              groupTitle: title,
+              groupContents: desc,
+              characterId: characterId,
+              createdAt: createdAt,
+              archivedAt: archivedAt,
+            ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final title = (data['group_title'] ?? '이름 없는 캐릭터').toString();
+    final desc = (data['group_contents'] ?? '').toString();
+    final archivedAt =
+        _asDateTime(data['archived_at']) ?? _asDateTime(data['updated_at']);
+    final createdAt = _asDateTime(data['created_at']);
+    final diaryCount = _asInt(data['diary_count']);
+    final groupId = (data['group_id'] ?? '').toString();
+    final characterId = _asInt(data['character_id']) ?? 1;
+    final resolvedCreatedAt = createdAt ?? DateTime.now();
+    final resolvedArchivedAt = archivedAt ?? resolvedCreatedAt;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
+          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 520),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.white24, width: 1.2),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image(image: image, width: 80, height: 80),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0E2C48),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                desc.isEmpty ? '설명이 없습니다.' : desc,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: 120,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.cyanAccent.withValues(alpha: 0.45),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Image(image: image, width: 80, height: 80),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0E2C48),
                   ),
-                  child: const Text('닫기'),
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                _buildDescriptionText(desc),
+                const SizedBox(height: 4),
+                _buildInfoRow('보관일', _formatDate(archivedAt)),
+                const SizedBox(height: 10),
+                _buildInfoRow('생성일', _formatDate(createdAt)),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF5FF),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFDCE8FF)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '보관된 일기 보러가기',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF4659C2),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCE8FF),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${diaryCount ?? 0}개',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF4659C2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap:
+                            groupId.isEmpty
+                                ? null
+                                : () => _openArchivedDiaries(
+                                  context,
+                                  groupId: groupId,
+                                  title: title,
+                                  desc: desc,
+                                  characterId: characterId,
+                                  createdAt: resolvedCreatedAt,
+                                  archivedAt: resolvedArchivedAt,
+                                ),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5B9FD3),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: 120,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyanAccent.withValues(
+                        alpha: 0.45,
+                      ),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('닫기'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

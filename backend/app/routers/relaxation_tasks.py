@@ -25,6 +25,8 @@ from schemas.relaxation import (
 router = APIRouter(prefix="/relaxation_tasks", tags=["relaxation_tasks"])
 
 RELAX_COLLECTION = "relaxation_tasks"
+USER_COLLECTION = "users"
+EDU_SESSION_COLLECTION = "edu_sessions"
 
 
 # =========================================================
@@ -143,6 +145,100 @@ def _build_task_match(
     return match
 
 
+def _extract_week_from_education_task_id(task_id: Optional[str]) -> Optional[int]:
+    if not task_id:
+        return None
+    if not task_id.startswith("week") or not task_id.endswith("_education"):
+        return None
+
+    middle = task_id[len("week") : -len("_education")]
+    if not middle.isdigit():
+        return None
+
+    week_no = int(middle)
+    if 1 <= week_no <= 8:
+        return week_no
+    return None
+
+
+async def _sync_last_completed_week_from_relaxation(
+    *,
+    db,
+    user_id: str,
+    task_id: Optional[str],
+    end_time: Optional[datetime],
+) -> None:
+    """
+    이완 완료 시점에 users.last_completed_week를 재평가한다.
+    조건:
+    - task_id = week{n}_education
+    - end_time != None
+    - 해당 주차 edu_session 중 completed=True 이고 last_stage_idx >= total_stages 인 세션 존재
+    - 기존 last_completed_week 보다 더 큰 주차일 때만 업데이트
+    """
+    if end_time is None:
+        return
+
+    week_no = _extract_week_from_education_task_id(task_id)
+    if week_no is None:
+        return
+
+    # 해당 주차에서 CBT 완료(완주)된 세션이 있는지 확인
+    edu_collection = db[EDU_SESSION_COLLECTION]
+    cursor = (
+        edu_collection.find(
+            {
+                "user_id": user_id,
+                "week_number": week_no,
+                "completed": True,
+            },
+            {
+                "total_stages": 1,
+                "last_stage_idx": 1,
+            },
+        )
+        .sort("updated_at", -1)
+    )
+
+    cbt_completed = False
+    async for edu_doc in cursor:
+        total_stages = edu_doc.get("total_stages")
+        last_idx = edu_doc.get("last_stage_idx")
+        if (
+            isinstance(total_stages, int)
+            and total_stages > 0
+            and isinstance(last_idx, int)
+            and last_idx >= total_stages
+        ):
+            cbt_completed = True
+            break
+
+    if not cbt_completed:
+        return
+
+    users = db[USER_COLLECTION]
+    user_doc = await users.find_one(
+        {"user_id": user_id},
+        {"last_completed_week": 1},
+    )
+    if not user_doc:
+        return
+
+    current_last = user_doc.get("last_completed_week") or 0
+    if week_no <= current_last:
+        return
+
+    await users.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "last_completed_week": week_no,
+                "last_completed_at": ensure_utc(end_time),
+            }
+        },
+    )
+
+
 async def _find_relaxation_tasks(
     *,
     db,
@@ -243,6 +339,16 @@ async def create_relaxation_task(
     result = await collection.insert_one(log_doc)
     log_doc["_id"] = result.inserted_id
 
+    try:
+        await _sync_last_completed_week_from_relaxation(
+            db=db,
+            user_id=user_id,
+            task_id=payload.task_id,
+            end_time=end_utc,
+        )
+    except Exception as e:
+        print(f"[relaxation_tasks] last_completed_week 동기화 실패(create): {e}")
+
     return RelaxationTaskResponse(**_serialize_task(log_doc))
 
 @router.put(
@@ -303,6 +409,16 @@ async def update_relaxation_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Relaxation session not found",
         )
+
+    try:
+        await _sync_last_completed_week_from_relaxation(
+            db=db,
+            user_id=user_id,
+            task_id=result.get("task_id"),
+            end_time=parse_datetime_value(result.get("end_time")),
+        )
+    except Exception as e:
+        print(f"[relaxation_tasks] last_completed_week 동기화 실패(update): {e}")
 
     return RelaxationTaskResponse(**_serialize_task(result))
 

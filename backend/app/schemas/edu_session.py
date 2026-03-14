@@ -74,7 +74,7 @@ class UserJourneyResponse(BaseModel):
 class EduSessionCommonIn(BaseModel):
     """
     교육 세션 공통 필드 (요청용)
-    - last_screen_idx 는 1-based 로 가정 (예: 전체 10개면 10이면 완주)
+    - last_stage_idx 는 1-based 로 가정 (예: 전체 10개면 10이면 완주)
     """
     week_number: int = Field(
         ...,
@@ -89,12 +89,12 @@ class EduSessionCommonIn(BaseModel):
             "1,7,8주차는 None 허용."
         ),
     )
-    total_screens: int = Field(
+    total_stages: int = Field(
         ...,
         ge=1,
         description="해당 주차 교육 전체 화면 수",
     )
-    last_screen_idx: int = Field(
+    last_stage_idx: int = Field(
         ...,
         ge=1,
         description="마지막으로 본 화면 번호 (1-based, 예: 전체 10개면 10이면 완주)",
@@ -184,8 +184,8 @@ class EduSessionUpdate(BaseModel):
     - week_number, diary_id 는 변경하지 않는다고 가정.
     - 주차별 특수 필드(3,5,7,8)도 한 번에 커버.
     """
-    total_screens: Optional[int] = Field(None, ge=1)
-    last_screen_idx: Optional[int] = Field(None, ge=1)
+    total_stages: Optional[int] = Field(None, ge=1)
+    last_stage_idx: Optional[int] = Field(None, ge=1)
     completed: Optional[bool] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None

@@ -4,14 +4,23 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:rive/rive.dart' as rive;
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
+import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
+import 'package:gad_app_team/features/3rd_treatment/week3_screen.dart';
+import 'package:gad_app_team/features/4th_treatment/week4_screen.dart';
+import 'package:gad_app_team/features/5th_treatment/week5_screen.dart';
+import 'package:gad_app_team/features/6th_treatment/week6_screen.dart';
+import 'package:gad_app_team/features/7th_treatment/week7_screen.dart';
+import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
 import 'relaxation_logger.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:provider/provider.dart';
-import 'package:gad_app_team/data/user_provider.dart';
 
 // --- 주차 타이틀 ---
 const Map<int, String> kRelaxationWeekTitles = {
@@ -22,19 +31,6 @@ const Map<int, String> kRelaxationWeekTitles = {
   5: '5주차 - 차등 이완',
   6: '6주차 - 차등 이완',
   7: '7주차 - 신속 이완',
-};
-
-
-//TODO: --- 주차 화면 수 ---
-const Map<int, int> kWeekScreens = {
-  1: 6,
-  2: 15,
-  3: 12,
-  4: 12,
-  5: 12,
-  6: 12,
-  7: 12,
-  8: 12,
 };
 
 String relaxationTitleForWeek(int? week) {
@@ -91,12 +87,9 @@ class _PracticePlayerState extends State<PracticePlayer>
   Timer? _autosaveTimer;
   bool _audioStartedOnce = false;
 
-// ✅ 현재 활성 상태가 시작된 시점
+  // ✅ 현재 활성 상태가 시작된 시점
   DateTime? _lastActivityTime;
-
-  late final ApiClient _apiClient;
   late final EduSessionsApi _eduSessionsApi;
-  bool _sessionUpdated = false; // 중복 호출 방지
 
   @override
   void initState() {
@@ -111,9 +104,7 @@ class _PracticePlayerState extends State<PracticePlayer>
 
     // 🔥 세션 시작 시점에 위치 한 번만 캡처해서 logger에 넣음
     _captureStartLocation();
-
-    _apiClient = ApiClient(tokens: TokenStorage());
-    _eduSessionsApi = EduSessionsApi(_apiClient);
+    _eduSessionsApi = EduSessionsApi(ApiClient(tokens: TokenStorage()));
 
     _startAutosaveTimer();
   }
@@ -202,37 +193,86 @@ class _PracticePlayerState extends State<PracticePlayer>
     }
   }
 
-  /// ✅ edu-sessions + UserProvider 로컬 진행도 동기화
-  Future<void> _updateEduSessionOnComplete() async {
-    final sessionId = widget.sessionId;
+  Widget _buildCbtFirstScreen(int weekNumber) {
+    switch (weekNumber) {
+      case 1:
+        return const Week1Screen();
+      case 2:
+        return const Week2Screen();
+      case 3:
+        return const Week3Screen();
+      case 4:
+        return const Week4Screen();
+      case 5:
+        return const Week5Screen();
+      case 6:
+        return const Week6Screen();
+      case 7:
+        return const Week7Screen();
+      case 8:
+        return const Week8Screen();
+      default:
+        return const Week1Screen();
+    }
+  }
 
-    // 세션 ID 없으면 조용히 스킵
-    if (sessionId == null || sessionId.isEmpty) {
-      debugPrint('[PracticePlayer] sessionId 없음, edu-sessions 업데이트 스킵');
+  Future<void> _handleAfterEducationRelaxationComplete() async {
+    bool isCbtCompleted = false;
+    try {
+      isCbtCompleted = await _eduSessionsApi.isWeekSessionCompleted(
+        widget.weekNumber,
+      );
+    } catch (e) {
+      debugPrint('[PracticePlayer] edu_sessions 완료 여부 조회 실패: $e');
+    }
+
+    if (!mounted) return;
+    final nav = Navigator.of(context);
+
+    if (isCbtCompleted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (_) => CustomPopupDesign(
+              title: '이완이 완료되었습니다',
+              message: '잘하셨어요.\n10초 후 홈으로 이동합니다.',
+              positiveText: '지금 이동',
+              autoPositiveAfter: const Duration(seconds: 10),
+              negativeText: null,
+              onPositivePressed: () {
+                nav.pop();
+                nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+              },
+            ),
+      );
       return;
     }
-    if (_sessionUpdated) return;
 
-    _sessionUpdated = true;
-
-    try {
-      // 1) 백엔드 edu_sessions 업데이트
-      await _eduSessionsApi.updateEduSession(
-        sessionId: sessionId,
-        completed: true,
-        lastScreenIndex: kWeekScreens[widget.weekNumber],
-        endTime: DateTime.now(),
-      );
-      debugPrint('[PracticePlayer] edu-sessions 업데이트 성공 (sessionId=$sessionId)');
-
-      // 2) 성공한 경우에만 UserProvider에서 /users/me/progress 다시 로딩
-      if (!mounted) return;
-      final userProvider = context.read<UserProvider>();
-      await userProvider.refreshProgress();
-    } catch (e) {
-      // 네비게이션은 막지 않고 로그만 남김
-      debugPrint('[PracticePlayer] edu-sessions 업데이트 or progress refresh 실패: $e');
-    }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => CustomPopupDesign(
+            title: 'CBT 이어서 하기',
+            message: '이완은 완료했어요.\n이제 CBT 세션을 이어서 진행할까요?',
+            positiveText: '이어하기',
+            autoPositiveAfter: const Duration(seconds: 10),
+            negativeText: '나중에',
+            onNegativePressed: () {
+              nav.pop();
+              nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            },
+            onPositivePressed: () {
+              nav.pop();
+              nav.pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => _buildCbtFirstScreen(widget.weekNumber),
+                ),
+              );
+            },
+          ),
+    );
   }
 
   void _checkIfBothFinished() async {
@@ -242,18 +282,24 @@ class _PracticePlayerState extends State<PracticePlayer>
       _logger.logEvent("session_complete");
 
       await _saveOnce(reason: 'complete');
-      await _updateEduSessionOnComplete();
       if (!mounted) return;
+
+      if (widget.taskId.contains('_education')) {
+        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
+          weekNumber: widget.weekNumber,
+          relaxationDone: true,
+          educationDoneWeek: true,
+          lastEducationAt: DateTime.now(),
+        );
+      }
 
       if (widget.taskId.contains('menu')) {
         Navigator.pushNamedAndRemoveUntil(context, '/contents', (_) => false);
-      }
-      else {
-        Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+      } else {
+        await _handleAfterEducationRelaxationComplete();
       }
     }
   }
-
 
   @override
   void dispose() {
@@ -299,7 +345,8 @@ class _PracticePlayerState extends State<PracticePlayer>
                       if (_riveController == null) {
                         _riveController = rive.RiveWidgetController(
                           state.file,
-                          stateMachineSelector: rive.StateMachineSelector.byName('State Machine 1'),
+                          stateMachineSelector: rive
+                              .StateMachineSelector.byName('State Machine 1'),
                           // artboardSelector: rive.ArtboardSelector.byName('Main'), // 필요 시
                         );
 
@@ -342,7 +389,11 @@ class _PracticePlayerState extends State<PracticePlayer>
                       color: Colors.black.withValues(alpha: 0.6),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.play_arrow, color: Colors.white, size: 64),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 64,
+                    ),
                   ),
                 ),
             ],

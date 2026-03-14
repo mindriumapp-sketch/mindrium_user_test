@@ -1,11 +1,10 @@
 // lib/features/3rd_treatment/week3_visual_screen.dart
 
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/widgets/thought_card.dart';        // ThoughtCard / ThoughtType
-import 'package:gad_app_team/widgets/detail_popup.dart';        // 자세히 보기 팝업
+import 'package:gad_app_team/widgets/thought_card.dart'; // ThoughtCard / ThoughtType
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
-import 'package:gad_app_team/widgets/blue_banner.dart';         // JellyfishBanner
+import 'package:gad_app_team/widgets/blue_banner.dart'; // JellyfishBanner
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
@@ -13,7 +12,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class Week3VisualScreen extends StatefulWidget {
   final String? sessionId;
-  final List<String> previousChips;    // 도움이 되지 않는 생각
+  final List<String> previousChips; // 도움이 되지 않는 생각
   final List<String> alternativeChips; // 도움이 되는 생각
 
   const Week3VisualScreen({
@@ -39,33 +38,33 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     _eduSessionsApi = EduSessionsApi(_client);
   }
 
-  void _showStartDialog(BuildContext context) {
+  void _showStartDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => CustomPopupDesign(
-        title: '이완 음성 안내 시작',
-        message:
-        '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-        positiveText: '확인',
-        negativeText: null,
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () {
-          Navigator.pop(context);
-          Navigator.pushReplacementNamed(
-            context,
-            '/relaxation_education',
-            arguments: {
-              'sessionId': widget.sessionId,
-              'taskId': 'week3_education',
-              'weekNumber': 3,
-              'mp3Asset': 'week1.mp3',
-              'riveAsset': 'week1.riv',
+      builder:
+          (_) => CustomPopupDesign(
+            title: '이완 음성 안내 시작',
+            message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+            positiveText: '확인',
+            negativeText: null,
+            backgroundAsset: null,
+            iconAsset: null,
+            onPositivePressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(
+                context,
+                '/relaxation_education',
+                arguments: {
+                  'sessionId': widget.sessionId,
+                  'taskId': 'week3_education',
+                  'weekNumber': 3,
+                  'mp3Asset': 'week1.mp3',
+                  'riveAsset': 'week1.riv',
+                },
+              );
             },
-          );
-        },
-      ),
+          ),
     );
   }
 
@@ -79,9 +78,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     // 2) sessionId 방어
     final sessionId = widget.sessionId?.trim();
     if (sessionId == null || sessionId.isEmpty) {
-      debugPrint(
-        '[Week3VisualScreen] sessionId 없음 → edu-sessions 업데이트 스킵',
-      );
+      debugPrint('[Week3VisualScreen] sessionId 없음 → edu-sessions 업데이트 스킵');
       return;
     }
 
@@ -112,44 +109,6 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     }
   }
 
-  // 공통: 전체 칩 자세히 보기
-  void _showChipsPopup({
-    required String title,
-    required List<String> chips,
-    required ThoughtType thoughtType,
-  }) {
-    showDialog(
-      context: context,
-      builder: (_) => DetailPopup(
-        title: title,
-        positiveText: '돌아가기',
-        negativeText: null,
-        onPositivePressed: () => Navigator.pop(context),
-        child: chips.isEmpty
-            ? const Text(
-          '입력된 항목이 없어요.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14.5,
-            color: Color(0xFF356D91),
-          ),
-        )
-            : Column(
-          mainAxisSize: MainAxisSize.min,
-          children: chips.map((text) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ThoughtBubble(
-                text: text,
-                type: thoughtType,
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
   // 상단 패널: 도움이 되는 생각
   Widget _buildTopPanel() {
     return _buildThoughtSection(
@@ -174,7 +133,8 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     required List<String> chips,
     required ThoughtType thoughtType,
   }) {
-    final String displayText = chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
+    final String displayText =
+        chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
     final bool isHelpful = thoughtType == ThoughtType.helpful;
     final Color accentColor =
         isHelpful ? const Color(0xFF62BFE7) : const Color(0xFFF29B94);
@@ -219,11 +179,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Icon(
-                      leadingIcon,
-                      color: accentColor,
-                      size: 20,
-                    ),
+                    child: Icon(leadingIcon, color: accentColor, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -245,9 +201,10 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                   fontSize: 18,
                   height: 1.65,
                   fontWeight: chips.isEmpty ? FontWeight.w500 : FontWeight.w700,
-                  color: chips.isEmpty
-                      ? const Color(0xFF8AA0B4)
-                      : const Color(0xFF243B53),
+                  color:
+                      chips.isEmpty
+                          ? const Color(0xFF8AA0B4)
+                          : const Color(0xFF243B53),
                 ),
               ),
             ],
@@ -265,8 +222,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     const double horizontalPadding = 24.0;
     const double panelRadius = 28.0;
     const double gapBetweenPanels = 20.0;
-    final double maxWidth =
-    size.width - 48 > 980 ? 980 : size.width - 48;
+    final double maxWidth = size.width - 48 > 980 ? 980 : size.width - 48;
 
     return Scaffold(
       extendBody: true, // ✅ bottomNavigationBar 뒤까지 확장
@@ -288,10 +244,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFE7F7FF),
-                    Color(0xFFF5FCFF),
-                  ],
+                  colors: [Color(0xFFE7F7FF), Color(0xFFF5FCFF)],
                 ),
               ),
             ),
@@ -303,9 +256,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                 filterQuality: FilterQuality.high,
               ),
             ),
-            Container(
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
+            Container(color: Colors.white.withValues(alpha: 0.08)),
 
             // 🧩 내용 영역
             SafeArea(
@@ -369,9 +320,9 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
 
                         const SizedBox(height: 18),
                         JellyfishBanner(
-                          message: '오늘도 수고하셨습니다!\n내가 적은 생각을 한 번 더 비교해보며,\n어떤 방향이 마음을 더 안정시키는지 살펴보세요.',
+                          message:
+                              '오늘도 수고하셨습니다!\n내가 적은 생각을 한 번 더 비교해보며,\n어떤 방향이 마음을 더 안정시키는지 살펴보세요.',
                         ),
-
                       ],
                     ),
                   ),
@@ -395,7 +346,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
               onNext: () async {
                 await _saveSession();
                 if (!mounted) return;
-                _showStartDialog(context);
+                _showStartDialog();
               },
             ),
           ),

@@ -278,17 +278,8 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ location_label 인덱스 생성 중 오류: {e}")
 
     # ---------- sud_scores 컬렉션 ----------
-    # SUD 점수를 diaries에 embed 안 하고 별도 컬렉션으로도 쓸 경우 대비
-    try:
-        sud_scores = db["sud_scores"]
-
-        await sud_scores.create_index(
-            [("user_id", 1), ("created_at", 1)],
-            name="idx_sud_user_created_at",
-        )
-        print("✅ sud_scores 인덱스 생성 완료")
-    except Exception as e:
-        print(f"⚠️ sud_scores 인덱스 생성 중 오류: {e}")
+    # 현재 운영에서는 SUD를 diaries.sud_scores(embedded)로만 사용.
+    # 별도 sud_scores 컬렉션 인덱스를 생성하면 빈 컬렉션이 자동 생성되므로 제거.
 
     # ---------- relaxation_tasks 컬렉션 ----------
     # 이완/명상 세션 로그 (user + start_time / end_time / session_id 기반 조회)

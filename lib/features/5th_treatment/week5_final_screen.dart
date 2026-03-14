@@ -3,6 +3,12 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:gad_app_team/data/api/relaxation_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:provider/provider.dart';
 
 class Week5FinalScreen extends StatelessWidget {
   final String? sessionId;
@@ -87,9 +93,9 @@ class Week5FinalScreen extends StatelessWidget {
                                     fontFamily: 'Noto Sans KR',
                                   ),
                                 ),
-                              ]
-                            )
-                          )
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -99,7 +105,7 @@ class Week5FinalScreen extends StatelessWidget {
                 // ⛵ 네비게이션 버튼 (기존 로직 그대로 유지)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     onNext: () => _showStartDialog(context, sessionId),
                   ),
@@ -113,35 +119,70 @@ child: NavigationButtons(
   }
 
   /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
-  void _showStartDialog(BuildContext context, String? sessionId) {
+  Future<void> _showStartDialog(BuildContext context, String? sessionId) async {
+    final client = ApiClient(tokens: TokenStorage());
+    final eduApi = EduSessionsApi(client);
+    final relaxApi = RelaxationApi(client);
+
+    try {
+      await eduApi.completeWeekSession(
+        weekNumber: 5,
+        totalStages: 12,
+        sessionId: sessionId,
+      );
+      if (context.mounted) {
+        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
+          weekNumber: 5,
+          cbtDone: true,
+          educationDoneWeek: true,
+          lastEducationAt: DateTime.now(),
+        );
+      }
+    } catch (e) {
+      debugPrint('[Week5Final] edu-session 완료 처리 실패: $e');
+    }
+
+    bool isRelaxDone = false;
+    try {
+      isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(5);
+    } catch (e) {
+      debugPrint('[Week5Final] relaxation 완료 조회 실패: $e');
+    }
+
+    if (!context.mounted) return;
+    final nav = Navigator.of(context);
+
+    if (isRelaxDone) {
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => CustomPopupDesign(
-        title: '이완 음성 안내 시작',
-        message:
-        '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-        positiveText: '확인',
-        negativeText: null,
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () async {
-          // await EduProgress.markWeekDone(5);
-          Navigator.pop(context);
-          Navigator.pushReplacementNamed(
-            context,
-            '/relaxation_education',
-            arguments: {
-              'sessionId': sessionId,
-              'taskId': 'week5_education',
-              'weekNumber': 5,
-              //TODO: week1 임시
-              'mp3Asset': 'week1.mp3',
-              'riveAsset': 'week1.riv',
+      builder:
+          (_) => CustomPopupDesign(
+            title: '이완 연습 이어서 하기',
+            message: '오늘 학습을 잘 마쳤어요.\n이완 연습까지 이어서 진행해볼까요?',
+            positiveText: '이어하기',
+            autoPositiveAfter: const Duration(seconds: 10),
+            negativeText: null,
+            backgroundAsset: null,
+            iconAsset: null,
+            onPositivePressed: () {
+              nav.pop();
+              nav.pushReplacementNamed(
+                '/relaxation_education',
+                arguments: {
+                  'sessionId': sessionId,
+                  'taskId': 'week5_education',
+                  'weekNumber': 5,
+                  'mp3Asset': 'week5.mp3',
+                  'riveAsset': 'week5.riv',
+                },
+              );
             },
-          );
-        },
-      ),
+          ),
     );
   }
 }

@@ -1,14 +1,13 @@
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/features/value_start.dart';
-import 'package:gad_app_team/features/3rd_treatment/week3_classification_screen.dart';
+import 'package:gad_app_team/features/session_start.dart';
+import 'package:gad_app_team/features/3rd_treatment/week3_belief_screen.dart';
 // week3_screen.dart
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:provider/provider.dart';
-
 
 class Week3Screen extends StatefulWidget {
   final String? sessionId;
@@ -65,13 +64,13 @@ class _Week3ScreenState extends State<Week3Screen> {
       final eduApi = EduSessionsApi(client);
 
       // ⚠️ 총 화면 수는 실제 week3 플로우에 맞게 바꿔도 됨.
-      const int totalScreens = 12;
+      const int totalStages = 12;
 
       final res = await eduApi.createWeek3or5Session(
         weekNumber: 3,
-        totalScreens: totalScreens,
-        lastScreenIndex: 1,        // Week3Screen 진입 시점 = 1번 화면
-        completed: false,          // 아직 미완료
+        totalStages: totalStages,
+        lastStageIndex: 1, // Week3Screen 진입 시점 = 1번 화면
+        completed: false, // 아직 미완료
         startTime: DateTime.now(), // 지금 시간
         endTime: null,
       );
@@ -93,12 +92,12 @@ class _Week3ScreenState extends State<Week3Screen> {
   @override
   Widget build(BuildContext context) {
     // 👉 UI/분기는 기존이랑 동일하게 유지
-    return ValueStartScreen(
+    return SessionStartScreen(
       weekNumber: 3,
       weekTitle: '자기 대화(Self Talk) 기법을 익혀보겠습니다.',
       weekDescription:
-      '이번 주차에서는 예시 생각들을 보며, 핵심 가치를 이루기 위해 도움이 되는 생각인지 아닌지 구분하며 배워보겠습니다.',
-      nextPageBuilder: () => Week3ClassificationScreen(sessionId: _sessionId),
+          '이번 주차에서는 부정적인 자기 대화를 긍정적으로 바꾸는 방법을 배워보겠습니다. 성인 여성의 상황을 예시로 살펴볼게요.',
+      nextPageBuilder: () => Week3BeliefScreen(sessionId: _sessionId),
     );
   }
 }

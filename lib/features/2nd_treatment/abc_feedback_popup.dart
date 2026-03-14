@@ -6,13 +6,20 @@ import 'package:geolocator/geolocator.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/models/grid_item.dart';
 import 'package:gad_app_team/widgets/abc_visualization_design.dart'; // ✅ 추가
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+
+class GridItem {
+  final IconData icon;
+  final String label;
+  final bool isAdd;
+
+  const GridItem({required this.icon, required this.label, this.isAdd = false});
+}
 
 /// 🌊 Mindrium ABC Feedback Popup (MemoFullDesign + Visualization)
 class AbcFeedbackPopup extends StatefulWidget {
@@ -70,13 +77,10 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
         children: [
           Text(
             protectKoreanWords("👏 \n $userName님,\n말씀해주셔서 감사합니다."),
-            style: const TextStyle(
-              fontSize: 18,
-              height: 1.6
-            ),
+            style: const TextStyle(fontSize: 18, height: 1.6),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4,),
+          const SizedBox(height: 4),
           Container(
             width: 800,
             height: 1,
@@ -87,10 +91,12 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
           ),
           const SizedBox(height: 48),
           Text(
-            protectKoreanWords("$userName님께서는 ‘$situation’ 상황에서 ‘$thought’ 생각을 하셨고,\n"
-            "'$emotions’ 감정을 느끼셨습니다.\n\n"
-            "그 결과 신체적으로 ‘$physical’ 증상이 나타났으며,\n"
-            "‘$behavior’ 행동을 하셨습니다.\n\n"),
+            protectKoreanWords(
+              "$userName님께서는 ‘$situation’ 상황에서 ‘$thought’ 생각을 하셨고,\n"
+              "'$emotions’ 감정을 느끼셨습니다.\n\n"
+              "그 결과 신체적으로 ‘$physical’ 증상이 나타났으며,\n"
+              "‘$behavior’ 행동을 하셨습니다.\n\n",
+            ),
             style: const TextStyle(
               fontSize: 16.5,
               color: Colors.black,
@@ -98,7 +104,7 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
             ),
           ),
         ],
-      )
+      ),
     );
   }
 
@@ -251,7 +257,7 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
                           : '',
                   beforeSud: widget.beforeSud,
                   diary: 'new',
-            ),
+                ),
           ),
         );
       });
@@ -262,9 +268,7 @@ class _AbcFeedbackPopupState extends State<AbcFeedbackPopup> {
               ? e.response?.data['detail']?.toString()
               : e.message;
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('저장 중 오류가 발생했습니다: ${detail ?? e}')),
         );
       }

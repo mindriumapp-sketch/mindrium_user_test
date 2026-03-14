@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -10,6 +13,8 @@ import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_controller.dart';
+import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_dialog.dart';
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
@@ -33,33 +38,46 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _ProgressSnapshot {
-  final int currentWeek;
-  final int completedWeeks;
-  final int totalWeeks;
-  final int totalDiaries;
-  final int totalRelaxations;
-
-  const _ProgressSnapshot({
-    required this.currentWeek,
-    required this.completedWeeks,
-    required this.totalWeeks,
-    required this.totalDiaries,
-    required this.totalRelaxations,
-  });
-
-  double get percent => totalWeeks == 0 ? 0 : completedWeeks / totalWeeks;
-  String get percentLabel => '${(percent * 100).round()}%';
-}
-
 class _HomeScreenState extends State<HomeScreen> {
+  static const MethodChannel _widgetLaunchChannel = MethodChannel(
+    'mindrium/widget_launch',
+  );
+  static const EventChannel _widgetLaunchEventChannel = EventChannel(
+    'mindrium/widget_launch_events',
+  );
+  static const String _week2LockedMessage = '2주차 교육 완료 후 이용할 수 있어요.';
+  static const String _alarmCardEnabledTitle = '알림 설정';
+  static const String _alarmCardDisabledTitle = '알림 설정 (잠금)';
+  static const String _alarmCardEnabledDescription =
+      '규칙적인 루틴을 위해 알림 시간을 설정해 보세요.';
+  static const String _alarmCardDisabledDescription = _week2LockedMessage;
+  static const Color _alarmCardBaseColor = Color(0xFFE4F3FF);
+  static const List<Widget> _weekScreens = [
+    Week1Screen(),
+    Week2Screen(),
+    Week3Screen(),
+    Week4Screen(),
+    Week5Screen(),
+    Week6Screen(),
+    Week7Screen(),
+    Week8Screen(),
+  ];
+
   int _selectedIndex = 0;
-  static const int _kTotalWeeks = 8;
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  final HomeWidgetTutorialController _widgetTutorialController =
+      HomeWidgetTutorialController();
 
   bool _permissionsChecked = false;
   Future<void>? _permissionFuture;
-  final TokenStorage _tokens = TokenStorage();
-  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  StreamSubscription<dynamic>? _widgetLaunchSubscription;
+  bool _checkedInitialWidgetAction = false;
+  bool _pendingWidgetApplyLaunch = false;
+  bool _isStartingPendingWidgetApply = false;
+  int? _lastSyncedDiaryCount;
+  int? _lastSyncedRelaxationCount;
+  int? _lastSyncedCompletedWeeks;
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   @override
@@ -71,50 +89,149 @@ class _HomeScreenState extends State<HomeScreen> {
     //    - Splash/Login에서 이미 다 해줬다고 가정
     Future.microtask(() async {
       await _ensureCorePermissions();
-      //TODO: 일기 개수 업데이트
       if (mounted) {
         final user = context.read<UserProvider>();
         final dayCounter = context.read<UserDayCounter>();
         await user.loadUserData(dayCounter: dayCounter);
+        _tryStartPendingWidgetApplyLaunch();
       }
+    });
+    _listenWidgetLaunchEvents();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleInitialWidgetLaunchAction();
     });
   }
 
-  // ===================== 진행도: UserProvider에서만 읽기 =====================
-
-  _ProgressSnapshot _buildProgressFromUser(UserProvider user) {
-    // last_completed_week → 0~_kTotalWeeks 로 정규화
-    var completedWeeks = user.lastCompletedWeek;
-    if (completedWeeks < 0) completedWeeks = 0;
-    if (completedWeeks > _kTotalWeeks) completedWeeks = _kTotalWeeks;
-
-    final totalDiaries = user.totalDiaries;
-    final totalRelaxations = user.totalRelaxations;
-    final currentWeek = user.currentWeek; // 서버 계산 값 그대로 사용
-
-    return _ProgressSnapshot(
-      currentWeek: currentWeek,
-      completedWeeks: completedWeeks,
-      totalWeeks: _kTotalWeeks,
-      totalDiaries: totalDiaries,
-      totalRelaxations: totalRelaxations,
-    );
-  }
-
-  String joinDaysText(UserDayCounter counter, DateTime? fallbackCreatedAt) {
-    if (counter.isUserLoaded) {
-      return '가입한 지 ${counter.daysSinceJoin}일째';
-    }
-    final created = fallbackCreatedAt;
-    if (created == null) {
-      return '가입 정보 없음';
-    }
-    final days = DateTime.now().difference(created).inDays + 1;
-    return '가입한 지 ${days > 0 ? days : 1}일째';
+  @override
+  void dispose() {
+    _widgetLaunchSubscription?.cancel();
+    super.dispose();
   }
 
   void _onDestinationSelected(int index) =>
       setState(() => _selectedIndex = index);
+
+  void _showWeek2LockedSnackBar() {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text(_week2LockedMessage)));
+  }
+
+  Future<void> _showWidgetTutorialFromTempButton() async {
+    await HomeWidgetTutorialDialog.show(
+      context,
+      steps: HomeWidgetTutorialController.tutorialSteps,
+    );
+  }
+
+  void _startApplyFlow() {
+    final completedWeeks = context.read<UserProvider>().lastCompletedWeek;
+    final bool canSolve =
+        completedWeeks >= HomeWidgetTutorialController.unlockWeek;
+    if (!canSolve) {
+      _showWeek2LockedSnackBar();
+      return;
+    }
+
+    final flow = context.read<ApplyOrSolveFlow>();
+    flow.clear();
+    flow.setOrigin('apply');
+    flow.setDiaryRoute('solve');
+    Navigator.pushNamed(
+      context,
+      '/before_sud',
+      arguments: {...flow.toArgs(), 'origin': 'apply'},
+    );
+  }
+
+  void _tryStartPendingWidgetApplyLaunch() {
+    if (!mounted ||
+        !_pendingWidgetApplyLaunch ||
+        _isStartingPendingWidgetApply) {
+      return;
+    }
+
+    final user = context.read<UserProvider>();
+    if (user.isLoadingUser || !user.isUserLoaded) {
+      return;
+    }
+
+    _pendingWidgetApplyLaunch = false;
+    _isStartingPendingWidgetApply = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _isStartingPendingWidgetApply = false;
+      if (!mounted) return;
+      _startApplyFlow();
+    });
+  }
+
+  Future<void> _handleInitialWidgetLaunchAction() async {
+    if (_checkedInitialWidgetAction) return;
+    _checkedInitialWidgetAction = true;
+
+    try {
+      final action = await _widgetLaunchChannel.invokeMethod<String>(
+        'getInitialLaunchAction',
+      );
+      _handleWidgetLaunchAction(action);
+    } on PlatformException catch (e) {
+      debugPrint('초기 위젯 액션 조회 실패: ${e.message}');
+    }
+  }
+
+  void _listenWidgetLaunchEvents() {
+    _widgetLaunchSubscription = _widgetLaunchEventChannel
+        .receiveBroadcastStream()
+        .listen(
+          (dynamic event) {
+            final action = event?.toString();
+            _handleWidgetLaunchAction(action);
+          },
+          onError: (Object error) {
+            debugPrint('위젯 액션 스트림 수신 실패: $error');
+          },
+        );
+  }
+
+  void _handleWidgetLaunchAction(String? action) {
+    if (!mounted) return;
+    final normalizedAction = action?.trim();
+    if (normalizedAction != 'start_apply') return;
+
+    _pendingWidgetApplyLaunch = true;
+
+    if (_selectedIndex != 0) {
+      setState(() => _selectedIndex = 0);
+    }
+    _tryStartPendingWidgetApplyLaunch();
+  }
+
+  void _syncWidgetStatsIfNeeded(UserProvider user) {
+    final diaryCount = user.totalDiaries;
+    final relaxationCount = user.totalRelaxations;
+    final completedWeeks = user.lastCompletedWeek;
+    if (_lastSyncedDiaryCount == diaryCount &&
+        _lastSyncedRelaxationCount == relaxationCount &&
+        _lastSyncedCompletedWeeks == completedWeeks) {
+      return;
+    }
+
+    _lastSyncedDiaryCount = diaryCount;
+    _lastSyncedRelaxationCount = relaxationCount;
+    _lastSyncedCompletedWeeks = completedWeeks;
+
+    _widgetLaunchChannel
+        .invokeMethod<bool>('updateWidgetStats', {
+          'diaryCount': diaryCount,
+          'relaxationCount': relaxationCount,
+          'completedWeeks': completedWeeks,
+        })
+        .catchError((Object error) {
+          debugPrint('위젯 통계 동기화 실패: $error');
+          return false;
+        });
+  }
 
   // ===================== build =====================
 
@@ -209,13 +326,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final service = AlarmNotificationService.instance;
     try {
       final rows = await _alarmSettingsApi.listAlarmSettings();
-      final alarms = rows.map(AlarmSetting.fromJson).toList()
-        ..sort((a, b) {
-          final aMinutes = a.hour * 60 + a.minute;
-          final bMinutes = b.hour * 60 + b.minute;
-          if (aMinutes != bMinutes) return aMinutes.compareTo(bMinutes);
-          return a.id.compareTo(b.id);
-        });
+      final alarms =
+          rows.map(AlarmSetting.fromJson).toList()..sort((a, b) {
+            final aMinutes = a.hour * 60 + a.minute;
+            final bMinutes = b.hour * 60 + b.minute;
+            if (aMinutes != bMinutes) return aMinutes.compareTo(bMinutes);
+            return a.id.compareTo(b.id);
+          });
       await service.saveAlarms(alarms);
     } catch (e) {
       debugPrint('알림 설정 서버 동기화 실패(로컬 fallback): $e');
@@ -246,12 +363,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // 3️⃣ 여기까지 왔으면 최소 한 번은 유저 + todayTask가 로딩된 상태
-    final progressData = _buildProgressFromUser(user);
+    _syncWidgetStatsIfNeeded(user);
+    _widgetTutorialController.scheduleIfEligible(
+      context: context,
+      completedWeeks: user.lastCompletedWeek,
+      userId: user.userId,
+    );
+    _tryStartPendingWidgetApplyLaunch();
 
     debugPrint(
-      'currentWeek: ${progressData.currentWeek}, '
-          'doneCount: ${progressData.completedWeeks}, '
-          'progress: ${progressData.percent}',
+      'currentWeek: ${user.currentWeek}, '
+      'doneCount: ${user.lastCompletedWeek}, ',
     );
 
     return ListView(
@@ -259,11 +381,13 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _buildHeader(),
         const SizedBox(height: 8),
-        _buildProgressCard(progressData),
+        _buildTempWidgetGuideButton(),
+        const SizedBox(height: 16),
+        _buildValueGoalCard(),
         const SizedBox(height: 8),
-        _buildTaskSection(),
+        _buildTaskSection(user: user, todayTask: todayTask),
         const SizedBox(height: 8),
-        _buildTrainingSection(),
+        _buildTrainingSection(completedWeeks: user.lastCompletedWeek),
       ],
     );
   }
@@ -272,7 +396,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader() {
     final user = context.watch<UserProvider>();
-    final dayCounter = context.watch<UserDayCounter>();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -285,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// 💬 “안녕하세요,\nOOO님 환영합니다!”
+                /// 💬 “OOO님 환영합니다!”
                 RichText(
                   text: TextSpan(
                     style: const TextStyle(
@@ -302,18 +425,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   overflow: TextOverflow.visible,
                   softWrap: false,
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    joinDaysText(dayCounter, user.createdAt),
-                    style: const TextStyle(
-                      color: Colors.black54,
-                      fontSize: 13,
-                      fontFamily: 'Noto Sans KR',
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -337,6 +448,26 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTempWidgetGuideButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: OutlinedButton.icon(
+        onPressed: _showWidgetTutorialFromTempButton,
+        icon: const Icon(Icons.help_outline_rounded, size: 18),
+        label: const Text('위젯 가이드 보기 (임시)'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF1B3A57),
+          backgroundColor: const Color(0xFFF2F8FF),
+          side: const BorderSide(color: Color(0xFFBFD8EE)),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
       ),
     );
   }
@@ -367,88 +498,101 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ===================== 진행도 카드 =====================
+  // ===================== 오늘의 할 일 =====================
 
-  Widget _buildProgressCard(_ProgressSnapshot progressData) {
-    return _WhiteCard(
+  Widget _buildValueGoalCard() {
+    final user = context.watch<UserProvider>();
+    final dayCounter = context.watch<UserDayCounter>();
+
+    final valueGoal = (user.valueGoal ?? '').trim();
+    final hasValueGoal = valueGoal.isNotEmpty;
+    final dayNo = dayCounter.daysSinceJoin > 0 ? dayCounter.daysSinceJoin : 1;
+
+    return _trainingCard(
+      title: '핵심 가치',
+      description:
+          hasValueGoal ? '$dayNo일째 $valueGoal를 향해 가고 있어요.' : '핵심 가치를 설정해 보세요.',
+      color: const Color(0xFFEFF7FF),
+      trailing: _buildDayCalendar(dayNo),
+    );
+  }
+
+  Widget _buildDayCalendar(int dayNo) {
+    return Container(
+      width: 78,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFA9CFF5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          Stack(
+            clipBehavior: Clip.none,
             children: [
-              const Text(
-                '치료 진행 상황',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF74B8F4),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(15),
+                    topRight: Radius.circular(15),
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                progressData.percentLabel,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
+                child: const Center(
+                  child: Text(
+                    'DAY',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progressData.percent,
-              minHeight: 10,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF00AEEF),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$dayNo일차',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF263C69),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _ProgressChip(
-                label: '다이어리',
-                value: progressData.totalDiaries.toString(),
-              ),
-              const SizedBox(width: 8),
-              _ProgressChip(
-                label: '이완 훈련',
-                value: progressData.totalRelaxations.toString(),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  // ===================== 오늘의 할 일 =====================
-
-  Widget _buildTaskSection() {
-    final todayTask = context.watch<TodayTaskProvider>();
+  Widget _buildTaskSection({
+    required UserProvider user,
+    required TodayTaskProvider todayTask,
+  }) {
     final navigator = Navigator.of(context);
-
-    final user = context.read<UserProvider>();
     final weekNumber = user.currentWeek;
-
-    final List<Widget> weekScreens = const [
-      Week1Screen(),
-      Week2Screen(),
-      Week3Screen(),
-      Week4Screen(),
-      Week5Screen(),
-      Week6Screen(),
-      Week7Screen(),
-      Week8Screen(),
-    ];
 
     final List<_DailyTask> todayTasks = [
       _DailyTask(
-        title: '일기 작성',
+        title: '오늘의 일기 작성',
         isDone: todayTask.diaryDone,
         onTap: () {
           final flow = context.read<ApplyOrSolveFlow>();
@@ -458,10 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.pushNamed(
             context,
             '/before_sud',
-            arguments: {
-              ...flow.toArgs(),
-              'origin': 'daily',
-            },
+            arguments: {...flow.toArgs(), 'origin': 'daily'},
           );
         },
       ),
@@ -469,45 +610,37 @@ class _HomeScreenState extends State<HomeScreen> {
         title: '이완',
         isDone: todayTask.relaxationDone,
         onTap: () {
-          // weekNumber 기반으로 taskId / asset 이름들 구성
           final taskId = 'week${weekNumber}_daily';
-          //TODO: 
-          // final mp3Asset = 'week$weekNumber.mp3';
-          // final riveAsset = 'week$weekNumber.riv';
-          final mp3Asset = 'noti.mp3';
-          final riveAsset = 'noti.riv';
+          final assets = _resolveRelaxationAssets(weekNumber);
 
           navigator.pushNamed(
             '/relaxation_noti',
             arguments: {
               'taskId': taskId,
               'weekNumber': weekNumber,
-              'mp3Asset': mp3Asset,
-              'riveAsset': riveAsset,
+              'mp3Asset': assets['mp3Asset']!,
+              'riveAsset': assets['riveAsset']!,
               'nextPage': '/home',
             },
           );
         },
       ),
       _DailyTask(
-        title: '교육',
+        title: '이번주 교육 활동',
         isDone: todayTask.educationDoneWeek,
         onTap: () {
-          final user = context.read<UserProvider>();
-          var weekNumber = user.currentWeek; // 1~8이라고 가정
+          final selectedWeek = user.currentWeek; // 1~8이라고 가정
 
           // 안전하게 인덱스 계산
-          var index = weekNumber - 1;
+          var index = selectedWeek - 1;
           if (index < 0) index = 0;
-          if (index >= weekScreens.length) {
-            index = weekScreens.length - 1;
+          if (index >= _weekScreens.length) {
+            index = _weekScreens.length - 1;
           }
 
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => weekScreens[index],
-            ),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => _weekScreens[index]));
         },
       ),
     ];
@@ -526,7 +659,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
           ...todayTasks.map(
-                (t) => Padding(
+            (t) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _buildTaskCard(t),
             ),
@@ -536,10 +669,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Map<String, String> _resolveRelaxationAssets(int weekNumber) {
+    // 주차별 에셋 도입 전까지 공통 에셋을 사용한다.
+    switch (weekNumber) {
+      default:
+        return const {'mp3Asset': 'noti.mp3', 'riveAsset': 'noti.riv'};
+    }
+  }
+
   Widget _buildTaskCard(_DailyTask task) {
     final isDone = task.isDone;
     final imagePath =
-    isDone ? 'assets/image/finish.png' : 'assets/image/progressing.png';
+        isDone ? 'assets/image/finish.png' : 'assets/image/progressing.png';
     final bgColor = isDone ? const Color(0xFFFFE5E9) : const Color(0xFFD9F3FF);
 
     return InkWell(
@@ -550,10 +691,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: 52,
             height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: bgColor,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: bgColor),
             padding: const EdgeInsets.all(10),
             child: Image.asset(imagePath, fit: BoxFit.contain),
           ),
@@ -575,51 +713,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ===================== 교육/훈련 섹션 =====================
 
-  Widget _buildTrainingSection() {
-    final userProvider = context.read<UserProvider>();
-    final completedWeeks = userProvider.lastCompletedWeek;
-    final bool canSolve = completedWeeks >= 4;
-    const baseColor = Color(0xFFFFE2E8);
-    final cardColor = canSolve ? baseColor : baseColor.withValues(alpha: .55);
+  Widget _buildTrainingSection({required int completedWeeks}) {
+    final canUseAlarmSettings =
+        completedWeeks >= HomeWidgetTutorialController.unlockWeek;
+    final alarmCardColor =
+        canUseAlarmSettings
+            ? _alarmCardBaseColor
+            : _alarmCardBaseColor.withValues(alpha: .55);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _trainingCard(
-          title: '불안 해결하기',
-          description: '오늘 불안하신 상황이 있으셨나요? 지금 오늘의 활동을 시작해보세요.',
-          color: cardColor,
-          imagePath: 'assets/image/pink1.png',
-          onTap: () {
-            if (!canSolve) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('4주차 완료 이후 이용할 수 있어요.')),
-              );
-              return;
-            }
-            final flow = context.read<ApplyOrSolveFlow>();
-            // 기존 상태 초기화 후 공통 흐름 세팅
-            flow.clear();
-            flow.setOrigin('apply');
-            flow.setDiaryRoute('solve');
-            Navigator.pushNamed(
-              context,
-              '/before_sud',
-              arguments: {
-                ...flow.toArgs(),
-                'origin': 'apply',
-              },
-            );
-          },
-        ),
-        
-        const SizedBox(height: 8),
-        _trainingCard(
-          title: '알림 설정',
-          description: '문구...', //TODO: 알림 설정 문구 고민
-          color: const Color(0xFFE4F3FF),
+          title:
+              canUseAlarmSettings
+                  ? _alarmCardEnabledTitle
+                  : _alarmCardDisabledTitle,
+          description:
+              canUseAlarmSettings
+                  ? _alarmCardEnabledDescription
+                  : _alarmCardDisabledDescription,
+          color: alarmCardColor,
           imagePath: 'assets/image/pink2.png',
           onTap: () {
+            if (!canUseAlarmSettings) {
+              _showWeek2LockedSnackBar();
+              return;
+            }
             Navigator.pushNamed(context, '/alarm_settings');
           },
         ),
@@ -631,9 +751,15 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required String description,
     required Color color,
-    required String imagePath,
-    required VoidCallback onTap,
+    String? imagePath,
+    Widget? trailing,
+    String? chipLabel,
+    VoidCallback? onChipTap,
+    Widget? bodyTopWidget,
+    VoidCallback? onTap,
   }) {
+    final bool hasChip = chipLabel != null && chipLabel.isNotEmpty;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
@@ -645,15 +771,51 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      if (hasChip)
+                        InkWell(
+                          onTap: onChipTap,
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: const Color(0xFFA6CDEF),
+                              ),
+                            ),
+                            child: Text(
+                              chipLabel,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2A5D8F),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  if (bodyTopWidget != null) ...[
+                    const SizedBox(height: 8),
+                    bodyTopWidget,
+                  ],
+                  const SizedBox(height: 10),
                   Text(
                     protectKoreanWords(description),
                     style: const TextStyle(
@@ -666,7 +828,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            Image.asset(imagePath, width: 80, fit: BoxFit.contain),
+            trailing ??
+                (imagePath == null
+                    ? const SizedBox.shrink()
+                    : Image.asset(imagePath, width: 80, fit: BoxFit.contain)),
           ],
         ),
       ),
@@ -702,53 +867,10 @@ class _WhiteCard extends StatelessWidget {
   }
 }
 
-class _ProgressChip extends StatelessWidget {
-  final String label;
-  final String value;
-  const _ProgressChip({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F6FF),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.black54,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DailyTask {
   final String title;
   final bool isDone;
   final VoidCallback? onTap;
 
-  const _DailyTask({
-    required this.title,
-    required this.isDone,
-    this.onTap,
-  });
+  const _DailyTask({required this.title, required this.isDone, this.onTap});
 }

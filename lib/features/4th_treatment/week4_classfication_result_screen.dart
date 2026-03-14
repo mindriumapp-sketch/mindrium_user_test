@@ -4,9 +4,6 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 
 // import 'package:gad_app_team/data/user_provider.dart';
 import 'week4_alternative_thoughts.dart';
-import 'week4_skip_choice_screen.dart';
-import 'week4_after_sud_screen.dart';
-import 'week4_classfication_screen.dart' as week4;
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 
 // ✅ 동일 UI 컴포넌트 (SkipChoice와 통일)
@@ -21,7 +18,6 @@ class Week4ClassificationResultScreen extends StatelessWidget {
     super.key,
     this.bScores,
     this.bList,
-    this.beforeSud,
     this.remainingBList,
     this.allBList,
     this.alternativeThoughts,
@@ -41,7 +37,6 @@ class Week4ClassificationResultScreen extends StatelessWidget {
 
   final List<double>? bScores;
   final List<String>? bList;
-  final int? beforeSud;
   final List<String>? remainingBList;
   final List<String>? allBList;
   final List<String>? alternativeThoughts;
@@ -70,11 +65,16 @@ class Week4ClassificationResultScreen extends StatelessWidget {
 
     // 경로 기반 카피/플로우
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
-    final String? abcId_  = args['abcId'] as String? ?? flow.diaryId;
+    final flow =
+        context.read<ApplyOrSolveFlow>()..syncFromArgs(args, notify: false);
+    final sanitizedFlowArgs =
+        Map<String, dynamic>.from(flow.toArgs())
+          ..remove('beforeSud')
+          ..remove('sudId');
+    final String? abcId_ = args['abcId'] as String? ?? flow.diaryId;
     final String rawOrigin = args['origin'] as String? ?? flow.origin;
     final String origin = rawOrigin == 'solve' ? 'apply' : rawOrigin;
-    final dynamic diary   = args['diary'] ?? flow.diary;
+    final dynamic diary = args['diary'] ?? flow.diary;
     final bool isFromApply = origin == 'apply';
 
     // final userName = Provider.of<UserProvider>(context, listen: false).userName;
@@ -85,30 +85,39 @@ class Week4ClassificationResultScreen extends StatelessWidget {
       mainQuestionText = '다른 생각에 대해서도 도움이 되는 생각을 찾아볼까요?';
     } else if (isFromAnxietyScreen) {
       mainQuestionText =
-      '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 찾아보는 시간을 가져보겠습니다!';
+          '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 찾아보는 시간을 가져보겠습니다!';
     } else {
-      mainQuestionText =
-      '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 찾아볼까요?';
+      mainQuestionText = '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 찾아볼까요?';
     }
 
     // 디폴트 값들
-    final int safeBeforeSud = beforeSud ?? 0;
     final List<String> safeRemainingBList = remainingBList ?? const <String>[];
     final List<String> safeAllBList = allBList ?? const <String>[];
+    final List<String> mergedAlternativeThoughts = _removeDuplicates([
+      ...?existingAlternativeThoughts,
+      ...?alternativeThoughts,
+    ]);
+    final bool hasMoreThoughts = safeRemainingBList.isNotEmpty;
 
-    // 보조 문구/세컨 버튼 라벨
-    final supportText = isFromApply
-        ? '만약 지금은 좀 부담스러우시다면,\n다음번에 해도 괜찮아요.'
-        : '만약 지금은 좀 부담스러우시다면,\n다른 생각들 먼저 보고 다시 돌아와도 괜찮아요.';
-    final secondaryButtonLabel =
-    isFromApply ? '다음번에 찾아볼게요.' : '다른 생각으로 진행할게요.';
+    // 안내 문구/버튼 라벨
+    final supportText =
+        isFromApply
+            ? '만약 지금은 좀 부담스러우시다면,\n다음번에 해도 괜찮아요.'
+            : hasMoreThoughts
+            ? '선택한 걱정일기에 적어주신 생각을 하나씩 차분하게 살펴보며,\n각 생각마다 도움이 되는 생각을 찾아볼게요.'
+            : '이 생각에 대해 도움이 되는 생각을 정리한 뒤\n오늘 활동을 마무리해볼게요.';
+    final primaryButtonLabel =
+        isFromApply ? '다른 생각도 이어서 볼게요!' : '도움이 되는 생각을 적어볼게요!';
 
-    // QuizCard에 넣을 본문(한 카드로 모으기)
-    final String quizText = [
-      mainQuestionText,
-      if (!isFromAnxietyScreen) // 선택 유도 문구
-        '\n\n아래 두 가지 방법 중 하나를 선택해주세요.',
-    ].join(' ');
+    final String quizText =
+        isFromApply
+            ? [
+              mainQuestionText,
+              if (!isFromAnxietyScreen) '\n\n아래 두 가지 방법 중 하나를 선택해주세요.',
+            ].join(' ')
+            : hasMoreThoughts
+            ? '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 적어보고,\n이어지는 다른 생각들도 하나씩 살펴볼게요.'
+            : '방금 보셨던 "$mainThought"라는 생각에 대해 도움이 되는 생각을 적어보겠습니다.';
 
     // ===== 네비게이션 핸들러 (원본 로직 유지) =====
     void onPrimary() {
@@ -118,9 +127,8 @@ class Week4ClassificationResultScreen extends StatelessWidget {
           context,
           '/apply_alt_thought',
           arguments: {
-            ...flow.toArgs(),
+            ...sanitizedFlowArgs,
             'abcId': abcId_,
-            'beforeSud': safeBeforeSud,
             'origin': 'apply',
             if (diary != null) 'diary': diary,
           },
@@ -130,21 +138,22 @@ class Week4ClassificationResultScreen extends StatelessWidget {
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>
-              Week4AlternativeThoughtsScreen(
+          pageBuilder:
+              (_, __, ___) => Week4AlternativeThoughtsScreen(
                 allBList: safeAllBList,
-                previousChips:
-                mainThought.isNotEmpty ? [mainThought] : [],
-                beforeSud: safeBeforeSud,
+                previousChips: mainThought.isNotEmpty ? [mainThought] : [],
                 remainingBList: safeRemainingBList,
-                existingAlternativeThoughts: _removeDuplicates([
-                  ...?existingAlternativeThoughts,
-                  ...?alternativeThoughts,
-                ]),
+                existingAlternativeThoughts: mergedAlternativeThoughts,
                 isFromAnxietyScreen: isFromAnxietyScreen,
                 originalBList: safeAllBList,
-                abcId: abcId ?? abcId_,  // 명시적으로 전달
+                abcId: abcId ?? abcId_, // 명시적으로 전달
                 loopCount: loopCount,
+                origin: isFromApply ? 'apply' : null,
+                diary: diary,
+                flowMode:
+                    isFromApply
+                        ? Week4AlternativeThoughtsFlowMode.applyAfterSud
+                        : Week4AlternativeThoughtsFlowMode.week4BeliefLoop,
               ),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
@@ -152,114 +161,8 @@ class Week4ClassificationResultScreen extends StatelessWidget {
       );
     }
 
-    void onSecondary() {
-      if (isFromApply) {
-        // 적용하기: 바로 After SUD
-        Navigator.pushReplacementNamed(
-          context,
-          '/after_sud',
-          arguments: {
-            ...flow.toArgs(),
-            'abcId': abcId_,
-            'origin': origin,
-            'diary': diary,
-            'sudId': args['sudId'] ?? flow.sudId,
-            'beforeSud': args['beforeSud'] ?? flow.beforeSud ?? safeBeforeSud,
-          },
-        );
-        return;
-      }
-
-      // 대체생각이 있으면 After SUD로
-      if (alternativeThoughts != null &&
-          alternativeThoughts!.isNotEmpty) {
-        final String? diaryId = abcId ?? abcId_;
-        if (diaryId != null && diaryId.isNotEmpty) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) =>
-                  Week4AfterSudScreen(
-                    beforeSud: safeBeforeSud,
-                    currentB: _chipLabel(
-                      (bList != null && bList!.isNotEmpty)
-                          ? bList!.last
-                          : '',
-                    ),
-                    remainingBList: safeRemainingBList,
-                    allBList: safeAllBList,
-                    alternativeThoughts:
-                    alternativeThoughts ?? [],
-                    abcId: diaryId,
-                  ),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) =>
-                  Week4AfterSudScreen(
-                    beforeSud: safeBeforeSud,
-                    currentB: _chipLabel(
-                      (bList != null && bList!.isNotEmpty)
-                          ? bList!.last
-                          : '',
-                    ),
-                    remainingBList: safeRemainingBList,
-                    allBList: safeAllBList,
-                    alternativeThoughts:
-                    alternativeThoughts ?? [],
-                  ),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-        }
-      } else if (safeRemainingBList.isEmpty) {
-        // 남은 생각 없으면 Skip Choice
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) =>
-                Week4SkipChoiceScreen(
-                  allBList: safeAllBList,
-                  beforeSud: safeBeforeSud,
-                  remainingBList: safeRemainingBList,
-                  abcId: abcId,
-                ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      } else {
-        // 남은 B가 있으면 다음 B로
-        if (abcId_ != null && abcId_.isNotEmpty) {
-          Navigator.pushNamed(
-            context,
-            '/alt_thought',
-            arguments: {'abcId': abcId_},
-          );
-        } else {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) =>
-                  week4.Week4ClassificationScreen(
-                    bListInput: safeRemainingBList,
-                    beforeSud: safeBeforeSud,
-                    allBList: safeAllBList,
-                    alternativeThoughts: alternativeThoughts,
-                    abcId: abcId,
-                  ),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-        }
-      }
+    void onSecondaryApply() {
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     }
 
     // ===== 레이아웃 =====
@@ -307,9 +210,7 @@ class Week4ClassificationResultScreen extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // 2) 해파리 말풍선
-                      JellyfishNotice(
-                        feedback: supportText
-                      ),
+                      JellyfishNotice(feedback: supportText),
 
                       const SizedBox(height: 20),
 
@@ -319,17 +220,17 @@ class Week4ClassificationResultScreen extends StatelessWidget {
                         type: ChoiceType.other,
                         onPressed: onPrimary,
                         // 라벨을 외부에서 덮어쓰기 위해 text 사용(네가 수정한 ChoiceCardButton에 대응)
-                        othText: '도움이 되는 생각을 찾아볼게요!',
+                        othText: primaryButtonLabel,
                         height: 54,
                       ),
 
-                      if (!isFromAnxietyScreen) ...[
+                      if (isFromApply && !isFromAnxietyScreen) ...[
                         const SizedBox(height: 10),
                         ChoiceCardButton(
                           // 보조 액션(분홍)
                           type: ChoiceType.another,
-                          onPressed: onSecondary,
-                          anoText: secondaryButtonLabel,
+                          onPressed: onSecondaryApply,
+                          anoText: '다음번에 찾아볼게요.',
                           height: 54,
                         ),
                       ],

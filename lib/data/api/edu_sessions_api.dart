@@ -53,8 +53,8 @@ class EduSessionsApi {
   Future<Map<String, dynamic>> createCommonSession({
     required int weekNumber, // 1,2,4,6만 사용
     String? diaryId,
-    required int totalScreens,
-    required int lastScreenIndex,
+    required int totalStages,
+    required int lastStageIndex,
     required bool completed,
     required DateTime startTime,
     DateTime? endTime,
@@ -62,17 +62,14 @@ class EduSessionsApi {
     final payload = <String, dynamic>{
       'week_number': weekNumber,
       if (diaryId != null) 'diary_id': diaryId,
-      'total_screens': totalScreens,
-      'last_screen_idx': lastScreenIndex,
+      'total_stages': totalStages,
+      'last_stage_idx': lastStageIndex,
       'completed': completed,
       'start_time': _encodeDateTime(startTime),
       if (endTime != null) 'end_time': _encodeDateTime(endTime),
     };
 
-    final res = await _client.dio.post(
-      '/edu-sessions',
-      data: payload,
-    );
+    final res = await _client.dio.post('/edu-sessions', data: payload);
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -97,8 +94,8 @@ class EduSessionsApi {
   Future<Map<String, dynamic>> createWeek3or5Session({
     required int weekNumber, // 3 또는 5
     String? diaryId,
-    required int totalScreens,
-    required int lastScreenIndex,
+    required int totalStages,
+    required int lastStageIndex,
     required bool completed,
     required DateTime startTime,
     DateTime? endTime,
@@ -109,21 +106,17 @@ class EduSessionsApi {
     final payload = <String, dynamic>{
       'week_number': weekNumber,
       if (diaryId != null) 'diary_id': diaryId,
-      'total_screens': totalScreens,
-      'last_screen_idx': lastScreenIndex,
+      'total_stages': totalStages,
+      'last_stage_idx': lastStageIndex,
       'completed': completed,
       'start_time': _encodeDateTime(startTime),
       if (endTime != null) 'end_time': _encodeDateTime(endTime),
       if (negativeItems != null) 'negative_items': negativeItems,
       if (positiveItems != null) 'positive_items': positiveItems,
-      if (classificationQuiz != null)
-        'classification_quiz': classificationQuiz,
+      if (classificationQuiz != null) 'classification_quiz': classificationQuiz,
     };
 
-    final res = await _client.dio.post(
-      '/edu-sessions/week3-5',
-      data: payload,
-    );
+    final res = await _client.dio.post('/edu-sessions/week3-5', data: payload);
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -151,13 +144,13 @@ class EduSessionsApi {
   ///   updateEduSession(
   ///     sessionId: '...',
   ///     completed: true,
-  ///     lastScreenIndex: 10,
+  ///     lastStageIndex: 10,
   ///     effectivenessEvaluations: [...],
   ///   );
   Future<Map<String, dynamic>> updateEduSession({
     required String sessionId,
-    int? totalScreens,
-    int? lastScreenIndex,
+    int? totalStages,
+    int? lastStageIndex,
     bool? completed,
     DateTime? startTime,
     DateTime? endTime,
@@ -169,8 +162,8 @@ class EduSessionsApi {
     List<Map<String, dynamic>>? userJourneyResponses,
   }) async {
     final payload = <String, dynamic>{
-      if (totalScreens != null) 'total_screens': totalScreens,
-      if (lastScreenIndex != null) 'last_screen_idx': lastScreenIndex,
+      if (totalStages != null) 'total_stages': totalStages,
+      if (lastStageIndex != null) 'last_stage_idx': lastStageIndex,
       if (completed != null) 'completed': completed,
       if (startTime != null) 'start_time': _encodeDateTime(startTime),
       if (endTime != null) 'end_time': _encodeDateTime(endTime),
@@ -178,8 +171,7 @@ class EduSessionsApi {
       // 3,5주차
       if (negativeItems != null) 'negative_items': negativeItems,
       if (positiveItems != null) 'positive_items': positiveItems,
-      if (classificationQuiz != null)
-        'classification_quiz': classificationQuiz,
+      if (classificationQuiz != null) 'classification_quiz': classificationQuiz,
 
       // 7주차
       if (behaviorItems != null) 'behavior_items': behaviorItems,
@@ -209,5 +201,76 @@ class EduSessionsApi {
       requestOptions: res.requestOptions,
       message: 'Invalid /edu-sessions (PUT) response',
     );
+  }
+
+  Future<void> completeWeekSession({
+    required int weekNumber,
+    required int totalStages,
+    String? sessionId,
+  }) async {
+    final now = DateTime.now();
+    String? targetSessionId = sessionId?.trim();
+
+    if (targetSessionId == null || targetSessionId.isEmpty) {
+      final sessions = await listEduSessions(weekNumber: weekNumber);
+      if (sessions.isNotEmpty) {
+        final latestId = sessions.first['session_id']?.toString();
+        if (latestId != null && latestId.isNotEmpty) {
+          targetSessionId = latestId;
+        }
+      }
+    }
+
+    if (targetSessionId != null && targetSessionId.isNotEmpty) {
+      await updateEduSession(
+        sessionId: targetSessionId,
+        completed: true,
+        lastStageIndex: totalStages,
+        totalStages: totalStages,
+        endTime: now,
+      );
+      return;
+    }
+
+    if (weekNumber == 3 || weekNumber == 5) {
+      await createWeek3or5Session(
+        weekNumber: weekNumber,
+        totalStages: totalStages,
+        lastStageIndex: totalStages,
+        completed: true,
+        startTime: now,
+        endTime: now,
+      );
+      return;
+    }
+
+    if (weekNumber == 1 ||
+        weekNumber == 2 ||
+        weekNumber == 4 ||
+        weekNumber == 6) {
+      await createCommonSession(
+        weekNumber: weekNumber,
+        totalStages: totalStages,
+        lastStageIndex: totalStages,
+        completed: true,
+        startTime: now,
+        endTime: now,
+      );
+    }
+  }
+
+  Future<bool> isWeekSessionCompleted(int weekNumber) async {
+    final sessions = await listEduSessions(weekNumber: weekNumber);
+    for (final s in sessions) {
+      final completed = s['completed'] == true;
+      final totalStagesRaw = s['total_stages'];
+      final lastIdxRaw = s['last_stage_idx'];
+      final totalStages = totalStagesRaw is num ? totalStagesRaw.toInt() : 0;
+      final lastIdx = lastIdxRaw is num ? lastIdxRaw.toInt() : 0;
+      if (completed && totalStages > 0 && lastIdx >= totalStages) {
+        return true;
+      }
+    }
+    return false;
   }
 }

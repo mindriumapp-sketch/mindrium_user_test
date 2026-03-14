@@ -1,6 +1,8 @@
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
@@ -21,6 +23,8 @@ class TodayTaskProvider extends ChangeNotifier {
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _client = ApiClient(tokens: _tokens);
   late final UserDataApi _userDataApi = UserDataApi(_client);
+  late final EduSessionsApi _eduSessionsApi = EduSessionsApi(_client);
+  late final RelaxationApi _relaxationApi = RelaxationApi(_client);
 
   // ───────────────────── 상태 필드 ─────────────────────
   DateTime? _date; // 서버가 내려준 "오늘" 날짜 (KST 기준 string 을 parse)
@@ -34,6 +38,11 @@ class TodayTaskProvider extends ChangeNotifier {
 
   bool _educationDoneWeek = false;
   bool get educationDoneWeek => _educationDoneWeek;
+  final Set<int> _cbtDoneWeeks = <int>{};
+  final Set<int> _relaxationDoneWeeks = <int>{};
+  bool isCbtDoneWeek(int weekNumber) => _cbtDoneWeeks.contains(weekNumber);
+  bool isRelaxationDoneWeek(int weekNumber) =>
+      _relaxationDoneWeeks.contains(weekNumber);
 
   DateTime? _lastEducationAt;
   DateTime? get lastEducationAt => _lastEducationAt;
@@ -117,6 +126,23 @@ class TodayTaskProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> syncEducationWeekStatus(int weekNumber) async {
+    if (weekNumber < 1 || weekNumber > 8) return;
+    try {
+      final cbtDone = await _eduSessionsApi.isWeekSessionCompleted(weekNumber);
+      final relaxDone = await _relaxationApi.isWeekEducationTaskCompleted(
+        weekNumber,
+      );
+      setEducationWeekSessionLocally(
+        weekNumber: weekNumber,
+        cbtDone: cbtDone,
+        relaxationDone: relaxDone,
+      );
+    } catch (e) {
+      debugPrint('TodayTaskProvider.syncEducationWeekStatus 실패: $e');
+    }
+  }
+
   Future<void> _loadFromServer({required int requestId}) async {
     final data = await _userDataApi.getTodayTask();
     if (requestId != _requestId) return;
@@ -184,6 +210,36 @@ class TodayTaskProvider extends ChangeNotifier {
     _notifyListenersSafely();
   }
 
+  void setEducationWeekSessionLocally({
+    required int weekNumber,
+    bool? cbtDone,
+    bool? relaxationDone,
+    bool? educationDoneWeek,
+    DateTime? lastEducationAt,
+  }) {
+    if (cbtDone != null) {
+      if (cbtDone) {
+        _cbtDoneWeeks.add(weekNumber);
+      } else {
+        _cbtDoneWeeks.remove(weekNumber);
+      }
+    }
+    if (relaxationDone != null) {
+      if (relaxationDone) {
+        _relaxationDoneWeeks.add(weekNumber);
+      } else {
+        _relaxationDoneWeeks.remove(weekNumber);
+      }
+    }
+    if (educationDoneWeek != null) {
+      _educationDoneWeek = educationDoneWeek;
+    }
+    if (lastEducationAt != null) {
+      _lastEducationAt = lastEducationAt;
+    }
+    _notifyListenersSafely();
+  }
+
   /// 로그아웃 등에서 상태 싹 초기화.
   void reset() {
     _requestId++;
@@ -191,6 +247,8 @@ class TodayTaskProvider extends ChangeNotifier {
     _diaryDone = false;
     _relaxationDone = false;
     _educationDoneWeek = false;
+    _cbtDoneWeeks.clear();
+    _relaxationDoneWeeks.clear();
     _lastEducationAt = null;
     _isLoading = false;
     _lastError = null;

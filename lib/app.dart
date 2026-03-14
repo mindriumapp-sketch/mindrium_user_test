@@ -1,5 +1,4 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/chatbot/chatbot_main.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:gad_app_team/contents/alternative_yes_or_no.dart';
@@ -44,9 +43,7 @@ import 'package:gad_app_team/features/menu/education/education5.dart';
 import 'package:gad_app_team/features/menu/education/education6.dart';
 import 'package:gad_app_team/features/menu/education/education7.dart';
 
-import 'package:gad_app_team/features/menu/relaxation/relaxation_screen.dart';
-import 'package:gad_app_team/features/menu/relaxation/relaxation_score_screen.dart';
-import 'package:gad_app_team/features/menu/relaxation/relaxation_education.dart';
+import 'package:gad_app_team/features/menu/relaxation/relaxation_start.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_noti.dart';
 import 'package:gad_app_team/contents/before_sud_screen.dart';
 import 'package:gad_app_team/contents/after_sud_screen.dart';
@@ -144,7 +141,6 @@ class MyApp extends StatelessWidget {
         '/education5': (context) => const Education5Page(),
         '/education6': (context) => const Education6Page(),
         '/education7': (context) => const Education7Page(),
-        '/relaxation': (context) => const RelaxationScreen(),
         // '/screen_time': (context) => const ScreenTimePage(),
         '/relaxation_education': (context) {
           final args =
@@ -154,7 +150,7 @@ class MyApp extends StatelessWidget {
           final weekNumber = args['weekNumber'] as int? ?? 1;
           final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
           final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
-          return PracticePlayer(
+          return RelaxationStartScreen(
             sessionId: sessionId,
             taskId: taskId,
             weekNumber: weekNumber,
@@ -178,7 +174,6 @@ class MyApp extends StatelessWidget {
             nextPage: nextPage,
           );
         },
-        '/relaxation_score': (context) => const RelaxationScoreScreen(),
         '/before_sud': (context) => const BeforeSudRatingScreen(),
         '/solve_entry_choice': (context) => const SolveEntryChoiceScreen(),
         '/after_sud': (context) => const AfterSudRatingScreen(),
@@ -222,7 +217,6 @@ class MyApp extends StatelessWidget {
           return PokemonBattleDeletePage(groupId: groupId);
         },
         '/archive_sea': (context) => SeaArchivePage(),
-        '/agent_help': (context) => ChatApp(),
       },
     );
   }

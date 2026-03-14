@@ -1,4 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'dart:async';
 
 class CustomPopupDesign extends StatefulWidget {
   final String title;
@@ -19,6 +20,7 @@ class CustomPopupDesign extends StatefulWidget {
   final int? inputMaxLength;
   final String inputMaxLengthErrorText;
   final String? Function(String text)? inputValidator;
+  final Duration? autoPositiveAfter;
 
   const CustomPopupDesign({
     super.key,
@@ -38,14 +40,64 @@ class CustomPopupDesign extends StatefulWidget {
     this.inputMaxLength,
     this.inputMaxLengthErrorText = '입력 길이를 확인해주세요.',
     this.inputValidator,
+    this.autoPositiveAfter,
   });
 
   @override
   State<CustomPopupDesign> createState() => _CustomPopupDesignState();
 }
 
-class _CustomPopupDesignState extends State<CustomPopupDesign> {
+class _CustomPopupDesignState extends State<CustomPopupDesign>
+    with SingleTickerProviderStateMixin {
   String? _inputErrorText;
+  Timer? _autoTimer;
+  Timer? _countdownTimer;
+  AnimationController? _progressController;
+  bool _actionTaken = false;
+  int? _remainingSeconds;
+
+  @override
+  void initState() {
+    super.initState();
+    final delay = widget.autoPositiveAfter;
+    if (delay != null) {
+      _progressController = AnimationController(vsync: this, duration: delay)
+        ..forward();
+
+      final initialSeconds = (delay.inMilliseconds / 1000).ceil().clamp(
+        1,
+        9999,
+      );
+      _remainingSeconds = initialSeconds;
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted || _actionTaken) {
+          timer.cancel();
+          return;
+        }
+        final current = _remainingSeconds ?? 0;
+        if (current <= 0) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          _remainingSeconds = current - 1;
+        });
+      });
+
+      _autoTimer = Timer(delay, () {
+        if (!mounted || _actionTaken) return;
+        _handlePositivePressed();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    _countdownTimer?.cancel();
+    _progressController?.dispose();
+    super.dispose();
+  }
 
   String? _validateInput(String rawText) {
     final text = rawText.trim();
@@ -63,6 +115,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
   }
 
   void _handlePositivePressed() {
+    if (_actionTaken) return;
     if (widget.enableInput && widget.controller != null) {
       final error = _validateInput(widget.controller!.text);
       if (error != null) {
@@ -72,16 +125,30 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
         return;
       }
     }
+    _actionTaken = true;
+    _autoTimer?.cancel();
+    _countdownTimer?.cancel();
+    _progressController?.stop();
     widget.onPositivePressed();
+  }
+
+  void _handleNegativePressed() {
+    if (_actionTaken) return;
+    _actionTaken = true;
+    _autoTimer?.cancel();
+    _countdownTimer?.cancel();
+    _progressController?.stop();
+    (widget.onNegativePressed ?? () {})();
   }
 
   @override
   Widget build(BuildContext context) {
     final bool singleAction = widget.negativeText == null;
     final media = MediaQuery.of(context);
-    final maxDialogHeight = ((media.size.height - media.viewInsets.bottom) * 0.78)
-        .clamp(280.0, 720.0)
-        .toDouble();
+    final maxDialogHeight =
+        ((media.size.height - media.viewInsets.bottom) * 0.78)
+            .clamp(280.0, 720.0)
+            .toDouble();
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -119,103 +186,117 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                TextLine(
-                  widget.title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'NotoSansKR',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1B3A57),
-                  ),
-                ),
-
-                if (widget.highlightText.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _FoldedMemoTag(
-                    text: widget.highlightText,
-                    memoBgAsset: widget.memoBgAsset,
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                // ✅ 입력 필드 or 메시지
-                if (widget.enableInput && widget.controller != null)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: const Color(0xFF74D2FF),
-                        width: 1.3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF74D2FF).withValues(alpha: 0.1),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    child: TextField(
-                      controller: widget.controller,
-                      maxLines: 1,
-                      onChanged: (value) {
-                        if (_inputErrorText == null) return;
-                        final error = _validateInput(value);
-                        if (error == null) {
-                          setState(() => _inputErrorText = null);
-                        }
-                      },
-                      cursorColor: const Color(0xFF74D2FF),
+                    TextLine(
+                      widget.title,
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontFamily: 'NotoSansKR',
-                        fontSize: 15,
-                        color: Color(0xFF356D91),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1B3A57),
                       ),
-                      decoration: InputDecoration(
-                        hintText: widget.inputHint,
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF9BBFD6),
-                          fontSize: 14,
+                    ),
+                    if (widget.highlightText.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _FoldedMemoTag(
+                        text: widget.highlightText,
+                        memoBgAsset: widget.memoBgAsset,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    const SizedBox(height: 16),
+                    // ✅ 입력 필드 or 메시지
+                    if (widget.enableInput && widget.controller != null)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFF74D2FF),
+                            width: 1.3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF74D2FF,
+                              ).withValues(alpha: 0.1),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        border: InputBorder.none,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        child: TextField(
+                          controller: widget.controller,
+                          maxLines: 1,
+                          onChanged: (value) {
+                            if (_inputErrorText == null) return;
+                            final error = _validateInput(value);
+                            if (error == null) {
+                              setState(() => _inputErrorText = null);
+                            }
+                          },
+                          cursorColor: const Color(0xFF74D2FF),
+                          style: const TextStyle(
+                            fontFamily: 'NotoSansKR',
+                            fontSize: 15,
+                            color: Color(0xFF356D91),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: widget.inputHint,
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF9BBFD6),
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                if (widget.enableInput &&
-                    widget.controller != null &&
-                    _inputErrorText != null) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextLine(
-                      _inputErrorText!,
-                      style: const TextStyle(
-                        fontFamily: 'NotoSansKR',
-                        fontSize: 12,
-                        color: Colors.red,
-                        fontWeight: FontWeight.w600,
+                    if (widget.enableInput &&
+                        widget.controller != null &&
+                        _inputErrorText != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextLine(
+                          _inputErrorText!,
+                          style: const TextStyle(
+                            fontFamily: 'NotoSansKR',
+                            fontSize: 12,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ]
-                else
-                  TextLine(
-                    widget.message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: 'NotoSansKR',
-                      fontSize: 15,
-                      color: Color(0xFF356D91),
-                      height: 1.5,
-                    ),
-                  ),
-
+                    ] else
+                      TextLine(
+                        widget.message,
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          fontFamily: 'NotoSansKR',
+                          fontSize: 15,
+                          color: Color(0xFF356D91),
+                          height: 1.5,
+                        ),
+                      ),
+                    if (_remainingSeconds != null) ...[
+                      const SizedBox(height: 8),
+                      TextLine(
+                        widget.negativeText == null
+                            ? '${_remainingSeconds!}초 이내 자동으로 이동합니다.'
+                            : '${_remainingSeconds!}초 이내 선택이 없으면 자동으로 진행됩니다.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'NotoSansKR',
+                          fontSize: 13,
+                          color: Color(0xFF346C93),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 28),
 
                     // ✅ 버튼 영역
@@ -226,6 +307,8 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                           label: widget.positiveText,
                           onPressed: _handlePositivePressed,
                           isPrimary: true,
+                          showAutoProgress:
+                              widget.autoPositiveAfter != null && !_actionTaken,
                         ),
                       )
                     else
@@ -237,8 +320,9 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                               margin: const EdgeInsets.symmetric(horizontal: 6),
                               child: _buildButton(
                                 label: widget.negativeText!,
-                                onPressed: widget.onNegativePressed ?? () {},
+                                onPressed: _handleNegativePressed,
                                 isPrimary: false,
+                                showAutoProgress: false,
                               ),
                             ),
                           ),
@@ -249,6 +333,9 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                                 label: widget.positiveText,
                                 onPressed: _handlePositivePressed,
                                 isPrimary: true,
+                                showAutoProgress:
+                                    widget.autoPositiveAfter != null &&
+                                    !_actionTaken,
                               ),
                             ),
                           ),
@@ -258,7 +345,6 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
                 ),
               ),
             ),
-
             // 상단 아이콘
             Positioned(
               top: -40,
@@ -304,6 +390,7 @@ class _CustomPopupDesignState extends State<CustomPopupDesign> {
     required String label,
     required VoidCallback onPressed,
     required bool isPrimary,
+    required bool showAutoProgress,
   }) {
     return ElevatedButton(
       onPressed: onPressed,

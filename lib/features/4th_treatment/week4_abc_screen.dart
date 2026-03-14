@@ -1,61 +1,82 @@
-// lib/features/4th_treatment/week4_abc_screen.dart
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_imagination_screen.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_concentration_screen.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_before_sud_screen.dart';
-
-// ✅ 튜토리얼/적용하기 공용 레이아웃 (BlueWhiteCard 기반)
-import 'package:gad_app_team/widgets/tutorial_design.dart'; // ApplyDesign
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/features/4th_treatment/week4_concentration_screen.dart';
+import 'package:gad_app_team/widgets/tutorial_design.dart';
 
 class Week4AbcScreen extends StatefulWidget {
   final String? abcId;
-  final int? sud;
   final int loopCount;
 
-  const Week4AbcScreen({super.key, this.abcId, this.sud, this.loopCount = 1});
+  const Week4AbcScreen({super.key, this.abcId, this.loopCount = 1});
 
   @override
   State<Week4AbcScreen> createState() => _Week4AbcScreenState();
 }
 
 class _Week4AbcScreenState extends State<Week4AbcScreen> {
-  Map<String, dynamic>? _abcModel;
-  bool _isLoading = true;
-  String? _error;
-  List<String> _bList = [];
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
+
+  List<_DiarySelectionItem> _diaryOptions = const [];
+  _DiarySelectionItem? _selectedDiary;
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
-    // 요구사항: 항상 "가장 최근" 일기를 기준으로 시작
-    // (abcId가 전달되더라도 이 화면에서는 최신 일기 우선)
-    _fetchLatestDiary();
+    _fetchDiaryOptions();
   }
 
-  Future<void> _fetchLatestDiary() async {
+  Future<void> _fetchDiaryOptions() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
+
     try {
-      // 서버에서 마지막 일기를 바로 반환
-      final latest = await _diariesApi.getLatestDiary();
+      final diaries = await _diariesApi.listDiaries();
+      final options =
+          diaries
+              .map(_DiarySelectionItem.fromMap)
+              .whereType<_DiarySelectionItem>()
+              .where((item) => item.canUseInWeek4)
+              .toList()
+            ..sort((a, b) {
+              final aDate = a.createdAt;
+              final bDate = b.createdAt;
+              if (aDate == null && bDate == null) return 0;
+              if (aDate == null) return 1;
+              if (bDate == null) return -1;
+              return bDate.compareTo(aDate);
+            });
+
+      _DiarySelectionItem? selected;
+      final preferredId = widget.abcId;
+      if (preferredId != null && preferredId.isNotEmpty) {
+        for (final item in options) {
+          if (item.id == preferredId) {
+            selected = item;
+            break;
+          }
+        }
+      }
+
+      if (!mounted) return;
       setState(() {
-        _abcModel = latest;
-        _bList = _parseBeliefToList(latest['belief']);
+        _diaryOptions = options;
+        _selectedDiary = selected;
         _isLoading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _error = '데이터를 불러오지 못했습니다.';
         _isLoading = false;
@@ -63,7 +84,239 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     }
   }
 
-  String _chipLabel(dynamic raw) {
+  void _toggleDiary(_DiarySelectionItem diary) {
+    setState(() {
+      _selectedDiary = _selectedDiary?.id == diary.id ? null : diary;
+    });
+  }
+
+  PageRouteBuilder<void> _instantRoute(Widget child) {
+    return PageRouteBuilder<void>(
+      pageBuilder: (_, __, ___) => child,
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+    );
+  }
+
+  void _handleNext() {
+    final selectedDiary = _selectedDiary;
+    if (selectedDiary == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('진행할 걱정일기를 먼저 선택해 주세요.')));
+      return;
+    }
+
+    if (selectedDiary.beliefItems.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('B(생각) 데이터가 없습니다.')));
+      return;
+    }
+
+    Navigator.push(
+      context,
+      _instantRoute(
+        Week4ConcentrationScreen(
+          bListInput: selectedDiary.beliefItems,
+          allBList: selectedDiary.beliefItems,
+          abcId: selectedDiary.id,
+          loopCount: widget.loopCount,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Text(
+          _error!,
+          style: const TextStyle(color: Colors.red, fontSize: 16),
+        ),
+      );
+    }
+
+    if (_diaryOptions.isEmpty) {
+      return const Center(
+        child: Text('선택할 수 있는 걱정일기가 없습니다.', style: TextStyle(fontSize: 16)),
+      );
+    }
+
+    final userName = Provider.of<UserProvider>(context, listen: false).userName;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SelectionGuideCard(diaryCount: _diaryOptions.length),
+        const SizedBox(height: 18),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          child:
+              _selectedDiary == null
+                  ? const _SelectionPlaceholderCard()
+                  : _SelectedDiaryPreviewCard(
+                    key: ValueKey(_selectedDiary!.id),
+                    diary: _selectedDiary!,
+                    userName: userName,
+                  ),
+        ),
+        const SizedBox(height: 18),
+        _SectionHeader(
+          title: '최근 작성한 걱정일기',
+          subtitle: '한 번 탭하면 선택되고, 이후에는 이 일기 속 생각들을 하나씩 차례대로 살펴봐요.',
+          trailing: _InfoPill(
+            icon: Icons.schedule_rounded,
+            label: '최신순',
+            foregroundColor: const Color(0xFF2E6EA5),
+            backgroundColor: const Color(0xFFDFF1FF),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _diaryOptions.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final diary = _diaryOptions[index];
+            return _DiaryListItemCard(
+              diary: diary,
+              isSelected: diary.id == _selectedDiary?.id,
+              onTap: () => _toggleDiary(diary),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ApplyDesign(
+      appBarTitle: '인지 왜곡 찾기',
+      cardTitle: '걱정 일기 선택',
+      onBack: () => Navigator.pop(context),
+      onNext: _handleNext,
+      child: _buildBody(context),
+    );
+  }
+}
+
+class _DiarySelectionItem {
+  final String id;
+  final String activation;
+  final List<String> beliefItems;
+  final String beliefText;
+  final String physicalText;
+  final String emotionText;
+  final String behaviorText;
+  final DateTime? createdAt;
+  final bool isAutoGenerated;
+
+  const _DiarySelectionItem({
+    required this.id,
+    required this.activation,
+    required this.beliefItems,
+    required this.beliefText,
+    required this.physicalText,
+    required this.emotionText,
+    required this.behaviorText,
+    required this.createdAt,
+    required this.isAutoGenerated,
+  });
+
+  bool get canUseInWeek4 =>
+      id.isNotEmpty && !isAutoGenerated && beliefItems.isNotEmpty;
+
+  bool get hasConsequence =>
+      physicalText.isNotEmpty ||
+      emotionText.isNotEmpty ||
+      behaviorText.isNotEmpty;
+
+  String get title => activation.isEmpty ? '(제목 없음)' : activation;
+
+  String get beliefPreview => beliefText.isEmpty ? '생각 정보 없음' : beliefText;
+
+  String get listDateLabel {
+    final date = createdAt;
+    if (date == null) return '작성일 정보 없음';
+    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String get previewDateLabel {
+    final date = createdAt;
+    if (date == null) return '';
+    return '${date.year}년 ${date.month}월 ${date.day}일에 작성된 걱정일기';
+  }
+
+  String narrative(String userName) {
+    final clauses = <String>[];
+    if (physicalText.isNotEmpty) {
+      clauses.add('신체적으로 "$physicalText" 증상이 나타났습니다');
+    }
+    if (emotionText.isNotEmpty) {
+      clauses.add('"$emotionText" 감정을 느끼셨습니다');
+    }
+    if (behaviorText.isNotEmpty) {
+      clauses.add('"$behaviorText" 행동을 하였습니다');
+    }
+
+    final consequenceText =
+        clauses.isEmpty ? '' : ' 그 결과 ${clauses.join(', ')}.';
+
+    return '$userName님은 "$title" 상황에서 "$beliefText" 생각을 하였습니다.$consequenceText';
+  }
+
+  static _DiarySelectionItem? fromMap(Map<String, dynamic> raw) {
+    final id = _resolveDiaryId(raw);
+    if (id == null || id.isEmpty) return null;
+
+    final activation = _safeText(
+      _chipText(
+        raw['activation'] ?? raw['activating_events'] ?? raw['activatingEvent'],
+      ),
+    );
+    final beliefItems = _parseBeliefToList(raw['belief']);
+
+    return _DiarySelectionItem(
+      id: id,
+      activation: activation,
+      beliefItems: beliefItems,
+      beliefText: _safeText(_chipText(raw['belief'])),
+      physicalText: _safeText(
+        _chipText(raw['consequence_physical'] ?? raw['consequence_p']),
+      ),
+      emotionText: _safeText(
+        _chipText(raw['consequence_emotion'] ?? raw['consequence_e']),
+      ),
+      behaviorText: _safeText(
+        _chipText(
+          raw['consequence_action'] ??
+              raw['consequence_behavior'] ??
+              raw['consequence_b'],
+        ),
+      ),
+      createdAt: _parseCreatedAt(raw['created_at'] ?? raw['createdAt']),
+      isAutoGenerated: activation.startsWith('자동 생성 일기'),
+    );
+  }
+
+  static String? _resolveDiaryId(Map<String, dynamic> raw) {
+    return (raw['diary_id'] ?? raw['diaryId'] ?? raw['id'])?.toString();
+  }
+
+  static DateTime? _parseCreatedAt(dynamic raw) {
+    if (raw is DateTime) return raw;
+    if (raw is String) return DateTime.tryParse(raw);
+    return null;
+  }
+
+  static String _chipLabel(dynamic raw) {
     if (raw == null) return '';
     if (raw is Map) {
       return (raw['label'] ?? '').toString();
@@ -71,7 +324,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     return raw.toString();
   }
 
-  String _chipText(dynamic raw) {
+  static String _chipText(dynamic raw) {
     if (raw is List) {
       return raw
           .map((e) => _chipLabel(e).trim())
@@ -81,7 +334,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     return _chipLabel(raw).trim();
   }
 
-  List<String> _parseBeliefToList(dynamic raw) {
+  static List<String> _parseBeliefToList(dynamic raw) {
     if (raw is List) {
       return raw
           .map((e) => _chipLabel(e).trim())
@@ -96,251 +349,446 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
         .toList();
   }
 
-  // ✅ Week6 스타일에 맞춘 하이라이트 박스
-  Widget _highlightedText(String text) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF59D).withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          color: Colors.black,
-        ),
-      ),
-    );
+  static String _safeText(String text) {
+    try {
+      return String.fromCharCodes(text.runes);
+    } catch (_) {
+      return '';
+    }
   }
+}
+
+class _SelectionGuideCard extends StatelessWidget {
+  final int diaryCount;
+
+  const _SelectionGuideCard({required this.diaryCount});
 
   @override
   Widget build(BuildContext context) {
-    final sud = widget.sud;
-
-    return ApplyDesign(
-      appBarTitle: '인지 왜곡 찾기',
-      cardTitle: '최근 걱정 일기 확인',
-      onBack: () => Navigator.pop(context),
-      onNext: () {
-        // 항상 현재 화면에서 로드한 최신 일기의 ID를 사용
-        final id =
-            (_abcModel?['diary_id'] ?? _abcModel?['diaryId'])?.toString();
-
-        if (id == null || id.isEmpty) {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const Week4ImaginationScreen(),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-          return;
-        }
-
-        // SUD(before)가 없는 경우 먼저 4주차 전용 Before SUD 화면으로 이동
-        if (sud == null) {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder:
-                  (_, __, ___) =>
-                      Week4BeforeSudScreen(loopCount: widget.loopCount),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-          return;
-        }
-
-        setState(() => _isLoading = true);
-        final beforeSudValue = sud;
-
-        if (_bList.isEmpty) {
-          setState(() => _isLoading = false);
-          if (!mounted) return;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('B(생각) 데이터가 없습니다.')));
-          return;
-        }
-
-        setState(() => _isLoading = false);
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder:
-                (_, __, ___) => Week4ConcentrationScreen(
-                  bListInput: _bList,
-                  beforeSud: beforeSudValue,
-                  allBList: _bList,
-                  abcId: id, // 최신 일기의 ID 전달
-                  loopCount: widget.loopCount,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4FAFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD8EBFB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.menu_book_rounded, color: Color(0xFF2E6EA5), size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '이번 활동에 사용할 걱정일기 하나를 골라주세요.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1B405C),
+                  ),
                 ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
+              ),
+            ],
           ),
-        );
-      },
-
-      // 💬 카드 내부 콘텐츠 (Week6 스타일 그대로 구성)
-      child: _buildCardBody(context),
+          const SizedBox(height: 10),
+          const Text(
+            '선택한 뒤에는 내용을 먼저 읽어보고,\n그 안에 있는 생각들을 하나씩 순서대로 살펴보게 됩니다.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF4E6178),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _InfoPill(
+                icon: Icons.filter_list_rounded,
+                label: '선택 가능한 일기 $diaryCount개',
+                foregroundColor: const Color(0xFF255E8D),
+                backgroundColor: Colors.white,
+              ),
+              _InfoPill(
+                icon: Icons.touch_app_rounded,
+                label: '탭해서 선택',
+                foregroundColor: const Color(0xFF255E8D),
+                backgroundColor: Colors.white,
+              ),
+              _InfoPill(
+                icon: Icons.repeat_rounded,
+                label: '생각 순서대로 진행',
+                foregroundColor: const Color(0xFF255E8D),
+                backgroundColor: Colors.white,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildCardBody(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Text(
-          _error!,
-          style: const TextStyle(color: Colors.red, fontSize: 16),
-        ),
-      );
-    }
-    if (_abcModel == null) {
-      return const Center(
-        child: Text('최근에 작성한 ABC모델이 없습니다.', style: TextStyle(fontSize: 16)),
-      );
-    }
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
 
-    String safe(String text) {
-      try {
-        // replaces ill-formed UTF-16 sequences with � to avoid TextSpan crashes
-        return String.fromCharCodes(text.runes);
-      } catch (_) {
-        return '';
-      }
-    }
+  const _SectionHeader({
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
 
-    final a = safe(_chipText(
-      _abcModel?['activation'] ??
-          _abcModel?['activating_events'] ??
-          _abcModel?['activatingEvent'],
-    ));
-    // belief는 리스트일 수 있음 → 표시용으로 쉼표 연결
-    final b = safe(_chipText(_abcModel?['belief']));
-    final cPhysical = safe(_chipText(
-      _abcModel?['consequence_physical'] ?? _abcModel?['consequence_p'],
-    ));
-    final cEmotion = safe(_chipText(
-      _abcModel?['consequence_emotion'] ?? _abcModel?['consequence_e'],
-    ));
-    final cBehavior = safe(_chipText(
-      _abcModel?['consequence_action'] ??
-          _abcModel?['consequence_behavior'] ??
-          _abcModel?['consequence_b'],
-    ));
-    final userName = Provider.of<UserProvider>(context, listen: false).userName;
-
-    // 날짜
-    String formattedDate = '';
-    final createdAt = _abcModel?['created_at'] ?? _abcModel?['createdAt'];
-    if (createdAt != null) {
-      final DateTime date =
-          createdAt is DateTime
-              ? createdAt
-              : DateTime.tryParse(createdAt.toString()) ?? DateTime.now();
-      formattedDate = '${date.year}년 ${date.month}월 ${date.day}일에 작성된 걱정일기';
-    }
-
-    return Column(
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 📅 날짜 칩 (회색 배경, 둥근 모서리) — Week6 스타일
-        if (formattedDate.isNotEmpty)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F0F0),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                formattedDate,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
                 style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF666666),
-                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1B405C),
                 ),
               ),
-            ),
-          ),
-
-        const SizedBox(height: 16),
-
-        // ❓ 물음표 아이콘 + 부제목 (정중앙)
-        Center(
-          child: Column(
-            children: [
-              Image.asset(
-                'assets/image/question_icon.png',
-                width: 32,
-                height: 32,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '최근에 작성하신 ABC 걱정일기를 확인해 볼까요?',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF5F6F82),
+                  height: 1.4,
+                ),
               ),
             ],
           ),
         ),
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+      ],
+    );
+  }
+}
 
-        const SizedBox(height: 24),
+class _DiaryListItemCard extends StatelessWidget {
+  final _DiarySelectionItem diary;
+  final bool isSelected;
+  final VoidCallback onTap;
 
-        // 📄 본문 (Week6와 동일한 문장 구성/하이라이트)
-        Text.rich(
-          TextSpan(
-            children: () {
-              final spans = <InlineSpan>[
-                TextSpan(text: "$userName님은 "),
-                WidgetSpan(child: _highlightedText("'$a'")),
-                const TextSpan(text: " 상황에서 "),
-                WidgetSpan(child: _highlightedText("'$b'")),
-                const TextSpan(text: " 생각을 하였습니다."),
-              ];
+  const _DiaryListItemCard({
+    required this.diary,
+    required this.isSelected,
+    required this.onTap,
+  });
 
-              final hasC = cPhysical.isNotEmpty || cEmotion.isNotEmpty || cBehavior.isNotEmpty;
-              if (hasC) {
-                spans.add(const TextSpan(text: " 그 결과 "));
-                if (cPhysical.isNotEmpty) {
-                  spans.addAll([
-                    const TextSpan(text: "신체적으로 "),
-                    WidgetSpan(child: _highlightedText("'$cPhysical'")),
-                    const TextSpan(text: " 증상이 나타났고, "),
-                  ]);
-                }
-                if (cEmotion.isNotEmpty) {
-                  spans.addAll([
-                    WidgetSpan(child: _highlightedText("'$cEmotion'")),
-                    const TextSpan(text: " 감정을 느끼셨으며, "),
-                  ]);
-                }
-                if (cBehavior.isNotEmpty) {
-                  spans.addAll([
-                    WidgetSpan(child: _highlightedText("'$cBehavior'")),
-                    const TextSpan(text: " 행동을 하였습니다."),
-                  ]);
-                }
-              }
-              return spans;
-            }(),
-            style: const TextStyle(
-              fontSize: 18,
-              color: Colors.black,
-              fontWeight: FontWeight.w500,
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEAF4FF) : const Color(0xFFF8FBFF),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color:
+                isSelected ? const Color(0xFF5B9FD3) : const Color(0xFFD7E6F5),
+            width: isSelected ? 1.6 : 1.0,
+          ),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: const Color(0xFF5B9FD3).withValues(alpha: 0.12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : const [],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          diary.title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1B405C),
+                          ),
+                        ),
+                      ),
+                      if (isSelected)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5B9FD3),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            '선택됨',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    diary.listDateLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6C7C90),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      diary.beliefPreview,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF4E6178),
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(
+                isSelected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                color:
+                    isSelected
+                        ? const Color(0xFF5B9FD3)
+                        : const Color(0xFF9CB4CA),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedDiaryPreviewCard extends StatelessWidget {
+  final _DiarySelectionItem diary;
+  final String userName;
+
+  const _SelectedDiaryPreviewCard({
+    super.key,
+    required this.diary,
+    required this.userName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFDCEAF7)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5B9FD3).withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(
+            title: '선택한 일기 미리보기',
+            subtitle: '내용을 먼저 읽어본 뒤, 이 일기 안의 생각들을 하나씩 차례대로 살펴보게 돼요.',
+          ),
+          if (diary.previewDateLabel.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F0F0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  diary.previewDateLabel,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Center(
+            child: Column(
+              children: [
+                Image.asset(
+                  'assets/image/question_icon.png',
+                  width: 32,
+                  height: 32,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '선택한 걱정일기를 먼저 함께 살펴볼게요.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FBFE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE5EDF5)),
+            ),
+            child: Text(
+              diary.narrative(userName),
+              style: const TextStyle(
+                fontSize: 17,
+                color: Color(0xFF25384C),
+                fontWeight: FontWeight.w500,
+                height: 1.75,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectionPlaceholderCard extends StatelessWidget {
+  const _SelectionPlaceholderCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FBFF),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFDCEAF7)),
+      ),
+      child: Column(
+        children: const [
+          Icon(Icons.visibility_outlined, size: 28, color: Color(0xFF7B94AC)),
+          SizedBox(height: 12),
+          Text(
+            '아직 선택한 일기가 없어요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1B405C),
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '목록에서 일기를 고르면 문장형 미리보기가 나타나고,\n선택한 일기 속 생각들을 순서대로 진행하게 돼요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF5F6F82),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color foregroundColor;
+  final Color backgroundColor;
+
+  const _InfoPill({
+    required this.icon,
+    required this.label,
+    required this.foregroundColor,
+    required this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: foregroundColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: foregroundColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

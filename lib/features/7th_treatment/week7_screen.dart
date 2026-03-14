@@ -1,5 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/features/value_start.dart';
+import 'package:gad_app_team/features/session_start.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
@@ -46,7 +46,8 @@ class _Week7ScreenState extends State<Week7Screen> {
       // 1) 기존 세션 있는지 확인
       final existing = await _week7Api.fetchWeek7Session();
       final existingId =
-          existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+          existing?['session_id']?.toString() ??
+          existing?['sessionId']?.toString();
       if (existingId != null && existingId.isNotEmpty) {
         if (!mounted) return;
         setState(() {
@@ -84,7 +85,7 @@ class _Week7ScreenState extends State<Week7Screen> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueStartScreen(
+    return SessionStartScreen(
       weekNumber: 7,
       weekTitle: '생활 습관을 개선해보겠습니다.',
       weekDescription:

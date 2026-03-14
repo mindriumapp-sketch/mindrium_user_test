@@ -1,21 +1,20 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 
-// ✅ 공용 레이아웃 & 칩 에디터
+// ✅ 공용 레이아웃
 import 'package:gad_app_team/widgets/top_btm_card.dart';
-import 'package:gad_app_team/widgets/chips_editor.dart';
 
 // 다음 화면 (기존 로직 유지)
-import 'week4_alternative_thoughts_display_screen.dart';
-import 'week4_classfication_result_screen.dart';
+import 'week4_after_agreement_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:provider/provider.dart';
 
+enum Week4AlternativeThoughtsFlowMode { week4BeliefLoop, applyAfterSud }
+
 class Week4AlternativeThoughtsScreen extends StatefulWidget {
   final List<String> previousChips;
-  final int? beforeSud;
   final List<String> remainingBList;
   final List<String> allBList;
   final List<String>? existingAlternativeThoughts;
@@ -25,11 +24,11 @@ class Week4AlternativeThoughtsScreen extends StatefulWidget {
   final int loopCount;
   final String? origin;
   final dynamic diary;
+  final Week4AlternativeThoughtsFlowMode flowMode;
 
   const Week4AlternativeThoughtsScreen({
     super.key,
     required this.previousChips,
-    this.beforeSud,
     required this.remainingBList,
     required this.allBList,
     this.existingAlternativeThoughts,
@@ -39,6 +38,7 @@ class Week4AlternativeThoughtsScreen extends StatefulWidget {
     this.loopCount = 1,
     this.origin,
     this.diary,
+    this.flowMode = Week4AlternativeThoughtsFlowMode.week4BeliefLoop,
   });
 
   @override
@@ -48,9 +48,9 @@ class Week4AlternativeThoughtsScreen extends StatefulWidget {
 
 class _Week4AlternativeThoughtsScreenState
     extends State<Week4AlternativeThoughtsScreen> {
-  // ▶ 칩 에디터 상태 & 값
-  final _chipsKey = GlobalKey<ChipsEditorState>();
-  List<String> _chips = [];
+  final TextEditingController _textController = TextEditingController();
+  String _draftText = '';
+  String _situationText = '';
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
 
@@ -60,12 +60,19 @@ class _Week4AlternativeThoughtsScreenState
     // 화면에는 현재 작성 중(새로 입력) 대체생각만 보여주고 저장 시 합쳐서 저장
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
+    _loadSituationText();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 
   // ───────────────────── FastAPI/Mongo 저장 ─────────────────────
   Future<void> _saveAlternativeThoughts() async {
     try {
-      final current = _chipsKey.currentState?.values ?? _chips;
+      final current = _currentThoughts();
       final allAlternativeThoughts = _normalizeThoughts([
         ...?widget.existingAlternativeThoughts,
         ...current,
@@ -106,14 +113,157 @@ class _Week4AlternativeThoughtsScreenState
     return out;
   }
 
-  // 칩 변경 콜백
-  void _onChipsChanged(List<String> v) {
-    setState(() => _chips = v);
+  List<String> _currentThoughts() {
+    final trimmed = _draftText.trim();
+    if (trimmed.isEmpty) return const [];
+    return [trimmed];
+  }
+
+  bool get _hasDraft => _draftText.trim().isNotEmpty;
+
+  String _chipLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      return (raw['label'] ?? '').toString();
+    }
+    return raw.toString();
+  }
+
+  String _chipText(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => _chipLabel(e).trim())
+          .where((e) => e.isNotEmpty)
+          .join(', ');
+    }
+    return _chipLabel(raw).trim();
+  }
+
+  String _extractSituationText(Map<String, dynamic>? diary) {
+    if (diary == null) return '';
+    return _chipText(
+      diary['activation'] ??
+          diary['activating_events'] ??
+          diary['activatingEvent'],
+    );
+  }
+
+  Future<void> _loadSituationText() async {
+    final diaryArg = widget.diary;
+    if (diaryArg is Map) {
+      final text = _extractSituationText(diaryArg.cast<String, dynamic>());
+      if (text.isNotEmpty) {
+        setState(() {
+          _situationText = text;
+        });
+        return;
+      }
+    }
+
+    try {
+      Map<String, dynamic> diary;
+      if (widget.abcId != null && widget.abcId!.isNotEmpty) {
+        diary = await _diariesApi.getDiary(widget.abcId!);
+      } else {
+        diary = await _diariesApi.getLatestDiary();
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _situationText = _extractSituationText(diary);
+      });
+    } catch (_) {}
+  }
+
+  String _currentBeliefText() {
+    if (widget.previousChips.isNotEmpty) {
+      return widget.previousChips.last.trim();
+    }
+    if (widget.remainingBList.isNotEmpty) {
+      return widget.remainingBList.first.trim();
+    }
+    return '';
+  }
+
+  List<String> _combinedThoughts(List<String> currentThoughts) {
+    return _normalizeThoughts([
+      ...?widget.existingAlternativeThoughts,
+      ...currentThoughts,
+    ]);
+  }
+
+  String _resolvedOrigin(
+    Map<String, dynamic> routeArgs,
+    ApplyOrSolveFlow flow,
+  ) {
+    final rawOrigin =
+        widget.origin ?? routeArgs['origin'] as String? ?? flow.origin;
+    return rawOrigin == 'solve' ? 'apply' : rawOrigin;
+  }
+
+  Future<void> _handleNext() async {
+    final navigator = Navigator.of(context);
+    final rawArgs = ModalRoute.of(context)?.settings.arguments;
+    final routeArgs =
+        rawArgs is Map ? rawArgs.cast<String, dynamic>() : <String, dynamic>{};
+    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(routeArgs);
+    final origin = _resolvedOrigin(routeArgs, flow);
+    final diaryArg = widget.diary ?? routeArgs['diary'] ?? flow.diary;
+    final abcIdArg =
+        widget.abcId ?? routeArgs['abcId'] as String? ?? flow.diaryId;
+    final currentThoughts = _currentThoughts();
+    final combinedThoughts = _combinedThoughts(currentThoughts);
+    final currentBelief = _currentBeliefText();
+
+    if (widget.flowMode == Week4AlternativeThoughtsFlowMode.applyAfterSud) {
+      await _saveAlternativeThoughts();
+      if (!mounted) return;
+      navigator.pushReplacementNamed(
+        '/after_sud',
+        arguments: {
+          ...flow.toArgs(),
+          if ((abcIdArg ?? widget.abcId) != null)
+            'abcId': (abcIdArg ?? widget.abcId)!,
+          'origin': origin,
+          'allBList': widget.allBList,
+          'remainingBList': widget.remainingBList,
+          'allAlternativeThoughts': combinedThoughts,
+          if (diaryArg != null) 'diary': diaryArg,
+        },
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    navigator.push(
+      PageRouteBuilder(
+        pageBuilder:
+            (_, __, ___) => Week4AfterAgreementScreen(
+              previousB: currentBelief,
+              remainingBList: widget.remainingBList,
+              allBList: widget.allBList,
+              alternativeThoughts: combinedThoughts,
+              isFromAnxietyScreen: widget.isFromAnxietyScreen,
+              originalBList: widget.originalBList,
+              existingAlternativeThoughts: widget.existingAlternativeThoughts,
+              abcId: widget.abcId ?? abcIdArg,
+              loopCount: widget.loopCount,
+            ),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     debugPrint('[alt_thought] abcId: ${widget.abcId}');
+    final currentThought = _currentBeliefText();
+    final guideText =
+        currentThought.isNotEmpty
+            ? "'$currentThought'를 조금 더 긍정적으로 바라볼 문장을 적어보세요."
+            : '이 생각을 조금 더 긍정적으로 바라볼 문장을 적어보세요.';
+    final remainingThoughtCount = widget.remainingBList.length;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -122,189 +272,212 @@ class _Week4AlternativeThoughtsScreenState
 
         // ◀◀ 뒤로/다음 (기존 로직 유지)
         onBack: () => Navigator.pop(context),
-        onNext: _chips.isNotEmpty
-              ? () async {
-                final navigator = Navigator.of(context);
-                final routeArgs =
-                    ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-                final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(routeArgs);
-                final String originArg = (() {
-                  final rawOrigin =
-                      widget.origin ?? routeArgs['origin'] as String? ?? flow.origin;
-                  return rawOrigin == 'solve' ? 'apply' : rawOrigin;
-                })();
-                final dynamic diaryArg =
-                    widget.diary ?? routeArgs['diary'] ?? flow.diary;
-                final String? abcIdArg =
-                    widget.abcId ?? routeArgs['abcId'] as String? ?? flow.diaryId;
-                final int? beforeSudArg =
-                    widget.beforeSud ?? routeArgs['beforeSud'] as int? ?? flow.beforeSud;
-                final String? sudIdArg =
-                    routeArgs['sudId'] as String? ?? flow.sudId;
-
-                final currentThoughts = _chipsKey.currentState?.values ?? _chips;
-                final combinedThoughts = _normalizeThoughts([
-                  ...?widget.existingAlternativeThoughts,
-                  ...currentThoughts,
-                ]);
-
-                // 저장
-                if (originArg == 'apply') {
-                  await _saveAlternativeThoughts();
-                }
-                
-                if (!mounted) return;
-
-                // 현재 B(생각)
-                final bToShow = widget.previousChips.isNotEmpty
-                    ? widget.previousChips.last
-                    : (widget.remainingBList.isNotEmpty
-                        ? widget.remainingBList.first
-                        : '');
-
-                if (originArg == 'apply') {
-                  if (!mounted) return;
-                  navigator.pushReplacement(
-                    PageRouteBuilder(
-                      pageBuilder: (_, __, ___) =>
-                          Week4ClassificationResultScreen(
-                            bList: widget.previousChips,
-                            beforeSud: beforeSudArg ?? widget.beforeSud,
-                            remainingBList: widget.remainingBList,
-                            allBList: widget.allBList,
-                            alternativeThoughts: combinedThoughts,
-                            isFromAnxietyScreen: widget.isFromAnxietyScreen,
-                            existingAlternativeThoughts:
-                                widget.existingAlternativeThoughts,
-                            abcId: abcIdArg ?? widget.abcId,
-                            loopCount: widget.loopCount,
-                          ),
-                          settings: RouteSettings(
-                            arguments: {
-                              ...flow.toArgs(),
-                              if ((abcIdArg ?? widget.abcId) != null)
-                                'abcId': (abcIdArg ?? widget.abcId)!,
-                              'origin': originArg,
-                              if (diaryArg != null) 'diary': diaryArg,
-                              if (sudIdArg != null) 'sudId': sudIdArg,
-                              if (beforeSudArg != null) 'beforeSud': beforeSudArg,
-                            },
-                          ),
-                      transitionDuration: Duration.zero,
-                      reverseTransitionDuration: Duration.zero,
-                    ),
-                  );
-                  return;
-                }
-
-                // 기본 흐름: 표시 화면
-                if (!mounted) return;
-                navigator.push(
-                  PageRouteBuilder(
-                    pageBuilder: (_, __, ___) =>
-                        Week4AlternativeThoughtsDisplayScreen(
-                          alternativeThoughts: currentThoughts,
-                          previousB: bToShow,
-                          beforeSud: widget.beforeSud ?? beforeSudArg ?? 0,
-                          remainingBList: widget.remainingBList,
-                          allBList: widget.allBList,
-                          existingAlternativeThoughts:
-                              widget.existingAlternativeThoughts,
-                          isFromAnxietyScreen: widget.isFromAnxietyScreen,
-                          originalBList: widget.originalBList,
-                          abcId: widget.abcId ?? abcIdArg,
-                          loopCount: widget.loopCount,
-                        ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                );
-              }
-            : null,
+        onNext: _hasDraft ? _handleNext : null,
 
         // 레이아웃 옵션 (이전 화면과 동일 톤)
-        pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 12),
-        panelsGap: 2,
+        pagePadding: const EdgeInsets.fromLTRB(28, 10, 28, 10),
+        panelsGap: 8,
         panelRadius: 20,
-        panelPadding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-
-        // ─────────────────── 상단 패널 (제목 + 이미지) ───────────────────
-        // ─────────────────── 상단 패널 (제목 + 이미지 꽉 채우기) ───────────────────
-        topChild: LayoutBuilder(
-          builder: (context, c) {
-            // 패널 내부 유효 폭(WhitePanel padding 고려 후의 실제 폭)이 들어와요
-            final double panelWidth = c.maxWidth;
-            // 폭 기준으로 적당한 높이 산정 (상단 고정, 좌우/아래로 채워지는 느낌)
-            final double imgHeight = (panelWidth * 0.62).clamp(180.0, 320.0).toDouble();
-
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 8),
-                const Text(
-                  '도움이 되는 생각을 찾아보는 시간',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-
-                // ✅ 가로는 꽉, 높이는 여유 있게 / 상단 기준으로 크롭
-                Container(
-                  width: double.infinity,
-                  height: imgHeight,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Image.asset(
-                    'assets/image/alternative thoughts.png',
-                    fit: BoxFit.cover,                 // 화면을 가득 채움(양옆/아래 잘림 허용)
-                    alignment: Alignment.topCenter,    // 🔹 상단을 기준으로 고정
-                  ),
-                ),
-              ],
-            );
-          },
+        panelPadding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+        middleNoticeMargin: const EdgeInsets.fromLTRB(0, 2, 0, 10),
+        height: 112,
+        topPadding: 0,
+        bottomPanelBorder: Border.all(
+          color: _hasDraft ? const Color(0xFF8FCFE4) : const Color(0xFFD8E5ED),
+          width: 1.2,
         ),
+        bottomPanelShadows:
+            _hasDraft
+                ? [
+                  BoxShadow(
+                    color: const Color(0xFF7DD9E8).withValues(alpha: 0.14),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+                : const [],
 
-        // 패널 사이 말풍선
-        middleBannerText: '입력 영역을 탭하면 항목이 추가돼요!\n엔터 또는 바깥 터치로 확정됩니다',
-        // height: 120,
-        // topPadding: 20,
-
-        // ─────────────────── 하단 패널 (칩 입력) ───────────────────
-        bottomChild: Column(
+        topChild: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ChipsEditor(
-              key: _chipsKey,
-              initial: const [],      // 초기 칩이 있다면 전달
-              onChanged: _onChipsChanged,
-              minHeight: 150,
-              maxWidthFactor: 0.78,
-              // 빈 상태 UI 문구를 이 화면에 맞게
-              emptyText: const Text(
-                '여기에 입력한 내용이 표시됩니다',
-                style: TextStyle(fontSize: 15, color: Colors.grey),
-              ),
+            const Text(
+              '도움이 되는 생각을 적어보는 시간',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
+            const Text(
+              '정답을 찾기보다, 지금 생각보다 조금 더 균형 잡힌 문장을 한 문장 적어보세요.',
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.6,
+                color: Color(0xFF708399),
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5FBFF),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFC9E7F4)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFDFF4FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.psychology_alt_rounded,
+                          color: Color(0xFF2E6EA5),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          '지금 살펴보는 생각',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF34577A),
+                          ),
+                        ),
+                      ),
+                      if (remainingThoughtCount > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F6EA),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '남은 생각 $remainingThoughtCount개',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2E7D4F),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _PromptInfoRow(
+                    label: '상황',
+                    value:
+                        _situationText.isNotEmpty
+                            ? _situationText
+                            : '선택한 일기의 상황을 불러오는 중이에요.',
+                  ),
+                  const SizedBox(height: 10),
+                  _PromptInfoRow(
+                    label: '생각',
+                    value:
+                        currentThought.isNotEmpty
+                            ? currentThought
+                            : '생각 정보를 확인하는 중이에요.',
+                    emphasize: true,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
 
-        // 하단 패널 배경 톤
-        btmcardColor: const Color(0xFF7DD9E8).withValues(alpha: 0.35),
+        // 패널 사이 말풍선
+        middleBannerText: '$guideText\n한 문장으로 간단하게 적어도 괜찮아요. 천천히 생각해주세요.',
+        // height: 120,
+        // topPadding: 20,
+
+        // ─────────────────── 하단 패널 (텍스트 입력) ───────────────────
+        bottomChild: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _textController,
+              minLines: 6,
+              maxLines: 8,
+              textInputAction: TextInputAction.newline,
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (value) {
+                setState(() {
+                  _draftText = value;
+                });
+              },
+              decoration: const InputDecoration(
+                hintText:
+                    '예: 지금 불안하긴 하지만, 이 상황이 내가 생각하는 만큼 크게 흘러가지는 않을 수 있어.\n차분히 하나씩 해보면 괜찮아질 수 있어.',
+                hintStyle: TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF8EA1AD),
+                  height: 1.6,
+                ),
+                border: InputBorder.none,
+                isCollapsed: true,
+              ),
+              style: const TextStyle(
+                fontSize: 16,
+                height: 1.7,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _PromptInfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool emphasize;
+
+  const _PromptInfoRow({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF6E86A0),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: emphasize ? 18 : 16,
+            height: 1.55,
+            fontWeight: emphasize ? FontWeight.w800 : FontWeight.w600,
+            color:
+                emphasize ? const Color(0xFF263C69) : const Color(0xFF395B7F),
+          ),
+        ),
+      ],
     );
   }
 }
