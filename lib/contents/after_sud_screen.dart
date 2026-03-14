@@ -31,14 +31,16 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     });
   }
 
   // ───────────────────── FastAPI 저장 ─────────────────────
   Future<Map<String, dynamic>?> _saveSud() async {
-    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(_args(), notify: false);
+    final flow =
+        context.read<ApplyOrSolveFlow>()..syncFromArgs(_args(), notify: false);
     final abcId = _abcId ?? flow.diaryId;
     final sudId = _sudId ?? flow.sudId;
 
@@ -76,7 +78,7 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
   // ───────────────────── 비교 및 분기 ─────────────────────
   Future<void> _compareAndNavigate(Map<String, dynamic> res) async {
     final beforeSud = (res['before_sud'] as num?)?.toInt() ?? _sud;
-    final afterSud  = (res['after_sud']  as num?)?.toInt() ?? _sud;
+    final afterSud = (res['after_sud'] as num?)?.toInt() ?? _sud;
 
     final args = _args();
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
@@ -100,13 +102,16 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
         PageRouteBuilder(
           pageBuilder:
               (_, __, ___) => Week4SkipChoiceScreen(
-                beforeSud: beforeSud,
-                allBList: (_args()['allBList'] as List?)?.cast<String>() ?? const [],
-                remainingBList: (_args()['remainingBList'] as List?)?.cast<String>() ?? const [],
-                existingAlternativeThoughts: (_args()['allAlternativeThoughts'] as List?)
-                      ?.cast<String>() ?? const [],
+                allBList:
+                    (_args()['allBList'] as List?)?.cast<String>() ?? const [],
+                remainingBList:
+                    (_args()['remainingBList'] as List?)?.cast<String>() ??
+                    const [],
+                existingAlternativeThoughts:
+                    (_args()['allAlternativeThoughts'] as List?)
+                        ?.cast<String>() ??
+                    const [],
                 abcId: abcId,
-                isFromAfterSud: true,
               ),
         ),
       );

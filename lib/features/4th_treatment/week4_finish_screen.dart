@@ -13,35 +13,26 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 
 class Week4FinishScreen extends StatelessWidget {
-  final int? beforeSud;
-  final int? afterSud;
   final List<String>? alternativeThoughts;
-  final bool? isFromAfterSud;
   final int? loopCount;
 
   const Week4FinishScreen({
     super.key,
-    this.beforeSud,
-    this.afterSud,
     this.alternativeThoughts,
-    this.isFromAfterSud,
     this.loopCount,
   });
 
-  bool get _reduced =>
-      (isFromAfterSud == true) &&
-      (beforeSud != null) &&
-      (afterSud != null) &&
-      (beforeSud! > afterSud!);
-
   @override
   Widget build(BuildContext context) {
-    // 기존 문구 그대로 유지
-    final String successText =
-        '축하합니다! \n\n불안의 정도가 $beforeSud에서 $afterSud로 낮아졌네요. \n도움이 되는 생각을 찾아보는 과정을 통해 불안을 줄이는데 성공하셨습니다.';
-
-    final String encourageText =
-        '아직 불안의 정도가 충분히 낮아지지 않았네요. \n하지만 여기까지 잘 따라와 주신 것만으로도 정말 대단하세요.';
+    final int altCount =
+        alternativeThoughts
+            ?.where((e) => e.trim().isNotEmpty && e.trim() != 'Not provided')
+            .length ??
+        0;
+    final String resultText =
+        altCount > 0
+            ? '축하합니다! \n\n도움이 되는 생각을 $altCount개 정리해보며, 내 생각의 패턴을 차분히 살펴보셨어요. \n이 과정을 반복할수록 부정적인 사고를 알아차리는 힘이 더 커질 거예요.'
+            : '축하합니다! \n\n이번 활동에서 내 생각의 흐름을 천천히 살펴보는 시간을 가지셨어요. \n끝까지 따라와 주신 것만으로도 아주 중요한 연습을 해내신 거예요.';
 
     final String footerText =
         '도움이 되는 생각을 찾는 과정이 처음에는 쉽지 않을 수 있어요. \n조금 더 연습하고, 내 마음을 들여다보는 시간을 가져보면 분명 불안이 줄어들 수 있습니다. \n\n고생하셨습니다.';
@@ -125,7 +116,7 @@ class Week4FinishScreen extends StatelessWidget {
 
           // 결과 메시지 (조건 동일)
           Text(
-            _reduced ? successText : encourageText,
+            resultText,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w500,

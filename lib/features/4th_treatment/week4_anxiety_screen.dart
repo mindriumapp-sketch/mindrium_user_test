@@ -5,7 +5,6 @@ import 'week4_next_thought_screen.dart';
 
 class Week4AnxietyScreen extends StatefulWidget {
   final List<String>? bList;
-  final int beforeSud;
   final List<String>? existingAlternativeThoughts;
   final int loopCount;
   final String? abcId;
@@ -13,7 +12,6 @@ class Week4AnxietyScreen extends StatefulWidget {
   const Week4AnxietyScreen({
     super.key,
     this.bList,
-    this.beforeSud = 0,
     this.existingAlternativeThoughts,
     this.loopCount = 1,
     this.abcId,
@@ -38,30 +36,31 @@ class _Week4AnxietyScreenState extends State<Week4AnxietyScreen> {
       child: ApplyDoubleCard(
         appBarTitle: '인지 왜곡 찾기',
         onBack: () => Navigator.pop(context),
-        onNext: _confirmed.isNotEmpty
-            ? () {
-          final current = _chipsKey.currentState?.values ?? _confirmed;
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => Week4NextThoughtScreen(
-                remainingBList: current,
-                beforeSud: widget.beforeSud,
-                allBList: [...?widget.bList, ...current],
-                alternativeThoughts: null,
-                isFromAnxietyScreen: true,
-                addedAnxietyThoughts: current,
-                existingAlternativeThoughts:
-                widget.existingAlternativeThoughts ?? [],
-                abcId: widget.abcId,
-                loopCount: widget.loopCount,
-              ),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-        }
-            : null,
+        onNext:
+            _confirmed.isNotEmpty
+                ? () {
+                  final current = _chipsKey.currentState?.values ?? _confirmed;
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder:
+                          (_, __, ___) => Week4NextThoughtScreen(
+                            remainingBList: current,
+                            allBList: [...?widget.bList, ...current],
+                            alternativeThoughts: null,
+                            isFromAnxietyScreen: true,
+                            addedAnxietyThoughts: current,
+                            existingAlternativeThoughts:
+                                widget.existingAlternativeThoughts ?? [],
+                            abcId: widget.abcId,
+                            loopCount: widget.loopCount,
+                          ),
+                      transitionDuration: Duration.zero,
+                      reverseTransitionDuration: Duration.zero,
+                    ),
+                  );
+                }
+                : null,
 
         // 레이아웃 옵션
         pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
@@ -113,8 +112,8 @@ class _Week4AnxietyScreenState extends State<Week4AnxietyScreen> {
             children: [
               ChipsEditor(
                 key: _chipsKey,
-                initial: const [],            // 초기 칩 있으면 전달
-                onChanged: _onChanged,        // 확정 칩 리스트 콜백
+                initial: const [], // 초기 칩 있으면 전달
+                onChanged: _onChanged, // 확정 칩 리스트 콜백
                 minHeight: 150,
                 maxWidthFactor: 0.78,
               ),

@@ -16,7 +16,6 @@ class _Week4ScreenState extends State<Week4Screen> {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId = args['abcId'] as String?;
-    final int? sud = args['sud'] as int?;
 
     return SessionStartScreen(
       weekNumber: 4,
@@ -24,11 +23,7 @@ class _Week4ScreenState extends State<Week4Screen> {
       weekDescription:
           '이번 주차에서는 걱정일기를 통해 부정적인 사고 패턴인 인지 왜곡을 찾아보겠습니다. 작성하신 걱정일기의 내용을 살펴볼게요.',
       nextPageBuilder:
-          () => Week4AbcScreen(
-            abcId: abcId,
-            sud: sud,
-            loopCount: widget.loopCount,
-          ),
+          () => Week4AbcScreen(abcId: abcId, loopCount: widget.loopCount),
     );
   }
 }

@@ -34,6 +34,8 @@ class ApplyDoubleCard extends StatelessWidget {
   final Color? btmcardColor;
   final List<BoxShadow>? topPanelShadows;
   final List<BoxShadow>? bottomPanelShadows;
+  final Border? topPanelBorder;
+  final Border? bottomPanelBorder;
 
   const ApplyDoubleCard({
     super.key,
@@ -49,7 +51,7 @@ class ApplyDoubleCard extends StatelessWidget {
     this.maxWidth = 0,
     this.middleNoticeText,
     this.middleNoticeColor,
-    this.middleNoticeMargin = const EdgeInsets.symmetric(vertical: 12),
+    this.middleNoticeMargin = EdgeInsets.zero,
     this.height = 160,
     this.topPadding = 20,
     this.middleBannerText,
@@ -57,6 +59,8 @@ class ApplyDoubleCard extends StatelessWidget {
     this.btmcardColor,
     this.topPanelShadows,
     this.bottomPanelShadows,
+    this.topPanelBorder,
+    this.bottomPanelBorder,
   });
 
   bool get _showJellyfish =>
@@ -116,6 +120,7 @@ class ApplyDoubleCard extends StatelessWidget {
                               radius: panelRadius,
                               color: topcardColor ?? Colors.white,
                               shadows: topPanelShadows,
+                              border: topPanelBorder,
                               child: topChild,
                             ),
                           ),
@@ -124,36 +129,42 @@ class ApplyDoubleCard extends StatelessWidget {
 
                           // 🪼 Jellyfish (옵션)
                           if (_showJellyfish) ...[
-                            Container(
-                              color: Colors.transparent,
-                              height: height,
-                              child: Padding(
-                                padding: EdgeInsetsGeometry.fromLTRB(
-                                  0,
-                                  topPadding,
-                                  0,
-                                  0,
-                                ),
-                                child: JellyfishNotice(
-                                  feedback: middleNoticeText!.trim(),
-                                  feedbackColor: middleNoticeColor,
+                            Padding(
+                              padding: middleNoticeMargin,
+                              child: Container(
+                                color: Colors.transparent,
+                                height: height,
+                                child: Padding(
+                                  padding: EdgeInsetsGeometry.fromLTRB(
+                                    0,
+                                    topPadding,
+                                    0,
+                                    0,
+                                  ),
+                                  child: JellyfishNotice(
+                                    feedback: middleNoticeText!.trim(),
+                                    feedbackColor: middleNoticeColor,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                           if (_showBanner) ...[
-                            Container(
-                              color: Colors.transparent,
-                              height: height,
-                              child: Padding(
-                                padding: EdgeInsetsGeometry.fromLTRB(
-                                  0,
-                                  topPadding,
-                                  0,
-                                  0,
-                                ),
-                                child: JellyfishBanner(
-                                  message: middleBannerText!.trim(),
+                            Padding(
+                              padding: middleNoticeMargin,
+                              child: Container(
+                                color: Colors.transparent,
+                                height: height,
+                                child: Padding(
+                                  padding: EdgeInsetsGeometry.fromLTRB(
+                                    0,
+                                    topPadding,
+                                    0,
+                                    0,
+                                  ),
+                                  child: JellyfishBanner(
+                                    message: middleBannerText!.trim(),
+                                  ),
                                 ),
                               ),
                             ),
@@ -171,6 +182,7 @@ class ApplyDoubleCard extends StatelessWidget {
                               shadows:
                                   bottomPanelShadows ??
                                   (btmcardColor != null ? <BoxShadow>[] : null),
+                              border: bottomPanelBorder,
                               child: bottomChild,
                             ),
                           ),
@@ -184,7 +196,7 @@ class ApplyDoubleCard extends StatelessWidget {
                 if (onBack != null || onNext != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(onBack: onBack, onNext: onNext),
+                    child: NavigationButtons(onBack: onBack, onNext: onNext),
                   ),
               ],
             ),
@@ -201,6 +213,7 @@ class WhitePanel extends StatelessWidget {
   final double radius;
   final List<BoxShadow>? shadows;
   final Color color;
+  final Border? border;
 
   const WhitePanel({
     super.key,
@@ -209,6 +222,7 @@ class WhitePanel extends StatelessWidget {
     this.radius = 20,
     this.shadows,
     this.color = Colors.white,
+    this.border,
   });
 
   @override
@@ -218,6 +232,7 @@ class WhitePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(radius),
+        border: border,
         boxShadow:
             shadows ??
             [

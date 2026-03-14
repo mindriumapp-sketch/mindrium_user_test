@@ -1,6 +1,7 @@
 // lib/features/4th_treatment/week4_classification_screen.dart
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'week4_classfication_result_screen.dart';
+import 'week4_alternative_thoughts.dart';
+import 'week4_belief_rating_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 
@@ -12,7 +13,6 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 
 class Week4ClassificationScreen extends StatefulWidget {
   final List<String> bListInput;
-  final int? beforeSud;
   final List<String> allBList;
   final List<String>? alternativeThoughts;
   final bool isFromAnxietyScreen;
@@ -23,7 +23,6 @@ class Week4ClassificationScreen extends StatefulWidget {
   const Week4ClassificationScreen({
     super.key,
     required this.bListInput,
-    this.beforeSud,
     required this.allBList,
     this.alternativeThoughts,
     this.isFromAnxietyScreen = false,
@@ -38,17 +37,12 @@ class Week4ClassificationScreen extends StatefulWidget {
 }
 
 class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
-  // ── 상태/로직: 그대로 유지 ─────────────────────────────────────────────────────
-  Color get _trackColor =>
-      _sliderValue <= 2
-          ? Colors.green
-          : (_sliderValue >= 8 ? Colors.red : Colors.amber);
   Map<String, dynamic>? _abcModel;
   bool _isLoading = true;
   String? _error;
   double _sliderValue = 5.0;
-  late List<String> _bList;
-  late String _currentB;
+  List<String> _bList = [];
+  String _currentB = '';
   final Map<String, double> _bScores = {};
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
@@ -90,8 +84,9 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
       final Map<String, dynamic> latest = await _diariesApi.getLatestDiary();
       setState(() {
         _abcModel = latest;
-        _diaryId = (latest['diary_id'] ?? latest['diaryId'] ?? latest['id'])
-            ?.toString();
+        _diaryId =
+            (latest['diary_id'] ?? latest['diaryId'] ?? latest['id'])
+                ?.toString();
         _isLoading = false;
         _initBList();
       });
@@ -113,11 +108,10 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
       if (!mounted) return;
       setState(() {
         _abcModel = res;
-        _diaryId = (res['diary_id'] ?? res['diaryId'] ?? res['id'])
-            ?.toString();
+        _diaryId = (res['diary_id'] ?? res['diaryId'] ?? res['id'])?.toString();
         _isLoading = false;
         _initBList();
-      }); 
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -137,6 +131,24 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
       if (match != null) return match.group(1)?.trim() ?? '';
     }
     return raw.toString();
+  }
+
+  String _chipText(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => _chipLabel(e).trim())
+          .where((e) => e.isNotEmpty)
+          .join(', ');
+    }
+    return _chipLabel(raw).trim();
+  }
+
+  String _activationText() {
+    return _chipText(
+      _abcModel?['activation'] ??
+          _abcModel?['activating_events'] ??
+          _abcModel?['activatingEvent'],
+    );
   }
 
   List<String> _parseBelief(dynamic raw) {
@@ -217,24 +229,23 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
 
     // 항상 현재 화면에서 로드한 최신 일기의 ID를 사용
     final diaryId =
-        _diaryId ?? _abcModel?['diaryId']?.toString() ?? _abcModel?['diary_id']?.toString();
-    if (diaryId != null && diaryId.isNotEmpty) {
-    }
+        _diaryId ??
+        _abcModel?['diaryId']?.toString() ??
+        _abcModel?['diary_id']?.toString();
+    if (diaryId != null && diaryId.isNotEmpty) {}
 
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder:
-            (_, __, ___) => Week4ClassificationResultScreen(
-              bScores: _bScores.values.toList(),
-              bList: _bScores.keys.toList(),
-              beforeSud: widget.beforeSud ?? 0,
+            (_, __, ___) => Week4AlternativeThoughtsScreen(
+              previousChips: _currentB.isNotEmpty ? [_currentB] : const [],
               remainingBList: remainingBList,
               allBList: widget.allBList,
-              alternativeThoughts: widget.alternativeThoughts,
-              isFromAnxietyScreen: isFromAnxietyScreen,
               existingAlternativeThoughts: widget.existingAlternativeThoughts,
-              abcId: _abcModel?['diaryId']?.toString(),
+              isFromAnxietyScreen: isFromAnxietyScreen,
+              originalBList: widget.allBList,
+              abcId: _diaryId ?? widget.abcId,
               loopCount: widget.loopCount,
             ),
         transitionDuration: Duration.zero,
@@ -283,106 +294,40 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
             ? _currentB
             : (widget.bListInput.isNotEmpty ? widget.bListInput.first : ''),
       );
+      final displaySituation = _activationText();
+      final totalThoughtCount =
+          widget.allBList.isNotEmpty
+              ? widget.allBList.length
+              : (_bList.isNotEmpty ? _bList.length : widget.bListInput.length);
+      final rawCurrentIndex = totalThoughtCount - widget.bListInput.length + 1;
+      final currentIndex =
+          totalThoughtCount <= 0
+              ? 1
+              : rawCurrentIndex < 1
+              ? 1
+              : (rawCurrentIndex > totalThoughtCount
+                  ? totalThoughtCount
+                  : rawCurrentIndex);
 
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(height: 35),
-          Text(
-            '$userName님께서 걱정일기에 작성해주신 생각을 보며 진행해주세요.',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF8796B8),
-              letterSpacing: 1.2,
-              fontFamily: 'Noto Sans KR',
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 30),
-          Text(
-            displayB,
-            style: TextStyle(
-              fontSize: 20,
-              height: 1.35,
-              wordSpacing: 1.4,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF263C69),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 35),
-        ],
+      return Week4BeliefContextPanel(
+        title: '상황과 생각을 함께 떠올려보세요',
+        subtitle: '$userName님이 적어주신 장면을 보며 지금 이 생각이 얼마나 크게 느껴지는지 살펴볼게요.',
+        situationText:
+            displaySituation.isNotEmpty
+                ? displaySituation
+                : '상황 정보를 확인하는 중이에요.',
+        beliefText: displayB.isNotEmpty ? displayB : '생각 정보를 확인하는 중이에요.',
+        badgeText:
+            totalThoughtCount > 0 ? '$currentIndex / $totalThoughtCount' : null,
+        footerText: '이 장면을 떠올린 상태에서 아래 슬라이더를 움직여보세요.',
       );
     }
 
     // Bottom 패널 내용 (슬라이더)
     Widget buildBottomPanel() {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            '${_sliderValue.round()}',
-            style: TextStyle(
-              fontSize: 60,
-              fontWeight: FontWeight.bold,
-              color: _trackColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackShape: const RoundedRectSliderTrackShape(),
-              trackHeight: 12,
-              thumbShape: const RoundSliderThumbShape(
-                enabledThumbRadius: 14,
-                elevation: 2,
-                pressedElevation: 4,
-              ),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
-              tickMarkShape: SliderTickMarkShape.noTickMark,
-              activeTickMarkColor: Colors.transparent,
-              inactiveTickMarkColor: Colors.transparent,
-              activeTrackColor: _trackColor,
-              inactiveTrackColor: _trackColor.withValues(alpha: 0.25),
-              thumbColor: _trackColor,
-              overlayColor: _trackColor.withValues(alpha: 0.25),
-              showValueIndicator: ShowValueIndicator.never,
-            ),
-            child: Slider(
-              value: _sliderValue,
-              min: 0,
-              max: 10,
-              divisions: 10,
-              label: _sliderValue.round().toString(),
-              activeColor: _trackColor,
-              inactiveColor: _trackColor.withValues(alpha: 0.25),
-              onChanged: (v) => setState(() => _sliderValue = v),
-            ),
-          ),
-          // const SizedBox(height: 5),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '0점: 전혀 믿지 않음',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '10점: 매우 믿음',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
+      return Week4BeliefSliderPanel(
+        value: _sliderValue,
+        onChanged: (v) => setState(() => _sliderValue = v),
       );
     }
 
@@ -393,9 +338,12 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
       onNext: _onNext,
       topChild: buildTopPanel(),
       bottomChild: buildBottomPanel(),
-      middleBannerText:
-          '지금은 위 생각에 대해 얼마나 강하게 믿고 계시나요?\n아래 슬라이더를 조정하고 [ 다음 ]을 눌러주세요.',
-      panelsGap: 2,
+      middleBannerText: '지금 믿는 정도를 숫자로 골라주세요.\n가장 가까운 느낌이면 충분해요.',
+      pagePadding: const EdgeInsets.fromLTRB(28, 18, 28, 18),
+      panelsGap: 10,
+      panelPadding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      height: 112,
+      topPadding: 0,
     );
   }
 }

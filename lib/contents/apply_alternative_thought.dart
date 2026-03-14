@@ -25,7 +25,6 @@ class _ApplyAlternativeThoughtScreenState
   String? _error;
   List<String> _bList = const [];
   String? _abcId;
-  int _beforeSud = 0;
   int? _selectedIndex;
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
@@ -36,8 +35,9 @@ class _ApplyAlternativeThoughtScreenState
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-    final flow = context.read<ApplyOrSolveFlow>()
-      ..syncFromArgs(args, override: true, notify: false);
+    final flow =
+        context.read<ApplyOrSolveFlow>()
+          ..syncFromArgs(args, override: true, notify: false);
     if (!_didPostFrameSync) {
       _didPostFrameSync = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,7 +46,6 @@ class _ApplyAlternativeThoughtScreenState
       });
     }
     _abcId = args['abcId'] as String? ?? flow.diaryId;
-    _beforeSud = (args['beforeSud'] as int?) ?? flow.beforeSud ?? 0;
     if (_abcId != null) flow.setDiaryId(_abcId);
     if (_bList.isEmpty && !_loading) _fetchBeliefs();
   }
@@ -71,8 +70,7 @@ class _ApplyAlternativeThoughtScreenState
         if (list.isEmpty) {
           final groupRaw =
               diary['group_id'] ?? diary['groupId'] ?? diary['group_Id'];
-          if (groupRaw != null &&
-              groupRaw.toString().trim().isNotEmpty) {
+          if (groupRaw != null && groupRaw.toString().trim().isNotEmpty) {
             list = await _loadGroupBeliefs(groupRaw);
           }
         }
@@ -136,10 +134,7 @@ class _ApplyAlternativeThoughtScreenState
 
     if (belief == null) return const [];
     if (belief is List) {
-      return belief
-          .map(chipLabel)
-          .where((s) => s.trim().isNotEmpty)
-          .toList();
+      return belief.map(chipLabel).where((s) => s.trim().isNotEmpty).toList();
     }
     if (belief is String) {
       final parts =
@@ -158,24 +153,24 @@ class _ApplyAlternativeThoughtScreenState
     final remaining = List<String>.from(all)..remove(b);
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
+    final sanitizedFlowArgs =
+        Map<String, dynamic>.from(flow.toArgs())
+          ..remove('beforeSud')
+          ..remove('sudId');
     final diary = args['diary'] ?? flow.diary;
-    final sudId = args['sudId'] ?? flow.sudId;
     Navigator.push(
-      context, 
+      context,
       MaterialPageRoute(
         settings: RouteSettings(
           arguments: {
-            ...flow.toArgs(),
+            ...sanitizedFlowArgs,
             'origin': 'apply',
             if (diary != null) 'diary': diary,
-            if (sudId != null) 'sudId': sudId,
-            'beforeSud': _beforeSud,
           },
         ),
         builder:
             (_) => Week4AlternativeThoughtsScreen(
               previousChips: [b],
-              beforeSud: _beforeSud,
               remainingBList: remaining,
               allBList: all,
               originalBList: all,
@@ -200,8 +195,7 @@ class _ApplyAlternativeThoughtScreenState
     return InnerBtnCardScreen(
       appBarTitle: '도움이 되는 생각 찾기',
       title: '$userName님,\n이전에 일기에 작성했던 생각이에요.\n어떤 생각을 대상으로 찾아볼까요?',
-      primaryText:
-          hasBeliefs ? '도움이 되는 생각을 찾아볼게요!' : '다음에 진행하기',
+      primaryText: hasBeliefs ? '도움이 되는 생각을 찾아볼게요!' : '다음에 진행하기',
       onPrimary: () {
         if (!hasBeliefs) {
           _skipSelection();
@@ -265,7 +259,9 @@ class _ApplyAlternativeThoughtScreenState
                         decoration: BoxDecoration(
                           color:
                               selected
-                                  ? const Color(0xFF47A6FF).withValues(alpha: 0.15)
+                                  ? const Color(
+                                    0xFF47A6FF,
+                                  ).withValues(alpha: 0.15)
                                   : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
