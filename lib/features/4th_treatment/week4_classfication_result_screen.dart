@@ -148,6 +148,12 @@ class Week4ClassificationResultScreen extends StatelessWidget {
                 originalBList: safeAllBList,
                 abcId: abcId ?? abcId_, // 명시적으로 전달
                 loopCount: loopCount,
+                origin: isFromApply ? 'apply' : null,
+                diary: diary,
+                flowMode:
+                    isFromApply
+                        ? Week4AlternativeThoughtsFlowMode.applyAfterSud
+                        : Week4AlternativeThoughtsFlowMode.week4BeliefLoop,
               ),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,

@@ -4,13 +4,14 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/top_btm_card.dart';
 
 // 다음 화면 (기존 로직 유지)
-import 'week4_alternative_thoughts_display_screen.dart';
-import 'week4_classfication_result_screen.dart';
+import 'week4_after_agreement_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:provider/provider.dart';
+
+enum Week4AlternativeThoughtsFlowMode { week4BeliefLoop, applyAfterSud }
 
 class Week4AlternativeThoughtsScreen extends StatefulWidget {
   final List<String> previousChips;
@@ -23,6 +24,7 @@ class Week4AlternativeThoughtsScreen extends StatefulWidget {
   final int loopCount;
   final String? origin;
   final dynamic diary;
+  final Week4AlternativeThoughtsFlowMode flowMode;
 
   const Week4AlternativeThoughtsScreen({
     super.key,
@@ -36,6 +38,7 @@ class Week4AlternativeThoughtsScreen extends StatefulWidget {
     this.loopCount = 1,
     this.origin,
     this.diary,
+    this.flowMode = Week4AlternativeThoughtsFlowMode.week4BeliefLoop,
   });
 
   @override
@@ -172,15 +175,90 @@ class _Week4AlternativeThoughtsScreenState
     } catch (_) {}
   }
 
+  String _currentBeliefText() {
+    if (widget.previousChips.isNotEmpty) {
+      return widget.previousChips.last.trim();
+    }
+    if (widget.remainingBList.isNotEmpty) {
+      return widget.remainingBList.first.trim();
+    }
+    return '';
+  }
+
+  List<String> _combinedThoughts(List<String> currentThoughts) {
+    return _normalizeThoughts([
+      ...?widget.existingAlternativeThoughts,
+      ...currentThoughts,
+    ]);
+  }
+
+  String _resolvedOrigin(
+    Map<String, dynamic> routeArgs,
+    ApplyOrSolveFlow flow,
+  ) {
+    final rawOrigin =
+        widget.origin ?? routeArgs['origin'] as String? ?? flow.origin;
+    return rawOrigin == 'solve' ? 'apply' : rawOrigin;
+  }
+
+  Future<void> _handleNext() async {
+    final navigator = Navigator.of(context);
+    final rawArgs = ModalRoute.of(context)?.settings.arguments;
+    final routeArgs =
+        rawArgs is Map ? rawArgs.cast<String, dynamic>() : <String, dynamic>{};
+    final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(routeArgs);
+    final origin = _resolvedOrigin(routeArgs, flow);
+    final diaryArg = widget.diary ?? routeArgs['diary'] ?? flow.diary;
+    final abcIdArg =
+        widget.abcId ?? routeArgs['abcId'] as String? ?? flow.diaryId;
+    final currentThoughts = _currentThoughts();
+    final combinedThoughts = _combinedThoughts(currentThoughts);
+    final currentBelief = _currentBeliefText();
+
+    if (widget.flowMode == Week4AlternativeThoughtsFlowMode.applyAfterSud) {
+      await _saveAlternativeThoughts();
+      if (!mounted) return;
+      navigator.pushReplacementNamed(
+        '/after_sud',
+        arguments: {
+          ...flow.toArgs(),
+          if ((abcIdArg ?? widget.abcId) != null)
+            'abcId': (abcIdArg ?? widget.abcId)!,
+          'origin': origin,
+          'allBList': widget.allBList,
+          'remainingBList': widget.remainingBList,
+          'allAlternativeThoughts': combinedThoughts,
+          if (diaryArg != null) 'diary': diaryArg,
+        },
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    navigator.push(
+      PageRouteBuilder(
+        pageBuilder:
+            (_, __, ___) => Week4AfterAgreementScreen(
+              previousB: currentBelief,
+              remainingBList: widget.remainingBList,
+              allBList: widget.allBList,
+              alternativeThoughts: combinedThoughts,
+              isFromAnxietyScreen: widget.isFromAnxietyScreen,
+              originalBList: widget.originalBList,
+              existingAlternativeThoughts: widget.existingAlternativeThoughts,
+              abcId: widget.abcId ?? abcIdArg,
+              loopCount: widget.loopCount,
+            ),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     debugPrint('[alt_thought] abcId: ${widget.abcId}');
-    final currentThought =
-        widget.previousChips.isNotEmpty
-            ? widget.previousChips.last.trim()
-            : (widget.remainingBList.isNotEmpty
-                ? widget.remainingBList.first.trim()
-                : '');
+    final currentThought = _currentBeliefText();
     final guideText =
         currentThought.isNotEmpty
             ? "'$currentThought'를 조금 더 긍정적으로 바라볼 문장을 적어보세요."
@@ -194,108 +272,7 @@ class _Week4AlternativeThoughtsScreenState
 
         // ◀◀ 뒤로/다음 (기존 로직 유지)
         onBack: () => Navigator.pop(context),
-        onNext:
-            _hasDraft
-                ? () async {
-                  final navigator = Navigator.of(context);
-                  final routeArgs =
-                      ModalRoute.of(context)?.settings.arguments as Map? ?? {};
-                  final flow =
-                      context.read<ApplyOrSolveFlow>()..syncFromArgs(routeArgs);
-                  final sanitizedFlowArgs =
-                      Map<String, dynamic>.from(flow.toArgs())
-                        ..remove('beforeSud')
-                        ..remove('sudId');
-                  final String originArg =
-                      (() {
-                        final rawOrigin =
-                            widget.origin ??
-                            routeArgs['origin'] as String? ??
-                            flow.origin;
-                        return rawOrigin == 'solve' ? 'apply' : rawOrigin;
-                      })();
-                  final dynamic diaryArg =
-                      widget.diary ?? routeArgs['diary'] ?? flow.diary;
-                  final String? abcIdArg =
-                      widget.abcId ??
-                      routeArgs['abcId'] as String? ??
-                      flow.diaryId;
-                  final currentThoughts = _currentThoughts();
-                  final combinedThoughts = _normalizeThoughts([
-                    ...?widget.existingAlternativeThoughts,
-                    ...currentThoughts,
-                  ]);
-
-                  // 저장
-                  if (originArg == 'apply') {
-                    await _saveAlternativeThoughts();
-                  }
-
-                  if (!mounted) return;
-
-                  // 현재 B(생각)
-                  final bToShow =
-                      widget.previousChips.isNotEmpty
-                          ? widget.previousChips.last
-                          : (widget.remainingBList.isNotEmpty
-                              ? widget.remainingBList.first
-                              : '');
-
-                  if (originArg == 'apply') {
-                    if (!mounted) return;
-                    navigator.pushReplacement(
-                      PageRouteBuilder(
-                        pageBuilder:
-                            (_, __, ___) => Week4ClassificationResultScreen(
-                              bList: widget.previousChips,
-                              remainingBList: widget.remainingBList,
-                              allBList: widget.allBList,
-                              alternativeThoughts: combinedThoughts,
-                              isFromAnxietyScreen: widget.isFromAnxietyScreen,
-                              existingAlternativeThoughts:
-                                  widget.existingAlternativeThoughts,
-                              abcId: abcIdArg ?? widget.abcId,
-                              loopCount: widget.loopCount,
-                            ),
-                        settings: RouteSettings(
-                          arguments: {
-                            ...sanitizedFlowArgs,
-                            if ((abcIdArg ?? widget.abcId) != null)
-                              'abcId': (abcIdArg ?? widget.abcId)!,
-                            'origin': originArg,
-                            if (diaryArg != null) 'diary': diaryArg,
-                          },
-                        ),
-                        transitionDuration: Duration.zero,
-                        reverseTransitionDuration: Duration.zero,
-                      ),
-                    );
-                    return;
-                  }
-
-                  // 기본 흐름: 표시 화면
-                  if (!mounted) return;
-                  navigator.push(
-                    PageRouteBuilder(
-                      pageBuilder:
-                          (_, __, ___) => Week4AlternativeThoughtsDisplayScreen(
-                            alternativeThoughts: currentThoughts,
-                            previousB: bToShow,
-                            remainingBList: widget.remainingBList,
-                            allBList: widget.allBList,
-                            existingAlternativeThoughts:
-                                widget.existingAlternativeThoughts,
-                            isFromAnxietyScreen: widget.isFromAnxietyScreen,
-                            originalBList: widget.originalBList,
-                            abcId: widget.abcId ?? abcIdArg,
-                            loopCount: widget.loopCount,
-                          ),
-                      transitionDuration: Duration.zero,
-                      reverseTransitionDuration: Duration.zero,
-                    ),
-                  );
-                }
-                : null,
+        onNext: _hasDraft ? _handleNext : null,
 
         // 레이아웃 옵션 (이전 화면과 동일 톤)
         pagePadding: const EdgeInsets.fromLTRB(28, 10, 28, 10),

@@ -153,17 +153,13 @@ class _ApplyAlternativeThoughtScreenState
     final remaining = List<String>.from(all)..remove(b);
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final flow = context.read<ApplyOrSolveFlow>()..syncFromArgs(args);
-    final sanitizedFlowArgs =
-        Map<String, dynamic>.from(flow.toArgs())
-          ..remove('beforeSud')
-          ..remove('sudId');
     final diary = args['diary'] ?? flow.diary;
     Navigator.push(
       context,
       MaterialPageRoute(
         settings: RouteSettings(
           arguments: {
-            ...sanitizedFlowArgs,
+            ...flow.toArgs(),
             'origin': 'apply',
             if (diary != null) 'diary': diary,
           },
@@ -177,6 +173,7 @@ class _ApplyAlternativeThoughtScreenState
               abcId: _abcId,
               origin: 'apply',
               diary: diary,
+              flowMode: Week4AlternativeThoughtsFlowMode.applyAfterSud,
             ),
       ),
     );
