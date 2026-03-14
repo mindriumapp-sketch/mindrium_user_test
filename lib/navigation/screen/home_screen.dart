@@ -73,6 +73,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void>? _permissionFuture;
   StreamSubscription<dynamic>? _widgetLaunchSubscription;
   bool _checkedInitialWidgetAction = false;
+  bool _pendingWidgetApplyLaunch = false;
+  bool _isStartingPendingWidgetApply = false;
   int? _lastSyncedDiaryCount;
   int? _lastSyncedRelaxationCount;
   int? _lastSyncedCompletedWeeks;
@@ -91,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final user = context.read<UserProvider>();
         final dayCounter = context.read<UserDayCounter>();
         await user.loadUserData(dayCounter: dayCounter);
+        _tryStartPendingWidgetApplyLaunch();
       }
     });
     _listenWidgetLaunchEvents();
@@ -141,6 +144,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _tryStartPendingWidgetApplyLaunch() {
+    if (!mounted ||
+        !_pendingWidgetApplyLaunch ||
+        _isStartingPendingWidgetApply) {
+      return;
+    }
+
+    final user = context.read<UserProvider>();
+    if (user.isLoadingUser || !user.isUserLoaded) {
+      return;
+    }
+
+    _pendingWidgetApplyLaunch = false;
+    _isStartingPendingWidgetApply = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _isStartingPendingWidgetApply = false;
+      if (!mounted) return;
+      _startApplyFlow();
+    });
+  }
+
   Future<void> _handleInitialWidgetLaunchAction() async {
     if (_checkedInitialWidgetAction) return;
     _checkedInitialWidgetAction = true;
@@ -174,13 +199,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final normalizedAction = action?.trim();
     if (normalizedAction != 'start_apply') return;
 
+    _pendingWidgetApplyLaunch = true;
+
     if (_selectedIndex != 0) {
       setState(() => _selectedIndex = 0);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _startApplyFlow();
-    });
+    _tryStartPendingWidgetApplyLaunch();
   }
 
   void _syncWidgetStatsIfNeeded(UserProvider user) {
@@ -347,6 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
       completedWeeks: user.lastCompletedWeek,
       userId: user.userId,
     );
+    _tryStartPendingWidgetApplyLaunch();
 
     debugPrint(
       'currentWeek: ${user.currentWeek}, '
@@ -487,7 +512,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return _trainingCard(
       title: '핵심 가치',
-      description: hasValueGoal ? '$dayNo일째 $valueGoal를 향해 가고 있어요.' : '핵심 가치를 설정해 보세요.',
+      description:
+          hasValueGoal ? '$dayNo일째 $valueGoal를 향해 가고 있어요.' : '핵심 가치를 설정해 보세요.',
       color: const Color(0xFFEFF7FF),
       trailing: _buildDayCalendar(dayNo),
     );
