@@ -13,6 +13,7 @@ import 'package:gad_app_team/features/5th_treatment/week5_screen.dart';
 import 'package:gad_app_team/features/6th_treatment/week6_screen.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_screen.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
+import 'package:gad_app_team/data/education_week_contents.dart';
 import 'package:gad_app_team/widgets/treatment_design.dart';
 
 class TreatmentScreen extends StatefulWidget {
@@ -126,72 +127,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     // 🔹 지금은 임시로 모두 오픈
     final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
 
-    final List<Map<String, String>> weekContents = [
-      {
-        'title': '1주차',
-        'summary': '불안을 이해하고, 이완을 천천히 시작해요',
-        'session1Name': '불안에 대한 교육',
-        'session1Duration': '약 10분',
-        'session2Name': '점진적 이완',
-        'session2Duration': '약 20분',
-      },
-      {
-        'title': '2주차',
-        'summary': 'ABC로 마음을 기록하고, 이완을 복습해요',
-        'session1Name': 'ABC 일기 쓰기',
-        'session1Duration': '약 12분',
-        'session2Name': '점진적 이완',
-        'session2Duration': '약 20분',
-      },
-      {
-        'title': '3주차',
-        'summary': '불안한 생각을 구별하고, 긴장 없이 이완해요',
-        'session1Name': '생각 구별하는 연습',
-        'session1Duration': '약 10분',
-        'session2Name': '이완만 하는 이완',
-        'session2Duration': '약 10분',
-      },
-      {
-        'title': '4주차',
-        'summary': '내 생각을 바꿔보고, 신호에 맞춰 이완해요',
-        'session1Name': '내 생각 점검하기',
-        'session1Duration': '약 20분',
-        'session2Name': '신호 조절 이완',
-        'session2Duration': '약 5분',
-      },
-      {
-        'title': '5주차',
-        'summary': '불안을 마주하는 행동을 익히고, 움직이며 이완해요',
-        'session1Name': '행동 구별하는 연습',
-        'session1Duration': '약 10분',
-        'session2Name': '차등 이완',
-        'session2Duration': '약 10분',
-      },
-      {
-        'title': '6주차',
-        'summary': '내 행동을 돌아보고, 움직이며 이완을 복습해요',
-        'session1Name': '내 행동 점검하기',
-        'session1Duration': '약 20분',
-        'session2Name': '차등 이완',
-        'session2Duration': '약 10분',
-      },
-      {
-        'title': '7주차',
-        'summary': '불안할 때의 행동을 개선하고, 빠르게 이완해요',
-        'session1Name': '내 행동 개선하기',
-        'session1Duration': '약 20분',
-        'session2Name': '신속 이완',
-        'session2Duration': '약 2분',
-      },
-      {
-        'title': '8주차',
-        'summary': '8주 간의 여정을 정리하고, 빠른 이완을 복습해요',
-        'session1Name': '여정 돌아보기',
-        'session1Duration': '약 15분',
-        'session2Name': '신속 이완',
-        'session2Duration': '약 10분',
-      },
-    ];
+    final weekContents = educationWeekContents;
 
     final List<Widget> weekScreens = const [
       Week1Screen(),

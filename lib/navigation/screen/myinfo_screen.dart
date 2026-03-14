@@ -9,6 +9,8 @@ import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/education_week_contents.dart';
 import 'package:gad_app_team/data/api/screen_time_api.dart';
 import 'package:gad_app_team/data/models/screen_time_summary.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
@@ -51,6 +53,8 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   bool _archiveLoading = true;
   String? _selectedArchiveGroupId;
 
+  bool _didSyncEducation = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +62,20 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     _loadUserData();
     _loadScreenTimeSummary();
     _loadArchivedGroups();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 교육 탭과 연동: 현재 주차 완료 상태 한 번 동기화
+    if (!_didSyncEducation) {
+      _didSyncEducation = true;
+      final user = context.read<UserProvider>();
+      final todayTask = context.read<TodayTaskProvider>();
+      if (user.isUserLoaded) {
+        todayTask.syncEducationWeekStatus(user.currentWeek);
+      }
+    }
   }
 
   Future<void> _loadArchivedGroups() async {
@@ -336,6 +354,8 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                           ),
                           const SizedBox(height: 14),
                           _buildProgressSnapshotCard(
+                            userProvider: userProvider,
+                            todayTask: context.watch<TodayTaskProvider>(),
                             streakText: createdAt != null
                                 ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)}일째'
                                 : '기록 준비 중',
@@ -563,15 +583,22 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   }
 
   Widget _buildProgressSnapshotCard({
+    required UserProvider userProvider,
+    required TodayTaskProvider todayTask,
     required String streakText,
   }) {
+    final recentProgram =
+        EducationProgressDisplay.recentProgram(userProvider, todayTask);
+    final progressStage =
+        EducationProgressDisplay.progressStage(userProvider, todayTask);
+
     return Row(
       children: [
         Expanded(
           child: _buildSnapshotTile(
             icon: Icons.psychology_alt_outlined,
-            label: '현재 프로그램',
-            value: 'Self Talk',
+            label: '최근 프로그램',
+            value: recentProgram,
           ),
         ),
         const SizedBox(width: 10),
@@ -579,7 +606,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
           child: _buildSnapshotTile(
             icon: Icons.flag_outlined,
             label: '진행 단계',
-            value: '3주차',
+            value: progressStage,
           ),
         ),
         const SizedBox(width: 10),
@@ -1163,6 +1190,8 @@ class _MyInfoScreenState extends State<MyInfoScreen>
           const SizedBox(height: 6),
           Text(
             value,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w800,
