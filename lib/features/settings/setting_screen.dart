@@ -1,6 +1,7 @@
 /// 🫧 환경설정 화면 — 앱 설정, 고객지원, 서비스 정보, 계정
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -182,15 +183,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: '계정 관리',
                           subtitle:
                               '로그인 방식과 연결된 계정 정보를 확인할 수 있어요.',
-                          onTap: _showComingSoon,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildMenuRow(
-                          icon: Icons.lock_outline_rounded,
-                          title: '비밀번호 변경',
-                          subtitle:
-                              '현재 비밀번호를 새로운 비밀번호로 변경할 수 있어요.',
-                          onTap: _showComingSoon,
+                          onTap: () => Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder:
+                                  (context, animation, secondaryAnimation) =>
+                                      const AccountManagementScreen(),
+                              transitionsBuilder:
+                                  (context, animation, secondaryAnimation, child) {
+                                const begin = Offset(1.0, 0.0);
+                                const end = Offset.zero;
+                                const curve = Curves.easeInOutCubic;
+                                final tween = Tween(begin: begin, end: end)
+                                    .chain(CurveTween(curve: curve));
+                                return SlideTransition(
+                                  position: animation.drive(tween),
+                                  child: child,
+                                );
+                              },
+                              transitionDuration:
+                                  const Duration(milliseconds: 300),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 10),
                         _buildMenuRow(
