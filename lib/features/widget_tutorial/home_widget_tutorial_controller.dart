@@ -38,7 +38,7 @@ class HomeWidgetTutorialController {
     HomeWidgetTutorialStep(
       imageAsset: 'assets/image/widget_tutorial_6.png',
       title: '위젯 사용하기',
-      description: '홈 화면에서 진행 현황을 확인하세요.\n클릭 시 불안 해결하기 활동을 진행할 수 있어요.',
+      description: '홈 화면에서 진행 현황을 확인하세요.\n클릭 시 Releif 활동을 진행할 수 있어요.',
     ),
   ];
 

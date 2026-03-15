@@ -57,13 +57,13 @@ class QuickApplyWidgetProvider : AppWidgetProvider() {
             val relaxationCount = prefs.getInt(keyRelaxationCount, 0)
             val completedWeeks = prefs.getInt(keyCompletedWeeks, 0)
             val isWidgetUnlocked = completedWeeks >= 2
-            val titleText = if (isWidgetUnlocked) "불안 해결하기" else "2주차 완료 후 이용 가능"
+            val titleText = if (isWidgetUnlocked) "Relief" else "2주차 완료 후 이용 가능"
             val tagText = if (isWidgetUnlocked) "READY" else "LOCKED"
             val statsText =
                 if (isWidgetUnlocked) {
                     "일기 ${diaryCount}건 · 이완 ${relaxationCount}회"
                 } else {
-                    "2주차 교육 완료 후 불안 해결하기를 바로 시작할 수 있어요."
+                    "2주차 교육 완료 후 Relief를 바로 시작할 수 있어요."
                 }
             val ctaText = if (isWidgetUnlocked) "지금 시작" else "교육 먼저 하기"
 

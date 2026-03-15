@@ -48,7 +48,7 @@ class SolveEntryChoiceScreen extends StatelessWidget {
       backgroundAsset: 'assets/image/eduhome.png',
       child: const ApplyFlowPromptContent(
         showIllustration: false,
-        message: '기존 일기를 선택하면 현재 불안 점수를 저장한 뒤\n바로 다음 단계로 이동해요.',
+        message: '기존 일기를 선택하면 현재 불안 점수를 저장 후 바로 다음 단계로 이동해요.',
       ),
     );
   }

@@ -40,7 +40,7 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="불안 해결하기"
+            android:text="Relief"
             android:textColor="#132D4A"
             android:textSize="14sp"
             android:textStyle="bold" />

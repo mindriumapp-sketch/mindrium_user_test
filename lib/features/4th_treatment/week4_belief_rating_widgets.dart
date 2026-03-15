@@ -6,24 +6,6 @@ Color week4BeliefTrackColor(double value) {
   return const Color(0xFFF0AF3D);
 }
 
-String week4BeliefScoreLabel(double value) {
-  final score = value.round();
-  if (score <= 2) return '거의 믿지 않아요';
-  if (score <= 4) return '조금 믿고 있어요';
-  if (score <= 6) return '반반 정도예요';
-  if (score <= 8) return '꽤 믿고 있어요';
-  return '매우 강하게 믿고 있어요';
-}
-
-String week4BeliefScoreHint(double value) {
-  final score = value.round();
-  if (score <= 2) return '생각과 거리를 두고 있는 상태예요.';
-  if (score <= 4) return '조금씩 덜 휘둘리기 시작한 상태예요.';
-  if (score <= 6) return '믿음과 거리두기 사이를 오가고 있어요.';
-  if (score <= 8) return '아직 크게 느껴지지만 살펴볼 수 있는 상태예요.';
-  return '지금은 이 생각이 아주 강하게 느껴지고 있어요.';
-}
-
 class Week4BeliefContextPanel extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -170,27 +152,6 @@ class Week4BeliefSliderPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
-          '이 생각을 얼마나 믿고 있나요?',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF274968),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          '지금 느껴지는 정도와 가장 가까운 숫자를 선택해주세요.',
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.5,
-            color: Color(0xFF708399),
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 18),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
           decoration: BoxDecoration(
@@ -209,14 +170,6 @@ class Week4BeliefSliderPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                week4BeliefScoreLabel(value),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: trackColor,
-                ),
-              ),
             ],
           ),
         ),
@@ -276,17 +229,6 @@ class Week4BeliefSliderPanel extends StatelessWidget {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          week4BeliefScoreHint(value),
-          style: const TextStyle(
-            fontSize: 13,
-            height: 1.5,
-            color: Color(0xFF6C7F92),
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
         ),
       ],
     );

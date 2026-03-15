@@ -218,7 +218,7 @@ class _Week4AlternativeThoughtsScreenState
     if (widget.flowMode == Week4AlternativeThoughtsFlowMode.applyAfterSud) {
       await _saveAlternativeThoughts();
       if (!mounted) return;
-      navigator.pushReplacementNamed(
+      navigator.pushNamed(
         '/after_sud',
         arguments: {
           ...flow.toArgs(),
