@@ -121,7 +121,7 @@ class Week5ClassificationDetailScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '총 ${quizResults.length}문항 중 ${correctCount}개 정답',
+                            '총 ${quizResults.length}문항 중 $correctCount개 정답',
                             style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
@@ -224,7 +224,7 @@ class Week5ClassificationDetailScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
-                                  '${index}번 문항',
+                                  '$index번 문항',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,

@@ -1,4 +1,4 @@
-/// 🫧 환경설정 화면 — 앱 설정, 고객지원, 서비스 정보, 계정
+// 환경설정 화면: 앱 설정, 고객지원, 서비스 정보, 계정
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
@@ -33,9 +33,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showComingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('준비 중입니다.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('준비 중입니다.')));
   }
 
   @override
@@ -98,15 +98,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           icon: Icons.notifications_none_rounded,
                           title: '알림 설정',
                           subtitle: '푸시 알림 수신 여부와 알림 방식을 설정할 수 있어요.',
-                          onTap: () =>
-                              Navigator.pushNamed(context, '/alarm_settings'),
+                          onTap:
+                              () => Navigator.pushNamed(
+                                context,
+                                '/alarm_settings',
+                              ),
                         ),
                         const SizedBox(height: 10),
                         _buildMenuRow(
                           icon: Icons.tune_rounded,
                           title: '권한 설정',
-                          subtitle:
-                              '알림, 저장공간 등 앱에서 사용하는 권한을 확인해보세요.',
+                          subtitle: '알림, 저장공간 등 앱에서 사용하는 권한을 확인해보세요.',
                           showDivider: false,
                           onTap: () => openAppSettings(),
                         ),
@@ -150,16 +152,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildMenuRow(
                           icon: Icons.description_outlined,
                           title: '약관 및 정책',
-                          subtitle:
-                              '서비스 이용과 관련된 약관 및 정책을 확인할 수 있어요.',
+                          subtitle: '서비스 이용과 관련된 약관 및 정책을 확인할 수 있어요.',
                           onTap: _showComingSoon,
                         ),
                         const SizedBox(height: 10),
                         _buildMenuRow(
                           icon: Icons.code_rounded,
                           title: '오픈소스 라이선스',
-                          subtitle:
-                              '앱에서 사용 중인 오픈소스 라이선스 정보를 확인할 수 있어요.',
+                          subtitle: '앱에서 사용 중인 오픈소스 라이선스 정보를 확인할 수 있어요.',
                           onTap: _showComingSoon,
                         ),
                         const SizedBox(height: 10),
@@ -181,30 +181,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildMenuRow(
                           icon: Icons.manage_accounts_outlined,
                           title: '계정 관리',
-                          subtitle:
-                              '로그인 방식과 연결된 계정 정보를 확인할 수 있어요.',
-                          onTap: () => Navigator.push(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder:
-                                  (context, animation, secondaryAnimation) =>
-                                      const AccountManagementScreen(),
-                              transitionsBuilder:
-                                  (context, animation, secondaryAnimation, child) {
-                                const begin = Offset(1.0, 0.0);
-                                const end = Offset.zero;
-                                const curve = Curves.easeInOutCubic;
-                                final tween = Tween(begin: begin, end: end)
-                                    .chain(CurveTween(curve: curve));
-                                return SlideTransition(
-                                  position: animation.drive(tween),
-                                  child: child,
-                                );
-                              },
-                              transitionDuration:
-                                  const Duration(milliseconds: 300),
-                            ),
-                          ),
+                          subtitle: '로그인 방식과 연결된 계정 정보를 확인할 수 있어요.',
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                      ) => const AccountManagementScreen(),
+                                  transitionsBuilder: (
+                                    context,
+                                    animation,
+                                    secondaryAnimation,
+                                    child,
+                                  ) {
+                                    const begin = Offset(1.0, 0.0);
+                                    const end = Offset.zero;
+                                    const curve = Curves.easeInOutCubic;
+                                    final tween = Tween(
+                                      begin: begin,
+                                      end: end,
+                                    ).chain(CurveTween(curve: curve));
+                                    return SlideTransition(
+                                      position: animation.drive(tween),
+                                      child: child,
+                                    );
+                                  },
+                                  transitionDuration: const Duration(
+                                    milliseconds: 300,
+                                  ),
+                                ),
+                              ),
                         ),
                         const SizedBox(height: 10),
                         _buildMenuRow(
@@ -226,9 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               color: Colors.black26,
               child: const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF5B9FD3),
-                ),
+                child: CircularProgressIndicator(color: Color(0xFF5B9FD3)),
               ),
             ),
         ],
@@ -236,10 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionShell({
-    required String title,
-    required Widget child,
-  }) {
+  Widget _buildSectionShell({required String title, required Widget child}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
@@ -345,9 +350,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.only(top: 10),
                   child: Icon(
                     Icons.chevron_right_rounded,
-                    color: isDestructive
-                        ? const Color(0xFFD85B66)
-                        : const Color(0xFFA0ACB7),
+                    color:
+                        isDestructive
+                            ? const Color(0xFFD85B66)
+                            : const Color(0xFFA0ACB7),
                     size: 26,
                   ),
                 ),
@@ -355,11 +361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (showDivider) ...[
               const SizedBox(height: 14),
-              const Divider(
-                height: 1,
-                thickness: 1,
-                color: Color(0xFFE7EDF2),
-              ),
+              const Divider(height: 1, thickness: 1, color: Color(0xFFE7EDF2)),
             ],
           ],
         ),

@@ -37,33 +37,33 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
     _eduSessionsApi = EduSessionsApi(_client);
   }
 
-  void _showStartDialog(BuildContext context) {
+  void _showStartDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => CustomPopupDesign(
-        title: '이완 음성 안내 시작',
-        message:
-            '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-        positiveText: '확인',
-        negativeText: null,
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () {
-          Navigator.pop(context);
-          Navigator.pushReplacementNamed(
-            context,
-            '/relaxation_education',
-            arguments: {
-              'sessionId': widget.sessionId,
-              'taskId': 'week5_education',
-              'weekNumber': 5,
-              'mp3Asset': 'week1.mp3',
-              'riveAsset': 'week1.riv',
+      builder:
+          (_) => CustomPopupDesign(
+            title: '이완 음성 안내 시작',
+            message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+            positiveText: '확인',
+            negativeText: null,
+            backgroundAsset: null,
+            iconAsset: null,
+            onPositivePressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(
+                context,
+                '/relaxation_education',
+                arguments: {
+                  'sessionId': widget.sessionId,
+                  'taskId': 'week5_education',
+                  'weekNumber': 5,
+                  'mp3Asset': 'week1.mp3',
+                  'riveAsset': 'week1.riv',
+                },
+              );
             },
-          );
-        },
-      ),
+          ),
     );
   }
 
@@ -106,33 +106,36 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
   }) {
     showDialog(
       context: context,
-      builder: (_) => DetailPopup(
-        title: title,
-        positiveText: '돌아가기',
-        negativeText: null,
-        onPositivePressed: () => Navigator.pop(context),
-        child: chips.isEmpty
-            ? const Text(
-                '입력된 항목이 없어요.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  color: Color(0xFF356D91),
-                ),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: chips.map((text) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: ThoughtBubble(
-                      text: text,
-                      type: thoughtType,
+      builder:
+          (_) => DetailPopup(
+            title: title,
+            positiveText: '돌아가기',
+            negativeText: null,
+            onPositivePressed: () => Navigator.pop(context),
+            child:
+                chips.isEmpty
+                    ? const Text(
+                      '입력된 항목이 없어요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        color: Color(0xFF356D91),
+                      ),
+                    )
+                    : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children:
+                          chips.map((text) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ThoughtBubble(
+                                text: text,
+                                type: thoughtType,
+                              ),
+                            );
+                          }).toList(),
                     ),
-                  );
-                }).toList(),
-              ),
-      ),
+          ),
     );
   }
 
@@ -157,7 +160,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
     required List<String> chips,
     required ThoughtType thoughtType,
   }) {
-    final String displayText = chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
+    final String displayText =
+        chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
     final bool isHelpful = thoughtType == ThoughtType.helpful;
     final Color accentColor =
         isHelpful ? const Color(0xFF62BFE7) : const Color(0xFFF29B94);
@@ -202,11 +206,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Icon(
-                      leadingIcon,
-                      color: accentColor,
-                      size: 20,
-                    ),
+                    child: Icon(leadingIcon, color: accentColor, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -228,9 +228,10 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                   fontSize: 18,
                   height: 1.65,
                   fontWeight: chips.isEmpty ? FontWeight.w500 : FontWeight.w700,
-                  color: chips.isEmpty
-                      ? const Color(0xFF8AA0B4)
-                      : const Color(0xFF243B53),
+                  color:
+                      chips.isEmpty
+                          ? const Color(0xFF8AA0B4)
+                          : const Color(0xFF243B53),
                 ),
               ),
               if (chips.length > 3) ...[
@@ -238,11 +239,12 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                 Align(
                   alignment: Alignment.center,
                   child: TextButton(
-                    onPressed: () => _showChipsPopup(
-                      title: title,
-                      chips: chips,
-                      thoughtType: thoughtType,
-                    ),
+                    onPressed:
+                        () => _showChipsPopup(
+                          title: title,
+                          chips: chips,
+                          thoughtType: thoughtType,
+                        ),
                     child: const Text(
                       '자세히 보기',
                       style: TextStyle(
@@ -291,10 +293,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFE7F7FF),
-                    Color(0xFFF5FCFF),
-                  ],
+                  colors: [Color(0xFFE7F7FF), Color(0xFFF5FCFF)],
                 ),
               ),
             ),
@@ -306,9 +305,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                 filterQuality: FilterQuality.high,
               ),
             ),
-            Container(
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
+            Container(color: Colors.white.withValues(alpha: 0.08)),
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
@@ -389,7 +386,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
               onNext: () async {
                 await _saveSession();
                 if (!mounted) return;
-                _showStartDialog(context);
+                _showStartDialog();
               },
             ),
           ),

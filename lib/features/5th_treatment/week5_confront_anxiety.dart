@@ -3,7 +3,6 @@ import 'package:gad_app_team/utils/text_line_utils.dart';
 
 // ✅ 공용 레이아웃 & 칩 에디터
 import 'package:gad_app_team/widgets/top_btm_card.dart';   // ApplyDoubleCard
-import 'package:gad_app_team/widgets/chips_editor.dart';   // ChipsEditor
 
 // 다음 화면 (기존 로직 유지)
 import 'week5_visual_screen.dart';

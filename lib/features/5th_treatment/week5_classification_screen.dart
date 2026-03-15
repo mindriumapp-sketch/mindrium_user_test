@@ -12,7 +12,6 @@ import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 // 프리젠테이션 위젯
 import 'package:gad_app_team/widgets/quiz_card.dart';
 import 'package:gad_app_team/widgets/jellyfish_notice.dart';
-import 'package:gad_app_team/widgets/choice_card_button.dart';
 
 class Week5ClassificationScreen extends StatefulWidget {
   final String? sessionId;
@@ -190,9 +189,10 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
       'correctType': current['type'],
       'userChoice': choice,
       'isCorrect': correct,
-      'wrongReason': wrongReasonVal is String
-          ? wrongReasonVal
-          : (wrongReasonVal?.toString() ?? ''),
+      'wrongReason':
+          wrongReasonVal is String
+              ? wrongReasonVal
+              : (wrongReasonVal?.toString() ?? ''),
     });
 
     // 다음 문제 또는 결과 화면으로 이동
@@ -207,11 +207,12 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => Week5ClassificationResultScreen(
-            sessionId: widget.sessionId,
-            correctCount: correctCount,
-            quizResults: quizResults,
-          ),
+          pageBuilder:
+              (_, __, ___) => Week5ClassificationResultScreen(
+                sessionId: widget.sessionId,
+                correctCount: correctCount,
+                quizResults: quizResults,
+              ),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -239,21 +240,26 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
       final classificationQuiz = <String, dynamic>{
         'correct_count': correctCount,
         'total_count': totalCount,
-        'results': quizResults
-            .map((item) => {
-                  'text': item['text'],
-                  'correct_type': item['correctType'],
-                  'user_choice': item['userChoice'],
-                  'is_correct': item['isCorrect'],
-                  'wrongReason': item['wrongReason'],
-                })
-            .toList(),
+        'results':
+            quizResults
+                .map(
+                  (item) => {
+                    'text': item['text'],
+                    'correct_type': item['correctType'],
+                    'user_choice': item['userChoice'],
+                    'is_correct': item['isCorrect'],
+                    'wrongReason': item['wrongReason'],
+                  },
+                )
+                .toList(),
       };
       await eduApi.updateEduSession(
         sessionId: sessionId,
         classificationQuiz: classificationQuiz,
       );
-      debugPrint('[Week5Classification] classification_quiz saved to ($sessionId)');
+      debugPrint(
+        '[Week5Classification] classification_quiz saved to ($sessionId)',
+      );
     } catch (e, st) {
       debugPrint('[Week5Classification] Failed to save quiz: $e\n$st');
     }
@@ -275,13 +281,14 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
   }) {
     final Color effectiveBackground =
         isDimmed ? const Color(0xFFDCE5EB) : backgroundColor;
-    final Color shadowColor = isSelected
-        ? backgroundColor.withOpacity(0.34)
-        : Colors.black.withOpacity(0.08);
+    final Color shadowColor =
+        isSelected
+            ? backgroundColor.withValues(alpha: 0.34)
+            : Colors.black.withValues(alpha: 0.08);
     final double scale = isSelected ? 1.0 : 0.985;
     final double borderWidth = isSelected ? 2.0 : 0.0;
     final Color borderColor =
-        isSelected ? Colors.white.withOpacity(0.9) : Colors.transparent;
+        isSelected ? Colors.white.withValues(alpha: 0.9) : Colors.transparent;
 
     return AnimatedScale(
       scale: scale,
@@ -295,10 +302,7 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
         decoration: BoxDecoration(
           color: effectiveBackground,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: borderColor,
-            width: borderWidth,
-          ),
+          border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: [
             BoxShadow(
               color: shadowColor,
@@ -353,7 +357,9 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: sidePadding, vertical: 12),
+                      horizontal: sidePadding,
+                      vertical: 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -366,7 +372,8 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
                         ),
                         const SizedBox(height: 15),
                         JellyfishNotice(
-                          feedback: '위 행동이 불안을 직면하는 행동인지, 회피하는 행동인지 선택한 후 [다음]을 눌러주세요.',
+                          feedback:
+                              '위 행동이 불안을 직면하는 행동인지, 회피하는 행동인지 선택한 후 [다음]을 눌러주세요.',
                           textAlign: TextAlign.left,
                         ),
                         const SizedBox(height: 10),
@@ -376,8 +383,9 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
                             _buildSelectableChoiceButton(
                               label: '불안 직면',
                               isSelected: selectedChoice == 'healthy',
-                              isDimmed: selectedChoice != null &&
-                                          selectedChoice != 'healthy',
+                              isDimmed:
+                                  selectedChoice != null &&
+                                  selectedChoice != 'healthy',
                               backgroundColor: const Color(0xFF1FA4F0),
                               onPressed: () => _selectAnswer('healthy'),
                             ),
@@ -385,8 +393,9 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
                             _buildSelectableChoiceButton(
                               label: '불안 회피',
                               isSelected: selectedChoice == 'anxious',
-                              isDimmed: selectedChoice != null &&
-                                          selectedChoice != 'anxious',
+                              isDimmed:
+                                  selectedChoice != null &&
+                                  selectedChoice != 'anxious',
                               backgroundColor: const Color(0xFFF3A2AD),
                               onPressed: () => _selectAnswer('anxious'),
                             ),

@@ -1,4 +1,4 @@
-/// 🫧 계정 관리 화면 — 로그인 방식, 연결된 계정 정보, 비밀번호 변경, 회원 탈퇴
+// 계정 관리 화면: 로그인 방식, 연결된 계정 정보, 비밀번호 변경, 회원 탈퇴
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
@@ -57,9 +57,7 @@ class AccountManagementScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildAccountInfoCard(context),
-                ],
+                children: [_buildAccountInfoCard(context)],
               ),
             ),
           ),
@@ -266,9 +264,10 @@ class AccountManagementScreen extends StatelessWidget {
               padding: const EdgeInsets.only(top: 10),
               child: Icon(
                 Icons.chevron_right_rounded,
-                color: isDestructive
-                    ? const Color(0xFFD85B66)
-                    : const Color(0xFFA0ACB7),
+                color:
+                    isDestructive
+                        ? const Color(0xFFD85B66)
+                        : const Color(0xFFA0ACB7),
                 size: 26,
               ),
             ),

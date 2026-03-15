@@ -12,7 +12,6 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/education_week_contents.dart';
 import 'package:gad_app_team/data/api/screen_time_api.dart';
-import 'package:gad_app_team/data/models/screen_time_summary.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
 
 class MyInfoScreen extends StatefulWidget {
@@ -45,9 +44,6 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   late final UserDataApi _userDataApi = UserDataApi(_apiClient);
   late final AuthApi _authApi = AuthApi(_apiClient, _tokens);
   late final ScreenTimeApi _screenTimeApi = ScreenTimeApi(_apiClient);
-
-  ScreenTimeSummary? _screenTimeSummary;
-  bool _screenTimeLoading = true;
 
   List<Map<String, dynamic>> _archivedGroups = [];
   bool _archiveLoading = true;
@@ -135,9 +131,9 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       createdAt = userProvider.createdAt;
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('내 정보를 불러오지 못했습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('내 정보를 불러오지 못했습니다.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -148,30 +144,19 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   }
 
   Future<void> _loadScreenTimeSummary({bool showError = false}) async {
-    if (mounted) {
-      setState(() => _screenTimeLoading = true);
-    }
     try {
-      final summary = await _screenTimeApi.fetchSummary();
-      if (!mounted) return;
-      setState(() {
-        _screenTimeSummary = summary;
-        _screenTimeLoading = false;
-      });
+      await _screenTimeApi.fetchSummary();
     } on DioException catch (e) {
       if (!mounted) return;
-      setState(() => _screenTimeLoading = false);
       if (showError) {
-        final message = e.response?.data is Map
-            ? e.response?.data['detail']?.toString()
-            : e.message;
-        _showScreenTimeError(
-          message ?? '스크린타임 요약을 불러오지 못했어요.',
-        );
+        final message =
+            e.response?.data is Map
+                ? e.response?.data['detail']?.toString()
+                : e.message;
+        _showScreenTimeError(message ?? '스크린타임 요약을 불러오지 못했어요.');
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() => _screenTimeLoading = false);
       if (showError) {
         _showScreenTimeError('스크린타임 요약을 불러오지 못했어요.');
       }
@@ -180,8 +165,9 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   void _showScreenTimeError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _updateUserData() async {
@@ -215,8 +201,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         userProvider.updateUserName(trimmedName);
       }
 
-      if (valueGoal.isNotEmpty &&
-          valueGoal != (userProvider.valueGoal ?? '')) {
+      if (valueGoal.isNotEmpty && valueGoal != (userProvider.valueGoal ?? '')) {
         await _userDataApi.updateValueGoal(valueGoal);
         userProvider.setValueGoalLocally(valueGoal);
       }
@@ -243,9 +228,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       });
     } on DioException catch (e) {
       if (!mounted) return;
-      final message = e.response?.data is Map
-          ? e.response?.data['detail']?.toString()
-          : e.message;
+      final message =
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
       _showSnack('업데이트 실패: ${message ?? '오류가 발생했습니다.'}');
     } catch (e) {
       if (!mounted) return;
@@ -257,8 +243,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   void _showSnack(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(text)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   int daysBetween(DateTime a, DateTime b) {
@@ -275,22 +260,26 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     final double bottomSafeInset = MediaQuery.of(context).padding.bottom;
     const double extraBottomScrollSpace = 110.0;
 
-    final String joinDateText = createdAt != null
-        ? DateFormat('yyyy년 MM월 dd일').format(createdAt!)
-        : '가입일 정보 없음';
+    final String joinDateText =
+        createdAt != null
+            ? DateFormat('yyyy년 MM월 dd일').format(createdAt!)
+            : '가입일 정보 없음';
 
     final userProvider = context.watch<UserProvider>();
-    final String displayName = nameController.text.trim().isNotEmpty
-        ? nameController.text.trim()
-        : userProvider.userName;
-    final String displayEmail = emailController.text.trim().isNotEmpty
-        ? emailController.text.trim()
-        : userProvider.userEmail;
-    final String displayValueGoal = valueGoalController.text.trim().isNotEmpty
-        ? valueGoalController.text.trim()
-        : (userProvider.valueGoal?.trim().isNotEmpty == true
-            ? userProvider.valueGoal!.trim()
-            : '아직 설정된 핵심 가치가 없어요.');
+    final String displayName =
+        nameController.text.trim().isNotEmpty
+            ? nameController.text.trim()
+            : userProvider.userName;
+    final String displayEmail =
+        emailController.text.trim().isNotEmpty
+            ? emailController.text.trim()
+            : userProvider.userEmail;
+    final String displayValueGoal =
+        valueGoalController.text.trim().isNotEmpty
+            ? valueGoalController.text.trim()
+            : (userProvider.valueGoal?.trim().isNotEmpty == true
+                ? userProvider.valueGoal!.trim()
+                : '아직 설정된 핵심 가치가 없어요.');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -344,21 +333,24 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _buildProfileOverviewCard(
-                            name: '안녕하세요, ${displayName}님',
+                            name: '안녕하세요, $displayName님',
                             email: displayEmail,
                             valueGoal: displayValueGoal,
                             joinDateText: joinDateText,
-                            onEditTap: isLoading
-                                ? null
-                                : () => setState(() => isEditing = !isEditing),
+                            onEditTap:
+                                isLoading
+                                    ? null
+                                    : () =>
+                                        setState(() => isEditing = !isEditing),
                           ),
                           const SizedBox(height: 14),
                           _buildProgressSnapshotCard(
                             userProvider: userProvider,
                             todayTask: context.watch<TodayTaskProvider>(),
-                            streakText: createdAt != null
-                                ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)}일째'
-                                : '기록 준비 중',
+                            streakText:
+                                createdAt != null
+                                    ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)}일째'
+                                    : '기록 준비 중',
                           ),
                           const SizedBox(height: 14),
                           _buildArchivedWorryFishSection(),
@@ -447,7 +439,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                 onPressed: onEditTap,
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF5C6470),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -565,9 +560,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     );
   }
 
-  Widget _buildFormPanel({
-    required List<Widget> children,
-  }) {
+  Widget _buildFormPanel({required List<Widget> children}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -576,9 +569,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE8EEF3)),
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -587,10 +578,14 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     required TodayTaskProvider todayTask,
     required String streakText,
   }) {
-    final recentProgram =
-        EducationProgressDisplay.recentProgram(userProvider, todayTask);
-    final progressStage =
-        EducationProgressDisplay.progressStage(userProvider, todayTask);
+    final recentProgram = EducationProgressDisplay.recentProgram(
+      userProvider,
+      todayTask,
+    );
+    final progressStage = EducationProgressDisplay.progressStage(
+      userProvider,
+      todayTask,
+    );
 
     return Row(
       children: [
@@ -645,7 +640,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(12),
@@ -672,7 +670,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F4FD),
                   borderRadius: BorderRadius.circular(20),
@@ -798,29 +799,32 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         curve: Curves.easeOut,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(
-                  colors: [Color(0xFFE8F4FD), Color(0xFFF0F8FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.65),
-                    Colors.white.withValues(alpha: 0.55),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+          gradient:
+              isSelected
+                  ? const LinearGradient(
+                    colors: [Color(0xFFE8F4FD), Color(0xFFF0F8FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                  : LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.65),
+                      Colors.white.withValues(alpha: 0.55),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
           borderRadius: BorderRadius.circular(20),
-          border: isSelected
-              ? Border.all(color: const Color(0xFF5B9FD3), width: 2.5)
-              : null,
+          border:
+              isSelected
+                  ? Border.all(color: const Color(0xFF5B9FD3), width: 2.5)
+                  : null,
           boxShadow: [
             BoxShadow(
-              color: isSelected
-                  ? const Color(0xFF5B9FD3).withValues(alpha: 0.35)
-                  : Colors.black.withValues(alpha: 0.08),
+              color:
+                  isSelected
+                      ? const Color(0xFF5B9FD3).withValues(alpha: 0.35)
+                      : Colors.black.withValues(alpha: 0.08),
               blurRadius: isSelected ? 24 : 16,
               spreadRadius: isSelected ? 2 : 0,
               offset: Offset(0, isSelected ? 10 : 6),
@@ -847,19 +851,29 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: isSelected
-                            ? const LinearGradient(
-                                colors: [Color(0xFFFFFFFF), Color(0xFFF5FAFF)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : null,
-                        color: isSelected ? null : Colors.white.withValues(alpha: 0.7),
+                        gradient:
+                            isSelected
+                                ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFFFFF),
+                                    Color(0xFFF5FAFF),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                                : null,
+                        color:
+                            isSelected
+                                ? null
+                                : Colors.white.withValues(alpha: 0.7),
                         boxShadow: [
                           BoxShadow(
-                            color: isSelected
-                                ? const Color(0xFF5B9FD3).withValues(alpha: 0.3)
-                                : Colors.black.withValues(alpha: 0.05),
+                            color:
+                                isSelected
+                                    ? const Color(
+                                      0xFF5B9FD3,
+                                    ).withValues(alpha: 0.3)
+                                    : Colors.black.withValues(alpha: 0.05),
                             blurRadius: isSelected ? 16 : 12,
                             offset: const Offset(0, 4),
                           ),
@@ -870,13 +884,15 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                         'assets/image/character${group['character_id']}.png',
                         height: 60,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stack) => Icon(
-                          Icons.catching_pokemon,
-                          size: 50,
-                          color: isSelected
-                              ? const Color(0xFF5B9FD3)
-                              : Colors.grey.shade400,
-                        ),
+                        errorBuilder:
+                            (context, error, stack) => Icon(
+                              Icons.catching_pokemon,
+                              size: 50,
+                              color:
+                                  isSelected
+                                      ? const Color(0xFF5B9FD3)
+                                      : Colors.grey.shade400,
+                            ),
                       ),
                     ),
                   ),
@@ -892,9 +908,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: isSelected ? 13 : 12.5,
-                color: isSelected
-                    ? const Color(0xFF0E2C48)
-                    : const Color(0xFF4A5568),
+                color:
+                    isSelected
+                        ? const Color(0xFF0E2C48)
+                        : const Color(0xFF4A5568),
                 height: 1.3,
                 letterSpacing: -0.2,
                 fontFamily: 'Noto Sans KR',
@@ -909,10 +926,13 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   Widget _buildArchivedDetailCard() {
     if (_selectedArchiveGroupId == null) return const SizedBox.shrink();
 
-    final matches = _archivedGroups
-        .where((g) =>
-            (g['group_id']?.toString() ?? '') == _selectedArchiveGroupId)
-        .toList();
+    final matches =
+        _archivedGroups
+            .where(
+              (g) =>
+                  (g['group_id']?.toString() ?? '') == _selectedArchiveGroupId,
+            )
+            .toList();
     if (matches.isEmpty) return const SizedBox.shrink();
 
     final group = matches.first;
@@ -967,7 +987,9 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF5B9FD3).withValues(alpha: 0.25),
+                          color: const Color(
+                            0xFF5B9FD3,
+                          ).withValues(alpha: 0.25),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -978,11 +1000,12 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                       child: Image.asset(
                         'assets/image/character$characterId.png',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.catching_pokemon,
-                          size: 32,
-                          color: Color(0xFF0E2C48),
-                        ),
+                        errorBuilder:
+                            (_, __, ___) => const Icon(
+                              Icons.catching_pokemon,
+                              size: 32,
+                              color: Color(0xFF0E2C48),
+                            ),
                       ),
                     ),
                   ),
@@ -1086,16 +1109,19 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ArchivedDiaryScreen(
-                      groupId: groupId,
-                      groupTitle: title,
-                      groupContents: contents,
-                      characterId: characterId,
-                      createdAt:
-                          DateTime.tryParse(group['created_at']?.toString() ?? '') ??
-                          DateTime.now(),
-                      archivedAt: archivedAt,
-                    ),
+                    builder:
+                        (context) => ArchivedDiaryScreen(
+                          groupId: groupId,
+                          groupTitle: title,
+                          groupContents: contents,
+                          characterId: characterId,
+                          createdAt:
+                              DateTime.tryParse(
+                                group['created_at']?.toString() ?? '',
+                              ) ??
+                              DateTime.now(),
+                          archivedAt: archivedAt,
+                        ),
                   ),
                 );
               },
@@ -1204,16 +1230,6 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     );
   }
 
-  String _formatDuration(double minutes) {
-    final totalSeconds = (minutes * 60).round();
-    if (totalSeconds <= 0) return '0초';
-    final mins = totalSeconds ~/ 60;
-    final secs = totalSeconds % 60;
-    if (mins > 0 && secs > 0) return '$mins분 $secs초';
-    if (mins > 0) return '$mins분';
-    return '$secs초';
-  }
-
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -1233,8 +1249,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF004C73)),
         filled: true,
-        fillColor:
-            enabled ? const Color(0xFFF5FBFF) : const Color(0xFFEFF7FA),
+        fillColor: enabled ? const Color(0xFFF5FBFF) : const Color(0xFFEFF7FA),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Color(0xFFD9EEFF)),
@@ -1245,10 +1260,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: Color(0xFF89D4F5),
-            width: 1.6,
-          ),
+          borderSide: const BorderSide(color: Color(0xFF89D4F5), width: 1.6),
         ),
       ),
     );
