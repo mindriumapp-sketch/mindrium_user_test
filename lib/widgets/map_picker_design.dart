@@ -1,12 +1,12 @@
-import 'package:flutter/cupertino.dart' show CupertinoDatePicker, CupertinoDatePickerMode;
-import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:flutter/cupertino.dart'
+    show CupertinoDatePicker, CupertinoDatePickerMode;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/common/constants.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/widgets/navigation_button.dart';
 
 class MindriumPopupDesign extends StatefulWidget {
-  final String title;
   final TextEditingController? searchController;
   final MapController? mapController;
   final VoidCallback? onMapReady;
@@ -30,7 +30,6 @@ class MindriumPopupDesign extends StatefulWidget {
 
   const MindriumPopupDesign({
     super.key,
-    required this.title,
     this.searchController,
     this.mapController,
     this.onMapReady,
@@ -58,6 +57,7 @@ class MindriumPopupDesign extends StatefulWidget {
 }
 
 class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
+  static const LatLng _kDefaultCenter = LatLng(37.5665, 126.9780);
   static const double _sheetMinSize = 0.075;
   static const double _sheetInitialSize = 0.35;
   static const double _sheetMaxSize = 0.75;
@@ -71,10 +71,157 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
     _pickerTime = widget.initialTimeDateTime ?? DateTime(2000, 1, 1, 9, 0);
   }
 
+  String get _guideText {
+    return widget.showTimePicker
+        ? '일기에 작성한 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
+        : '알림을 받을 위치를 선택한 뒤 [저장]을 눌러주세요.';
+  }
+
+  String get _sheetTitleText {
+    return widget.showTimePicker ? '위치/시간 설정' : '위치 설정';
+  }
+
+  bool get _hasLocationText {
+    return widget.locationText != null &&
+        widget.locationText!.trim().isNotEmpty;
+  }
+
+  String get _resolvedLocationText {
+    return _hasLocationText ? widget.locationText! : '지도를 탭해 위치를 선택해주세요.';
+  }
+
+  LatLng get _initialCenter {
+    return widget.picked ?? widget.current ?? _kDefaultCenter;
+  }
+
   void _toggleJellyfishMessage() {
     setState(() {
       _showJellyfishMessage = !_showJellyfishMessage;
     });
+  }
+
+  Widget _buildPanelCard({
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(14, 12, 14, 12),
+  }) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildMap() {
+    if (widget.mapController == null) {
+      return const SizedBox.shrink();
+    }
+
+    return FlutterMap(
+      mapController: widget.mapController!,
+      options: MapOptions(
+        initialCenter: _initialCenter,
+        initialZoom: 16,
+        onTap: widget.onTap,
+        onMapReady: widget.onMapReady,
+      ),
+      children: [
+        TileLayer(
+          urlTemplate:
+              'https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png',
+          additionalOptions: {'key': vworldApiKey},
+        ),
+        if (widget.current != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: widget.current!,
+                width: 36,
+                height: 36,
+                child: const Icon(
+                  Icons.my_location,
+                  color: Color(0xFF4A90E2),
+                  size: 32,
+                ),
+              ),
+            ],
+          ),
+        if (widget.picked != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: widget.picked!,
+                width: 40,
+                height: 40,
+                child: const Icon(
+                  Icons.location_pin,
+                  color: Color(0xFF5B3EFF),
+                  size: 44,
+                ),
+              ),
+            ],
+          ),
+        if (widget.savedMarkers != null && widget.savedMarkers!.isNotEmpty)
+          MarkerLayer(markers: widget.savedMarkers!),
+      ],
+    );
+  }
+
+  Widget _buildSearchField() {
+    if (widget.searchController == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      top: 56,
+      left: 24,
+      right: 24,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: widget.searchController,
+          onSubmitted: (_) => widget.onSearch?.call(),
+          decoration: const InputDecoration(
+            hintText: '주소 검색',
+            prefixIcon: Icon(Icons.search, color: Color(0xFF4A90E2)),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDragHandle() {
+    return Center(
+      child: Container(
+        width: 44,
+        height: 5,
+        decoration: BoxDecoration(
+          color: const Color(0xFFB9C3D4),
+          borderRadius: BorderRadius.circular(99),
+        ),
+      ),
+    );
   }
 
   Widget _buildJellyfishGuide(String guideText) {
@@ -89,7 +236,10 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                 alignment: Alignment.topCenter,
                 child: Container(
                   margin: const EdgeInsets.only(right: 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 26,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(18),
@@ -138,19 +288,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   }
 
   Widget _buildLocationCard(bool hasLocation, String locationText) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return _buildPanelCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -188,19 +326,8 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   }
 
   Widget _buildTimeCard(String timeText) {
-    return Container(
+    return _buildPanelCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -267,7 +394,8 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
             color: selected ? const Color(0xFFE9F3FF) : const Color(0xFFF7F8FA),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: selected ? const Color(0xFF7CB3E8) : const Color(0xFFC7CDD7),
+              color:
+                  selected ? const Color(0xFF7CB3E8) : const Color(0xFFC7CDD7),
             ),
           ),
           child: Text(
@@ -275,26 +403,15 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: selected ? const Color(0xFF275E92) : const Color(0xFF2B2F36),
+              color:
+                  selected ? const Color(0xFF275E92) : const Color(0xFF2B2F36),
             ),
           ),
         ),
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return _buildPanelCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -354,186 +471,93 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
     );
   }
 
+  Widget _buildBottomSheet() {
+    final timeText = TimeOfDay.fromDateTime(_pickerTime).format(context);
+
+    return Positioned.fill(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: _sheetInitialSize,
+        minChildSize: _sheetMinSize,
+        maxChildSize: _sheetMaxSize,
+        snap: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7FAFF).withValues(alpha: 0.97),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(22),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 14,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: ListView(
+              controller: scrollController,
+              padding: EdgeInsets.fromLTRB(
+                16,
+                10,
+                16,
+                MediaQuery.of(context).padding.bottom + 12,
+              ),
+              children: [
+                _buildDragHandle(),
+                const SizedBox(height: 10),
+                Text(
+                  _sheetTitleText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF3A4760),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildLocationCard(_hasLocationText, _resolvedLocationText),
+                if (widget.showLocationLabelInput &&
+                    widget.locationLabelController != null) ...[
+                  const SizedBox(height: 10),
+                  _buildLocationLabelCard(),
+                ],
+                if (widget.showTimePicker) ...[
+                  const SizedBox(height: 10),
+                  _buildTimeCard(timeText),
+                ],
+                const SizedBox(height: 12),
+                NavigationButtons(
+                  leftLabel: '이전',
+                  rightLabel: '저장',
+                  onBack: widget.onBack ?? () => Navigator.pop(context),
+                  onNext: widget.onNext ?? () {},
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final timeText = TimeOfDay.fromDateTime(_pickerTime).format(context);
-    final guideText = widget.showTimePicker
-        ? '일기에 작성한 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
-        : '알림을 받을 위치를 선택한 뒤 [저장]을 눌러주세요.';
-    final bool hasLocation =
-        widget.locationText != null && widget.locationText!.trim().isNotEmpty;
-    final String locationText =
-        hasLocation ? widget.locationText! : '지도를 탭해 위치를 선택해주세요.';
-
     return Material(
       color: const Color(0xE0E9F3FF),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (widget.mapController != null)
-            FlutterMap(
-              mapController: widget.mapController!,
-              options: MapOptions(
-                initialCenter:
-                    widget.picked ?? widget.current ?? const LatLng(37.5665, 126.9780),
-                initialZoom: 16,
-                onTap: widget.onTap,
-                onMapReady: widget.onMapReady,
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png',
-                  additionalOptions: {'key': vworldApiKey},
-                ),
-                if (widget.current != null)
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: widget.current!,
-                        width: 36,
-                        height: 36,
-                        child: const Icon(
-                          Icons.my_location,
-                          color: Color(0xFF4A90E2),
-                          size: 32,
-                        ),
-                      ),
-                    ],
-                  ),
-                if (widget.picked != null)
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: widget.picked!,
-                        width: 40,
-                        height: 40,
-                        child: const Icon(
-                          Icons.location_pin,
-                          color: Color(0xFF5B3EFF),
-                          size: 44,
-                        ),
-                      ),
-                    ],
-                  ),
-                if (widget.savedMarkers != null && widget.savedMarkers!.isNotEmpty)
-                  MarkerLayer(markers: widget.savedMarkers!),
-              ],
-            ),
-
-          if (widget.searchController != null)
-            Positioned(
-              top: 56,
-              left: 24,
-              right: 24,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: widget.searchController,
-                  onSubmitted: (_) => widget.onSearch?.call(),
-                  decoration: const InputDecoration(
-                    hintText: '주소 검색',
-                    prefixIcon: Icon(Icons.search, color: Color(0xFF4A90E2)),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
+          _buildMap(),
+          _buildSearchField(),
           Positioned(
             left: 24,
             right: 12,
             top: 120,
-            child: _buildJellyfishGuide(guideText),
+            child: _buildJellyfishGuide(_guideText),
           ),
-
-          Positioned.fill(
-              child: DraggableScrollableSheet(
-                expand: false,
-                initialChildSize: _sheetInitialSize,
-                minChildSize: _sheetMinSize,
-                maxChildSize: _sheetMaxSize,
-                snap: false,
-                builder: (context, scrollController) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF7FAFF).withValues(alpha: 0.97),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 14,
-                        offset: const Offset(0, -4),
-                      ),
-                    ],
-                  ),
-                  child: ListView(
-                    controller: scrollController,
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      10,
-                      16,
-                      MediaQuery.of(context).padding.bottom + 12,
-                    ),
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 44,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFB9C3D4),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        widget.showTimePicker ? '위치/시간 설정' : '위치 설정',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF3A4760),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLocationCard(hasLocation, locationText),
-                      if (widget.showLocationLabelInput &&
-                          widget.locationLabelController != null) ...[
-                        const SizedBox(height: 10),
-                        _buildLocationLabelCard(),
-                      ],
-                      if (widget.showTimePicker) ...[
-                        const SizedBox(height: 10),
-                        _buildTimeCard(timeText),
-                      ],
-                      const SizedBox(height: 12),
-                      NavigationButtons(
-                        leftLabel: '이전',
-                        rightLabel: '저장',
-                        onBack: widget.onBack ?? () => Navigator.pop(context),
-                        onNext: widget.onNext ?? () {},
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
+          _buildBottomSheet(),
         ],
       ),
     );

@@ -86,38 +86,18 @@ class _MapPickerState extends State<MapPicker> {
   LatLng? _pendingMapCenter;
   double _pendingMapZoom = _kInitialZoom;
   late TimeOfDay _selectedTime;
+  int _reverseGeocodeRequestId = 0;
+  bool _isResolvingAddress = false;
+  bool _hasAddressLookupFailure = false;
 
   @override
   void initState() {
     super.initState();
     _selectedTime = widget.initialTime ?? TimeOfDay.now();
-    _locationLabelController.text = widget.initialLocationLabel?.trim() ?? '';
-    if (widget.initial != null && _isValidLatLng(widget.initial!)) {
-      _picked = widget.initial;
-      _reverseGeocode(widget.initial!);
-      _pendingMapCenter = widget.initial;
-      _pendingMapZoom = _kInitialZoom;
-    } else if (widget.initial != null) {
-      debugPrint('Ignored invalid initial coordinates: ${widget.initial}');
-    }
-    final cachedCurrent = _sessionCurrentCache;
-    if (_picked == null &&
-        cachedCurrent != null &&
-        _isRecentTimestamp(_sessionCurrentCacheAt)) {
-      _current = cachedCurrent;
-      _pendingMapCenter = cachedCurrent;
-      _pendingMapZoom = _kInitialZoom;
-    }
+    _setLocationLabelText(widget.initialLocationLabel?.trim() ?? '');
+    _initializeSelectionState();
     unawaited(_determinePosition());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (widget.showSavedMarkers) {
-        unawaited(_loadSavedMarkers());
-      }
-      if (widget.enableLocationLabel) {
-        unawaited(_loadLocationLabelChips());
-      }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDeferredData());
   }
 
   @override
@@ -159,6 +139,77 @@ class _MapPickerState extends State<MapPicker> {
 
   bool get _shouldAutoCenterOnCurrent => _picked == null;
 
+  bool get _hasVisibleLocationSelection => _picked != null || _current != null;
+
+  LatLng get _resolvedSelectionPoint => _picked ?? _current ?? _kDefaultCenter;
+
+  String? get _displayLocationText {
+    final address = _addr?.trim();
+    if (address != null && address.isNotEmpty) {
+      return address;
+    }
+    if (_isResolvingAddress && _hasVisibleLocationSelection) {
+      return '주소를 확인하는 중...';
+    }
+    if (_hasAddressLookupFailure && _hasVisibleLocationSelection) {
+      return '주소를 불러오지 못했어요. 다시 선택해 주세요.';
+    }
+    return null;
+  }
+
+  void _applyState(VoidCallback update) {
+    if (mounted) {
+      setState(update);
+      return;
+    }
+    update();
+  }
+
+  void _setLocationLabelText(String value) {
+    _locationLabelController.text = value;
+    _locationLabelController.selection = TextSelection.fromPosition(
+      TextPosition(offset: value.length),
+    );
+  }
+
+  String _normalizeLocationLabel(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+  }
+
+  void _initializeSelectionState() {
+    final initial = widget.initial;
+    if (initial != null && _isValidLatLng(initial)) {
+      _picked = initial;
+      _pendingMapCenter = initial;
+      _pendingMapZoom = _kInitialZoom;
+      unawaited(_reverseGeocode(initial));
+      return;
+    }
+
+    if (initial != null) {
+      debugPrint('Ignored invalid initial coordinates: $initial');
+    }
+
+    final cachedCurrent = _sessionCurrentCache;
+    if (_picked == null &&
+        cachedCurrent != null &&
+        _isRecentTimestamp(_sessionCurrentCacheAt)) {
+      _current = cachedCurrent;
+      _pendingMapCenter = cachedCurrent;
+      _pendingMapZoom = _kInitialZoom;
+    }
+  }
+
+  void _loadDeferredData() {
+    if (!mounted) return;
+    if (widget.showSavedMarkers) {
+      unawaited(_loadSavedMarkers());
+    }
+    if (widget.enableLocationLabel) {
+      unawaited(_loadLocationLabelChips());
+    }
+  }
+
   void _cacheCurrentLocation(LatLng current) {
     _sessionCurrentCache = current;
     _sessionCurrentCacheAt = DateTime.now();
@@ -174,15 +225,14 @@ class _MapPickerState extends State<MapPicker> {
         previous.longitude != current.longitude;
 
     if (hasChanged) {
-      if (mounted) {
-        setState(() => _current = current);
-      } else {
-        _current = current;
-      }
+      _applyState(() => _current = current);
     }
 
     if (_shouldAutoCenterOnCurrent) {
       _moveMapSafely(current, zoom: _kInitialZoom);
+      if ((_addr?.trim().isEmpty ?? true)) {
+        unawaited(_reverseGeocode(current));
+      }
     }
   }
 
@@ -253,16 +303,54 @@ class _MapPickerState extends State<MapPicker> {
 
     try {
       final res = await locationFromAddress(query);
-      if (res.isNotEmpty && mounted) {
-        final latlng = LatLng(res.first.latitude, res.first.longitude);
-        setState(() => _picked = latlng);
-        await _reverseGeocode(latlng);
-        _moveMapSafely(latlng, zoom: _kInitialZoom);
-      }
+      if (res.isEmpty) return;
+      final latlng = LatLng(res.first.latitude, res.first.longitude);
+      await _pickLocation(latlng, moveMap: true);
     } catch (_) {}
   }
 
-  Future<void> _reverseGeocode(LatLng point) async {
+  Future<void> _pickLocation(LatLng latlng, {bool moveMap = false}) async {
+    _applyState(() => _picked = latlng);
+    await _reverseGeocode(latlng);
+    if (moveMap) {
+      _moveMapSafely(latlng, zoom: _kInitialZoom);
+    }
+  }
+
+  String? _cleanAddressPart(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  Future<String?> _reverseGeocodeWithPlacemark(LatLng point) async {
+    try {
+      await setLocaleIdentifier('ko_KR');
+      final placemarks = await placemarkFromCoordinates(
+        point.latitude,
+        point.longitude,
+      ).timeout(const Duration(seconds: 4));
+
+      if (placemarks.isEmpty) return null;
+      final p = placemarks.first;
+      final parts =
+          <String?>[
+            _cleanAddressPart(p.administrativeArea),
+            _cleanAddressPart(p.locality),
+            _cleanAddressPart(p.subLocality),
+            _cleanAddressPart(p.thoroughfare),
+            _cleanAddressPart(p.subThoroughfare),
+          ].whereType<String>().toList();
+
+      if (parts.isEmpty) return null;
+      return parts.join(' ');
+    } catch (e) {
+      debugPrint('Placemark reverse geocoding failed: $e');
+      return null;
+    }
+  }
+
+  Future<String?> _reverseGeocodeWithVworld(LatLng point) async {
     try {
       final uri = Uri.parse(
         'https://api.vworld.kr/req/address'
@@ -276,19 +364,54 @@ class _MapPickerState extends State<MapPicker> {
         '&key=$vworldApiKey',
       );
       final res = await http.get(uri).timeout(const Duration(seconds: 5));
-      if (res.statusCode != 200) return;
+      if (res.statusCode != 200) return null;
       final body = jsonDecode(res.body);
+      final status = body['response']?['status']?.toString();
+      if (status != null && status != 'OK') {
+        debugPrint('Vworld reverse geocoding status: $status');
+        return null;
+      }
       final result = body['response']?['result']?[0];
       final text = result?['text'];
-      if (text != null && mounted) setState(() => _addr = text);
-    } catch (_) {}
+      return _cleanAddressPart(text?.toString());
+    } catch (e) {
+      debugPrint('Vworld reverse geocoding failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> _reverseGeocode(LatLng point) async {
+    final requestId = ++_reverseGeocodeRequestId;
+
+    _applyState(() {
+      _addr = null;
+      _isResolvingAddress = true;
+      _hasAddressLookupFailure = false;
+    });
+
+    final placemarkAddress = await _reverseGeocodeWithPlacemark(point);
+    if (!mounted || requestId != _reverseGeocodeRequestId) return;
+    if (placemarkAddress != null) {
+      _applyState(() {
+        _addr = placemarkAddress;
+        _hasAddressLookupFailure = false;
+      });
+    }
+
+    final vworldAddress = await _reverseGeocodeWithVworld(point);
+    if (!mounted || requestId != _reverseGeocodeRequestId) return;
+
+    final resolvedAddress = vworldAddress ?? placemarkAddress;
+    _applyState(() {
+      _addr = resolvedAddress;
+      _isResolvingAddress = false;
+      _hasAddressLookupFailure = resolvedAddress == null;
+    });
   }
 
   Future<void> _loadLocationLabelChips() async {
     if (!widget.enableLocationLabel) return;
-    if (mounted) {
-      setState(() => _isLoadingLocationLabels = true);
-    }
+    _applyState(() => _isLoadingLocationLabels = true);
     try {
       final rows = await _notificationLocationsApi
           .listLocationLabels(limit: 24)
@@ -301,14 +424,12 @@ class _MapPickerState extends State<MapPicker> {
               .toSet()
               .toList();
       if (!mounted) return;
-      setState(() {
-        _locationLabelChips = labels;
-      });
+      _applyState(() => _locationLabelChips = labels);
     } catch (e) {
       debugPrint('Failed to load location labels: $e');
     } finally {
       if (mounted) {
-        setState(() => _isLoadingLocationLabels = false);
+        _applyState(() => _isLoadingLocationLabels = false);
       }
     }
   }
@@ -316,12 +437,7 @@ class _MapPickerState extends State<MapPicker> {
   void _selectLocationLabel(String label) {
     final trimmed = label.trim();
     if (trimmed.isEmpty) return;
-    setState(() {
-      _locationLabelController.text = trimmed;
-      _locationLabelController.selection = TextSelection.fromPosition(
-        TextPosition(offset: trimmed.length),
-      );
-    });
+    _applyState(() => _setLocationLabelText(trimmed));
   }
 
   Future<void> _openAddLocationLabelDialog() async {
@@ -335,12 +451,9 @@ class _MapPickerState extends State<MapPicker> {
       ..text = ''
       ..selection = const TextSelection.collapsed(offset: 0);
     try {
-      String normalizeLabel(String value) =>
-          value.toLowerCase().replaceAll(RegExp(r'\s+'), '');
-
       final existingNormalized =
           _locationLabelChips
-              .map((label) => normalizeLabel(label.trim()))
+              .map((label) => _normalizeLocationLabel(label.trim()))
               .where((v) => v.isNotEmpty)
               .toSet();
 
@@ -370,7 +483,7 @@ class _MapPickerState extends State<MapPicker> {
             inputValidator: (text) {
               final trimmed = text.trim();
               if (trimmed.isEmpty) return '라벨을 입력해주세요.';
-              final normalized = normalizeLabel(trimmed);
+              final normalized = _normalizeLocationLabel(trimmed);
               if (existingNormalized.contains(normalized)) {
                 return '이미 있는 라벨입니다.';
               }
@@ -383,29 +496,28 @@ class _MapPickerState extends State<MapPicker> {
       final trimmed = addedLabel?.trim();
       if (trimmed == null || trimmed.isEmpty) return;
 
-      final normalizedNew = normalizeLabel(trimmed);
+      final normalizedNew = _normalizeLocationLabel(trimmed);
       String resolvedLabel = trimmed;
       for (final existing in _locationLabelChips) {
-        if (normalizeLabel(existing) == normalizedNew) {
+        if (_normalizeLocationLabel(existing) == normalizedNew) {
           resolvedLabel = existing;
           break;
         }
       }
 
       if (!mounted) return;
-      setState(() {
+      _applyState(() {
         final next = <String>[..._locationLabelChips];
         final hasSame = next.any(
-          (item) => normalizeLabel(item) == normalizeLabel(resolvedLabel),
+          (item) =>
+              _normalizeLocationLabel(item) ==
+              _normalizeLocationLabel(resolvedLabel),
         );
         if (!hasSame) {
           next.insert(0, resolvedLabel);
         }
         _locationLabelChips = next;
-        _locationLabelController.text = resolvedLabel;
-        _locationLabelController.selection = TextSelection.fromPosition(
-          TextPosition(offset: resolvedLabel.length),
-        );
+        _setLocationLabelText(resolvedLabel);
       });
     } catch (e) {
       if (!mounted) return;
@@ -418,17 +530,21 @@ class _MapPickerState extends State<MapPicker> {
   }
 
   Future<void> _confirmSelection() async {
-    final LatLng latlng = _picked ?? _current ?? _kDefaultCenter;
+    final latlng = _resolvedSelectionPoint;
     if ((_addr?.trim().isEmpty ?? true)) {
       await _reverseGeocode(latlng);
     }
     if (!mounted) return;
     final customLabel = _locationLabelController.text.trim();
-    final address = _addr ?? '';
+    final address = _addr?.trim() ?? '';
+    final fallbackLocation =
+        widget.enableLocationLabel && customLabel.isNotEmpty
+            ? customLabel
+            : '선택한 위치';
     final resolvedLocation =
         widget.enableLocationLabel && customLabel.isNotEmpty
             ? customLabel
-            : (_addr ?? '선택한 위치');
+            : (address.isNotEmpty ? address : fallbackLocation);
 
     if (!mounted) return;
     Navigator.of(context).pop(
@@ -436,7 +552,7 @@ class _MapPickerState extends State<MapPicker> {
         location: resolvedLocation,
         latitude: latlng.latitude,
         longitude: latlng.longitude,
-        description: address.isNotEmpty ? address : resolvedLocation,
+        description: address.isNotEmpty ? address : fallbackLocation,
         time: _selectedTime,
         notifyEnter: true,
         notifyExit: false,
@@ -461,7 +577,6 @@ class _MapPickerState extends State<MapPicker> {
   @override
   Widget build(BuildContext context) {
     return MindriumPopupDesign(
-      title: '위치 선택',
       searchController: _searchController,
       mapController: _mapController,
       onMapReady: _onMapReady,
@@ -469,10 +584,7 @@ class _MapPickerState extends State<MapPicker> {
       current: _current,
       savedMarkers: _savedMarkers,
       onSearch: _onSearch,
-      onTap: (tapPos, latlng) async {
-        setState(() => _picked = latlng);
-        await _reverseGeocode(latlng);
-      },
+      onTap: (tapPos, latlng) => _pickLocation(latlng),
       onBack: () => Navigator.pop(context),
       onNext: _confirmSelection,
       initialTimeDateTime: DateTime(
@@ -486,7 +598,7 @@ class _MapPickerState extends State<MapPicker> {
         _selectedTime = TimeOfDay.fromDateTime(dt);
       },
       showTimePicker: widget.enableTimeSelection,
-      locationText: _addr,
+      locationText: _displayLocationText,
       showLocationLabelInput: widget.enableLocationLabel,
       locationLabelController:
           widget.enableLocationLabel ? _locationLabelController : null,
