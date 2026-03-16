@@ -6,7 +6,6 @@ import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_concentration_screen.dart';
-import 'package:gad_app_team/widgets/blue_white_card.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 
@@ -23,19 +22,59 @@ class Week4AbcScreen extends StatefulWidget {
 class _Week4AbcScreenState extends State<Week4AbcScreen> {
   late final ApiClient _client;
   late final DiariesApi _diariesApi;
+  final ScrollController _diaryListController = ScrollController();
 
   List<_DiarySelectionItem> _diaryOptions = const [];
   _DiarySelectionItem? _selectedDiary;
   bool _isLoading = true;
   String? _error;
   bool _showFloatingGuide = true;
+  bool _showDiaryListTopCue = false;
+  bool _showDiaryListBottomCue = false;
 
   @override
   void initState() {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
     _diariesApi = DiariesApi(_client);
+    _diaryListController.addListener(_updateDiaryListCues);
     _fetchDiaryOptions();
+  }
+
+  @override
+  void dispose() {
+    _diaryListController
+      ..removeListener(_updateDiaryListCues)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _updateDiaryListCues() {
+    if (!_diaryListController.hasClients) return;
+
+    final position = _diaryListController.position;
+    final canScroll = position.maxScrollExtent > 8;
+    final nextTopCue = canScroll && position.pixels > 8;
+    final nextBottomCue =
+        canScroll && position.pixels < position.maxScrollExtent - 8;
+
+    if (nextTopCue == _showDiaryListTopCue &&
+        nextBottomCue == _showDiaryListBottomCue) {
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _showDiaryListTopCue = nextTopCue;
+      _showDiaryListBottomCue = nextBottomCue;
+    });
+  }
+
+  void _refreshDiaryListCues() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _updateDiaryListCues();
+    });
   }
 
   Future<void> _fetchDiaryOptions() async {
@@ -78,6 +117,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
         _selectedDiary = selected;
         _isLoading = false;
       });
+      _refreshDiaryListCues();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -91,6 +131,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     setState(() {
       _selectedDiary = _selectedDiary?.id == diary.id ? null : diary;
     });
+    _refreshDiaryListCues();
   }
 
   PageRouteBuilder<void> _instantRoute(Widget child) {
@@ -151,6 +192,10 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     }
 
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    final diaryListHeight =
+        (MediaQuery.sizeOf(context).height * 0.34)
+            .clamp(220.0, 340.0)
+            .toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,24 +212,77 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
                   ),
         ),
         const SizedBox(height: 18),
-        _SectionHeader(
+        const _SectionHeader(
           title: '최근 작성한 걱정일기',
           subtitle: '한 번 탭하면 선택되고, 이후에는 이 일기 속 생각들을 하나씩 차례대로 살펴봐요.',
         ),
         const SizedBox(height: 12),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _diaryOptions.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final diary = _diaryOptions[index];
-            return _DiaryListItemCard(
-              diary: diary,
-              isSelected: diary.id == _selectedDiary?.id,
-              onTap: () => _toggleDiary(diary),
-            );
-          },
+        SizedBox(
+          height: diaryListHeight,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 233, 242, 255),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFDCE7F2)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Stack(
+                children: [
+                  ListView.separated(
+                    controller: _diaryListController,
+                    primary: false,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    itemCount: _diaryOptions.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final diary = _diaryOptions[index];
+                      return _DiaryListItemCard(
+                        diary: diary,
+                        isSelected: diary.id == _selectedDiary?.id,
+                        onTap: () => _toggleDiary(diary),
+                      );
+                    },
+                  ),
+                  IgnorePointer(
+                    child: Column(
+                      children: [
+                        AnimatedOpacity(
+                          duration: const Duration(milliseconds: 180),
+                          opacity: _showDiaryListTopCue ? 1 : 0,
+                          child: Container(
+                            height: 18,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0xFFF7FAFE), Color(0x00F7FAFE)],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        AnimatedOpacity(
+                          duration: const Duration(milliseconds: 180),
+                          opacity: _showDiaryListBottomCue ? 1 : 0,
+                          child: Container(
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0x00F7FAFE), Color(0xFFF7FAFE)],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -221,51 +319,25 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
                       ),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: maxCardWidth),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                        child: Stack(
+                          clipBehavior: Clip.none,
                           children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                BlueWhiteCard(
-                                  maxWidth: maxCardWidth,
-                                  title: '걱정 일기 선택',
-                                  titleStyle: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF263C69),
-                                  ),
-                                  outerColor: Colors.transparent,
-                                  outerRadius: 22,
-                                  outerExpand: EdgeInsets.zero,
-                                  innerColor: Colors.white,
-                                  innerRadius: 20,
-                                  innerPadding: const EdgeInsets.fromLTRB(
-                                    28,
-                                    26,
-                                    28,
-                                    26,
-                                  ),
-                                  dividerColor: const Color(0xFFE8EDF4),
-                                  dividerWidth: 240,
-                                  titleTopGap: 10,
-                                  child: _buildMainCardBody(context),
-                                ),
-                                Positioned(
-                                  top: -22,
-                                  right: -6,
-                                  child: _SelectionGuideToggle(
-                                    diaryCount: _diaryOptions.length,
-                                    isVisible: _showFloatingGuide,
-                                    onToggle:
-                                        () => setState(
-                                          () =>
-                                              _showFloatingGuide =
-                                                  !_showFloatingGuide,
-                                        ),
-                                  ),
-                                ),
-                              ],
+                            _SelectionCardFrame(
+                              child: _buildMainCardBody(context),
+                            ),
+                            Positioned(
+                              top: -22,
+                              right: -6,
+                              child: _SelectionGuideToggle(
+                                diaryCount: _diaryOptions.length,
+                                isVisible: _showFloatingGuide,
+                                onToggle:
+                                    () => setState(
+                                      () =>
+                                          _showFloatingGuide =
+                                              !_showFloatingGuide,
+                                    ),
+                              ),
                             ),
                           ],
                         ),
@@ -605,6 +677,50 @@ class _SelectionGuideTailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _SelectionCardFrame extends StatelessWidget {
+  final Widget child;
+
+  const _SelectionCardFrame({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 10),
+          const Text(
+            '걱정 일기 선택',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF263C69),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(height: 1.5, width: 240, color: const Color(0xFFE8EDF4)),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
 }
 
 class _SectionHeader extends StatelessWidget {
