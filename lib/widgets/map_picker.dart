@@ -42,6 +42,10 @@ class MapPicker extends StatefulWidget {
 class _MapPickerState extends State<MapPicker> {
   static const LatLng _kDefaultCenter = LatLng(37.5665, 126.9780);
   static const double _kInitialZoom = 16.0;
+  static const Duration _kRecentLocationThreshold = Duration(minutes: 10);
+  static LatLng? _sessionCurrentCache;
+  static DateTime? _sessionCurrentCacheAt;
+
   static bool _isValidLatLng(LatLng point) {
     return point.latitude.isFinite &&
         point.longitude.isFinite &&
@@ -51,14 +55,23 @@ class _MapPickerState extends State<MapPicker> {
         point.longitude <= 180;
   }
 
+  static bool _isRecentTimestamp(DateTime? timestamp) {
+    if (timestamp == null) return true;
+    return DateTime.now().difference(timestamp).abs() <=
+        _kRecentLocationThreshold;
+  }
+
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _locationLabelController = TextEditingController();
+  final TextEditingController _locationLabelController =
+      TextEditingController();
   final TextEditingController _addLocationLabelController =
       TextEditingController();
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
-  late final ScheduleEventsApi _scheduleEventsApi = ScheduleEventsApi(_apiClient);
+  late final ScheduleEventsApi _scheduleEventsApi = ScheduleEventsApi(
+    _apiClient,
+  );
   late final NotificationLocationsApi _notificationLocationsApi =
       NotificationLocationsApi(_apiClient);
 
@@ -87,9 +100,17 @@ class _MapPickerState extends State<MapPicker> {
     } else if (widget.initial != null) {
       debugPrint('Ignored invalid initial coordinates: ${widget.initial}');
     }
+    final cachedCurrent = _sessionCurrentCache;
+    if (_picked == null &&
+        cachedCurrent != null &&
+        _isRecentTimestamp(_sessionCurrentCacheAt)) {
+      _current = cachedCurrent;
+      _pendingMapCenter = cachedCurrent;
+      _pendingMapZoom = _kInitialZoom;
+    }
+    unawaited(_determinePosition());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(_determinePosition());
       if (widget.showSavedMarkers) {
         unawaited(_loadSavedMarkers());
       }
@@ -136,6 +157,35 @@ class _MapPickerState extends State<MapPicker> {
     }
   }
 
+  bool get _shouldAutoCenterOnCurrent => _picked == null;
+
+  void _cacheCurrentLocation(LatLng current) {
+    _sessionCurrentCache = current;
+    _sessionCurrentCacheAt = DateTime.now();
+  }
+
+  void _applyCurrentLocation(LatLng current) {
+    _cacheCurrentLocation(current);
+
+    final previous = _current;
+    final hasChanged =
+        previous == null ||
+        previous.latitude != current.latitude ||
+        previous.longitude != current.longitude;
+
+    if (hasChanged) {
+      if (mounted) {
+        setState(() => _current = current);
+      } else {
+        _current = current;
+      }
+    }
+
+    if (_shouldAutoCenterOnCurrent) {
+      _moveMapSafely(current, zoom: _kInitialZoom);
+    }
+  }
+
   Future<void> _loadSavedMarkers() async {
     try {
       final now = DateTime.now();
@@ -170,20 +220,28 @@ class _MapPickerState extends State<MapPicker> {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+          permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.unableToDetermine) {
         return;
       }
 
-      final pos = await Geolocator.getCurrentPosition(
+      final lastKnownFuture = Geolocator.getLastKnownPosition();
+      final currentFuture = Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           timeLimit: Duration(seconds: 6),
         ),
       );
+      final lastKnown = await lastKnownFuture;
       if (!mounted) return;
 
-      final current = LatLng(pos.latitude, pos.longitude);
-      setState(() => _current = current);
-      _moveMapSafely(current, zoom: _kInitialZoom);
+      if (lastKnown != null && _isRecentTimestamp(lastKnown.timestamp)) {
+        _applyCurrentLocation(LatLng(lastKnown.latitude, lastKnown.longitude));
+      }
+
+      final pos = await currentFuture;
+      if (!mounted) return;
+
+      _applyCurrentLocation(LatLng(pos.latitude, pos.longitude));
     } catch (e) {
       debugPrint('Failed to determine position: $e');
     }
@@ -235,12 +293,13 @@ class _MapPickerState extends State<MapPicker> {
       final rows = await _notificationLocationsApi
           .listLocationLabels(limit: 24)
           .timeout(const Duration(seconds: 6));
-      final labels = rows
-          .map((raw) => raw['label']?.toString().trim())
-          .whereType<String>()
-          .where((label) => label.isNotEmpty)
-          .toSet()
-          .toList();
+      final labels =
+          rows
+              .map((raw) => raw['label']?.toString().trim())
+              .whereType<String>()
+              .where((label) => label.isNotEmpty)
+              .toSet()
+              .toList();
       if (!mounted) return;
       setState(() {
         _locationLabelChips = labels;
@@ -266,7 +325,9 @@ class _MapPickerState extends State<MapPicker> {
   }
 
   Future<void> _openAddLocationLabelDialog() async {
-    if (!widget.enableLocationLabel || !mounted || _isAddLabelDialogOpen) return;
+    if (!widget.enableLocationLabel || !mounted || _isAddLabelDialogOpen) {
+      return;
+    }
     _isAddLabelDialogOpen = true;
 
     FocusScope.of(context).unfocus();
@@ -277,10 +338,11 @@ class _MapPickerState extends State<MapPicker> {
       String normalizeLabel(String value) =>
           value.toLowerCase().replaceAll(RegExp(r'\s+'), '');
 
-      final existingNormalized = _locationLabelChips
-          .map((label) => normalizeLabel(label.trim()))
-          .where((v) => v.isNotEmpty)
-          .toSet();
+      final existingNormalized =
+          _locationLabelChips
+              .map((label) => normalizeLabel(label.trim()))
+              .where((v) => v.isNotEmpty)
+              .toSet();
 
       final addedLabel = await showDialog<String>(
         context: context,
@@ -363,9 +425,10 @@ class _MapPickerState extends State<MapPicker> {
     if (!mounted) return;
     final customLabel = _locationLabelController.text.trim();
     final address = _addr ?? '';
-    final resolvedLocation = widget.enableLocationLabel && customLabel.isNotEmpty
-        ? customLabel
-        : (_addr ?? '선택한 위치');
+    final resolvedLocation =
+        widget.enableLocationLabel && customLabel.isNotEmpty
+            ? customLabel
+            : (_addr ?? '선택한 위치');
 
     if (!mounted) return;
     Navigator.of(context).pop(

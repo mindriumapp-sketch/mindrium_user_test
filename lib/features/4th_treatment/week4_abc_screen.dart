@@ -6,7 +6,9 @@ import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_concentration_screen.dart';
-import 'package:gad_app_team/widgets/tutorial_design.dart';
+import 'package:gad_app_team/widgets/blue_white_card.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/widgets/navigation_button.dart';
 
 class Week4AbcScreen extends StatefulWidget {
   final String? abcId;
@@ -26,6 +28,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
   _DiarySelectionItem? _selectedDiary;
   bool _isLoading = true;
   String? _error;
+  bool _showFloatingGuide = true;
 
   @override
   void initState() {
@@ -127,7 +130,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildMainCardBody(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -152,8 +155,6 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SelectionGuideCard(diaryCount: _diaryOptions.length),
-        const SizedBox(height: 18),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
           child:
@@ -169,12 +170,6 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
         _SectionHeader(
           title: '최근 작성한 걱정일기',
           subtitle: '한 번 탭하면 선택되고, 이후에는 이 일기 속 생각들을 하나씩 차례대로 살펴봐요.',
-          trailing: _InfoPill(
-            icon: Icons.schedule_rounded,
-            label: '최신순',
-            foregroundColor: const Color(0xFF2E6EA5),
-            backgroundColor: const Color(0xFFDFF1FF),
-          ),
         ),
         const SizedBox(height: 12),
         ListView.separated(
@@ -197,12 +192,99 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ApplyDesign(
-      appBarTitle: '인지 왜곡 찾기',
-      cardTitle: '걱정 일기 선택',
-      onBack: () => Navigator.pop(context),
-      onNext: _handleNext,
-      child: _buildBody(context),
+    final double maxCardWidth = MediaQuery.of(context).size.width - 48;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.white,
+      appBar: const CustomAppBar(title: '인지 왜곡 찾기'),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Opacity(
+            opacity: 0.35,
+            child: Image.asset(
+              'assets/image/eduhome.png',
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 34,
+                        vertical: 24,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: maxCardWidth),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                BlueWhiteCard(
+                                  maxWidth: maxCardWidth,
+                                  title: '걱정 일기 선택',
+                                  titleStyle: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF263C69),
+                                  ),
+                                  outerColor: Colors.transparent,
+                                  outerRadius: 22,
+                                  outerExpand: EdgeInsets.zero,
+                                  innerColor: Colors.white,
+                                  innerRadius: 20,
+                                  innerPadding: const EdgeInsets.fromLTRB(
+                                    28,
+                                    26,
+                                    28,
+                                    26,
+                                  ),
+                                  dividerColor: const Color(0xFFE8EDF4),
+                                  dividerWidth: 240,
+                                  titleTopGap: 10,
+                                  child: _buildMainCardBody(context),
+                                ),
+                                Positioned(
+                                  top: -22,
+                                  right: -6,
+                                  child: _SelectionGuideToggle(
+                                    diaryCount: _diaryOptions.length,
+                                    isVisible: _showFloatingGuide,
+                                    onToggle:
+                                        () => setState(
+                                          () =>
+                                              _showFloatingGuide =
+                                                  !_showFloatingGuide,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: NavigationButtons(
+                    onBack: () => Navigator.pop(context),
+                    onNext: _handleNext,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -358,73 +440,139 @@ class _DiarySelectionItem {
   }
 }
 
-class _SelectionGuideCard extends StatelessWidget {
+class _SelectionGuideToggle extends StatelessWidget {
   final int diaryCount;
+  final bool isVisible;
+  final VoidCallback onToggle;
 
-  const _SelectionGuideCard({required this.diaryCount});
+  const _SelectionGuideToggle({
+    required this.diaryCount,
+    required this.isVisible,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4FAFF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD8EBFB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final guideText =
+        diaryCount > 0
+            ? '이번 활동에 사용할 걱정일기 하나를 골라주세요.\n선택한 뒤에는 내용을 먼저 읽어보고, 그 안에 있는 생각들을 하나씩 순서대로 살펴보게 됩니다.'
+            : '이번 활동에 사용할 걱정일기를 불러오고 있어요.\n잠시 후 목록에서 하나를 골라 진행해보세요.';
+
+    return SizedBox(
+      width: 312,
+      height: 104,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.menu_book_rounded, color: Color(0xFF2E6EA5), size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '이번 활동에 사용할 걱정일기 하나를 골라주세요.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1B405C),
+          Positioned(
+            top: 12,
+            right: 54,
+            child: IgnorePointer(
+              ignoring: !isVisible,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                offset: isVisible ? Offset.zero : const Offset(0.05, -0.03),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  opacity: isVisible ? 1 : 0,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        constraints: const BoxConstraints(maxWidth: 228),
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFDDEAF5)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.10),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.tips_and_updates_outlined,
+                                  size: 16,
+                                  color: Color(0xFF356D91),
+                                ),
+                                const SizedBox(width: 6),
+                                const Expanded(
+                                  child: Text(
+                                    '가이드',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2A587A),
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  isVisible ? '탭해서 닫기' : '',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(
+                                      0xFF7A8EA3,
+                                    ).withValues(alpha: 0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              guideText,
+                              textAlign: TextAlign.left,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                height: 1.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF4B6984),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 26,
+                        right: -9,
+                        child: CustomPaint(
+                          size: const Size(14, 16),
+                          painter: _SelectionGuideTailPainter(
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            '선택한 뒤에는 내용을 먼저 읽어보고,\n그 안에 있는 생각들을 하나씩 순서대로 살펴보게 됩니다.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF4E6178),
-              height: 1.5,
             ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _InfoPill(
-                icon: Icons.filter_list_rounded,
-                label: '선택 가능한 일기 $diaryCount개',
-                foregroundColor: const Color(0xFF255E8D),
-                backgroundColor: Colors.white,
+          Positioned(
+            top: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 84,
+                height: 84,
+                child: Image.asset(
+                  'assets/image/jellyfish_smart.png',
+                  fit: BoxFit.contain,
+                ),
               ),
-              _InfoPill(
-                icon: Icons.touch_app_rounded,
-                label: '탭해서 선택',
-                foregroundColor: const Color(0xFF255E8D),
-                backgroundColor: Colors.white,
-              ),
-              _InfoPill(
-                icon: Icons.repeat_rounded,
-                label: '생각 순서대로 진행',
-                foregroundColor: const Color(0xFF255E8D),
-                backgroundColor: Colors.white,
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -432,16 +580,38 @@ class _SelectionGuideCard extends StatelessWidget {
   }
 }
 
+class _SelectionGuideTailPainter extends CustomPainter {
+  final Color color;
+
+  _SelectionGuideTailPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
+
+    final path =
+        Path()
+          ..moveTo(0, 0)
+          ..lineTo(size.width, size.height * 0.5)
+          ..lineTo(0, size.height)
+          ..close();
+
+    canvas.drawShadow(path, Colors.black.withValues(alpha: 0.08), 2.0, false);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _SectionHeader extends StatelessWidget {
   final String title;
   final String subtitle;
-  final Widget? trailing;
 
-  const _SectionHeader({
-    required this.title,
-    required this.subtitle,
-    this.trailing,
-  });
+  const _SectionHeader({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -472,7 +642,6 @@ class _SectionHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }
@@ -720,21 +889,26 @@ class _SelectionPlaceholderCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FBFF),
+        color: const Color(0xFFF1F3F5),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFDCEAF7)),
+        border: Border.all(color: const Color(0xFFD4D9DF)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         children: const [
-          Icon(Icons.visibility_outlined, size: 28, color: Color(0xFF7B94AC)),
-          SizedBox(height: 12),
           Text(
             '아직 선택한 일기가 없어요.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1B405C),
+              color: Color(0xFF5E6873),
             ),
           ),
           SizedBox(height: 8),
@@ -743,48 +917,8 @@ class _SelectionPlaceholderCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF5F6F82),
+              color: Color(0xFF7A848F),
               height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color foregroundColor;
-  final Color backgroundColor;
-
-  const _InfoPill({
-    required this.icon,
-    required this.label,
-    required this.foregroundColor,
-    required this.backgroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: foregroundColor),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: foregroundColor,
             ),
           ),
         ],

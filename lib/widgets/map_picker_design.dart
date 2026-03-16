@@ -59,8 +59,8 @@ class MindriumPopupDesign extends StatefulWidget {
 
 class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   static const double _sheetMinSize = 0.075;
-  static const double _sheetInitialSize = 0.33;
-  static const double _sheetMaxSize = 0.6;
+  static const double _sheetInitialSize = 0.35;
+  static const double _sheetMaxSize = 0.75;
 
   late DateTime _pickerTime;
   bool _showJellyfishMessage = true;
