@@ -1,7 +1,9 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
+
 import 'week6_classfication_detail_screen.dart';
 import 'week6_imagination.dart';
+import 'week6_route_utils.dart';
 
 /// 🌊 6주차 결과 화면 (디자인은 ApplyDesign이 담당)
 class Week6ClassificationResultScreen extends StatelessWidget {
@@ -19,11 +21,8 @@ class Week6ClassificationResultScreen extends StatelessWidget {
       onNext: () {
         Navigator.push(
           context,
-          PageRouteBuilder(
-            pageBuilder:
-                (_, __, ___) => Week6ImaginationScreen(cBehaviorList: bList),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
+          buildWeek6NoAnimationRoute(
+            Week6ImaginationScreen(cBehaviorList: bList),
           ),
         );
       },
@@ -54,14 +53,11 @@ class Week6ClassificationResultScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  PageRouteBuilder(
-                    pageBuilder:
-                        (_, __, ___) => Week6ClassificationDetailScreen(
-                          bScores: bScores,
-                          bList: bList,
-                        ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
+                  buildWeek6NoAnimationRoute(
+                    Week6ClassificationDetailScreen(
+                      bScores: bScores,
+                      bList: bList,
+                    ),
                   ),
                 );
               },

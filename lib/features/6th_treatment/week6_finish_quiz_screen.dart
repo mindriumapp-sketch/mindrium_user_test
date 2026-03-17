@@ -4,7 +4,6 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/custom_tags_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:dio/dio.dart';
@@ -12,16 +11,25 @@ import 'package:dio/dio.dart';
 // 💙 공용 UI 위젯
 import 'package:gad_app_team/widgets/quiz_card.dart';
 import 'package:gad_app_team/widgets/jellyfish_notice.dart';
-import 'package:gad_app_team/widgets/choice_card_button.dart';
 
 // ✅ 시각화 화면
+import 'week6_diary_utils.dart';
+import 'week6_flow_widgets.dart';
+import 'week6_route_utils.dart';
 import 'week6_visual_screen.dart';
 
 class Week6FinishQuizScreen extends StatefulWidget {
   /// [{behavior: ..., userChoice: ..., actualResult: ...}]
   final List<Map<String, dynamic>> mismatchedBehaviors;
+  final String diaryId;
+  final Map<String, dynamic> diary;
 
-  const Week6FinishQuizScreen({super.key, required this.mismatchedBehaviors});
+  const Week6FinishQuizScreen({
+    super.key,
+    required this.mismatchedBehaviors,
+    required this.diaryId,
+    required this.diary,
+  });
 
   @override
   State<Week6FinishQuizScreen> createState() => _Week6FinishQuizScreenState();
@@ -32,7 +40,7 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
   // 인덱스별 사용자가 고른 답: 'face' | 'avoid'
   final Map<int, String> _answers = {};
 
-  String? _diaryId; // 최신 일기 ID
+  String? _diaryId;
   bool _isLoading = true;
   String? _error;
 
@@ -40,119 +48,29 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
   List<String?> _behaviorChipIds = [];
   String _currentBehavior = '';
   late final ApiClient _client;
-  late final DiariesApi _diariesApi;
   late final CustomTagsApi _customTagsApi;
-
-  String _chipLabel(dynamic raw) {
-    if (raw == null) return '';
-    if (raw is Map) {
-      return (raw['label'] ??
-              raw['chip_label'] ??
-              raw['chipId'] ??
-              raw['chip_id'] ??
-              '')
-          .toString()
-          .trim();
-    }
-    return raw.toString().trim();
-  }
-
-  List<Map<String, String?>> _chipEntries(dynamic raw) {
-    final List<Map<String, String?>> entries = [];
-
-    void addEntry(String label, String? chipId) {
-      final trimmed = label.trim();
-      if (trimmed.isEmpty) return;
-      entries.add({'label': trimmed, 'chipId': chipId});
-    }
-
-    if (raw is List) {
-      for (final item in raw) {
-        if (item is Map) {
-          final chipId =
-              item['chip_id']?.toString() ?? item['chipId']?.toString();
-          addEntry(_chipLabel(item), chipId);
-        } else {
-          addEntry(_chipLabel(item), null);
-        }
-      }
-      return entries;
-    }
-
-    if (raw is Map) {
-      final chipId = raw['chip_id']?.toString() ?? raw['chipId']?.toString();
-      addEntry(_chipLabel(raw), chipId);
-      return entries;
-    }
-
-    final labels = _chipList(raw);
-    for (final label in labels) {
-      addEntry(label, null);
-    }
-    return entries;
-  }
-
-  List<String> _chipList(dynamic raw) {
-    if (raw is List) {
-      return raw
-          .map(_chipLabel)
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-    }
-    final s = _chipLabel(raw);
-    return s
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-  }
 
   @override
   void initState() {
     super.initState();
     _client = ApiClient(tokens: TokenStorage());
-    _diariesApi = DiariesApi(_client);
     _customTagsApi = CustomTagsApi(_client);
-    _fetchLatestDiary();
+    _initializeDiary();
   }
 
-  // 🔹 최신 일기에서 행동 리스트 만들기
-  Future<void> _fetchLatestDiary() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      // 최신 일기 불러오기
-      final latest = await _diariesApi.getLatestDiary();
-      if (!mounted) return;
+  void _initializeDiary() {
+    final behaviorEntries = Week6DiaryUtils.extractBehaviorEntries(
+      widget.diary,
+    );
+    final behaviorList = behaviorEntries.map((entry) => entry.label).toList();
+    final chipIds = behaviorEntries.map((entry) => entry.chipId).toList();
 
-      final consequenceB =
-          latest['consequence_action'] ??
-              latest['consequence_behavior'] ??
-              latest['consequence_b'];
-      final behaviorEntries = _chipEntries(consequenceB);
-      final behaviorList =
-          behaviorEntries.map((e) => e['label'] ?? '').toList();
-      final chipIds = behaviorEntries.map((e) => e['chipId']).toList();
-
-      setState(() {
-        _diaryId =
-            (latest['diary_id'] ?? latest['diaryId'] ?? latest['id'])
-                ?.toString();
-        _behaviorList = behaviorList;
-        _behaviorChipIds = chipIds;
-        _currentBehavior = _behaviorList.isNotEmpty ? _behaviorList.first : '';
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = '데이터를 불러오지 못했습니다.';
-        _isLoading = false;
-      });
-    }
+    _diaryId = widget.diaryId.trim().isEmpty ? null : widget.diaryId.trim();
+    _behaviorList = behaviorList;
+    _behaviorChipIds = chipIds;
+    _currentBehavior = _behaviorList.isNotEmpty ? _behaviorList.first : '';
+    _error = _diaryId == null ? '선택한 일기 정보를 불러오지 못했습니다.' : null;
+    _isLoading = false;
   }
 
   // 🔹 저장만 하는 함수로 변경 (네비게이션 X)
@@ -234,7 +152,7 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
       } on DioException catch (e) {
         debugPrint(
           '⚠️ 분류 로그 저장 실패 ($behavior): '
-              '${e.response?.data ?? e.message}',
+          '${e.response?.data ?? e.message}',
         );
       } catch (e) {
         debugPrint('⚠️ 분류 로그 저장 실패 ($behavior): $e');
@@ -244,13 +162,51 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
 
   bool get _hasBehavior => _currentBehavior.isNotEmpty;
 
+  String? get _selectedType => _answers[_currentIdx];
+
+  void _selectAnswer(String answer) {
+    setState(() {
+      _answers[_currentIdx] = answer;
+    });
+  }
+
+  void _moveToPreviousBehavior() {
+    setState(() {
+      _currentIdx--;
+      _currentBehavior = _behaviorList[_currentIdx];
+    });
+  }
+
+  void _moveToNextBehavior() {
+    setState(() {
+      _currentIdx++;
+      _currentBehavior = _behaviorList[_currentIdx];
+    });
+  }
+
+  ({List<String> avoidList, List<String> faceList}) _buildVisualLists() {
+    final avoidList = <String>[];
+    final faceList = <String>[];
+
+    for (int i = 0; i < _behaviorList.length; i++) {
+      final answer = _answers[i];
+      if (answer == 'avoid') {
+        avoidList.add(_behaviorList[i]);
+      } else if (answer == 'face') {
+        faceList.add(_behaviorList[i]);
+      }
+    }
+
+    return (avoidList: avoidList, faceList: faceList);
+  }
+
   @override
   Widget build(BuildContext context) {
     const double sidePadding = 20.0;
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
     final bool hasBehavior = _hasBehavior;
     final bool isLast =
-    hasBehavior ? _currentIdx == _behaviorList.length - 1 : true;
+        hasBehavior ? _currentIdx == _behaviorList.length - 1 : true;
 
     return Scaffold(
       extendBody: true,
@@ -282,90 +238,60 @@ class _Week6FinishQuizScreenState extends State<Week6FinishQuizScreen> {
                       horizontal: sidePadding,
                       vertical: 12,
                     ),
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : (_error != null)
-                        ? Center(
-                      child: Text(
-                        _error!,
-                        style:
-                        const TextStyle(color: Colors.redAccent),
-                      ),
-                    )
-                        : (!hasBehavior)
-                        ? const Center(
-                      child: Text(
-                        '최근에 작성한 일기가 없습니다.',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    )
-                        : Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 60),
+                    child:
+                        _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : (_error != null)
+                            ? Center(
+                              child: Text(
+                                _error!,
+                                style: const TextStyle(color: Colors.redAccent),
+                              ),
+                            )
+                            : (!hasBehavior)
+                            ? const Center(
+                              child: Text(
+                                '최근에 작성한 일기가 없습니다.',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            )
+                            : Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const SizedBox(height: 60),
 
-                        // 🔹 문제 카드 (사용자 행동)
-                        QuizCard(
-                          noticeText: '$userName님이 작성한 행동',
-                          quizText: _currentBehavior,
-                          currentIndex: _currentIdx + 1,
-                          totalCount: _behaviorList.length,
-                        ),
-                        const SizedBox(height: 15),
+                                // 🔹 문제 카드 (사용자 행동)
+                                QuizCard(
+                                  noticeText: '$userName님이 작성한 행동',
+                                  quizText: _currentBehavior,
+                                  currentIndex: _currentIdx + 1,
+                                  totalCount: _behaviorList.length,
+                                ),
+                                const SizedBox(height: 15),
 
-                        // 🔹 해파리 말풍선
-                        JellyfishNotice(
-                          feedback: _answers[_currentIdx] == null
-                              ? '이 행동은 불안을 직면하는 쪽일까요, \n회피하는 쪽일까요?'
-                              : _answers[_currentIdx] == 'face'
-                              ? '불안을 직면하는 행동이라고 \n선택하셨습니다.'
-                              : '불안을 회피하는 행동이라고 \n선택하셨습니다.',
-                          feedbackColor:
-                          _answers[_currentIdx] == null
-                              ? Colors.indigo
-                              : _answers[_currentIdx] ==
-                              'face'
-                              ? const Color(0xFF40C79A)
-                              : const Color(0xFFEB6A67),
-                        ),
-                        const SizedBox(height: 20),
+                                // 🔹 해파리 말풍선
+                                JellyfishNotice(
+                                  feedback: '이 행동은 불안을 직면하는 쪽일까요, \n회피하는 쪽일까요?',
+                                  feedbackColor: Colors.indigo,
+                                ),
+                                const SizedBox(height: 20),
 
-                        // 🔹 선택 버튼
-                        Column(
-                          children: [
-                            ChoiceCardButton(
-                              height: 54,
-                              type: ChoiceType.healthy,
-                              onPressed: () {
-                                setState(() {
-                                  _answers[_currentIdx] = 'face';
-                                });
-                              },
+                                // 🔹 선택 버튼
+                                Week6BehaviorTypeSelector(
+                                  selectedType: _selectedType,
+                                  onSelected: _selectAnswer,
+                                ),
+
+                                const Spacer(),
+                              ],
                             ),
-                            const SizedBox(height: 10),
-                            ChoiceCardButton(
-                              height: 54,
-                              type: ChoiceType.anxious,
-                              onPressed: () {
-                                setState(() {
-                                  _answers[_currentIdx] = 'avoid';
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-
-                        const Spacer(),
-                      ],
-                    ),
                   ),
                 ),
 
                 // 아래 네비게이션 (항상 바닥)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     leftLabel: '이전',
                     rightLabel: '다음',
                     onBack: () {
@@ -380,60 +306,40 @@ child: NavigationButtons(
                       }
 
                       if (_currentIdx > 0) {
-                        setState(() {
-                          _currentIdx--;
-                          _currentBehavior = _behaviorList[_currentIdx];
-                        });
+                        _moveToPreviousBehavior();
                       } else {
                         Navigator.pop(context);
                       }
                     },
-                    onNext: (!_isLoading &&
-                        _error == null &&
-                        hasBehavior &&
-                        _answers[_currentIdx] != null)
-                        ? () async {
-                      if (!isLast) {
-                        // 다음 행동으로
-                        setState(() {
-                          _currentIdx++;
-                          _currentBehavior =
-                          _behaviorList[_currentIdx];
-                        });
-                      } else {
-                        final navigator = Navigator.of(context);
-                        // 🔥 마지막일 때만 저장하고 → 시각화 화면으로 이동
-                        await _saveBehaviorClassifications();
-                        if (!mounted) return;
+                    onNext:
+                        (!_isLoading &&
+                                _error == null &&
+                                hasBehavior &&
+                                _answers[_currentIdx] != null)
+                            ? () async {
+                              if (!isLast) {
+                                _moveToNextBehavior();
+                              } else {
+                                final navigator = Navigator.of(context);
+                                // 🔥 마지막일 때만 저장하고 → 시각화 화면으로 이동
+                                await _saveBehaviorClassifications();
+                                if (!mounted) return;
 
-                        // 시각화용 리스트 만들기
-                        final List<String> avoidList = [];
-                        final List<String> faceList = [];
-                        for (int i = 0; i < _behaviorList.length; i++) {
-                          final ans = _answers[i];
-                          if (ans == 'avoid') {
-                            avoidList.add(_behaviorList[i]);
-                          } else if (ans == 'face') {
-                            faceList.add(_behaviorList[i]);
-                          }
-                        }
+                                final lists = _buildVisualLists();
 
-                        if (!mounted) return;
+                                if (!mounted) return;
 
-                        navigator.push(
-                          PageRouteBuilder(
-                            pageBuilder: (_, __, ___) =>
-                                Week6VisualScreen(
-                                  previousChips: avoidList,
-                                  alternativeChips: faceList,
-                                ),
-                            transitionDuration: Duration.zero,
-                            reverseTransitionDuration: Duration.zero,
-                          ),
-                        );
-                      }
-                    }
-                        : null,
+                                navigator.push(
+                                  buildWeek6NoAnimationRoute(
+                                    Week6VisualScreen(
+                                      previousChips: lists.avoidList,
+                                      alternativeChips: lists.faceList,
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                            : null,
                   ),
                 ),
               ],

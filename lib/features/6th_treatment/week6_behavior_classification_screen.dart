@@ -1,19 +1,23 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:provider/provider.dart';
-import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/widgets/tutorial_design.dart';
-import 'package:gad_app_team/features/6th_treatment/week6_behavior_reflection_screen.dart';
 
-/// 🌊 Mindrium 스타일 6주차 행동 분류 결과 화면
-/// 기존 Scaffold/Card 구조 → ApplyDesign 통합 버전
+import 'package:gad_app_team/widgets/tutorial_design.dart';
+
+import 'package:gad_app_team/features/6th_treatment/week6_behavior_reflection_screen.dart';
+import 'package:gad_app_team/features/6th_treatment/week6_flow_widgets.dart';
+
+import 'week6_behavior_analysis.dart';
+import 'week6_route_utils.dart';
+
 class Week6BehaviorClassificationScreen extends StatelessWidget {
   final String selectedBehavior;
-  final String behaviorType; // 'face' 또는 'avoid'
-  final double shortTermValue; // 단기 슬라이더 값
-  final double longTermValue; // 장기 슬라이더 값
-  final List<String>? remainingBehaviors; // 남은 행동 목록
-  final List<String> allBehaviorList; // 전체 행동 목록
-  final List<Map<String, dynamic>>? mismatchedBehaviors; // 일치하지 않은 행동들
+  final String behaviorType;
+  final double shortTermValue;
+  final double longTermValue;
+  final List<String>? remainingBehaviors;
+  final List<String> allBehaviorList;
+  final List<Map<String, dynamic>>? mismatchedBehaviors;
+  final String diaryId;
+  final Map<String, dynamic> diary;
 
   const Week6BehaviorClassificationScreen({
     super.key,
@@ -24,96 +28,126 @@ class Week6BehaviorClassificationScreen extends StatelessWidget {
     this.remainingBehaviors,
     required this.allBehaviorList,
     this.mismatchedBehaviors,
+    required this.diaryId,
+    required this.diary,
   });
 
   @override
   Widget build(BuildContext context) {
-    final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    final currentBehaviorIndex =
+        allBehaviorList.length - (remainingBehaviors?.length ?? 0);
+    final insight = Week6BehaviorAnalysis.buildInsight(
+      shortTermValue: shortTermValue,
+      longTermValue: longTermValue,
+    );
 
-    // 🔹 분류 로직
-    bool isShortTermHigh = shortTermValue == 10;
-    bool isLongTermHigh = longTermValue == 10;
-
-    String mainText;
-    if (isShortTermHigh && !isLongTermHigh) {
-      mainText =
-          '$userName님께서는, \n방금 보셨던 "$selectedBehavior"(라)는 행동에 대해 단기적으로는 완화되지만 장기적으로는 완화되지 않는다고 해주셨습니다.\n\n이런 행동은 보통 불안을 회피하는 행동에 가깝기 때문에, 일시적으로는 불안이 완화되어 편안함을 주지만 지속 시 불안을 해결하는 데 큰 도움이 되지 않을 수 있어요!';
-    } else if (!isShortTermHigh && isLongTermHigh) {
-      mainText =
-          '$userName님께서는, \n방금 보셨던 "$selectedBehavior"(라)는 행동에 대해 단기적으로는 완화되지 않지만 장기적으로는 많이 완화된다고 해주셨습니다.\n\n이런 행동은 보통 불안을 직면하는 행동에 가깝기 때문에, 일시적으로 불안이 높아져서 처음에는 어려울 수 있지만 지속 시 불안을 해결하는 데 도움이 될 수 있어요!';
-    } else if (isShortTermHigh && isLongTermHigh) {
-      mainText =
-          '$userName님께서는, \n방금 보셨던 "$selectedBehavior"(라)는 행동에 대해 단기적으로도 장기적으로도 불안이 완화된다고 해주셨습니다.\n\n하지만 안전장치에 의존하다 보면 실제 불안을 줄이는데 도움이 안될 수 있습니다.\n왜냐하면 뇌는 여전히 그 장치 없이는 불안하다고 배우게 되기 때문입니다.\n\n안전장치를 계속 사용하면 일시적으로는 편안함을 느낄 수 있지만, 궁극적으로는 안전장치 없이도 불안을 관리할 수 있는 능력을 기를 기회를 놓치게 될 수 있어요.\n이 행동이 정말 장기적으로도 도움이 되는지 다시 한번 생각해보는 시간을 가져보면 어떨까요?';
-    } else {
-      mainText =
-          '$userName님께서는, \n방금 보셨던 "$selectedBehavior"(라)는 행동에 대해 단기적으로도 장기적으로도 불안이 완화되지 않는다고 해주셨습니다.\n\n그만큼 불안이 줄어들 기회를 주지 못했을 수 있어요. 오히려 불안을 유지시키거나 더 키웠을 수도 있습니다.\n\n이런 행동보다는 보다 효과적인 불안 관리 방법을 찾아서, 실제로 불안을 감소시킬 수 있는 다른 행동으로 바꿔보는 것은 어떨까요?';
-    }
-
-    // 🌊 ApplyDesign 사용
-    return Stack(
-      children: [
-        ApplyDesign(
-          appBarTitle: '불안 직면 VS 회피',
-          cardTitle: '행동 분류 결과',
-          onBack: () => Navigator.pop(context),
-          onNext: () {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder:
-                    (_, __, ___) => Week6BehaviorReflectionScreen(
-                  selectedBehavior: selectedBehavior,
-                  behaviorType: behaviorType,
-                  shortTermValue: shortTermValue,
-                  longTermValue: longTermValue,
-                  remainingBehaviors: remainingBehaviors,
-                  allBehaviorList: allBehaviorList,
-                  mismatchedBehaviors: mismatchedBehaviors,
-                ),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
-          },
-
-          /// 💠 기능 영역 (child)
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+    return ApplyDesign(
+      appBarTitle: '불안 직면 VS 회피',
+      cardTitle: '행동 분류 결과',
+      onBack: () => Navigator.pop(context),
+      onNext: () {
+        Navigator.push(
+          context,
+          buildWeek6NoAnimationRoute(
+            Week6BehaviorReflectionScreen(
+              selectedBehavior: selectedBehavior,
+              behaviorType: behaviorType,
+              shortTermValue: shortTermValue,
+              longTermValue: longTermValue,
+              remainingBehaviors: remainingBehaviors,
+              allBehaviorList: allBehaviorList,
+              mismatchedBehaviors: mismatchedBehaviors,
+              diaryId: diaryId,
+              diary: diary,
+            ),
+          ),
+        );
+      },
+      rightLabel: '다음',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Week6ProgressHeader(
+            stageLabel: '행동 해석',
+            currentIndex: currentBehaviorIndex,
+            totalCount: allBehaviorList.length,
+            title: '이 행동은 이렇게 볼 수 있어요',
+            subtitle: '단기/장기 평가를 바탕으로 이 행동이 불안에 어떤 영향을 주는지 간단히 정리했습니다.',
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              const SizedBox(height: 20),
-              Text(
-                mainText,
-                style: const TextStyle(
-                  fontFamily: 'Noto Sans KR',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                  height: 1.6,
-                ),
-                textAlign: TextAlign.left,
+              Week6StatusPill(
+                label: behaviorType == 'face' ? '내 선택: 직면' : '내 선택: 회피',
+                backgroundColor:
+                    behaviorType == 'face'
+                        ? const Color(0xFFE8F7F1)
+                        : const Color(0xFFFFF0EF),
+                foregroundColor:
+                    behaviorType == 'face'
+                        ? const Color(0xFF2E7D5B)
+                        : const Color(0xFFC6544F),
               ),
-
-              const SizedBox(height: 24),
-              const Text(
-                '이제 이 행동을 다시 돌아보며,\n내가 느꼈던 감정과 변화에 대해 성찰해볼까요?',
-                style: TextStyle(
-                  fontFamily: 'Noto Sans KR',
-                  fontSize: 14,
-                  color: Color(0xFF5E5E5E),
-                  fontWeight: FontWeight.w400,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
+              Week6StatusPill(
+                label: insight.resultLabel,
+                backgroundColor: insight.resultBackground,
+                foregroundColor: insight.resultForeground,
               ),
             ],
           ),
-        ),
-        // Padding(padding: EdgeInsetsGeometry.fromSTEB(0, 480, 0, 10),
-        //   child: JellyfishBanner(
-        //     message: '이제 이 행동을 다시 돌아보며,\n내가 느꼈던 감정과 변화에 대해 성찰해볼까요?',
-        //   ),
-        // )
-      ],
+          const SizedBox(height: 16),
+          Week6InfoCard(
+            title: '한 줄 요약',
+            subtitle: selectedBehavior,
+            icon: Icons.lightbulb_outline_rounded,
+            child: Text(
+              insight.summary,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.6,
+                color: Color(0xFF26425F),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Week6InfoCard(
+            title: '단기적으로는',
+            icon: Icons.flash_on_rounded,
+            child: Text(
+              insight.shortTermInsight,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.55,
+                color: Color(0xFF355676),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Week6InfoCard(
+            title: '장기적으로는',
+            icon: Icons.timelapse_rounded,
+            child: Text(
+              insight.longTermInsight,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.55,
+                color: Color(0xFF355676),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Week6InfoCard(
+            title: '이때 기억하면 좋아요',
+            icon: Icons.bookmark_added_outlined,
+            child: Week6BulletList(items: insight.reminders),
+          ),
+        ],
+      ),
     );
   }
 }

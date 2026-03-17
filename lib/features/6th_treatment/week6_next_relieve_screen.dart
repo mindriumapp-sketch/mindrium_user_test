@@ -1,16 +1,20 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:provider/provider.dart';
-import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/widgets/tutorial_design.dart'; // ApplyDesign, buildRelieveResultCard
+
+import 'package:gad_app_team/widgets/tutorial_design.dart';
+
+import 'week6_flow_widgets.dart';
+import 'week6_route_utils.dart';
 import 'week6_relieve_slider_screen.dart';
 
-/// 🌊 Mindrium 스타일 6주차 - 불안 완화 단계 (다음 단계 안내)
-class Week6NextRelieveScreen extends StatefulWidget {
+class Week6NextRelieveScreen extends StatelessWidget {
   final String selectedBehavior;
-  final String behaviorType; // 'face' 또는 'avoid'
+  final String behaviorType;
   final double sliderValue;
   final List<String>? remainingBehaviors;
   final List<String> allBehaviorList;
+  final String diaryId;
+  final Map<String, dynamic> diary;
+  final List<Map<String, dynamic>>? mismatchedBehaviors;
 
   const Week6NextRelieveScreen({
     super.key,
@@ -19,139 +23,86 @@ class Week6NextRelieveScreen extends StatefulWidget {
     required this.sliderValue,
     this.remainingBehaviors,
     required this.allBehaviorList,
+    required this.diaryId,
+    required this.diary,
+    this.mismatchedBehaviors,
   });
 
   @override
-  State<Week6NextRelieveScreen> createState() => _Week6NextRelieveScreenState();
-}
-
-class _Week6NextRelieveScreenState extends State<Week6NextRelieveScreen> {
-  bool _showMainText = true;
-
-  // ✅ 노란 하이라이트 박스
-  Widget _highlightedText(String text) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF59D).withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          color: Colors.black,
-        ),
-      ),
-    );
-  }
-
-  static const TextStyle _bodyStyle = TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.w500,
-    color: Colors.black87,
-    height: 1.6,
-    letterSpacing: 0.1,
-    fontFamily: 'Noto Sans KR',
-  );
-
-  /// ✅ 메인 문장 (하이라이트 포함)
-  Widget _buildMainRichLine({required bool isFace}) {
-    final userName = Provider.of<UserProvider>(context, listen: false).userName;
-    final String highlight = isFace ? '직면하는 행동' : '회피하는 행동';
-    return RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(
-        style: _bodyStyle,
-        children: [
-          TextSpan(
-            text: '$userName님, 방금 보셨던 "${widget.selectedBehavior}"(이)라는 행동을\n불안을 ',
-          ),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: _highlightedText(highlight),
-          ),
-          const TextSpan(text: '이라고 선택하셨네요.'),
-        ],
-      ),
-    );
-  }
-
-  /// ✅ buildRelieveResultCard와 동일 톤의 래퍼(부분 하이라이트용)
-  /// - 상단 이름/구분선
-  /// - AnimatedSwitcher(메인: RichText 하이라이트 / 서브: 일반 텍스트)
-  /// - 하단 아이콘
-  Widget _relieveResultCardRich({
-    required bool showMainText,
-    required Widget mainRich,
-    required String subText,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 8),
-        Image.asset(
-          'assets/image/think_blue.png',
-          height: 160,
-          filterQuality: FilterQuality.high,
-        ),
-        const SizedBox(height: 20),
-        // ✨ 전환되는 안내문 (여기만 RichText 지원)
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          child: showMainText
-              ? KeyedSubtree(
-            key: const ValueKey('mainRich'),
-            child: mainRich,
-          )
-              : Text(
-            subText,
-            key: const ValueKey('subText'),
-            style: _bodyStyle,
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // 서브 문장(일반 텍스트)
-    const String subText = '그 행동이 단기적으로 불안을 얼마나 완화할 수 있을지 함께 살펴볼게요.';
+    final choiceLabel =
+        behaviorType == 'face' ? '직면하는 행동으로 분류했어요' : '회피하는 행동으로 분류했어요';
+    final choiceColor =
+        behaviorType == 'face'
+            ? const Color(0xFFE8F7F1)
+            : const Color(0xFFFFF0EF);
+    final choiceTextColor =
+        behaviorType == 'face'
+            ? const Color(0xFF2E7D5B)
+            : const Color(0xFFC6544F);
 
     return ApplyDesign(
       appBarTitle: '불안 직면 VS 회피',
       cardTitle: '불안 완화 단계',
       onBack: () => Navigator.pop(context),
       onNext: () {
-        if (_showMainText) {
-          setState(() => _showMainText = false);
-        } else {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => Week6RelieveSliderScreen(
-                selectedBehavior: widget.selectedBehavior,
-                behaviorType: widget.behaviorType,
-                remainingBehaviors: widget.remainingBehaviors,
-                allBehaviorList: widget.allBehaviorList,
-              ),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
+        Navigator.push(
+          context,
+          buildWeek6NoAnimationRoute(
+            Week6RelieveSliderScreen(
+              selectedBehavior: selectedBehavior,
+              behaviorType: behaviorType,
+              remainingBehaviors: remainingBehaviors,
+              allBehaviorList: allBehaviorList,
+              diaryId: diaryId,
+              diary: diary,
+              mismatchedBehaviors: mismatchedBehaviors,
             ),
-          );
-        }
+          ),
+        );
       },
-
-      /// 💠 카드 본문
-      child: _relieveResultCardRich(
-        showMainText: _showMainText,
-        mainRich: _buildMainRichLine(isFace: widget.behaviorType == 'face'),
-        subText: subText,
+      rightLabel: '다음',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Week6InfoCard(
+            title: '지금 보고 있는 행동',
+            subtitle: '다음 두 단계에서는 이 행동만 기준으로 판단해요.',
+            icon: Icons.psychology_alt_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Week6StatusPill(
+                  label: choiceLabel,
+                  backgroundColor: choiceColor,
+                  foregroundColor: choiceTextColor,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  selectedBehavior,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    height: 1.55,
+                    color: Color(0xFF26425F),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Week6InfoCard(
+            title: '이어서 하게 될 일',
+            subtitle: '한 번에 하나씩만 답하면 돼요.',
+            icon: Icons.route_rounded,
+            child: Week6BulletList(
+              items: [
+                '먼저 단기적으로 얼마나 불안이 줄어드는지 살펴봐요.',
+                '그다음 장기적으로 도움이 되는지도 이어서 볼게요.',
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

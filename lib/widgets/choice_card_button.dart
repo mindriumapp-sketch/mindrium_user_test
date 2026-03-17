@@ -30,9 +30,9 @@ class ChoiceCardButton extends StatelessWidget {
   String get _text {
     switch (type) {
       case ChoiceType.healthy:
-        return '불안을 직면하는 행동';
+        return '불안 직면';
       case ChoiceType.anxious:
-        return '불안을 회피하는 행동';
+        return '불안 회피';
       case ChoiceType.helpful:
         return '도움이 되는 생각';
       case ChoiceType.unhelpful:
@@ -88,6 +88,82 @@ class ChoiceCardButton extends StatelessWidget {
                   fontSize: 15.5,
                   fontWeight: FontWeight.w700,
                   height: 1.2,
+                  fontFamily: 'Noto Sans KR',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SelectableChoiceCardButton extends StatelessWidget {
+  final String label;
+  final Color backgroundColor;
+  final bool isSelected;
+  final bool isDimmed;
+  final VoidCallback onPressed;
+  final double height;
+
+  const SelectableChoiceCardButton({
+    super.key,
+    required this.label,
+    required this.backgroundColor,
+    required this.isSelected,
+    required this.isDimmed,
+    required this.onPressed,
+    this.height = 58,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveBackground =
+        isDimmed ? const Color(0xFFDCE5EB) : backgroundColor;
+    final shadowColor =
+        isSelected
+            ? backgroundColor.withValues(alpha: 0.34)
+            : Colors.black.withValues(alpha: 0.08);
+    final scale = isSelected ? 1.0 : 0.985;
+    final borderWidth = isSelected ? 2.0 : 0.0;
+    final borderColor =
+        isSelected ? Colors.white.withValues(alpha: 0.9) : Colors.transparent;
+
+    return AnimatedScale(
+      scale: scale,
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        height: height,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: effectiveBackground,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: borderColor, width: borderWidth),
+          boxShadow: [
+            BoxShadow(
+              color: shadowColor,
+              blurRadius: isSelected ? 18 : 10,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: onPressed,
+            child: Center(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDimmed ? const Color(0xFF7C8D99) : Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
                   fontFamily: 'Noto Sans KR',
                 ),
               ),

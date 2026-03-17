@@ -5,6 +5,8 @@ import 'week6_relieve_slider_screen.dart';
 import 'week6_behavior_classification_screen.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ApplyDesign 위젯 import
 
+import 'week6_route_utils.dart';
+
 class Week6RelieveResultScreen extends StatefulWidget {
   final String selectedBehavior;
   final String behaviorType; // 'face' 또는 'avoid'
@@ -14,6 +16,8 @@ class Week6RelieveResultScreen extends StatefulWidget {
   final List<String>? remainingBehaviors; // 남은 행동 목록
   final List<String> allBehaviorList; // 전체 행동 목록
   final List<Map<String, dynamic>>? mismatchedBehaviors; // 일치하지 않은 행동들
+  final String diaryId;
+  final Map<String, dynamic> diary;
 
   const Week6RelieveResultScreen({
     super.key,
@@ -25,6 +29,8 @@ class Week6RelieveResultScreen extends StatefulWidget {
     this.remainingBehaviors,
     required this.allBehaviorList,
     this.mismatchedBehaviors,
+    required this.diaryId,
+    required this.diary,
   });
 
   @override
@@ -83,36 +89,34 @@ class _Week6RelieveResultScreenState extends State<Week6RelieveResultScreen> {
           if (widget.isLongTerm && widget.shortTermValue != null) {
             Navigator.push(
               context,
-              PageRouteBuilder(
-                pageBuilder:
-                    (_, __, ___) => Week6BehaviorClassificationScreen(
-                      selectedBehavior: widget.selectedBehavior,
-                      behaviorType: widget.behaviorType,
-                      shortTermValue: widget.shortTermValue!,
-                      longTermValue: widget.sliderValue,
-                      remainingBehaviors: widget.remainingBehaviors,
-                      allBehaviorList: widget.allBehaviorList,
-                      mismatchedBehaviors: widget.mismatchedBehaviors,
-                    ),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
+              buildWeek6NoAnimationRoute(
+                Week6BehaviorClassificationScreen(
+                  selectedBehavior: widget.selectedBehavior,
+                  behaviorType: widget.behaviorType,
+                  shortTermValue: widget.shortTermValue!,
+                  longTermValue: widget.sliderValue,
+                  remainingBehaviors: widget.remainingBehaviors,
+                  allBehaviorList: widget.allBehaviorList,
+                  mismatchedBehaviors: widget.mismatchedBehaviors,
+                  diaryId: widget.diaryId,
+                  diary: widget.diary,
+                ),
               ),
             );
           } else {
             Navigator.push(
               context,
-              PageRouteBuilder(
-                pageBuilder:
-                    (_, __, ___) => Week6RelieveSliderScreen(
-                      selectedBehavior: widget.selectedBehavior,
-                      behaviorType: widget.behaviorType,
-                      isLongTerm: true,
-                      shortTermValue: widget.sliderValue,
-                      remainingBehaviors: widget.remainingBehaviors,
-                      allBehaviorList: widget.allBehaviorList,
-                    ),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
+              buildWeek6NoAnimationRoute(
+                Week6RelieveSliderScreen(
+                  selectedBehavior: widget.selectedBehavior,
+                  behaviorType: widget.behaviorType,
+                  isLongTerm: true,
+                  shortTermValue: widget.sliderValue,
+                  remainingBehaviors: widget.remainingBehaviors,
+                  allBehaviorList: widget.allBehaviorList,
+                  diaryId: widget.diaryId,
+                  diary: widget.diary,
+                ),
               ),
             );
           }

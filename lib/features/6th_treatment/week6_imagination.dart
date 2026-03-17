@@ -1,6 +1,8 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
+
 import 'week6_confront_anxiety.dart';
+import 'week6_route_utils.dart';
 
 /// 🌊 Mindrium 스타일 6주차 - 불안 회피 상상하기
 class Week6ImaginationScreen extends StatefulWidget {
@@ -131,16 +133,10 @@ class _Week6ImaginationScreenState extends State<Week6ImaginationScreen> {
       onNext: () {
         Navigator.push(
           context,
-          PageRouteBuilder(
-            pageBuilder:
-                (_, __, ___) => Week6ConfrontAnxietyScreen(
-                  previousChips: [
-                    ...?widget.cBehaviorList, // 이전 행동들
-                    ..._chips, // 새로 입력한 회피 행동
-                  ],
-                ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
+          buildWeek6NoAnimationRoute(
+            Week6ConfrontAnxietyScreen(
+              previousChips: [...?widget.cBehaviorList, ..._chips],
+            ),
           ),
         );
       },

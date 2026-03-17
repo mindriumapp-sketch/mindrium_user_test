@@ -1,6 +1,8 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
+
 import 'week6_visual_screen.dart';
+import 'week6_route_utils.dart';
 
 /// 🌊 Mindrium 스타일 6주차 - 불안 직면 VS 회피 (다르게 생각해보기)
 class Week6ConfrontAnxietyScreen extends StatefulWidget {
@@ -146,14 +148,11 @@ class _Week6ConfrontAnxietyScreenState
       onNext: () {
         Navigator.push(
           context,
-          PageRouteBuilder(
-            pageBuilder:
-                (_, __, ___) => Week6VisualScreen(
-                  previousChips: widget.previousChips,
-                  alternativeChips: _chips,
-                ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
+          buildWeek6NoAnimationRoute(
+            Week6VisualScreen(
+              previousChips: widget.previousChips,
+              alternativeChips: _chips,
+            ),
           ),
         );
       },

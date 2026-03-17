@@ -2,23 +2,26 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/6th_treatment/week6_classfication_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/diaries_api.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 
-// ✅ 새로 정의된 디자인 위젯 불러오기
 import 'package:gad_app_team/widgets/ruled_paragraph.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 
+import 'week6_diary_utils.dart';
+import 'week6_route_utils.dart';
+
 class Week6ConcentrationScreen extends StatefulWidget {
   final List<String> behaviorListInput;
   final List<String> allBehaviorList;
+  final String diaryId;
+  final Map<String, dynamic> diary;
 
   const Week6ConcentrationScreen({
     super.key,
     required this.behaviorListInput,
     required this.allBehaviorList,
+    required this.diaryId,
+    required this.diary,
   });
 
   @override
@@ -29,38 +32,6 @@ class Week6ConcentrationScreen extends StatefulWidget {
 class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
   bool _isNextEnabled = false;
   int _secondsLeft = 10;
-  Map<String, dynamic>? _diary;
-  bool _isLoading = true;
-  bool _showSituation = true;
-  late final ApiClient _client;
-  late final DiariesApi _diariesApi;
-
-  @override
-  void initState() {
-    super.initState();
-    _client = ApiClient(tokens: TokenStorage());
-    _diariesApi = DiariesApi(_client);
-    _startCountdown();
-    _fetchLatestDiary();
-  }
-
-  Future<void> _fetchLatestDiary() async {
-    try {
-      // 최신 일기 불러오기
-      final latest = await _diariesApi.getLatestDiary();
-      if (!mounted) return;
-      setState(() {
-        _diary = latest;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _diary = null;
-        _isLoading = false;
-      });
-    }
-  }
 
   void _startCountdown() {
     Future.doWhile(() async {
@@ -71,136 +42,96 @@ class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
           _secondsLeft--;
         });
         return true;
-      } else {
-        setState(() {
-          _isNextEnabled = true;
-        });
-        return false;
       }
+
+      if (!mounted) return false;
+      setState(() {
+        _isNextEnabled = true;
+      });
+      return false;
     });
   }
 
-  String _getFirstBehavior(dynamic behavior) {
-    if (behavior == null) return '';
-    if (behavior is String) {
-      final parts =
-          behavior
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList();
-      return parts.isNotEmpty ? parts.first : '';
-    }
-    if (behavior is List) {
-      if (behavior.isEmpty) return '';
-      final first = behavior.first;
-      if (first is Map) {
-        final label = first['label'] ?? first['chip_id'] ?? first['chipId'];
-        return (label ?? '').toString();
-      }
-      return first.toString();
-    }
-    if (behavior is Map) {
-      final label = behavior['label'] ?? behavior['chip_id'] ?? behavior['chipId'];
-      return (label ?? '').toString();
-    }
-    final parts =
-        behavior
-            .toString()
-            .split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
-    return parts.isNotEmpty ? parts.first : '';
-  }
-
-  String _extractLabel(dynamic raw) {
-    if (raw == null) return '';
-    if (raw is Map) {
-      final label = raw['label'] ?? raw['chip_id'] ?? raw['chipId'];
-      return (label ?? '').toString();
-    }
-    return raw.toString();
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
   }
 
   @override
   Widget build(BuildContext context) {
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
-    // BlueWhiteCard에서 쓰던 밑줄 길이를 그대로 사용
     const double kRuleWidth = 220;
+    final activation = Week6DiaryUtils.extractActivation(widget.diary);
+    final firstBehavior = Week6DiaryUtils.firstBehavior(
+      widget.diary,
+      fallback: widget.behaviorListInput,
+    );
 
     return ApplyDesign(
       appBarTitle: '불안 직면 VS 회피',
       cardTitle: '상황에 집중하기',
       onBack: () => Navigator.pop(context),
+      rightLabel: '다음',
       onNext: () {
-            if (!_isNextEnabled) {
-              BlueBanner.show(context, '$_secondsLeft초 후에 다음 버튼이 활성화됩니다');
-              return;
-            }
-            if (_showSituation) {
-              setState(() => _showSituation = false);
-            } else {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder:
-                      (_, __, ___) => Week6ClassificationScreen(
-                    behaviorListInput: widget.allBehaviorList,
-                    allBehaviorList: widget.allBehaviorList,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            }
-          },
-      child:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 8,),
-                  Image.asset(
-                    'assets/image/think_blue.png',
-                    height: 160,
-                    filterQuality: FilterQuality.high,
-                  ),
-                  const SizedBox(height: 20),
-                  RuledParagraph(
-                    text: _showSituation
-                        ? _diary != null
-                        ? '$userName님, "${_extractLabel(_diary!['activation'])}" (이)라는 상황에서\n'
-                        '"${_getFirstBehavior(_diary!['consequence_action'])}"(이)라고 행동을 하였습니다.\n\n그때의 상황에 집중해보세요.'
-                        : '이때의 상황을 자세히 떠올려보세요.'
-                        : '앞서 보셨던 행동이 불안을 \n직면한 행동인지, 회피한 행동인지 함께 살펴볼게요.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2C3C55),
-                      height: 1.6,
-                    ),
-                    lineColor: Color(0xFFE1E8F0),
-                    lineThickness: 1.2,
-                    lineGapBelow: 8,
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    lineWidth: kRuleWidth,
-                  ),
-                  const SizedBox(height: 16),
-                  if (!_isNextEnabled)
-                    Text(
-                      '$_secondsLeft초 후에 다음 버튼이 활성화됩니다',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF9BA7B4),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
+        if (!_isNextEnabled) {
+          BlueBanner.show(context, '$_secondsLeft초 후에 다음 버튼이 활성화됩니다');
+          return;
+        }
+
+        Navigator.push(
+          context,
+          buildWeek6NoAnimationRoute(
+            Week6ClassificationScreen(
+              behaviorListInput: widget.allBehaviorList,
+              allBehaviorList: widget.allBehaviorList,
+              diaryId: widget.diaryId,
+              diary: widget.diary,
+            ),
+          ),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 8),
+          Image.asset(
+            'assets/image/think_blue.png',
+            height: 160,
+            filterQuality: FilterQuality.high,
+          ),
+          const SizedBox(height: 20),
+          RuledParagraph(
+            text:
+                activation.isNotEmpty && firstBehavior.isNotEmpty
+                    ? '$userName님, "$activation"(이)라는 상황에서\n"$firstBehavior"(이)라고 행동을 하였습니다.\n\n그때의 상황에 집중해보세요.'
+                    : '이때의 상황을 자세히 떠올려보세요.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2C3C55),
+              height: 1.6,
+            ),
+            lineColor: const Color(0xFFE1E8F0),
+            lineThickness: 1.2,
+            lineGapBelow: 8,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            lineWidth: kRuleWidth,
+          ),
+          const SizedBox(height: 16),
+          if (!_isNextEnabled)
+            Text(
+              '$_secondsLeft초 후에 다음 버튼이 활성화됩니다',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF9BA7B4),
+                fontWeight: FontWeight.w500,
               ),
+            ),
+        ],
+      ),
     );
   }
 }

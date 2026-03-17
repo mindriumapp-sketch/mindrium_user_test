@@ -1,9 +1,8 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:provider/provider.dart';
-import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/widgets/tutorial_design.dart'; // ✅ ApplyDesign 정의 파일
 import 'package:gad_app_team/widgets/top_btm_card.dart';
-import 'week6_relieve_result_screen.dart';
+import 'week6_behavior_classification_screen.dart';
+import 'week6_flow_widgets.dart';
+import 'week6_route_utils.dart';
 
 /// 🌊 6주차 - 불안 직면 VS 회피 (3주차와 동일 디자인 적용)
 /// - 기능은 그대로 유지
@@ -16,6 +15,8 @@ class Week6RelieveSliderScreen extends StatefulWidget {
   final List<String>? remainingBehaviors; // 남은 행동 목록
   final List<String> allBehaviorList; // 전체 행동 목록
   final List<Map<String, dynamic>>? mismatchedBehaviors; // 일치하지 않은 행동들
+  final String diaryId;
+  final Map<String, dynamic> diary;
 
   const Week6RelieveSliderScreen({
     super.key,
@@ -26,6 +27,8 @@ class Week6RelieveSliderScreen extends StatefulWidget {
     this.remainingBehaviors,
     required this.allBehaviorList,
     this.mismatchedBehaviors,
+    required this.diaryId,
+    required this.diary,
   });
 
   @override
@@ -38,114 +41,144 @@ class _Week6RelieveSliderScreenState extends State<Week6RelieveSliderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    final currentBehaviorIndex =
+        widget.allBehaviorList.length -
+        (widget.remainingBehaviors?.length ?? 0);
+    final stageLabel = widget.isLongTerm ? '장기 평가' : '단기 평가';
+    final questionTitle =
+        widget.isLongTerm
+            ? '이 행동이 시간이 지나도 도움이 될까요?'
+            : '이 행동을 하면 당장은 마음이 좀 편해질까요?';
+    final negativeTitle =
+        widget.isLongTerm ? '도움이 오래가진 않을 것 같아요' : '당장은 별로 편해지지 않을 것 같아요';
+    final positiveTitle =
+        widget.isLongTerm ? '나중에도 도움이 될 것 같아요' : '당장은 좀 편해질 것 같아요';
+    final topTitle =
+        widget.isLongTerm ? '이 행동이 나중에도 도움이 될지 볼게요' : '이 행동이 당장 어떤 느낌을 줄지 볼게요';
+    final topSubtitle =
+        widget.isLongTerm
+            ? '아래에서 가장 가까운 쪽 하나를 골라주세요.'
+            : '이 행동 직후의 느낌을 떠올리며 하나를 골라주세요.';
+    final helperText =
+        _selectedValue == null ? '가까운 쪽 하나를 골라주세요.' : '선택이 완료되었어요.';
 
     return ApplyDoubleCard(
       appBarTitle: '불안 직면 VS 회피',
+      rightLabel: '다음',
       onBack: () => Navigator.pop(context),
-      onNext: _selectedValue != null
-          ? () {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => Week6RelieveResultScreen(
-              selectedBehavior: widget.selectedBehavior,
-              behaviorType: widget.behaviorType,
-              sliderValue: _selectedValue!.toDouble(),
-              isLongTerm: widget.isLongTerm,
-              shortTermValue: widget.shortTermValue,
-              remainingBehaviors: widget.remainingBehaviors,
-              allBehaviorList: widget.allBehaviorList,
-              mismatchedBehaviors: widget.mismatchedBehaviors,
-            ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      }
-          : null,
+      onNext:
+          _selectedValue != null
+              ? () {
+                final selectedValue = _selectedValue!.toDouble();
 
-      // 👇 위에서 쓰던 값들이랑 맞춘 레이아웃 옵션
+                Navigator.push(
+                  context,
+                  buildWeek6NoAnimationRoute(
+                    widget.isLongTerm
+                        ? Week6BehaviorClassificationScreen(
+                          selectedBehavior: widget.selectedBehavior,
+                          behaviorType: widget.behaviorType,
+                          shortTermValue: widget.shortTermValue ?? 0.0,
+                          longTermValue: selectedValue,
+                          remainingBehaviors: widget.remainingBehaviors,
+                          allBehaviorList: widget.allBehaviorList,
+                          mismatchedBehaviors: widget.mismatchedBehaviors,
+                          diaryId: widget.diaryId,
+                          diary: widget.diary,
+                        )
+                        : Week6RelieveSliderScreen(
+                          selectedBehavior: widget.selectedBehavior,
+                          behaviorType: widget.behaviorType,
+                          isLongTerm: true,
+                          shortTermValue: selectedValue,
+                          remainingBehaviors: widget.remainingBehaviors,
+                          allBehaviorList: widget.allBehaviorList,
+                          mismatchedBehaviors: widget.mismatchedBehaviors,
+                          diaryId: widget.diaryId,
+                          diary: widget.diary,
+                        ),
+                  ),
+                );
+              }
+              : null,
+
       pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
       panelsGap: 16,
       panelRadius: 20,
       panelPadding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-      topPadding: 20,
-      height: 130,
-
-      // 두 패널 사이에 들어갈 말풍선
-      middleNoticeText: _selectedValue == null ? widget.isLongTerm
-          ? '이번엔 “장기적으로” 불안이 얼마나 줄어들지 생각해볼게요.\n아래에서 선택해 주세요.'
-          : '방금 보신 행동이 “당장” 불안을 덜어줄지 생각해볼게요.\n아래에서 선택해 주세요.'
-          : _selectedValue == 0 ? '불안이 완화되지 않음으로 \n선택하셨군요'
-          : '불안이 완화됨으로 선택하셨군요',
-      middleNoticeColor: _selectedValue == null
-          ? Colors.black45
-          :_selectedValue == 0 ? const Color(0xFFFF5252) : const Color(0xFF4CAF50),
-
-      // 🔼 상단 패널
       topChild: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 8),
-          Text(
-            '$userName님께서 걱정일기에 작성해주신 행동을 보며 진행해주세요.',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF224C78),
-              fontFamily: 'Noto Sans KR',
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
+          Week6ProgressHeader(
+            stageLabel: stageLabel,
+            currentIndex: currentBehaviorIndex,
+            totalCount: widget.allBehaviorList.length,
+            title: topTitle,
+            subtitle: topSubtitle,
           ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(14),
-            ),
+          const SizedBox(height: 18),
+          Week6InfoCard(
+            title: '지금 평가하는 행동',
+            subtitle: null,
+            icon: Icons.visibility_outlined,
             child: Text(
               widget.selectedBehavior,
               style: const TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: Color(0xFF263C69),
                 fontFamily: 'Noto Sans KR',
                 height: 1.5,
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ],
       ),
 
-      // 🔽 하단 패널
       bottomChild: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.isLongTerm
-                ? '이 행동을 하신다면 장기적으로 불안이 완화될 것 같으신가요?'
-                : '이 행동을 하신다면 단기적으로 불안이 완화될 것 같으신가요?',
+            questionTitle,
             style: const TextStyle(
-              fontSize: 16,
-              color: Color(0xFF224C78),
-              fontWeight: FontWeight.w500,
+              fontSize: 20,
+              color: Color(0xFF263C69),
+              fontWeight: FontWeight.w800,
               fontFamily: 'Noto Sans KR',
-              height: 1.6,
+              height: 1.45,
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
-          MindriumChoiceButtons(
-            label1: '불안 완화되지 않음',
-            label2: '불안 완화됨',
-            selectedValue: _selectedValue,
-            onSelect: (val) => setState(() => _selectedValue = val),
+          const SizedBox(height: 8),
+          Text(
+            helperText,
+            style: TextStyle(
+              fontSize: 13,
+              color:
+                  _selectedValue == null
+                      ? const Color(0xFF6B7D90)
+                      : const Color(0xFF2E7D5B),
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Noto Sans KR',
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Week6ChoiceOptionCard(
+            title: negativeTitle,
+            palette: Week6ChoicePalette.coral,
+            isSelected: _selectedValue == 0,
+            onTap: () => setState(() => _selectedValue = 0),
+            showSelectionIndicator: false,
+          ),
+          const SizedBox(height: 12),
+          Week6ChoiceOptionCard(
+            title: positiveTitle,
+            palette: Week6ChoicePalette.blue,
+            isSelected: _selectedValue == 10,
+            onTap: () => setState(() => _selectedValue = 10),
+            showSelectionIndicator: false,
           ),
         ],
       ),

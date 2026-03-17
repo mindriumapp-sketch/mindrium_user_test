@@ -1,27 +1,30 @@
-// 📘 week6_classification_screen.dart
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/diaries_api.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/quiz_card.dart';
 import 'package:gad_app_team/widgets/q_jellyfish_notice.dart';
-import 'package:gad_app_team/widgets/choice_card_button.dart';
 
+import 'week6_flow_widgets.dart';
 import 'week6_next_relieve_screen.dart';
+import 'week6_route_utils.dart';
 
 class Week6ClassificationScreen extends StatefulWidget {
   final List<String> behaviorListInput;
   final List<String> allBehaviorList;
+  final String diaryId;
+  final Map<String, dynamic> diary;
+  final List<Map<String, dynamic>>? mismatchedBehaviors;
 
   const Week6ClassificationScreen({
     super.key,
     required this.behaviorListInput,
     required this.allBehaviorList,
+    required this.diaryId,
+    required this.diary,
+    this.mismatchedBehaviors,
   });
 
   @override
@@ -30,46 +33,19 @@ class Week6ClassificationScreen extends StatefulWidget {
 }
 
 class _Week6ClassificationScreenState extends State<Week6ClassificationScreen> {
-  Map<String, dynamic>? _diary;
-  bool _isLoading = true;
-  String? _error;
-
-  late List<String> _behaviorList;
+  late final List<String> _behaviorList;
+  late final Map<String, dynamic> _diary;
   late String _currentBehavior;
+
   final Map<String, double> _behaviorScores = {};
-  String? _selectedFeedback;
-  late final ApiClient _client;
-  late final DiariesApi _diariesApi;
 
   @override
   void initState() {
     super.initState();
-    _client = ApiClient(tokens: TokenStorage());
-    _diariesApi = DiariesApi(_client);
-    _fetchLatestDiary();
-  }
-
-  Future<void> _fetchLatestDiary() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      // 최신 일기 불러오기 (실제로는 behaviorListInput을 사용하지만 일관성을 위해)
-      final latest = await _diariesApi.getLatestDiary();
-      setState(() {
-        _diary = latest;
-        _behaviorList = widget.behaviorListInput;
-        _currentBehavior =
+    _diary = Map<String, dynamic>.from(widget.diary);
+    _behaviorList = List<String>.from(widget.behaviorListInput);
+    _currentBehavior =
         _behaviorList.isNotEmpty ? _behaviorList.first : '행동이 없습니다.';
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = '데이터를 불러오지 못했습니다.';
-        _isLoading = false;
-      });
-    }
   }
 
   void _onSelectBehaviorType(String type) {
@@ -77,14 +53,17 @@ class _Week6ClassificationScreenState extends State<Week6ClassificationScreen> {
 
     setState(() {
       _behaviorScores[_currentBehavior] = (type == 'face') ? 0.0 : 10.0;
-      _selectedFeedback = type == 'face'
-          ? '정답! 불안을 직면하는 행동이에요.'
-          : '정답! 불안을 회피하는 행동이에요.';
     });
   }
 
+  String? _selectedTypeForCurrentBehavior() {
+    final score = _behaviorScores[_currentBehavior];
+    if (score == 0.0) return 'face';
+    if (score == 10.0) return 'avoid';
+    return null;
+  }
+
   void _onNext() {
-    // ✋ 로직 그대로 유지
     if (!_behaviorScores.containsKey(_currentBehavior)) return;
 
     final currentIndex = widget.allBehaviorList.indexOf(_currentBehavior);
@@ -95,18 +74,19 @@ class _Week6ClassificationScreenState extends State<Week6ClassificationScreen> {
 
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => Week6NextRelieveScreen(
+      buildWeek6NoAnimationRoute(
+        Week6NextRelieveScreen(
           selectedBehavior: _currentBehavior,
           behaviorType:
-          _behaviorScores[_currentBehavior] == 0.0 ? 'face' : 'avoid',
+              _behaviorScores[_currentBehavior] == 0.0 ? 'face' : 'avoid',
           sliderValue: 5.0,
           remainingBehaviors:
-          remainingBehaviors.isNotEmpty ? remainingBehaviors : null,
+              remainingBehaviors.isNotEmpty ? remainingBehaviors : null,
           allBehaviorList: widget.allBehaviorList,
+          diaryId: widget.diaryId,
+          diary: _diary,
+          mismatchedBehaviors: widget.mismatchedBehaviors,
         ),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
       ),
     );
   }
@@ -115,13 +95,16 @@ class _Week6ClassificationScreenState extends State<Week6ClassificationScreen> {
   Widget build(BuildContext context) {
     const double sidePadding = 20.0;
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    final hasBehavior =
+        _behaviorList.isNotEmpty && _currentBehavior != '행동이 없습니다.';
+    final currentBehaviorIndex =
+        widget.allBehaviorList.length - widget.behaviorListInput.length + 1;
 
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 🌊 배경 (Week3 스타일과 동일)
           Opacity(
             opacity: 0.35,
             child: Image.asset(
@@ -132,97 +115,59 @@ class _Week6ClassificationScreenState extends State<Week6ClassificationScreen> {
               filterQuality: FilterQuality.high,
             ),
           ),
-
           SafeArea(
             child: Column(
               children: [
                 const CustomAppBar(title: '불안 직면 VS 회피'),
-
-                // 위쪽 콘텐츠 영역
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: sidePadding,
                       vertical: 12,
                     ),
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : (_error != null)
-                        ? Center(
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    )
-                        : (_diary == null)
-                        ? const Center(
-                      child: Text(
-                        '최근에 작성한 일기가 없습니다.',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    )
-                        : Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 60),
-
-                        // 🔹 행동 카드
-                        QuizCard(
-                          noticeText: '$userName님께서 작성한 행동',
-                          quizText: _currentBehavior,
-                          // 이 화면은 한 개씩만 보여주니까 1/1로
-                          currentIndex: 1,
-                          totalCount: 1,
-                        ),
-                        // const SizedBox(height: 15),
-
-                        // 🔹 해파리 말풍선
-                        JellyfishNotice(
-                          feedback: _selectedFeedback ??
-                              '위 행동이 불안을 직면하는 행동인지, \n회피하는 행동인지 선택해주세요.',
-                          feedbackColor: _selectedFeedback == null
-                              ? Colors.grey.shade600
-                              : _behaviorScores[_currentBehavior] ==
-                              0.0
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFFF5252),
-                        ),
-                        // const SizedBox(height: 20),
-
-                        // 🔹 선택 버튼
-                        Column(
-                          children: [
-                            ChoiceCardButton(
-                              height: 54,
-                              type: ChoiceType.healthy,
-                              onPressed: () =>
-                                  _onSelectBehaviorType('face'),
+                    child:
+                        !hasBehavior
+                            ? const Center(
+                              child: Text(
+                                '선택한 일기의 행동 정보가 없습니다.',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            )
+                            : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                QuizCard(
+                                  noticeText: '$userName님께서 작성한 행동',
+                                  quizText: _currentBehavior,
+                                  currentIndex: currentBehaviorIndex,
+                                  totalCount: widget.allBehaviorList.length,
+                                ),
+                                const SizedBox(height: 10),
+                                JellyfishNotice(
+                                  feedback:
+                                      '위 행동이 불안을 직면하는 행동인지, \n회피하는 행동인지 선택해주세요.',
+                                  feedbackColor: Colors.grey.shade600,
+                                ),
+                                Week6BehaviorTypeSelector(
+                                  selectedType:
+                                      _selectedTypeForCurrentBehavior(),
+                                  onSelected: _onSelectBehaviorType,
+                                ),
+                                const Spacer(),
+                              ],
                             ),
-                            const SizedBox(height: 10),
-                            ChoiceCardButton(
-                              height: 54,
-                              type: ChoiceType.anxious,
-                              onPressed: () =>
-                                  _onSelectBehaviorType('avoid'),
-                            ),
-                          ],
-                        ),
-
-                        const Spacer(),
-                      ],
-                    ),
                   ),
                 ),
-
-                // 아래 네비게이션 고정
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     leftLabel: '이전',
                     rightLabel: '다음',
                     onBack: () => Navigator.pop(context),
-                    onNext: _onNext,
+                    onNext:
+                        _behaviorScores.containsKey(_currentBehavior)
+                            ? _onNext
+                            : null,
                   ),
                 ),
               ],

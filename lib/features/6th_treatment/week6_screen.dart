@@ -83,12 +83,15 @@ class _Week6ScreenState extends State<Week6Screen> {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
+    final String? abcId = args['abcId'] as String?;
+
     return SessionStartScreen(
       weekNumber: 6,
       weekTitle: '불안 직면과 회피를 실습해보겠습니다.',
       weekDescription:
           '이번 주차에서는 걱정일기를 통해 불안을 직면하는 방법과 회피하는 방법을 실습해보겠습니다. 작성하신 걱정일기의 내용을 살펴볼게요.',
-      nextPageBuilder: () => Week6AbcScreen(),
+      nextPageBuilder: () => Week6AbcScreen(abcId: abcId),
     );
   }
 }

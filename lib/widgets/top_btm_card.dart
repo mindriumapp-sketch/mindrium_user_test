@@ -12,6 +12,8 @@ class ApplyDoubleCard extends StatelessWidget {
   final Widget bottomChild;
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final String leftLabel;
+  final String rightLabel;
 
   // 스타일 옵션
   final EdgeInsets pagePadding;
@@ -44,6 +46,8 @@ class ApplyDoubleCard extends StatelessWidget {
     required this.bottomChild,
     this.onBack,
     this.onNext,
+    this.leftLabel = '이전',
+    this.rightLabel = '다음',
     this.pagePadding = const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
     this.panelsGap = 26,
     this.panelPadding = const EdgeInsets.fromLTRB(24, 24, 24, 24),
@@ -196,7 +200,12 @@ class ApplyDoubleCard extends StatelessWidget {
                 if (onBack != null || onNext != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                    child: NavigationButtons(onBack: onBack, onNext: onNext),
+                    child: NavigationButtons(
+                      onBack: onBack,
+                      onNext: onNext,
+                      leftLabel: leftLabel,
+                      rightLabel: rightLabel,
+                    ),
                   ),
               ],
             ),

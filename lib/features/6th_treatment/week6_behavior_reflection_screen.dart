@@ -1,18 +1,24 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:provider/provider.dart';
-import 'package:gad_app_team/data/user_provider.dart';
+
 import 'package:gad_app_team/widgets/tutorial_design.dart';
-import 'week6_classfication_screen.dart';
-import 'week6_finish_quiz_screen.dart';
+
+import 'package:gad_app_team/features/6th_treatment/week6_finish_quiz_screen.dart';
+import 'package:gad_app_team/features/6th_treatment/week6_flow_widgets.dart';
+import 'package:gad_app_team/features/6th_treatment/week6_next_behavior_screen.dart';
+
+import 'week6_behavior_analysis.dart';
+import 'week6_route_utils.dart';
 
 class Week6BehaviorReflectionScreen extends StatefulWidget {
   final String selectedBehavior;
-  final String behaviorType; // 'face' 또는 'avoid'
+  final String behaviorType;
   final double shortTermValue;
   final double longTermValue;
   final List<String>? remainingBehaviors;
   final List<String> allBehaviorList;
   final List<Map<String, dynamic>>? mismatchedBehaviors;
+  final String diaryId;
+  final Map<String, dynamic> diary;
 
   const Week6BehaviorReflectionScreen({
     super.key,
@@ -23,6 +29,8 @@ class Week6BehaviorReflectionScreen extends StatefulWidget {
     this.remainingBehaviors,
     required this.allBehaviorList,
     this.mismatchedBehaviors,
+    required this.diaryId,
+    required this.diary,
   });
 
   @override
@@ -32,29 +40,20 @@ class Week6BehaviorReflectionScreen extends StatefulWidget {
 
 class _Week6BehaviorReflectionScreenState
     extends State<Week6BehaviorReflectionScreen> {
-  bool _showMainText = true;
-  late List<Map<String, dynamic>> _mismatchedBehaviors;
+  late final List<Map<String, dynamic>> _mismatchedBehaviors;
 
   @override
   void initState() {
     super.initState();
     _mismatchedBehaviors = List.from(widget.mismatchedBehaviors ?? []);
 
-    // 실제 결과 계산
-    bool isShortTermHigh = widget.shortTermValue == 10;
-    bool isLongTermHigh = widget.longTermValue == 10;
-
-    String actualResult;
-    if (isShortTermHigh && !isLongTermHigh) {
-      actualResult = '불안을 회피하는 행동';
-    } else if (!isShortTermHigh && isLongTermHigh) {
-      actualResult = '불안을 직면하는 행동';
-    } else {
-      actualResult = '중립적인 행동';
-    }
-
-    String userChoice =
-        widget.behaviorType == 'face' ? '불안을 직면하는 행동' : '불안을 회피하는 행동';
+    final actualResult = Week6BehaviorAnalysis.reflectionResultLabel(
+      shortTermValue: widget.shortTermValue,
+      longTermValue: widget.longTermValue,
+    );
+    final userChoice = Week6BehaviorAnalysis.userChoiceLabel(
+      widget.behaviorType,
+    );
 
     if (userChoice != actualResult) {
       _mismatchedBehaviors.insert(0, {
@@ -67,96 +66,141 @@ class _Week6BehaviorReflectionScreenState
 
   @override
   Widget build(BuildContext context) {
-    final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    final hasRemainingBehaviors =
+        widget.remainingBehaviors != null &&
+        widget.remainingBehaviors!.isNotEmpty;
+    final currentBehaviorIndex =
+        widget.allBehaviorList.length -
+        (widget.remainingBehaviors?.length ?? 0);
+    final userChoice = Week6BehaviorAnalysis.userChoiceLabel(
+      widget.behaviorType,
+    );
+    final actualResult = Week6BehaviorAnalysis.reflectionResultLabel(
+      shortTermValue: widget.shortTermValue,
+      longTermValue: widget.longTermValue,
+    );
+    final isMatch = Week6BehaviorAnalysis.isReflectionMatch(
+      behaviorType: widget.behaviorType,
+      actualResultLabel: actualResult,
+    );
 
-    // 슬라이더 값 기반 실제 결과
-    bool isShortTermHigh = widget.shortTermValue == 10;
-    bool isLongTermHigh = widget.longTermValue == 10;
-
-    String userChoice =
-        widget.behaviorType == 'face' ? '불안을 직면하는 행동' : '불안을 회피하는 행동';
-
-    // 메인 문장
-    String mainText;
-    if (widget.behaviorType == 'avoid' && isShortTermHigh && !isLongTermHigh) {
-      mainText =
-          ' 방금 보셨던 "${widget.selectedBehavior}"(라)는 행동을 불안을 회피하는 행동으로 선택하셨는데, 실제로 이 행동은 불안을 회피하는 쪽에 가까워 보이네요.';
-    } else if (widget.behaviorType == 'avoid' &&
-        !isShortTermHigh &&
-        isLongTermHigh) {
-      mainText =
-          ' 방금 보셨던 "${widget.selectedBehavior}"(라)는 행동을 불안을 회피하는 행동으로 선택하셨지만, 실제로는 불안을 직면하는 쪽에 가까워 보이네요.';
-    } else if (widget.behaviorType == 'face' &&
-        !isShortTermHigh &&
-        isLongTermHigh) {
-      mainText =
-          ' 방금 보셨던 "${widget.selectedBehavior}"(라)는 행동을 불안을 직면하는 행동으로 선택하셨는데, 실제로 이 행동은 불안을 직면하는 쪽에 가까워 보이네요.';
-    } else if (widget.behaviorType == 'face' &&
-        isShortTermHigh &&
-        !isLongTermHigh) {
-      mainText =
-          ' 방금 보셨던 "${widget.selectedBehavior}"(라)는 행동을 불안을 직면하는 행동으로 선택하셨지만, 실제로는 불안을 회피하는 쪽에 가까워 보이네요.';
-    } else {
-      mainText =
-          ' 방금 보셨던 "${widget.selectedBehavior}"(라)는 행동을 불안을 $userChoice이라고 선택하셨네요.';
-    }
-
-    String subText = '이 행동이 과연 나에게 도움이 되는지 다시 한번 더 생각해보아요!';
-    String? nextText;
-
-    if (!_showMainText) {
-      if (widget.remainingBehaviors != null &&
-          widget.remainingBehaviors!.isNotEmpty) {
-        nextText = '다음 행동도 계속 진행하겠습니다!';
-      } else {
-        nextText = '마지막 행동까지 완료했습니다! \n이제 마무리로 모든 행동들을 다시 한번 점검해볼까요?';
-      }
-    }
+    final message =
+        isMatch
+            ? '내가 느낀 방향과 실제 해석이 비슷했어요. 이 행동을 보는 기준이 조금씩 잡혀가고 있어요.'
+            : '내 선택과 실제 해석 사이에 차이가 있었어요. 왜 다르게 느껴졌는지 한 번 더 돌아보면 도움이 됩니다.';
 
     return ApplyDesign(
       appBarTitle: '불안 직면 VS 회피',
       cardTitle: '행동 돌아보기',
       onBack: () => Navigator.pop(context),
       onNext: () {
-        if (_showMainText) {
-          setState(() => _showMainText = false);
+        if (hasRemainingBehaviors) {
+          Navigator.pushReplacement(
+            context,
+            buildWeek6NoAnimationRoute(
+              Week6NextBehaviorScreen(
+                remainingBehaviors: widget.remainingBehaviors!,
+                allBehaviorList: widget.allBehaviorList,
+                mismatchedBehaviors: _mismatchedBehaviors,
+                diaryId: widget.diaryId,
+                diary: widget.diary,
+              ),
+            ),
+          );
         } else {
-          if (widget.remainingBehaviors != null &&
-              widget.remainingBehaviors!.isNotEmpty) {
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder:
-                    (_, __, ___) => Week6ClassificationScreen(
-                      behaviorListInput: widget.remainingBehaviors!,
-                      allBehaviorList: widget.allBehaviorList,
-                    ),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
+          Navigator.pushReplacement(
+            context,
+            buildWeek6NoAnimationRoute(
+              Week6FinishQuizScreen(
+                mismatchedBehaviors: _mismatchedBehaviors,
+                diaryId: widget.diaryId,
+                diary: widget.diary,
               ),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder:
-                    (_, __, ___) => Week6FinishQuizScreen(
-                      mismatchedBehaviors: _mismatchedBehaviors,
-                    ),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
-          }
+            ),
+          );
         }
       },
-
-      /// 💡 기능만 남긴 child
-      child: buildRelieveResultCard(
-        userName: userName,
-        mainText: _showMainText ? mainText : nextText ?? subText,
-        subText: subText,
-        showMainText: _showMainText,
+      rightLabel: '다음',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Week6ProgressHeader(
+            stageLabel: '행동 돌아보기',
+            currentIndex: currentBehaviorIndex,
+            totalCount: widget.allBehaviorList.length,
+            title: '내가 왜 이렇게 느꼈는지 정리해볼게요',
+            subtitle: '지금 행동을 보며 내가 내린 해석과, 다시 살펴본 해석을 한눈에 비교할 수 있어요.',
+          ),
+          const SizedBox(height: 18),
+          Week6InfoCard(
+            title: '지금 살펴본 행동',
+            subtitle: widget.selectedBehavior,
+            icon: Icons.visibility_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Week6StatusPill(
+                      label: '내 선택: $userChoice',
+                      backgroundColor:
+                          widget.behaviorType == 'face'
+                              ? const Color(0xFFE8F7F1)
+                              : const Color(0xFFFFF0EF),
+                      foregroundColor:
+                          widget.behaviorType == 'face'
+                              ? const Color(0xFF2E7D5B)
+                              : const Color(0xFFC6544F),
+                    ),
+                    Week6StatusPill(
+                      label: '다시 보면: $actualResult',
+                      backgroundColor:
+                          isMatch
+                              ? const Color(0xFFE8F3FF)
+                              : const Color(0xFFFFF8E7),
+                      foregroundColor:
+                          isMatch
+                              ? const Color(0xFF2C6AA0)
+                              : const Color(0xFF9A6B00),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.55,
+                    color: Color(0xFF355676),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Week6InfoCard(
+            title: '다음으로 이어집니다',
+            icon:
+                hasRemainingBehaviors
+                    ? Icons.arrow_forward_rounded
+                    : Icons.fact_check_outlined,
+            child: Week6BulletList(
+              items:
+                  hasRemainingBehaviors
+                      ? [
+                        '같은 상황에서 이어지는 다음 행동을 살펴볼게요.',
+                        '남은 행동도 같은 방식으로 하나씩 정리하면 됩니다.',
+                      ]
+                      : [
+                        '이제 지금까지 본 행동을 한 번 더 빠르게 정리해볼게요.',
+                        '마지막 점검을 마치면 회피/직면 행동을 한눈에 볼 수 있어요.',
+                      ],
+            ),
+          ),
+        ],
       ),
     );
   }
