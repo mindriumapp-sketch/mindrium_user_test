@@ -90,8 +90,8 @@ class AlarmSetting {
   }
 
   Map<String, dynamic> toJson() {
-    final sortedDays = weekdays.toSet().where((d) => d >= 1 && d <= 7).toList()
-      ..sort();
+    final sortedDays =
+        weekdays.toSet().where((d) => d >= 1 && d <= 7).toList()..sort();
     final payload = <String, dynamic>{
       'alarm_id': id,
       'label': label,
@@ -124,24 +124,29 @@ class AlarmSetting {
 
   factory AlarmSetting.fromJson(Map<String, dynamic> json) {
     final scheduleRaw = json['schedule'];
-    final schedule = scheduleRaw is Map
-        ? scheduleRaw.map((k, v) => MapEntry(k.toString(), v))
-        : const <String, dynamic>{};
+    final schedule =
+        scheduleRaw is Map
+            ? scheduleRaw.map((k, v) => MapEntry(k.toString(), v))
+            : const <String, dynamic>{};
 
     final rawWeekdays =
-        (schedule['weekdays'] as List?) ?? (json['weekdays'] as List?) ?? const [];
-    final parsedWeekdays = rawWeekdays
-        .map((e) => e is int ? e : int.tryParse(e.toString()))
-        .whereType<int>()
-        .where((d) => d >= 1 && d <= 7)
-        .toSet()
-        .toList()
-      ..sort();
+        (schedule['weekdays'] as List?) ??
+        (json['weekdays'] as List?) ??
+        const [];
+    final parsedWeekdays =
+        rawWeekdays
+            .map((e) => e is int ? e : int.tryParse(e.toString()))
+            .whereType<int>()
+            .where((d) => d >= 1 && d <= 7)
+            .toSet()
+            .toList()
+          ..sort();
 
     final locationRaw = json['location'];
-    final location = locationRaw is Map
-        ? locationRaw.map((k, v) => MapEntry(k.toString(), v))
-        : const <String, dynamic>{};
+    final location =
+        locationRaw is Map
+            ? locationRaw.map((k, v) => MapEntry(k.toString(), v))
+            : const <String, dynamic>{};
 
     final hasLocationObject = locationRaw is Map;
     final latitude = _readDouble(location['latitude'] ?? json['latitude']);
@@ -152,18 +157,25 @@ class AlarmSetting {
         longitude != null;
 
     return AlarmSetting(
-      id: json['alarm_id']?.toString() ??
+      id:
+          json['alarm_id']?.toString() ??
           json['id']?.toString() ??
           DateTime.now().microsecondsSinceEpoch.toString(),
-      hour: _readInt(schedule['hour'] ?? json['hour'], fallback: 9).clamp(0, 23),
-      minute: _readInt(schedule['minute'] ?? json['minute'], fallback: 0).clamp(0, 59),
-      label: (json['label']?.toString().trim().isNotEmpty ?? false)
-          ? json['label'].toString().trim()
-          : 'Mindrium 알림',
+      hour: _readInt(
+        schedule['hour'] ?? json['hour'],
+        fallback: 9,
+      ).clamp(0, 23),
+      minute: _readInt(
+        schedule['minute'] ?? json['minute'],
+        fallback: 0,
+      ).clamp(0, 59),
+      label:
+          (json['label']?.toString().trim().isNotEmpty ?? false)
+              ? json['label'].toString().trim()
+              : 'Mindrium 알림',
       enabled: json['enabled'] == true,
-      weekdays: parsedWeekdays.isEmpty
-          ? const [1, 2, 3, 4, 5, 6, 7]
-          : parsedWeekdays,
+      weekdays:
+          parsedWeekdays.isEmpty ? const [1, 2, 3, 4, 5, 6, 7] : parsedWeekdays,
       vibration: json['vibration'] != false,
       locationEnabled: locationEnabled,
       latitude: latitude,
@@ -171,16 +183,20 @@ class AlarmSetting {
       locationLabel:
           location['label']?.toString() ?? json['location_label']?.toString(),
       locationAddress:
-          location['address']?.toString() ?? json['location_address']?.toString(),
-      locationRadiusMeters:
-          _readInt(location['radius_meters'] ?? json['location_radius_meters'], fallback: 100)
-              .clamp(30, 1000),
-      notifyOnEnter: hasLocationObject
-          ? location['notify_on_enter'] != false
-          : json['notify_on_enter'] != false,
-      notifyOnExit: hasLocationObject
-          ? location['notify_on_exit'] == true
-          : json['notify_on_exit'] == true,
+          location['address']?.toString() ??
+          json['location_address']?.toString(),
+      locationRadiusMeters: _readInt(
+        location['radius_meters'] ?? json['location_radius_meters'],
+        fallback: 100,
+      ).clamp(30, 1000),
+      notifyOnEnter:
+          hasLocationObject
+              ? location['notify_on_enter'] != false
+              : json['notify_on_enter'] != false,
+      notifyOnExit:
+          hasLocationObject
+              ? location['notify_on_exit'] == true
+              : json['notify_on_exit'] == true,
     );
   }
 
@@ -196,13 +212,33 @@ class AlarmSetting {
   }
 }
 
+class _EducationReminderSlot {
+  const _EducationReminderSlot({
+    required this.weekday,
+    required this.hour,
+    required this.minute,
+  });
+
+  final int weekday;
+  final int hour;
+  final int minute;
+}
+
 class AlarmNotificationService {
   AlarmNotificationService._();
 
   static final AlarmNotificationService instance = AlarmNotificationService._();
 
   static const String storageKey = 'mindrium_alarm_settings_v1';
+  static const String educationPreferenceKey =
+      'settings_notifications_education_enabled';
   static const String _channelId = 'mindrium_alarm_channel';
+  static const String _educationChannelId = 'mindrium_education_channel';
+  static const List<_EducationReminderSlot> _educationReminderSlots = [
+    _EducationReminderSlot(weekday: DateTime.tuesday, hour: 19, minute: 30),
+    _EducationReminderSlot(weekday: DateTime.thursday, hour: 19, minute: 30),
+    _EducationReminderSlot(weekday: DateTime.sunday, hour: 17, minute: 0),
+  ];
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -229,7 +265,9 @@ class AlarmNotificationService {
     tzdata.initializeTimeZones();
     _setBestEffortLocalLocation();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
     const settings = InitializationSettings(
       android: androidSettings,
@@ -257,6 +295,21 @@ class AlarmNotificationService {
         >()
         ?.createNotificationChannel(channel);
 
+    const educationChannel = AndroidNotificationChannel(
+      _educationChannelId,
+      'Mindrium Education',
+      description: 'Mindrium의 주차별 교육 리마인드',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(educationChannel);
+
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp ?? false) {
       _handleNotificationTapPayload(
@@ -283,7 +336,9 @@ class AlarmNotificationService {
         ?.requestExactAlarmsPermission();
 
     await _plugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
     await _plugin
@@ -296,7 +351,7 @@ class AlarmNotificationService {
   void handlePendingNotificationTap() {
     final pending = _pendingTapPayload;
     if (pending == null) return;
-    if (_tryNavigateToApplyFlow(pending)) {
+    if (_tryHandleNotificationAction(pending)) {
       _pendingTapPayload = null;
     }
   }
@@ -307,16 +362,22 @@ class AlarmNotificationService {
 
   void _handleNotificationTapPayload(String? payloadRaw) {
     final payload = _decodeNotificationPayload(payloadRaw);
-    final action = payload['action']?.toString() ?? 'start_apply';
-    if (action != 'start_apply' && action != 'apply') {
-      return;
-    }
-
-    if (_tryNavigateToApplyFlow(payload)) {
+    if (_tryHandleNotificationAction(payload)) {
       _pendingTapPayload = null;
     } else {
       _pendingTapPayload = payload;
     }
+  }
+
+  bool _tryHandleNotificationAction(Map<String, dynamic> payload) {
+    final action = payload['action']?.toString() ?? 'start_apply';
+    if (action == 'open_education') {
+      return _tryNavigateToEducationHome();
+    }
+    if (action == 'start_apply' || action == 'apply') {
+      return _tryNavigateToApplyFlow(payload);
+    }
+    return false;
   }
 
   Map<String, dynamic> _decodeNotificationPayload(String? raw) {
@@ -347,10 +408,7 @@ class AlarmNotificationService {
     flow.setOrigin('apply');
     flow.setDiaryRoute('notification');
 
-    final args = <String, dynamic>{
-      ...flow.toArgs(),
-      'origin': 'apply',
-    };
+    final args = <String, dynamic>{...flow.toArgs(), 'origin': 'apply'};
     final alarmId = payload['alarm_id']?.toString();
     if (alarmId != null && alarmId.isNotEmpty) {
       args['alarmId'] = alarmId;
@@ -360,11 +418,19 @@ class AlarmNotificationService {
     return true;
   }
 
+  bool _tryNavigateToEducationHome() {
+    final navigator = appNavigatorKey.currentState;
+    if (navigator == null) return false;
+    navigator.pushNamedAndRemoveUntil('/home_edu', (route) => false);
+    return true;
+  }
+
   String _buildTapPayload(String alarmId) {
-    return jsonEncode({
-      'action': 'start_apply',
-      'alarm_id': alarmId,
-    });
+    return jsonEncode({'action': 'start_apply', 'alarm_id': alarmId});
+  }
+
+  String _buildEducationTapPayload() {
+    return jsonEncode({'action': 'open_education'});
   }
 
   Future<bool> requestLocationPermission() async {
@@ -418,6 +484,98 @@ class AlarmNotificationService {
     await syncAlarms(alarms);
   }
 
+  Future<bool> isEducationReminderEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(educationPreferenceKey) ?? true;
+  }
+
+  Future<void> setEducationReminderEnabled(
+    bool enabled, {
+    required int currentWeek,
+    required int lastCompletedWeek,
+    DateTime? lastCompletedAt,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(educationPreferenceKey, enabled);
+
+    if (!enabled) {
+      await cancelEducationReminders();
+      return;
+    }
+
+    await syncEducationReminders(
+      currentWeek: currentWeek,
+      lastCompletedWeek: lastCompletedWeek,
+      lastCompletedAt: lastCompletedAt,
+    );
+  }
+
+  Future<void> syncEducationReminders({
+    required int currentWeek,
+    required int lastCompletedWeek,
+    DateTime? lastCompletedAt,
+  }) async {
+    await initialize();
+    await _cancelEducationReminderSchedules();
+
+    if (!await isEducationReminderEnabled()) {
+      return;
+    }
+
+    if (!_shouldScheduleEducationReminders(
+      currentWeek: currentWeek,
+      lastCompletedWeek: lastCompletedWeek,
+      lastCompletedAt: lastCompletedAt,
+    )) {
+      return;
+    }
+
+    for (final slot in _educationReminderSlots) {
+      final scheduled = _nextInstanceForWeekday(
+        weekday: slot.weekday,
+        hour: slot.hour,
+        minute: slot.minute,
+      );
+
+      await _plugin.zonedSchedule(
+        _educationNotificationId(slot.weekday),
+        '교육 알림',
+        '이번 주 교육 프로그램을 이어가 볼까요?',
+        scheduled,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _educationChannelId,
+            'Mindrium Education',
+            channelDescription: 'Mindrium의 주차별 교육 리마인드',
+            importance: Importance.high,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.reminder,
+            enableVibration: true,
+            playSound: true,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+          macOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: _buildEducationTapPayload(),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    }
+  }
+
+  Future<void> cancelEducationReminders() async {
+    await initialize();
+    await _cancelEducationReminderSchedules();
+  }
+
   Future<void> syncAlarms(
     List<AlarmSetting> alarms, {
     Iterable<String> extraCancelIds = const [],
@@ -433,22 +591,61 @@ class AlarmNotificationService {
     }
     for (final alarm in alarms.where((a) => a.enabled)) {
       final hasValidLocation =
-          alarm.locationEnabled && alarm.latitude != null && alarm.longitude != null;
+          alarm.locationEnabled &&
+          alarm.latitude != null &&
+          alarm.longitude != null;
 
       // 위치 기반 알림은 지오펜스 콜백에서 시간 조건까지 함께 체크(AND)한다.
       if (hasValidLocation) continue;
       await _scheduleAlarm(alarm);
     }
 
-    final locationEnabled = alarms
-        .where((a) => a.enabled && a.locationEnabled && a.latitude != null && a.longitude != null)
-        .toList();
+    final locationEnabled =
+        alarms
+            .where(
+              (a) =>
+                  a.enabled &&
+                  a.locationEnabled &&
+                  a.latitude != null &&
+                  a.longitude != null,
+            )
+            .toList();
     await _syncLocationGeofences(locationEnabled);
   }
 
+  bool _shouldScheduleEducationReminders({
+    required int currentWeek,
+    required int lastCompletedWeek,
+    DateTime? lastCompletedAt,
+  }) {
+    if (currentWeek < 1 || currentWeek > 8) return false;
+    if (currentWeek <= lastCompletedWeek) return false;
+    if (_isInCurrentKstWeek(lastCompletedAt)) return false;
+    return true;
+  }
+
+  bool _isInCurrentKstWeek(DateTime? timestamp) {
+    if (timestamp == null) return false;
+
+    final targetUtc = timestamp.toUtc();
+    final nowUtc = DateTime.now().toUtc();
+    final nowKst = nowUtc.add(const Duration(hours: 9));
+    final todayStartKstUtc = DateTime.utc(
+      nowKst.year,
+      nowKst.month,
+      nowKst.day,
+    ).subtract(const Duration(hours: 9));
+    final weekStartUtc = todayStartKstUtc.subtract(
+      Duration(days: nowKst.weekday - 1),
+    );
+    final weekEndUtc = weekStartUtc.add(const Duration(days: 7));
+
+    return !targetUtc.isBefore(weekStartUtc) && targetUtc.isBefore(weekEndUtc);
+  }
+
   Future<void> _scheduleAlarm(AlarmSetting alarm) async {
-    final weekdays = alarm.weekdays.toSet().where((d) => d >= 1 && d <= 7).toList()
-      ..sort();
+    final weekdays =
+        alarm.weekdays.toSet().where((d) => d >= 1 && d <= 7).toList()..sort();
 
     for (final weekday in weekdays) {
       final scheduled = _nextInstanceForWeekday(
@@ -498,13 +695,21 @@ class AlarmNotificationService {
     }
   }
 
+  Future<void> _cancelEducationReminderSchedules() async {
+    for (final slot in _educationReminderSlots) {
+      await _plugin.cancel(_educationNotificationId(slot.weekday));
+    }
+  }
+
   Future<void> _syncLocationGeofences(List<AlarmSetting> alarms) async {
     _locationAlarmMap
       ..clear()
       ..addEntries(alarms.map((a) => MapEntry(a.id, a)));
 
     if (!_geofenceListenerBound) {
-      _geofenceService.addGeofenceStatusChangeListener(_onGeofenceStatusChanged);
+      _geofenceService.addGeofenceStatusChangeListener(
+        _onGeofenceStatusChanged,
+      );
       _geofenceService.addStreamErrorListener(_onGeofenceError);
       _geofenceListenerBound = true;
     }
@@ -522,21 +727,22 @@ class AlarmNotificationService {
       return;
     }
 
-    final geofenceList = alarms
-        .map(
-          (alarm) => Geofence(
-            id: alarm.id,
-            latitude: alarm.latitude!,
-            longitude: alarm.longitude!,
-            radius: [
-              GeofenceRadius(
-                id: 'r_${alarm.locationRadiusMeters}',
-                length: alarm.locationRadiusMeters.toDouble(),
+    final geofenceList =
+        alarms
+            .map(
+              (alarm) => Geofence(
+                id: alarm.id,
+                latitude: alarm.latitude!,
+                longitude: alarm.longitude!,
+                radius: [
+                  GeofenceRadius(
+                    id: 'r_${alarm.locationRadiusMeters}',
+                    length: alarm.locationRadiusMeters.toDouble(),
+                  ),
+                ],
               ),
-            ],
-          ),
-        )
-        .toList();
+            )
+            .toList();
 
     try {
       if (_geofenceService.isRunningService) {
@@ -580,12 +786,12 @@ class AlarmNotificationService {
     _lastLocationNotifyAt[eventKey] = now;
 
     final title = alarm.label;
-    final locationText = (alarm.locationLabel?.trim().isNotEmpty ?? false)
-        ? alarm.locationLabel!.trim()
-        : '설정한 위치';
-    final body = isEnter
-        ? '$locationText 근처에 도착했어요.'
-        : '$locationText 영역을 벗어났어요.';
+    final locationText =
+        (alarm.locationLabel?.trim().isNotEmpty ?? false)
+            ? alarm.locationLabel!.trim()
+            : '설정한 위치';
+    final body =
+        isEnter ? '$locationText 근처에 도착했어요.' : '$locationText 영역을 벗어났어요.';
 
     await _plugin.show(
       _instantNotificationId(alarm.id, geofenceStatus),
@@ -622,7 +828,8 @@ class AlarmNotificationService {
   }
 
   bool _isWithinScheduledWindow(AlarmSetting alarm, DateTime now) {
-    final weekdays = alarm.weekdays.toSet().where((d) => d >= 1 && d <= 7).toSet();
+    final weekdays =
+        alarm.weekdays.toSet().where((d) => d >= 1 && d <= 7).toSet();
     if (!weekdays.contains(now.weekday)) return false;
 
     final nowMinutes = now.hour * 60 + now.minute;
@@ -690,6 +897,8 @@ class AlarmNotificationService {
     final timestamp = DateTime.now().millisecondsSinceEpoch % 1000;
     return (hash % 1000000) * 1000 + suffix * 100 + timestamp;
   }
+
+  int _educationNotificationId(int weekday) => 7000000 + weekday;
 
   static int _compareAlarm(AlarmSetting a, AlarmSetting b) {
     final aMinutes = a.hour * 60 + a.minute;

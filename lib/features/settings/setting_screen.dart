@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
+import 'package:gad_app_team/features/settings/notification_preferences_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -96,12 +97,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         _buildMenuRow(
                           icon: Icons.notifications_none_rounded,
-                          title: '알림 설정',
-                          subtitle: '푸시 알림 수신 여부와 알림 방식을 설정할 수 있어요.',
+                          title: '리마인더',
+                          subtitle: '푸시 알림 수신 여부를 설정할 수 있어요.',
                           onTap:
-                              () => Navigator.pushNamed(
+                              () => Navigator.push(
                                 context,
-                                '/alarm_settings',
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) =>
+                                          const NotificationPreferencesScreen(),
+                                ),
                               ),
                         ),
                         const SizedBox(height: 10),

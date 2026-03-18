@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -5,6 +7,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/api/users_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'daycounter.dart';
 
@@ -73,11 +76,11 @@ class UserProvider extends ChangeNotifier {
   /// 진행도 정보가 로딩되었는지 여부 (선택적으로 사용할 수 있음)
   bool get isProgressLoaded =>
       _lastCompletedWeek != 0 ||
-          _surveyCompleted ||
-          _lastCompletedAt != null ||
-          _totalDiaries > 0 ||
-          _totalRelaxations > 0 ||
-          _valueGoal != null;
+      _surveyCompleted ||
+      _lastCompletedAt != null ||
+      _totalDiaries > 0 ||
+      _totalRelaxations > 0 ||
+      _valueGoal != null;
 
   @override
   void notifyListeners() => _notifyListenersSafely();
@@ -116,9 +119,10 @@ class UserProvider extends ChangeNotifier {
       // 만약 이 사이에 더 새로운 요청이 들어왔으면 이 응답은 무시
       if (myRequest != _requestId) return;
 
-      _userName = (me['name'] as String?)?.trim().isNotEmpty == true
-          ? (me['name'] as String)
-          : '사용자';
+      _userName =
+          (me['name'] as String?)?.trim().isNotEmpty == true
+              ? (me['name'] as String)
+              : '사용자';
 
       _userEmail = (me['email'] as String?) ?? '';
       _uid = (me['user_id'] as String?) ?? (me['_id'] as String? ?? '');
@@ -225,6 +229,7 @@ class UserProvider extends ChangeNotifier {
     _totalRelaxations = 0;
     _valueGoal = null;
 
+    unawaited(AlarmNotificationService.instance.cancelEducationReminders());
     _notifyListenersSafely();
   }
 
@@ -321,6 +326,16 @@ class UserProvider extends ChangeNotifier {
     } else {
       _valueGoal = null;
     }
+
+    try {
+      await AlarmNotificationService.instance.syncEducationReminders(
+        currentWeek: _currentWeek,
+        lastCompletedWeek: _lastCompletedWeek,
+        lastCompletedAt: _lastCompletedAt,
+      );
+    } catch (e) {
+      debugPrint('교육 알림 동기화 실패: $e');
+    }
   }
 
   // ───────────────────── 로컬 캐시만 조정하는 유틸 ─────────────────────
@@ -355,6 +370,13 @@ class UserProvider extends ChangeNotifier {
     if (totalRelaxations != null) {
       _totalRelaxations = totalRelaxations;
     }
+    unawaited(
+      AlarmNotificationService.instance.syncEducationReminders(
+        currentWeek: _currentWeek,
+        lastCompletedWeek: _lastCompletedWeek,
+        lastCompletedAt: _lastCompletedAt,
+      ),
+    );
     _notifyListenersSafely();
   }
 

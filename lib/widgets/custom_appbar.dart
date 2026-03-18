@@ -23,6 +23,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final int maxTitleLines; // 긴 제목 줄바꿈 제어
   final TextAlign titleAlign; // 제목 정렬
   final double actionIconGap; // extraIcon 과 home 아이콘 사이 간격
+  final Color? leadingIconColor;
+  final Color? actionIconColor;
 
   const CustomAppBar({
     super.key,
@@ -42,6 +44,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.maxTitleLines = 1,
     this.titleAlign = TextAlign.start,
     this.actionIconGap = 0,
+    this.leadingIconColor,
+    this.actionIconColor,
   }) : assert(
          extraRoute == null || onExtraPressed == null,
          'extraRoute와 onExtraPressed는 둘 중 하나만 지정하세요.',
@@ -93,7 +97,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: Padding(
         padding: const EdgeInsets.only(left: 8),
         child: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: _indigo),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: leadingIconColor ?? _indigo,
+          ),
           splashRadius: 22,
           onPressed: () async {
             if (confirmOnBack) {
@@ -133,7 +140,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: IconButton(
-              icon: Icon(extraIcon, color: _black),
+              icon: Icon(extraIcon, color: actionIconColor ?? _black),
               splashRadius: 22,
               onPressed:
                   onExtraPressed ??
@@ -150,7 +157,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              icon: const Icon(Icons.home_outlined, color: _black),
+              icon: Icon(Icons.home_outlined, color: actionIconColor ?? _black),
               splashRadius: 22,
               onPressed: () async {
                 if (confirmOnHome) {
