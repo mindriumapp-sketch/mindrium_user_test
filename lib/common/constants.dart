@@ -27,5 +27,3 @@ class AppSizes {
   static const double margin = 16;
   static const double space = 16;
 }
-
-const String vworldApiKey = '3E7D019F-6908-3D49-82C5-EEC922006324';

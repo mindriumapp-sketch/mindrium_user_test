@@ -1,22 +1,21 @@
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode;
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/widgets/location_picker_map.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 
 class MindriumPopupDesign extends StatefulWidget {
   final TextEditingController? searchController;
-  final MapController? mapController;
+  final LocationPickerMapController? mapController;
   final VoidCallback? onMapReady;
   final LatLng? picked;
   final LatLng? current;
-  final List<Marker>? savedMarkers;
+  final List<LatLng>? savedMarkers;
   final VoidCallback? onSearch;
   final VoidCallback? onBack;
   final VoidCallback? onNext;
-  final Function(TapPosition, LatLng)? onTap;
+  final ValueChanged<LatLng>? onTap;
   final DateTime? initialTimeDateTime;
   final ValueChanged<DateTime>? onTimeChanged;
   final String? locationText;
@@ -126,53 +125,15 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
       return const SizedBox.shrink();
     }
 
-    return FlutterMap(
-      mapController: widget.mapController!,
-      options: MapOptions(
-        initialCenter: _initialCenter,
-        initialZoom: 16,
-        onTap: widget.onTap,
-        onMapReady: widget.onMapReady,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate:
-              'https://api.vworld.kr/req/wmts/1.0.0/{key}/Base/{z}/{y}/{x}.png',
-          additionalOptions: {'key': vworldApiKey},
-        ),
-        if (widget.current != null)
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: widget.current!,
-                width: 36,
-                height: 36,
-                child: const Icon(
-                  Icons.my_location,
-                  color: Color(0xFF4A90E2),
-                  size: 32,
-                ),
-              ),
-            ],
-          ),
-        if (widget.picked != null)
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: widget.picked!,
-                width: 40,
-                height: 40,
-                child: const Icon(
-                  Icons.location_pin,
-                  color: Color(0xFF5B3EFF),
-                  size: 44,
-                ),
-              ),
-            ],
-          ),
-        if (widget.savedMarkers != null && widget.savedMarkers!.isNotEmpty)
-          MarkerLayer(markers: widget.savedMarkers!),
-      ],
+    return LocationPickerMap(
+      controller: widget.mapController!,
+      initialCenter: _initialCenter,
+      initialZoom: 16,
+      current: widget.current,
+      picked: widget.picked,
+      savedMarkers: widget.savedMarkers ?? const [],
+      onTap: widget.onTap,
+      onMapReady: widget.onMapReady,
     );
   }
 
@@ -182,7 +143,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
     }
 
     return Positioned(
-      top: 56,
+      top: 30,
       left: 24,
       right: 24,
       child: Container(
@@ -205,6 +166,56 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
             prefixIcon: Icon(Icons.search, color: Color(0xFF4A90E2)),
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapControls() {
+    if (widget.mapController == null) {
+      return const SizedBox.shrink();
+    }
+
+    Future<void> moveToFocusPoint() async {
+      final target = widget.picked ?? widget.current ?? _initialCenter;
+      await widget.mapController!.move(target, zoom: 16);
+    }
+
+    return Positioned(
+      right: 20,
+      bottom: MediaQuery.of(context).size.height * 0.39,
+      child: SafeArea(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _MapControlButton(
+                icon: Icons.add_rounded,
+                onPressed: () => widget.mapController!.zoomIn(),
+              ),
+              Container(width: 42, height: 1, color: const Color(0xFFE5EBF3)),
+              _MapControlButton(
+                icon: Icons.remove_rounded,
+                onPressed: () => widget.mapController!.zoomOut(),
+              ),
+              Container(width: 42, height: 1, color: const Color(0xFFE5EBF3)),
+              _MapControlButton(
+                icon: Icons.my_location_rounded,
+                onPressed: moveToFocusPoint,
+              ),
+            ],
           ),
         ),
       ),
@@ -551,14 +562,34 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
         children: [
           _buildMap(),
           _buildSearchField(),
+          _buildMapControls(),
           Positioned(
             left: 24,
             right: 12,
-            top: 120,
+            top: 90,
             child: _buildJellyfishGuide(_guideText),
           ),
           _buildBottomSheet(),
         ],
+      ),
+    );
+  }
+}
+
+class _MapControlButton extends StatelessWidget {
+  const _MapControlButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Icon(icon, size: 22, color: const Color(0xFF2E455B)),
       ),
     );
   }

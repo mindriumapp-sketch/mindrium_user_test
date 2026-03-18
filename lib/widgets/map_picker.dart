@@ -1,20 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 
-import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/kakao_local_api.dart';
 import 'package:gad_app_team/data/api/notification_locations_api.dart';
 import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:gad_app_team/widgets/location_picker_map.dart';
 import 'package:gad_app_team/widgets/map_picker_design.dart';
 
 class MapPicker extends StatefulWidget {
@@ -61,7 +59,8 @@ class _MapPickerState extends State<MapPicker> {
         _kRecentLocationThreshold;
   }
 
-  final MapController _mapController = MapController();
+  final LocationPickerMapController _mapController =
+      LocationPickerMapController();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _locationLabelController =
       TextEditingController();
@@ -74,10 +73,11 @@ class _MapPickerState extends State<MapPicker> {
   );
   late final NotificationLocationsApi _notificationLocationsApi =
       NotificationLocationsApi(_apiClient);
+  late final KakaoLocalApi _kakaoLocalApi = KakaoLocalApi();
 
   LatLng? _picked;
   LatLng? _current;
-  List<Marker> _savedMarkers = [];
+  List<LatLng> _savedMarkers = [];
   String? _addr;
   List<String> _locationLabelChips = const [];
   bool _isLoadingLocationLabels = false;
@@ -105,6 +105,7 @@ class _MapPickerState extends State<MapPicker> {
     _searchController.dispose();
     _locationLabelController.dispose();
     _addLocationLabelController.dispose();
+    _kakaoLocalApi.close();
     super.dispose();
   }
 
@@ -114,11 +115,7 @@ class _MapPickerState extends State<MapPicker> {
     final zoom = _pendingMapZoom;
     _pendingMapCenter = null;
     if (center == null) return;
-    try {
-      _mapController.move(center, zoom);
-    } catch (e) {
-      debugPrint('Map move failed on ready: $e');
-    }
+    unawaited(_mapController.move(center, zoom: zoom));
   }
 
   void _moveMapSafely(LatLng center, {double zoom = _kInitialZoom}) {
@@ -127,14 +124,7 @@ class _MapPickerState extends State<MapPicker> {
       _pendingMapZoom = zoom;
       return;
     }
-    try {
-      _mapController.move(center, zoom);
-    } catch (e) {
-      debugPrint('Map move failed: $e');
-      _pendingMapCenter = center;
-      _pendingMapZoom = zoom;
-      _isMapReady = false;
-    }
+    unawaited(_mapController.move(center, zoom: zoom));
   }
 
   bool get _shouldAutoCenterOnCurrent => _picked == null;
@@ -245,19 +235,12 @@ class _MapPickerState extends State<MapPicker> {
             endDate: now.add(const Duration(days: 30)),
           )
           .timeout(const Duration(seconds: 6));
-      final markers = <Marker>[];
+      final markers = <LatLng>[];
       for (final doc in docs) {
         final lat = (doc['latitude'] as num?)?.toDouble();
         final lng = (doc['longitude'] as num?)?.toDouble();
         if (lat == null || lng == null) continue;
-        markers.add(
-          Marker(
-            point: LatLng(lat, lng),
-            width: 36,
-            height: 36,
-            child: const Icon(Icons.star, color: Colors.amber),
-          ),
-        );
+        markers.add(LatLng(lat, lng));
         if (markers.length >= 60) break;
       }
       if (mounted) setState(() => _savedMarkers = markers);
@@ -302,6 +285,15 @@ class _MapPickerState extends State<MapPicker> {
     if (query.isEmpty) return;
 
     try {
+      final kakaoResult = await _kakaoLocalApi.searchLocation(
+        query,
+        around: _picked ?? _current,
+      );
+      if (kakaoResult != null) {
+        await _pickLocation(kakaoResult.point, moveMap: true);
+        return;
+      }
+
       final res = await locationFromAddress(query);
       if (res.isEmpty) return;
       final latlng = LatLng(res.first.latitude, res.first.longitude);
@@ -350,34 +342,12 @@ class _MapPickerState extends State<MapPicker> {
     }
   }
 
-  Future<String?> _reverseGeocodeWithVworld(LatLng point) async {
-    try {
-      final uri = Uri.parse(
-        'https://api.vworld.kr/req/address'
-        '?service=address'
-        '&request=getAddress'
-        '&version=2.0'
-        '&format=json'
-        '&type=both'
-        '&crs=EPSG:4326'
-        '&point=${point.longitude},${point.latitude}'
-        '&key=$vworldApiKey',
-      );
-      final res = await http.get(uri).timeout(const Duration(seconds: 5));
-      if (res.statusCode != 200) return null;
-      final body = jsonDecode(res.body);
-      final status = body['response']?['status']?.toString();
-      if (status != null && status != 'OK') {
-        debugPrint('Vworld reverse geocoding status: $status');
-        return null;
-      }
-      final result = body['response']?['result']?[0];
-      final text = result?['text'];
-      return _cleanAddressPart(text?.toString());
-    } catch (e) {
-      debugPrint('Vworld reverse geocoding failed: $e');
-      return null;
-    }
+  Future<String?> _reverseGeocodeWithKakao(LatLng point) async {
+    final address = await _kakaoLocalApi.reverseGeocode(
+      latitude: point.latitude,
+      longitude: point.longitude,
+    );
+    return _cleanAddressPart(address);
   }
 
   Future<void> _reverseGeocode(LatLng point) async {
@@ -389,19 +359,21 @@ class _MapPickerState extends State<MapPicker> {
       _hasAddressLookupFailure = false;
     });
 
-    final placemarkAddress = await _reverseGeocodeWithPlacemark(point);
+    final kakaoAddress = await _reverseGeocodeWithKakao(point);
     if (!mounted || requestId != _reverseGeocodeRequestId) return;
-    if (placemarkAddress != null) {
+    if (kakaoAddress != null) {
       _applyState(() {
-        _addr = placemarkAddress;
+        _addr = kakaoAddress;
         _hasAddressLookupFailure = false;
+        _isResolvingAddress = false;
       });
+      return;
     }
 
-    final vworldAddress = await _reverseGeocodeWithVworld(point);
+    final placemarkAddress = await _reverseGeocodeWithPlacemark(point);
     if (!mounted || requestId != _reverseGeocodeRequestId) return;
 
-    final resolvedAddress = vworldAddress ?? placemarkAddress;
+    final resolvedAddress = placemarkAddress;
     _applyState(() {
       _addr = resolvedAddress;
       _isResolvingAddress = false;
@@ -584,7 +556,7 @@ class _MapPickerState extends State<MapPicker> {
       current: _current,
       savedMarkers: _savedMarkers,
       onSearch: _onSearch,
-      onTap: (tapPos, latlng) => _pickLocation(latlng),
+      onTap: _pickLocation,
       onBack: () => Navigator.pop(context),
       onNext: _confirmSelection,
       initialTimeDateTime: DateTime(

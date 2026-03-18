@@ -48,6 +48,7 @@ dependencies:
   flutter_tts: ^4.0.0
   # [추가/확인] STT (Speech-to-Text) 패키지
   speech_to_text: ^7.3.0
+  webview_flutter: ^4.13.1
 
 dev_dependencies:
   flutter_test:

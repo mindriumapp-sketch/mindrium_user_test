@@ -80,6 +80,8 @@ coverage/
 .env
 .env.*
 .envrc
+dart_defines/*.json
+!dart_defines/kakao.example.json
 *.pem
 *.p12
 *.cer
