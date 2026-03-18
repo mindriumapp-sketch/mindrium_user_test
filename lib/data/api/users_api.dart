@@ -3,25 +3,17 @@ import 'api_client.dart';
 
 class UsersApi {
   final ApiClient _client;
+
   UsersApi(this._client);
 
   Future<Map<String, dynamic>> me() async {
-    final res = await _client.dio.get('/users/me');
+    final authClient = ApiClient.platformAuth(tokens: _client.tokens);
+    final res = await authClient.dio.get('/api/me');
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
       requestOptions: res.requestOptions,
-      message: 'Invalid /users/me response',
-    );
-  }
-  // TODO: 스키마 확정 후 Future<Map<String, dynamic>> -> Future<UserMe>
-  Future<Map<String, dynamic>> updateMe(Map<String, dynamic> body) async {
-    final res = await _client.dio.put('/users/me', data: body);
-    final data = res.data;
-    if (data is Map<String, dynamic>) return data;
-    throw DioException(
-      requestOptions: res.requestOptions,
-      message: 'Invalid /users/me (PUT) response',
+      message: 'Invalid me response',
     );
   }
 }
