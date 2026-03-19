@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
 import 'package:gad_app_team/features/settings/notification_preferences_screen.dart';
+import 'package:gad_app_team/features/settings/terms_policy_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -158,7 +159,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           icon: Icons.description_outlined,
                           title: '약관 및 정책',
                           subtitle: '서비스 이용과 관련된 약관 및 정책을 확인할 수 있어요.',
-                          onTap: _showComingSoon,
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                      ) => const TermsPolicyScreen(),
+                                  transitionsBuilder: (
+                                    context,
+                                    animation,
+                                    secondaryAnimation,
+                                    child,
+                                  ) {
+                                    const begin = Offset(1.0, 0.0);
+                                    const end = Offset.zero;
+                                    const curve = Curves.easeInOutCubic;
+                                    final tween = Tween(
+                                      begin: begin,
+                                      end: end,
+                                    ).chain(CurveTween(curve: curve));
+                                    return SlideTransition(
+                                      position: animation.drive(tween),
+                                      child: child,
+                                    );
+                                  },
+                                  transitionDuration: const Duration(
+                                    milliseconds: 300,
+                                  ),
+                                ),
+                              ),
                         ),
                         const SizedBox(height: 10),
                         _buildMenuRow(
