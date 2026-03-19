@@ -22,7 +22,6 @@ from routers.edu_sessions import router as edu_sessions_router
 from routers.worry_groups import router as worry_groups_router
 from routers.alarm_settings import router as alarm_settings_router
 from routers.notification_locations import router as notification_locations_router
-from routers.ai import router as ai_router
 
 settings = get_settings()
 
@@ -435,4 +434,3 @@ app.include_router(custom_tags_router)
 app.include_router(worry_groups_router)
 app.include_router(alarm_settings_router)
 app.include_router(notification_locations_router)
-app.include_router(ai_router)
