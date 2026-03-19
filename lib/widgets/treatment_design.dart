@@ -14,6 +14,7 @@ class TreatmentDesign extends StatelessWidget {
   final Set<int> expandedWeeks;
   final ValueChanged<int>? onToggleWeek;
   final ScrollController? scrollController;
+
   /// true면 모든 주차를 활성화 (미래 주차 잠금 해제)
   final bool unlockAllWeeks;
 
@@ -44,6 +45,7 @@ class TreatmentDesign extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mindriumColors = _MindriumColors();
+    const Color deepNavy = Color(0xFF1E2F3F);
     const totalWeeks = 8;
     final doneCount = (lastCompleted ?? completedWeeks.length).clamp(
       0,
@@ -51,7 +53,33 @@ class TreatmentDesign extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: mindriumColors.background,
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        toolbarHeight: 70,
+        title: Text(
+          (appBarTitle?.isNotEmpty ?? false) ? appBarTitle! : '마인드리움 교육 활동',
+          style: const TextStyle(
+            color: deepNavy,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Noto Sans KR',
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 6,
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(70),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+            child: _buildProgressHeader(
+              c: mindriumColors,
+              doneCount: doneCount,
+              totalWeeks: totalWeeks,
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -71,78 +99,41 @@ class TreatmentDesign extends StatelessWidget {
               ],
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 10),
-                  Text(
-                    (appBarTitle?.isNotEmpty ?? false)
-                        ? appBarTitle!
-                        : '마인드리움 교육 활동',
-                    style: const TextStyle(
-                      fontFamily: 'Noto Sans KR',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildProgressHeader(
-                    c: mindriumColors,
-                    doneCount: doneCount,
-                    totalWeeks: totalWeeks,
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      padding: const EdgeInsets.only(bottom: 120),
-                      itemCount: weekContents.length,
-                      itemBuilder: (context, index) {
-                        final week = weekContents[index];
-                        final enabled = enabledList[index];
-                        final weekNo = index + 1;
-                        final isCurrent = weekNo == currentWeek;
-                        final isFuture = weekNo > currentWeek;
-                        final summary =
-                            week['summary'] ?? week['subtitle'] ?? '';
-                        final session1Name =
-                            week['session1Name'] ?? '불안에 대한 교육';
-                        final session1Duration =
-                            week['session1Duration'] ?? '약 10분';
-                        final session2Name = week['session2Name'] ?? '점진적 이완';
-                        final session2Duration =
-                            week['session2Duration'] ?? '약 20분';
+          ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 120),
+            itemCount: weekContents.length,
+            itemBuilder: (context, index) {
+              final week = weekContents[index];
+              final enabled = enabledList[index];
+              final weekNo = index + 1;
+              final isCurrent = weekNo == currentWeek;
+              final isFuture = weekNo > currentWeek;
+              final summary = week['summary'] ?? week['subtitle'] ?? '';
+              final session1Name = week['session1Name'] ?? '불안에 대한 교육';
+              final session1Duration = week['session1Duration'] ?? '약 10분';
+              final session2Name = week['session2Name'] ?? '점진적 이완';
+              final session2Duration = week['session2Duration'] ?? '약 20분';
 
-                        return _buildWeekCard(
-                          context,
-                          title: week['title']!,
-                          summary: summary,
-                          session1Name: session1Name,
-                          session1Duration: session1Duration,
-                          session2Name: session2Name,
-                          session2Duration: session2Duration,
-                          screen: weekScreens[index],
-                          enabled: enabled,
-                          c: mindriumColors,
-                          weekNo: weekNo,
-                          isCurrentWeek: isCurrent,
-                          isExpanded: expandedWeeks.contains(weekNo),
-                          isFutureWeek: unlockAllWeeks ? false : isFuture,
-                          appliedDone: relaxationCompletedWeeks.contains(
-                            weekNo,
-                          ),
-                          cbtDone: cbtCompletedWeeks.contains(weekNo),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
+              return _buildWeekCard(
+                context,
+                title: week['title']!,
+                summary: summary,
+                session1Name: session1Name,
+                session1Duration: session1Duration,
+                session2Name: session2Name,
+                session2Duration: session2Duration,
+                screen: weekScreens[index],
+                enabled: enabled,
+                c: mindriumColors,
+                weekNo: weekNo,
+                isCurrentWeek: isCurrent,
+                isExpanded: expandedWeeks.contains(weekNo),
+                isFutureWeek: unlockAllWeeks ? false : isFuture,
+                appliedDone: relaxationCompletedWeeks.contains(weekNo),
+                cbtDone: cbtCompletedWeeks.contains(weekNo),
+              );
+            },
           ),
         ],
       ),
@@ -339,22 +330,27 @@ class TreatmentDesign extends StatelessWidget {
   }) {
     final progress = totalWeeks == 0 ? 0.0 : doneCount / totalWeeks;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
+        color: const Color(0xFFF3F8FC),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3F2FD), width: 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: c.shadow.withValues(alpha: 0.07),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFD8E5F1), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 10,
+              backgroundColor: const Color(0xFFDCE6EF),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFF5B9FD3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -378,18 +374,6 @@ class TreatmentDesign extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
-              backgroundColor: Colors.white,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF5B9FD3),
-              ),
-            ),
           ),
         ],
       ),
@@ -453,7 +437,7 @@ class TreatmentDesign extends StatelessWidget {
         text,
         style: TextStyle(
           fontFamily: 'Noto Sans KR',
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: fg,
         ),

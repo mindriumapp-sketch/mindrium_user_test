@@ -285,6 +285,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        toolbarHeight: 70,
         title: const Text(
           '마이페이지',
           style: TextStyle(
@@ -295,11 +296,12 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 6,
         centerTitle: true,
         iconTheme: const IconThemeData(color: deepNavy),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right:8),
             child: IconButton(
               onPressed: () => Navigator.pushNamed(context, '/settings'),
               icon: const Icon(
@@ -321,7 +323,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
                   16,
-                  16,
+                  8,
                   16,
                   bottomSafeInset + extraBottomScrollSpace,
                 ),
