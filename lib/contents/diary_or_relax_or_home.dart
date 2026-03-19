@@ -45,7 +45,7 @@ class DiaryOrRelaxOrHome extends StatelessWidget {
               if (abcId != null) 'abcId': abcId,
               'mp3Asset': 'noti.mp3',
               'riveAsset': 'noti.riv',
-              'nextPage': '/relaxation_score',
+              'nextPage': '/home',
               'origin': 'apply',
               'beforeSud': beforeSud,
               'sudId': sudId,

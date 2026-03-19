@@ -38,7 +38,7 @@ class RelaxOrAlternativePage extends StatelessWidget {
               'taskId': abcId,
               'mp3Asset': 'noti.mp3',
               'riveAsset': 'noti.riv',
-              'nextPage': '/relaxation_score',
+              'nextPage': '/home',
               'origin': origin,
               'beforeSud': beforeSud,
               'sudId': sudId,
