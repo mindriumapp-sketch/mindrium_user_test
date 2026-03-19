@@ -141,7 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.pushNamed(
       context,
       '/before_sud',
-      arguments: {...flow.toArgs(), 'origin': 'apply'},
+      arguments: {
+        ...flow.toArgs(),
+        'origin': 'apply',
+        'isHomeTodayDiary': false,
+      },
     );
   }
 
@@ -265,10 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // 실제 내용 (Mindrium 탭은 status bar까지 배경 덮음)
-          SafeArea(
-            top: _selectedIndex != 2,
-            child: _buildBody(),
-          ),
+          SafeArea(top: _selectedIndex != 2, child: _buildBody()),
 
           // 네비게이션 바
           Align(
@@ -435,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           const SizedBox(width: 8),
-          _buildTempWidgetGuideButton()
+          _buildTempWidgetGuideButton(),
         ],
       ),
     );
@@ -495,7 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final valueGoal = (user.valueGoal ?? '').trim();
     final hasValueGoal = valueGoal.isNotEmpty;
-    final dayNo = dayCounter.daysSinceJoin > 0 ? dayCounter.daysSinceJoin : 1;
+    final dayNo = dayCounter.daysSinceJoin;
 
     return _trainingCard(
       title: '핵심 가치',
@@ -591,7 +592,11 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.pushNamed(
             context,
             '/before_sud',
-            arguments: {...flow.toArgs(), 'origin': 'daily'},
+            arguments: {
+              ...flow.toArgs(),
+              'origin': 'daily',
+              'isHomeTodayDiary': true,
+            },
           );
         },
       ),

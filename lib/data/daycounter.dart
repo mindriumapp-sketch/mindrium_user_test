@@ -28,7 +28,13 @@ class UserDayCounter extends ChangeNotifier {
 
   int get daysSinceJoin {
     if (_createdAt == null) return 0;
-    return DateTime.now().difference(_createdAt!).inDays + 1;
+    return daysBetween(DateTime.now(), _createdAt!).clamp(0, 999) + 1;
+  }
+
+  int daysBetween(DateTime a, DateTime b) {
+    final da = DateTime(a.year, a.month, a.day);
+    final db = DateTime(b.year, b.month, b.day);
+    return da.difference(db).inDays;
   }
 
   int getWeekNumberFromJoin(DateTime targetDate) {
