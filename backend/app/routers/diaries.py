@@ -496,6 +496,44 @@ async def get_latest_diary(
     return DiarySummaryResponse(**_serialize_diary(doc))
 
 
+@router.get("/today-task", response_model=List[DiaryResponse])
+async def list_today_task_diaries(
+    start_at: Optional[datetime] = None,
+    end_at: Optional[datetime] = None,
+    db=Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    route=today_task 인 일기 중에서 기간(created_at)으로 필터링한
+    전체 일기 정보를 반환.
+    """
+    start_utc = ensure_utc(start_at)
+    end_utc = ensure_utc(end_at)
+    if start_utc and end_utc and start_utc > end_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_at must be less than or equal to end_at",
+        )
+
+    query: Dict[str, Any] = {
+        "user_id": user_id,
+        "route": "today_task",
+    }
+    if start_utc or end_utc:
+        created_range: Dict[str, Any] = {}
+        if start_utc:
+            created_range["$gte"] = start_utc
+        if end_utc:
+            created_range["$lte"] = end_utc
+        query["created_at"] = created_range
+
+    cursor = db[DIARY_COLLECTION].find(query).sort("created_at", 1)
+    diaries: List[DiaryResponse] = []
+    async for doc in cursor:
+        diaries.append(DiaryResponse(**_serialize_diary(doc)))
+    return diaries
+
+
 @router.get("/{diary_id}", response_model=DiaryResponse)
 async def get_diary(
     diary_id: str,
