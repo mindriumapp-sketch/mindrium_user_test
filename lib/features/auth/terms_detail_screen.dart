@@ -15,6 +15,8 @@ class TermsDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLongTitle = title.length >= 16;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -39,15 +41,18 @@ class TermsDetailScreen extends StatelessWidget {
                     child: Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         fontFamily: 'Noto Sans KR',
                         fontWeight: FontWeight.w700,
-                        fontSize: 20,
+                        fontSize: isLongTitle ? 17 : 20,
+                        height: 1.25,
                         color: Color(0xFF233B6E),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 40),
+                  const SizedBox(width: 34),
                 ],
               ),
               const SizedBox(height: 10),

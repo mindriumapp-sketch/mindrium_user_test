@@ -349,7 +349,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                             todayTask: context.watch<TodayTaskProvider>(),
                             streakText:
                                 createdAt != null
-                                    ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)}일째'
+                                    ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)+1}일째'
                                     : '기록 준비 중',
                           ),
                           const SizedBox(height: 14),

@@ -110,7 +110,7 @@ class _TermsScreenState extends State<TermsScreen> {
                     vertical: 20,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
