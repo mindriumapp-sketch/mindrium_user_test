@@ -16,38 +16,38 @@ class SudRatingTone {
   static const _yellow = Color(0xFFFFC107);
   static const _red = Color(0xFFF44336);
 
-  factory SudRatingTone.fromValue(int value) {
+  factory SudRatingTone.fromValue(int value, {bool pastTense = false}) {
     if (value <= 2) {
-      return const SudRatingTone(
+      return SudRatingTone(
         accent: _green,
-        caption: '평온해요',
+        caption: pastTense ? '평온했어요' : '평온해요',
         icon: Icons.sentiment_very_satisfied,
       );
     }
     if (value <= 4) {
-      return const SudRatingTone(
+      return SudRatingTone(
         accent: _yellow,
-        caption: '약간 불안해요',
+        caption: pastTense ? '약간 불안했어요' : '약간 불안해요',
         icon: Icons.sentiment_neutral,
       );
     }
     if (value <= 6) {
-      return const SudRatingTone(
+      return SudRatingTone(
         accent: _yellow,
-        caption: '조금 불안해요',
+        caption: pastTense ? '조금 불안했어요' : '조금 불안해요',
         icon: Icons.sentiment_neutral,
       );
     }
     if (value <= 8) {
-      return const SudRatingTone(
+      return SudRatingTone(
         accent: _yellow,
-        caption: '불안해요',
+        caption: pastTense ? '불안했어요' : '불안해요',
         icon: Icons.sentiment_neutral,
       );
     }
-    return const SudRatingTone(
+    return SudRatingTone(
       accent: _red,
-      caption: '많이 불안해요',
+      caption: pastTense ? '많이 불안했어요' : '많이 불안해요',
       icon: Icons.sentiment_very_dissatisfied_sharp,
     );
   }
@@ -58,14 +58,16 @@ class SudRatingContent extends StatelessWidget {
     super.key,
     required this.value,
     required this.onChanged,
+    this.isPastTense = false,
   });
 
   final int value;
   final ValueChanged<int> onChanged;
+  final bool isPastTense;
 
   @override
   Widget build(BuildContext context) {
-    final tone = SudRatingTone.fromValue(value);
+    final tone = SudRatingTone.fromValue(value, pastTense: isPastTense);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
