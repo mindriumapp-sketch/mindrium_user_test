@@ -18,6 +18,7 @@ import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_dialo
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
+import 'package:gad_app_team/features/menu/report/report_screen.dart';
 import 'package:gad_app_team/navigation/screen/myinfo_screen.dart';
 import 'package:gad_app_team/navigation/screen/treatment_screen.dart';
 import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
@@ -291,6 +292,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return const SeaArchivePage();
       case 3:
+        return const ReportScreen();
+      case 4:
         return const MyInfoScreen();
       default:
         return _homePage();

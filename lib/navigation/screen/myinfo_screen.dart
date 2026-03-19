@@ -1187,7 +1187,8 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     required String value,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      height: 130,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
         color: const Color(0xFCFFFFFF),
         borderRadius: BorderRadius.circular(18),
@@ -1204,9 +1205,11 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: const Color(0xFF1E2F3F)),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF8694A0),
@@ -1214,15 +1217,20 @@ class _MyInfoScreenState extends State<MyInfoScreen>
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E2F3F),
-              fontFamily: 'Noto Sans KR',
+          Expanded(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E2F3F),
+                  fontFamily: 'Noto Sans KR',
+                ),
+              ),
             ),
           ),
         ],

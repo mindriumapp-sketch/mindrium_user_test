@@ -169,6 +169,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
         expandedWeeks: _expandedWeeks,
         onToggleWeek: _toggleWeekExpanded,
         scrollController: _scrollController,
+        unlockAllWeeks: true,
       ),
     );
   }

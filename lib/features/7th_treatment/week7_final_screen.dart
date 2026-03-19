@@ -3,6 +3,7 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
+import 'package:gad_app_team/widgets/jellyfish_notice.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
 import 'package:gad_app_team/data/api/relaxation_api.dart';
@@ -85,19 +86,40 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
                               children: [
                                 // 🎉 축하/결과 이미지
                                 Image.asset(
-                                  'assets/image/congrats.png', // 필요 시 nice.png로 교체 가능 (로직 영향 없음)
-                                  width: 140,
-                                  height: 140,
+                                  'assets/image/congrats.png',
+                                  width: 126,
+                                  height: 126,
                                   fit: BoxFit.contain,
                                 ),
-                                const SizedBox(height: 22),
+                                const SizedBox(height: 18),
+
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE9F7FF),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: const Text(
+                                    '7주차 행동 계획 완료',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2D6F96),
+                                      fontFamily: 'Noto Sans KR',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
 
                                 // 🔢 결과 텍스트
                                 Text(
-                                  '계획을 완료하셨습니다!',
+                                  '이번 주 계획을 세웠어요!\n정말 잘하셨어요',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                    fontSize: 22,
+                                    fontSize: 24,
                                     fontWeight: FontWeight.w800,
                                     height: 1.4,
                                     color: Colors.black87,
@@ -105,18 +127,24 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                Text(
-                                  '건강한 생활 습관을 꾸준히 실천하여\n더 나은 나를 만들어가세요.',
+                                const Text(
+                                  '한 주 동안 완벽하게 하려고 하기보다,\n불안한 순간마다 한 번씩 실천해보아요.',
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    height: 1.4,
-                                    color: Colors.black87,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    height: 1.45,
+                                    color: Color(0xFF2F3E4E),
                                     fontFamily: 'Noto Sans KR',
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+                          const SizedBox(height: 18),
+                          const JellyfishNotice(
+                            feedback: '작게 시작해도 괜찮아요.\n불안한 상황에서 내가 정한 행동을\n차근차근 실천해봅시다!',
+                            feedbackColor: Color(0xFF35546D),
+                            textAlign: TextAlign.left,
                           ),
                         ],
                       ),
@@ -145,7 +173,18 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
   void _showStartDialog(BuildContext context) async {
     final ctx = context;
     final nav = Navigator.of(ctx);
-    final sessionId = await _ensureSessionId();
+    String sessionId;
+    try {
+      sessionId = await _ensureSessionId();
+    } catch (e) {
+      debugPrint('[Week7Final] session_id 확보 실패: $e');
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('세션 정보를 불러오지 못했습니다. 다시 시도해주세요.')),
+        );
+      }
+      return;
+    }
 
     // 완료 상태 저장
     if (!_isCompleting) {
@@ -222,13 +261,18 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
   Future<String> _ensureSessionId() async {
     if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
 
-    final existing = await _week7Api.fetchWeek7Session();
-    final existingId =
-        existing?['session_id']?.toString() ??
-        existing?['sessionId']?.toString();
-    if (existingId != null && existingId.isNotEmpty) {
-      _sessionId = existingId;
-      return existingId;
+    try {
+      final existing = await _week7Api.fetchWeek7Session();
+      final existingId =
+          existing?['session_id']?.toString() ??
+          existing?['sessionId']?.toString();
+      if (existingId != null && existingId.isNotEmpty) {
+        _sessionId = existingId;
+        return existingId;
+      }
+    } catch (e) {
+      // 기존 세션 조회가 500이어도 신규 세션 생성으로 복구 시도
+      debugPrint('[Week7Final] 기존 세션 조회 실패, 신규 생성 시도: $e');
     }
 
     final created = await _week7Api.createWeek7Session(

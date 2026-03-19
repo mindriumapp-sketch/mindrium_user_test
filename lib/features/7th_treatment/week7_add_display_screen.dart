@@ -53,6 +53,11 @@ class Week7AddDisplayScreen extends StatefulWidget {
       Map<String, String>.from(
         _Week7AddDisplayScreenState._globalBehaviorToChip,
       );
+
+  static void registerGlobalBehaviorToChip(String behavior, String chipId) {
+    if (behavior.trim().isEmpty || chipId.trim().isEmpty) return;
+    _Week7AddDisplayScreenState._globalBehaviorToChip[behavior] = chipId;
+  }
 }
 
 class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>

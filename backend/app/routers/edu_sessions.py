@@ -204,7 +204,11 @@ async def list_edu_sessions(
 
     docs: List[EduSessionResponse] = []
     async for doc in cursor:
-        docs.append(EduSessionResponse(**_serialize_session(doc)))
+        try:
+            docs.append(EduSessionResponse(**_serialize_session(doc)))
+        except Exception:
+            # 과거 문서(total_stages/last_stage_idx 누락 등)는 건너뛰어 500 방지
+            continue
     return docs
 
 

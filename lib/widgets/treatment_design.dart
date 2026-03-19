@@ -14,6 +14,8 @@ class TreatmentDesign extends StatelessWidget {
   final Set<int> expandedWeeks;
   final ValueChanged<int>? onToggleWeek;
   final ScrollController? scrollController;
+  /// true면 모든 주차를 활성화 (미래 주차 잠금 해제)
+  final bool unlockAllWeeks;
 
   const TreatmentDesign({
     super.key,
@@ -29,6 +31,7 @@ class TreatmentDesign extends StatelessWidget {
     this.expandedWeeks = const <int>{},
     this.onToggleWeek,
     this.scrollController,
+    this.unlockAllWeeks = false,
   }) : assert(
          weekContents.length == weekScreens.length,
          'weekContents와 weekScreens 길이가 다릅니다.',
@@ -128,7 +131,7 @@ class TreatmentDesign extends StatelessWidget {
                           weekNo: weekNo,
                           isCurrentWeek: isCurrent,
                           isExpanded: expandedWeeks.contains(weekNo),
-                          isFutureWeek: isFuture,
+                          isFutureWeek: unlockAllWeeks ? false : isFuture,
                           appliedDone: relaxationCompletedWeeks.contains(
                             weekNo,
                           ),
