@@ -91,15 +91,18 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
       context,
       rawArgs: ModalRoute.of(context)?.settings.arguments,
     );
+    final bool isHomeTodayDiary = route.args['isHomeTodayDiary'] == true;
     final flow = route.flow;
     final String origin = route.origin;
     final String? abcId = widget.abcId ?? route.abcId;
     final bool hasAbcId = abcId?.isNotEmpty ?? false;
+    final String cardTitle =
+        isHomeTodayDiary ? '오늘 느낀 불안 정도를\n선택해 주세요' : '지금 느끼는 불안 정도를\n선택해 주세요';
 
     // ApplyDesign로 상단/본문/하단을 모두 구성 (eduhome.png 배경 포함)
     return ApplyDesign(
       appBarTitle: '불안 평가',
-      cardTitle: '지금 느끼는 불안 정도를\n선택해 주세요',
+      cardTitle: cardTitle,
       onBack: () => Navigator.pop(context),
       onNext: () async {
         if (_saving) return;
@@ -121,7 +124,11 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
               context,
               nextRoute,
               arguments: route.mergedArgs(
-                extra: {'origin': origin, 'beforeSud': _sud},
+                extra: {
+                  'origin': origin,
+                  'beforeSud': _sud,
+                  'isHomeTodayDiary': isHomeTodayDiary,
+                },
               ),
             );
             return;
@@ -164,6 +171,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
                   'groupId': groupId,
                   'beforeSud': _sud,
                   'sudId': sudId,
+                  'isHomeTodayDiary': isHomeTodayDiary,
                 },
               ),
             );
@@ -178,6 +186,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
                   'origin': origin,
                   'beforeSud': _sud,
                   'sudId': sudId,
+                  'isHomeTodayDiary': isHomeTodayDiary,
                 },
               ),
             );
@@ -198,6 +207,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
       // ─── 카드 내부 콘텐츠 ───
       child: SudRatingContent(
         value: _sud,
+        isPastTense: isHomeTodayDiary,
         onChanged: (value) => setState(() => _sud = value),
       ),
     );
