@@ -17,7 +17,6 @@ from schemas.relaxation import (
     RelaxationLogEntry,
     RelaxationTaskCreate,
     RelaxationTaskResponse,
-    RelaxationScoreUpdate,
     RelaxationTimeSummary,
     RelaxationTaskTimeSummary,
 )
@@ -59,7 +58,6 @@ def _serialize_task(doc: dict) -> dict:
         "longitude": doc.get("longitude"),
         "address_name": doc.get("address_name"),
         "duration_seconds": doc.get("duration_seconds"),
-        "relaxation_score": doc.get("relaxation_score"),
         "created_at": parse_datetime_value(doc.get("created_at")),
         "updated_at": parse_datetime_value(doc.get("updated_at")),
     }
@@ -285,6 +283,39 @@ async def _find_relaxation_tasks(
     return tasks
 
 
+async def _find_completed_week_education_tasks_by_period(
+    *,
+    db,
+    user_id: str,
+    week_number: int,
+    start_at: datetime,
+    end_at: datetime,
+) -> List[RelaxationTaskResponse]:
+    """
+    task_id=week{N}_education 이고 기간 내(end_time 기준) 완료된(end_time != None) 세션 조회.
+    """
+    collection = db[RELAX_COLLECTION]
+    task_id = f"week{int(week_number)}_education"
+    start_utc = ensure_utc(start_at)
+    end_utc = ensure_utc(end_at)
+
+    query = {
+        "user_id": user_id,
+        "task_id": task_id,
+        "end_time": {
+            "$ne": None,
+            "$gte": start_utc,
+            "$lte": end_utc,
+        },
+    }
+
+    cursor = collection.find(query).sort("end_time", -1)
+    tasks: List[RelaxationTaskResponse] = []
+    async for doc in cursor:
+        tasks.append(RelaxationTaskResponse(**_serialize_task(doc)))
+    return tasks
+
+
 # =========================================================
 # Endpoints
 # =========================================================
@@ -331,7 +362,6 @@ async def create_relaxation_task(
         "longitude": payload.longitude,
         "address_name": payload.address_name,
         "duration_seconds": duration_seconds,
-        "relaxation_score": None,
         "created_at": now_utc,
         "updated_at": now_utc,
     }
@@ -423,45 +453,6 @@ async def update_relaxation_task(
     return RelaxationTaskResponse(**_serialize_task(result))
 
 
-@router.patch(
-    "/{relax_id}/score",
-    response_model=RelaxationTaskResponse,
-    summary="이완 점수(relaxation_score) 업데이트 (별도 컬렉션)",
-)
-async def update_relaxation_score(
-    relax_id: str,
-    payload: RelaxationScoreUpdate,
-    user_id: str = Depends(get_current_user_id),
-    db=Depends(get_db),
-):
-    """
-    다른 화면에서 측정한 이완 점수(relaxation_score)를 업데이트합니다.
-    - path param의 `relax_id`와 일치하는 세션을 찾고, relaxation_score만 변경.
-    """
-    collection = db[RELAX_COLLECTION]
-    obj_id = to_obj_id(relax_id)
-    now_utc = datetime.now(timezone.utc)
-
-    result = await collection.find_one_and_update(
-        {"_id": obj_id, "user_id": user_id},
-        {
-            "$set": {
-                "relaxation_score": payload.relaxation_score,
-                "updated_at": now_utc,
-            }
-        },
-        return_document=ReturnDocument.AFTER,
-    )
-
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Relaxation session not found",
-        )
-
-    return RelaxationTaskResponse(**_serialize_task(result))
-
-
 @router.get(
     "",
     response_model=List[RelaxationTaskResponse],
@@ -492,6 +483,35 @@ async def list_relaxation_tasks(
         log_flag=log_flag,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get(
+    "/completed/daily-review",
+    response_model=List[RelaxationTaskResponse],
+    summary="일일 이완 복습 완료 세션 조회 (task_id=week{N}_education, 기간 내 end_time)",
+)
+async def list_completed_daily_reviews(
+    week_number: int = Query(..., ge=1, le=8),
+    start_at: datetime = Query(..., description="조회 시작 시각(ISO 8601)"),
+    end_at: datetime = Query(..., description="조회 종료 시각(ISO 8601)"),
+    user_id: str = Depends(get_current_user_id),
+    db=Depends(get_db),
+):
+    start_utc = ensure_utc(start_at)
+    end_utc = ensure_utc(end_at)
+    if start_utc > end_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_at must be less than or equal to end_at",
+        )
+
+    return await _find_completed_week_education_tasks_by_period(
+        db=db,
+        user_id=user_id,
+        week_number=week_number,
+        start_at=start_utc,
+        end_at=end_utc,
     )
 
 

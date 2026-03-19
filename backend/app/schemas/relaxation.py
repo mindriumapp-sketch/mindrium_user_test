@@ -50,22 +50,8 @@ class RelaxationTaskResponse(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     address_name: Optional[str] = None
-
-    relaxation_score: Optional[int] = Field(
-        None, ge=1, le=10, description="이완 만족도/점수 1~10 (다른 화면에서 측정)"
-    )
     created_at: datetime
     updated_at: datetime
-
-
-class RelaxationScoreUpdate(BaseModel):
-    """
-    이완 점수만 업데이트할 때 사용하는 모델
-    """
-    relaxation_score: int = Field(
-        ..., ge=1, le=10, description="이완 만족도/점수 1~10 (다른 화면에서 측정)"
-    )
-
 
 class RelaxationTimeSummary(BaseModel):
     """

@@ -17,7 +17,7 @@ class RelaxationApi {
   /// - [startTime], [endTime] 은 ISO8601(UTC) 문자열로 전송.
   /// - [logs] 는 `{ action, timestamp, elapsed_seconds }` 형태 리스트.
   Future<Map<String, dynamic>> saveRelaxationTask({
-    String? relaxId,        // 🔥 추가: 서버 relax_id (없으면 create, 있으면 update)
+    String? relaxId, // 🔥 추가: 서버 relax_id (없으면 create, 있으면 update)
     required String taskId,
     int? weekNumber,
     required DateTime startTime,
@@ -41,16 +41,10 @@ class RelaxationApi {
     final Response res;
     if (relaxId == null) {
       // 최초 저장 → create
-      res = await _client.dio.post(
-        '/relaxation_tasks',
-        data: payload,
-      );
+      res = await _client.dio.post('/relaxation_tasks', data: payload);
     } else {
       // 이후 저장 → update
-      res = await _client.dio.put(
-        '/relaxation_tasks/$relaxId',
-        data: payload,
-      );
+      res = await _client.dio.put('/relaxation_tasks/$relaxId', data: payload);
     }
 
     final data = res.data;
@@ -133,36 +127,6 @@ class RelaxationApi {
     );
   }
 
-  /// 이완 점수(relaxation_score)만 업데이트
-  ///
-  /// - 서버 라우터: PATCH /relaxation_tasks/{relax_id}/score
-  Future<Map<String, dynamic>> updateRelaxationScore({
-    required String relaxId,
-    required double relaxationScore,
-  }) async {
-    // 1) 소수로 들어와도 정수로 변환
-    // 2) 1~10 범위 밖이면 클램핑
-    final intScore =
-    relaxationScore.round().clamp(1, 10).toInt();
-
-    final res = await _client.dio.patch(
-      '/relaxation_tasks/$relaxId/score',
-      data: {
-        'relaxation_score': intScore,
-      },
-    );
-
-    final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return data;
-    }
-    throw DioException(
-      requestOptions: res.requestOptions,
-      message:
-      'Invalid /relaxation_tasks/{relaxId}/score response',
-    );
-  }
-
   /// 전체 이완 시간 요약
   /// - 백엔드: GET /relaxation_tasks/summary
   /// - 응답 키:
@@ -179,7 +143,6 @@ class RelaxationApi {
       message: 'Invalid /relaxation_tasks/summary response',
     );
   }
-
 
   /// 특정 조건(week/task/date)에 해당하는 이완 시간 요약
   /// - 백엔드: GET /relaxation_tasks/task-summary
