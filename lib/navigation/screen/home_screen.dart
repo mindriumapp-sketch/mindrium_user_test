@@ -383,8 +383,6 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         _buildHeader(),
-        const SizedBox(height: 8),
-        _buildTempWidgetGuideButton(),
         const SizedBox(height: 16),
         _buildValueGoalCard(),
         const SizedBox(height: 8),
@@ -434,22 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           const SizedBox(width: 8),
-
-          /// 🤖 오른쪽: 아이콘 (에이전트 / 메뉴)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _iconCircle(
-                icon: Icons.smart_toy_rounded,
-                onTap: () => Navigator.pushNamed(context, '/agent_help'),
-              ),
-              const SizedBox(width: 10),
-              _iconCircle(
-                icon: Icons.menu_rounded,
-                onTap: () => Navigator.pushNamed(context, '/contents'),
-              ),
-            ],
-          ),
+          _buildTempWidgetGuideButton()
         ],
       ),
     );
@@ -461,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: OutlinedButton.icon(
         onPressed: _showWidgetTutorialFromTempButton,
         icon: const Icon(Icons.help_outline_rounded, size: 18),
-        label: const Text('위젯 가이드 보기 (임시)'),
+        label: const Text('위젯 가이드'),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF1B3A57),
           backgroundColor: const Color(0xFFF2F8FF),
@@ -475,31 +458,31 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _iconCircle({required IconData icon, required VoidCallback onTap}) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(23),
-        child: Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 5,
-                offset: const Offset(2, 2),
-              ),
-            ],
-          ),
-          child: Icon(icon, color: Colors.black, size: 26),
-        ),
-      ),
-    );
-  }
+  // Widget _iconCircle({required IconData icon, required VoidCallback onTap}) {
+  //   return Material(
+  //     color: Colors.transparent,
+  //     child: InkWell(
+  //       onTap: onTap,
+  //       borderRadius: BorderRadius.circular(23),
+  //       child: Container(
+  //         width: 46,
+  //         height: 46,
+  //         decoration: BoxDecoration(
+  //           color: Colors.white,
+  //           shape: BoxShape.circle,
+  //           boxShadow: [
+  //             BoxShadow(
+  //               color: Colors.black.withValues(alpha: 0.1),
+  //               blurRadius: 5,
+  //               offset: const Offset(2, 2),
+  //             ),
+  //           ],
+  //         ),
+  //         child: Icon(icon, color: Colors.black, size: 26),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   // ===================== 오늘의 할 일 =====================
 
@@ -515,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
       title: '핵심 가치',
       description:
           hasValueGoal ? '$dayNo일째 $valueGoal를 향해 가고 있어요.' : '핵심 가치를 설정해 보세요.',
-      color: const Color(0xFFEFF7FF),
+      color: const Color(0xFFFFFFFF),
       trailing: _buildDayCalendar(dayNo),
     );
   }
@@ -610,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       _DailyTask(
-        title: '이완',
+        title: '이번주 이완 복습',
         isDone: todayTask.relaxationDone,
         onTap: () {
           final taskId = 'week${weekNumber}_daily';
