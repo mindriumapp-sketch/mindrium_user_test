@@ -81,7 +81,7 @@ class TreatmentDesign extends StatelessWidget {
                   Text(
                     (appBarTitle?.isNotEmpty ?? false)
                         ? appBarTitle!
-                        : 'Mindrium 교육 활동',
+                        : '마인드리움 교육 활동',
                     style: const TextStyle(
                       fontFamily: 'Noto Sans KR',
                       fontSize: 20,
