@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -5,6 +7,7 @@ import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 
 /// 홈 화면 '오늘의 할 일' 전용 Provider.
 ///
@@ -181,6 +184,8 @@ class TodayTaskProvider extends ChangeNotifier {
       parsedLastEdu = lastEduRaw;
     }
     _lastEducationAt = parsedLastEdu;
+
+    await _syncTodayTaskReminderState();
   }
 
   // ───────────────────── 로컬에서만 살짝 건드릴 때 ─────────────────────
@@ -208,6 +213,7 @@ class TodayTaskProvider extends ChangeNotifier {
       _lastEducationAt = lastEducationAt;
     }
     _notifyListenersSafely();
+    unawaited(_syncTodayTaskReminderState());
   }
 
   void setEducationWeekSessionLocally({
@@ -238,6 +244,7 @@ class TodayTaskProvider extends ChangeNotifier {
       _lastEducationAt = lastEducationAt;
     }
     _notifyListenersSafely();
+    unawaited(_syncTodayTaskReminderState());
   }
 
   /// 로그아웃 등에서 상태 싹 초기화.
@@ -253,6 +260,15 @@ class TodayTaskProvider extends ChangeNotifier {
     _isLoading = false;
     _lastError = null;
     _notifyListenersSafely();
+  }
+
+  Future<void> _syncTodayTaskReminderState() {
+    return AlarmNotificationService.instance.syncTodayTaskInactivityReminder(
+      todayDate: _date,
+      diaryDone: _diaryDone,
+      relaxationDone: _relaxationDone,
+      lastEducationAt: _lastEducationAt,
+    );
   }
 
   // 기존 clear() 호출하는 코드가 있을 수 있으니 alias로 남겨두기

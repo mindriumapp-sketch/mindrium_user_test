@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
@@ -18,19 +19,24 @@ class _NotificationPreferencesScreenState
   static const Color _accentColor = Color(0xFF5B9FD3);
 
   bool _educationEnabled = true;
+  bool _todayTaskReminderEnabled = true;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadEducationPreference();
+    _loadPreferences();
   }
 
-  Future<void> _loadEducationPreference() async {
-    final enabled =
-        await AlarmNotificationService.instance.isEducationReminderEnabled();
+  Future<void> _loadPreferences() async {
+    final service = AlarmNotificationService.instance;
+    final educationEnabled = await service.isEducationReminderEnabled();
+    final todayTaskReminderEnabled = await service.isTodayTaskReminderEnabled();
     if (!mounted) return;
-    setState(() => _educationEnabled = enabled);
+    setState(() {
+      _educationEnabled = educationEnabled;
+      _todayTaskReminderEnabled = todayTaskReminderEnabled;
+    });
   }
 
   Future<void> _handleEducationToggle(bool value) async {
@@ -83,6 +89,58 @@ class _NotificationPreferencesScreenState
     }
   }
 
+  Future<void> _handleTodayTaskReminderToggle(bool value) async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    final todayTask = context.read<TodayTaskProvider>();
+    final service = AlarmNotificationService.instance;
+
+    if (value) {
+      await service.requestPermissions();
+      final status = await Permission.notification.request();
+      if (!status.isGranted) {
+        await service.setTodayTaskReminderEnabled(
+          false,
+          todayDate: todayTask.date,
+          diaryDone: todayTask.diaryDone,
+          relaxationDone: todayTask.relaxationDone,
+          lastEducationAt: todayTask.lastEducationAt,
+        );
+        if (!mounted) return;
+        setState(() {
+          _todayTaskReminderEnabled = false;
+          _isSaving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('미수행 알림을 받으려면 알림 권한이 필요해요.')),
+        );
+        return;
+      }
+    }
+
+    await service.setTodayTaskReminderEnabled(
+      value,
+      todayDate: todayTask.date,
+      diaryDone: todayTask.diaryDone,
+      relaxationDone: todayTask.relaxationDone,
+      lastEducationAt: todayTask.lastEducationAt,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _todayTaskReminderEnabled = value;
+      _isSaving = false;
+    });
+
+    if (value) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('오늘의 할 일을 2일 넘게 쉬면 3일째 저녁에 알려드릴게요.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +148,7 @@ class _NotificationPreferencesScreenState
       backgroundColor: Colors.transparent,
       appBar: const CustomAppBar(
         title: '리마인더',
-        showHome: false,
+        showHome: true,
         confirmOnBack: false,
         confirmOnHome: false,
         centerTitle: true,
@@ -165,7 +223,7 @@ class _NotificationPreferencesScreenState
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 4),
                           child: Text(
-                            '이번 주 교육을 아직 완료하지 않으면 화·목·일 저녁에 알려드려요.',
+                            '교육 미완료 알림과 오늘의 할 일 미수행 알림을 설정할 수 있어요.',
                             style: TextStyle(
                               fontSize: 13.5,
                               height: 1.45,
@@ -181,6 +239,15 @@ class _NotificationPreferencesScreenState
                           value: _educationEnabled,
                           accentColor: _accentColor,
                           onChanged: _isSaving ? null : _handleEducationToggle,
+                        ),
+                        const SizedBox(height: 10),
+                        _NotificationPreferenceRow(
+                          icon: Icons.event_note_rounded,
+                          title: '오늘의 할 일 알림',
+                          value: _todayTaskReminderEnabled,
+                          accentColor: _accentColor,
+                          onChanged:
+                              _isSaving ? null : _handleTodayTaskReminderToggle,
                         ),
                       ],
                     ),

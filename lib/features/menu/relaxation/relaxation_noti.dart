@@ -4,13 +4,15 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:rive/rive.dart' as rive;
 import 'package:gad_app_team/common/constants.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 
-import 'relaxation_logger.dart';  // 분리한 로거
+import 'relaxation_logger.dart'; // 분리한 로거
 import 'relaxation_education.dart' show relaxationTitleForWeek;
 
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:provider/provider.dart';
 
 /// 위치/시간 재생 화면 상단 타이틀
 /// - weekNumber가 있으면: 그 주차 이완 타이틀 그대로 사용 (숙제 위치/시간)
@@ -24,19 +26,17 @@ String notiTitle(String taskId, int? weekNumber) {
   return '이완 활동';
 }
 
-
 // 초기 싱크 보정
 const Duration _kInitialAudioDelay = Duration(milliseconds: 0);
 // 중간 자동 저장 주기
 const Duration _kAutosaveInterval = Duration(seconds: 30);
 
-
 class NotiPlayer extends StatefulWidget {
   final String taskId;
   final int? weekNumber;
-  final String? mp3Asset;    // 예: 'week1.mp3'
-  final String? riveAsset;   // 예: 'week1.riv'
-  final String nextPage;    // ✅ 다음 라우트 이름(그대로 사용)
+  final String? mp3Asset; // 예: 'week1.mp3'
+  final String? riveAsset; // 예: 'week1.riv'
+  final String nextPage; // ✅ 다음 라우트 이름(그대로 사용)
 
   const NotiPlayer({
     super.key,
@@ -51,12 +51,11 @@ class NotiPlayer extends StatefulWidget {
   State<NotiPlayer> createState() => _NotiPlayerState();
 }
 
-class _NotiPlayerState extends State<NotiPlayer>
-    with WidgetsBindingObserver {
+class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
   // Rive 0.14
   late final rive.FileLoader _fileLoader = rive.FileLoader.fromAsset(
-      'assets/relaxation/${widget.riveAsset}',
-      riveFactory: rive.Factory.rive
+    'assets/relaxation/${widget.riveAsset}',
+    riveFactory: rive.Factory.rive,
   );
 
   rive.RiveWidgetController? _riveController;
@@ -73,7 +72,7 @@ class _NotiPlayerState extends State<NotiPlayer>
   Timer? _autosaveTimer;
   bool _audioStartedOnce = false;
 
-// ✅ 현재 활성 상태가 시작된 시점
+  // ✅ 현재 활성 상태가 시작된 시점
   DateTime? _lastActivityTime;
 
   @override
@@ -92,7 +91,6 @@ class _NotiPlayerState extends State<NotiPlayer>
 
     _startAutosaveTimer();
   }
-
 
   void _startAutosaveTimer() {
     _autosaveTimer?.cancel();
@@ -187,6 +185,10 @@ class _NotiPlayerState extends State<NotiPlayer>
       await _saveOnce(reason: 'complete');
       if (!mounted) return;
 
+      context.read<TodayTaskProvider>().setTodayTaskLocally(
+        relaxationDone: true,
+      );
+
       // 🔹 현재 라우트 args에서 beforeSud / sudId 있으면 같이 넘김
       final currentArgs = ModalRoute.of(context)?.settings.arguments;
 
@@ -212,12 +214,11 @@ class _NotiPlayerState extends State<NotiPlayer>
       Navigator.pushNamedAndRemoveUntil(
         context,
         widget.nextPage,
-            (_) => false,
+        (_) => false,
         arguments: nextArgs,
       );
     }
   }
-
 
   @override
   void dispose() {
@@ -263,7 +264,8 @@ class _NotiPlayerState extends State<NotiPlayer>
                       if (_riveController == null) {
                         _riveController = rive.RiveWidgetController(
                           state.file,
-                          stateMachineSelector: rive.StateMachineSelector.byName('State Machine 1'),
+                          stateMachineSelector: rive
+                              .StateMachineSelector.byName('State Machine 1'),
                           // artboardSelector: rive.ArtboardSelector.byName('Main'), // 필요 시
                         );
 
@@ -306,7 +308,11 @@ class _NotiPlayerState extends State<NotiPlayer>
                       color: Colors.black.withValues(alpha: 0.6),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.play_arrow, color: Colors.white, size: 64),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 64,
+                    ),
                   ),
                 ),
             ],

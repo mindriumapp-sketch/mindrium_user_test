@@ -23,9 +23,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _login() async {
@@ -58,15 +58,16 @@ class _LoginScreenState extends State<LoginScreen> {
       // 2) 유저 정보 + 진행도 로딩 (/users/me + /users/me/progress)
       await userProvider.loadUserData(dayCounter: dayCounter);
 
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('uid', userProvider.userId);
+
       // 3) 오늘의 할 일 로딩 ( /users/me/todaytask )
       await todayTaskProvider.loadTodayTask();
       // 4) 현재 주차 세션 완료 상태 선동기화(교육 탭 플리커 방지)
       await todayTaskProvider.syncEducationWeekStatus(userProvider.currentWeek);
 
       // 5) SharedPreferences (기존 로직 유지)
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('uid', userProvider.userId);
       await prefs.setString(
         'email',
         userProvider.userEmail.isNotEmpty ? userProvider.userEmail : email,

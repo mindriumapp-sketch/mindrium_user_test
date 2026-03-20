@@ -232,8 +232,15 @@ class AlarmNotificationService {
   static const String storageKey = 'mindrium_alarm_settings_v1';
   static const String educationPreferenceKey =
       'settings_notifications_education_enabled';
+  static const String todayTaskReminderPreferenceKey =
+      'settings_notifications_today_task_enabled';
   static const String _channelId = 'mindrium_alarm_channel';
   static const String _educationChannelId = 'mindrium_education_channel';
+  static const String _todayTaskChannelId = 'mindrium_today_task_channel';
+  static const String _todayTaskLastActiveDateKeyPrefix =
+      'today_task_last_active_date_v1';
+  static const int _todayTaskReminderHour = 19;
+  static const int _todayTaskReminderMinute = 30;
   static const List<_EducationReminderSlot> _educationReminderSlots = [
     _EducationReminderSlot(weekday: DateTime.tuesday, hour: 19, minute: 30),
     _EducationReminderSlot(weekday: DateTime.thursday, hour: 19, minute: 30),
@@ -310,6 +317,21 @@ class AlarmNotificationService {
         >()
         ?.createNotificationChannel(educationChannel);
 
+    const todayTaskChannel = AndroidNotificationChannel(
+      _todayTaskChannelId,
+      'Mindrium Today Task',
+      description: '오늘의 할 일을 오래 비웠을 때 보내는 리마인더',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(todayTaskChannel);
+
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp ?? false) {
       _handleNotificationTapPayload(
@@ -374,6 +396,9 @@ class AlarmNotificationService {
     if (action == 'open_education') {
       return _tryNavigateToEducationHome();
     }
+    if (action == 'open_home' || action == 'open_today_task') {
+      return _tryNavigateHome();
+    }
     if (action == 'start_apply' || action == 'apply') {
       return _tryNavigateToApplyFlow(payload);
     }
@@ -425,12 +450,23 @@ class AlarmNotificationService {
     return true;
   }
 
+  bool _tryNavigateHome() {
+    final navigator = appNavigatorKey.currentState;
+    if (navigator == null) return false;
+    navigator.pushNamedAndRemoveUntil('/home', (route) => false);
+    return true;
+  }
+
   String _buildTapPayload(String alarmId) {
     return jsonEncode({'action': 'start_apply', 'alarm_id': alarmId});
   }
 
   String _buildEducationTapPayload() {
     return jsonEncode({'action': 'open_education'});
+  }
+
+  String _buildTodayTaskTapPayload() {
+    return jsonEncode({'action': 'open_home'});
   }
 
   Future<bool> requestLocationPermission() async {
@@ -489,6 +525,11 @@ class AlarmNotificationService {
     return prefs.getBool(educationPreferenceKey) ?? true;
   }
 
+  Future<bool> isTodayTaskReminderEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(todayTaskReminderPreferenceKey) ?? false;
+  }
+
   Future<void> setEducationReminderEnabled(
     bool enabled, {
     required int currentWeek,
@@ -507,6 +548,29 @@ class AlarmNotificationService {
       currentWeek: currentWeek,
       lastCompletedWeek: lastCompletedWeek,
       lastCompletedAt: lastCompletedAt,
+    );
+  }
+
+  Future<void> setTodayTaskReminderEnabled(
+    bool enabled, {
+    required DateTime? todayDate,
+    required bool diaryDone,
+    required bool relaxationDone,
+    DateTime? lastEducationAt,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(todayTaskReminderPreferenceKey, enabled);
+
+    if (!enabled) {
+      await cancelTodayTaskInactivityReminder();
+      return;
+    }
+
+    await syncTodayTaskInactivityReminder(
+      todayDate: todayDate,
+      diaryDone: diaryDone,
+      relaxationDone: relaxationDone,
+      lastEducationAt: lastEducationAt,
     );
   }
 
@@ -574,6 +638,74 @@ class AlarmNotificationService {
   Future<void> cancelEducationReminders() async {
     await initialize();
     await _cancelEducationReminderSchedules();
+  }
+
+  Future<void> syncTodayTaskInactivityReminder({
+    required DateTime? todayDate,
+    required bool diaryDone,
+    required bool relaxationDone,
+    DateTime? lastEducationAt,
+  }) async {
+    await initialize();
+    await _cancelTodayTaskInactivitySchedule();
+
+    if (!await isTodayTaskReminderEnabled()) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final storageKey = _todayTaskLastActiveDateKey(prefs);
+    final referenceDate = _normalizeKstDate(todayDate ?? _currentKstDate());
+    final performedToday =
+        diaryDone ||
+        relaxationDone ||
+        _isSameKstDateInSeoul(lastEducationAt, referenceDate);
+
+    final storedLastActive = _decodeStoredDate(prefs.getString(storageKey));
+    final lastActiveDate =
+        performedToday ? referenceDate : (storedLastActive ?? referenceDate);
+
+    await prefs.setString(storageKey, _encodeStoredDate(lastActiveDate));
+
+    final scheduled = _nextTodayTaskReminderInstance(
+      lastActiveDate: lastActiveDate,
+    );
+
+    await _plugin.zonedSchedule(
+      _todayTaskNotificationId,
+      '오늘의 할 일 리마인더',
+      '오늘의 할 일을 2일 넘게 쉬고 있어요. 가볍게 다시 시작해볼까요?',
+      scheduled,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _todayTaskChannelId,
+          'Mindrium Today Task',
+          channelDescription: '오늘의 할 일을 오래 비웠을 때 보내는 리마인더',
+          importance: Importance.high,
+          priority: Priority.high,
+          category: AndroidNotificationCategory.reminder,
+          enableVibration: true,
+          playSound: true,
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+        macOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: _buildTodayTaskTapPayload(),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+  }
+
+  Future<void> cancelTodayTaskInactivityReminder() async {
+    await initialize();
+    await _cancelTodayTaskInactivitySchedule();
   }
 
   Future<void> syncAlarms(
@@ -699,6 +831,10 @@ class AlarmNotificationService {
     for (final slot in _educationReminderSlots) {
       await _plugin.cancel(_educationNotificationId(slot.weekday));
     }
+  }
+
+  Future<void> _cancelTodayTaskInactivitySchedule() async {
+    await _plugin.cancel(_todayTaskNotificationId);
   }
 
   Future<void> _syncLocationGeofences(List<AlarmSetting> alarms) async {
@@ -859,6 +995,83 @@ class AlarmNotificationService {
     return scheduled;
   }
 
+  tz.TZDateTime _nextTodayTaskReminderInstance({
+    required DateTime lastActiveDate,
+  }) {
+    final now = tz.TZDateTime.now(tz.local);
+    final thresholdDate = _normalizeKstDate(
+      lastActiveDate.add(const Duration(days: 3)),
+    );
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      thresholdDate.year,
+      thresholdDate.month,
+      thresholdDate.day,
+      _todayTaskReminderHour,
+      _todayTaskReminderMinute,
+    );
+
+    if (scheduled.isAfter(now)) {
+      return scheduled;
+    }
+
+    scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      _todayTaskReminderHour,
+      _todayTaskReminderMinute,
+    );
+    if (!scheduled.isAfter(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
+  }
+
+  DateTime _currentKstDate() {
+    final nowKst = DateTime.now().toUtc().add(const Duration(hours: 9));
+    return DateTime(nowKst.year, nowKst.month, nowKst.day);
+  }
+
+  DateTime _normalizeKstDate(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  bool _isSameKstDateInSeoul(DateTime? timestamp, DateTime referenceDate) {
+    if (timestamp == null) return false;
+    final targetKst = timestamp.toUtc().add(const Duration(hours: 9));
+    return targetKst.year == referenceDate.year &&
+        targetKst.month == referenceDate.month &&
+        targetKst.day == referenceDate.day;
+  }
+
+  String _todayTaskLastActiveDateKey(SharedPreferences prefs) {
+    final uid = prefs.getString('uid')?.trim();
+    if (uid == null || uid.isEmpty) {
+      return _todayTaskLastActiveDateKeyPrefix;
+    }
+    return '${_todayTaskLastActiveDateKeyPrefix}_$uid';
+  }
+
+  String _encodeStoredDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  DateTime? _decodeStoredDate(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final parts = raw.split('-');
+    if (parts.length != 3) return null;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (year == null || month == null || day == null) return null;
+    return DateTime(year, month, day);
+  }
+
   void _setBestEffortLocalLocation() {
     final timezoneName = DateTime.now().timeZoneName;
 
@@ -899,6 +1112,7 @@ class AlarmNotificationService {
   }
 
   int _educationNotificationId(int weekday) => 7000000 + weekday;
+  static const int _todayTaskNotificationId = 7100001;
 
   static int _compareAlarm(AlarmSetting a, AlarmSetting b) {
     final aMinutes = a.hour * 60 + a.minute;

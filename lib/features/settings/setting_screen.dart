@@ -1,5 +1,6 @@
 // 환경설정 화면: 앱 설정, 고객지원, 서비스 정보, 계정
 import 'package:flutter/material.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
 import 'package:gad_app_team/features/settings/notification_preferences_screen.dart';
@@ -45,23 +46,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text(
-          '설정',
-          style: TextStyle(
-            color: Color(0xFF1E2F3F),
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Noto Sans KR',
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          color: const Color(0xFF1E2F3F),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: CustomAppBar(
+        title: '설정',
+        confirmOnBack: false,
+        confirmOnHome: false,
       ),
       body: Stack(
         fit: StackFit.expand,

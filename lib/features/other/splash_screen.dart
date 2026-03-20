@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
@@ -40,6 +41,8 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       // 1) /users/me + /users/me/progress + value-goal + dayCounter 세팅
       await userProvider.loadUserData(dayCounter: dayCounter);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('uid', userProvider.userId);
       // 2) 오늘의 할 일 초기 로딩
       await todayTaskProvider.loadTodayTask();
       // 3) 현재 주차의 CBT/이완 세션 완료 상태 선동기화(교육 탭 플리커 방지)
