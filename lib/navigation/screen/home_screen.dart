@@ -608,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final assets = _resolveRelaxationAssets(weekNumber);
 
           navigator.pushNamed(
-            '/relaxation_noti',
+            '/relaxation_education',
             arguments: {
               'taskId': taskId,
               'weekNumber': weekNumber,

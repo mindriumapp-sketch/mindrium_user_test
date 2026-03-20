@@ -1,7 +1,7 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
 
-/// 하단 네비게이션 바 커스텀 위젯 (위쪽 둥근 모서리 적용)
+/// 하단 네비게이션 바 커스텀 위젯
 class CustomNavigationBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
@@ -14,6 +14,8 @@ class CustomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+
     const items = [
       _NavItemData(icon: Icons.home, label: '홈'),
       _NavItemData(icon: Icons.school, label: '교육'),
@@ -23,15 +25,19 @@ class CustomNavigationBar extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 104,
+      height: 104 + bottomInset,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
         children: [
-          // 기본 바 영역
-          Positioned.fill(
-            top: 22,
+          // 1) 기본 바 영역
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 82 + bottomInset,
             child: Container(
+              padding: EdgeInsets.only(bottom: bottomInset),
               decoration: BoxDecoration(
                 color: AppColors.grey100,
                 borderRadius: const BorderRadius.only(
@@ -49,10 +55,12 @@ class CustomNavigationBar extends StatelessWidget {
             ),
           ),
 
-          // 탭 아이템들
-          Positioned.fill(
+          // 2) 탭 아이템들
+          Positioned(
+            left: 0,
+            right: 0,
             top: 22,
-            bottom: 4,
+            bottom: bottomInset + 4,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: List.generate(items.length, (index) {
@@ -132,7 +140,7 @@ class _NavBarItem extends StatelessWidget {
                         height: 1.2,
                         color: centerLabelColor,
                         fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
                   ),
