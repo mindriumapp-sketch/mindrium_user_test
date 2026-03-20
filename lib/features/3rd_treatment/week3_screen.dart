@@ -94,9 +94,9 @@ class _Week3ScreenState extends State<Week3Screen> {
     // 👉 UI/분기는 기존이랑 동일하게 유지
     return SessionStartScreen(
       weekNumber: 3,
-      weekTitle: '자기 대화(Self Talk) 기법을 익혀보겠습니다.',
+      weekTitle: '불안에 도움이 되는 생각을\n알아보겠습니다.',
       weekDescription:
-          '이번 주차에서는 부정적인 자기 대화를 긍정적으로 바꾸는 방법을 배워보겠습니다. 성인 여성의 상황을 예시로 살펴볼게요.',
+          '이번 주차에서는 어떤 생각이 불안에 도움 되는지를 배워보겠습니다. 성인 여성의 상황을 예시로 살펴볼게요.',
       nextPageBuilder: () => Week3BeliefScreen(sessionId: _sessionId),
     );
   }

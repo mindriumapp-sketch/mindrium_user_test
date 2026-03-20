@@ -232,7 +232,7 @@ class _GuidePage extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     protectKoreanWords(description),
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.left,
                     style: TextStyle(
                       color: navy.withValues(alpha: 0.9),
                       fontSize: 14,

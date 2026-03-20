@@ -19,9 +19,9 @@ class _Week4ScreenState extends State<Week4Screen> {
 
     return SessionStartScreen(
       weekNumber: 4,
-      weekTitle: '인지 왜곡을 찾아보겠습니다.',
+      weekTitle: '걱정일기 속 생각을 점검해보겠습니다.',
       weekDescription:
-          '이번 주차에서는 걱정일기를 통해 부정적인 사고 패턴인 인지 왜곡을 찾아보겠습니다. 작성하신 걱정일기의 내용을 살펴볼게요.',
+          '이번 주차에서는 내 생각을 점검하고 불안에 도움이 되도록 바꿔보겠습니다. 작성하신 걱정일기의 내용을 살펴볼게요.',
       nextPageBuilder:
           () => Week4AbcScreen(abcId: abcId, loopCount: widget.loopCount),
     );
