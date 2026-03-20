@@ -7,7 +7,7 @@ load_dotenv()
 
 # 환경 변수에서만 로드 (기본값 제거로 보안 강화)
 class Settings(BaseModel):
-    mongo_uri: str = os.getenv("MONGO_URI", "mongodb://115.145.134.180:9013/")
+    mongo_uri: str = os.getenv("MONGO_URI", "mongodb://115.145.134.180:8063/")
     mongo_db: str = os.getenv("DB_NAME", "flutter_test")
     jwt_secret: str = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
     jwt_refresh_secret: str = os.getenv("JWT_REFRESH_SECRET", "dev-refresh-secret-change-in-production")
