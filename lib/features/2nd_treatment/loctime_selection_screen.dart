@@ -7,6 +7,8 @@ import 'package:latlong2/latlong.dart';
 
 import 'package:gad_app_team/widgets/map_picker.dart';
 import 'package:gad_app_team/widgets/abc_chips_design.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/widgets/loctime_selection_ui.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart'
     show AbcGroupAddScreen;
 
@@ -14,6 +16,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
+import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -33,6 +36,7 @@ class LocTimeSelectionScreen extends StatefulWidget {
   final List<AbcChip> behaviorChips;
   final bool locationConsent;
   final bool autoOpenMapOnEntry;
+  final bool autoNavigateGroupOnEntry;
 
   const LocTimeSelectionScreen({
     super.key,
@@ -51,15 +55,14 @@ class LocTimeSelectionScreen extends StatefulWidget {
     this.behaviorChips = const [],
     this.locationConsent = true,
     this.autoOpenMapOnEntry = false,
+    this.autoNavigateGroupOnEntry = false,
   });
 
   @override
-  State<LocTimeSelectionScreen> createState() =>
-      _LocTimeSelectionScreenState();
+  State<LocTimeSelectionScreen> createState() => _LocTimeSelectionScreenState();
 }
 
-class _LocTimeSelectionScreenState
-    extends State<LocTimeSelectionScreen> {
+class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
@@ -76,6 +79,7 @@ class _LocTimeSelectionScreenState
   bool _noLocTime = false;
   bool _isSaving = false; // 저장 중 상태
   bool _openedLocationPickerOnEntry = false;
+  bool _openedGroupScreenOnEntry = false;
 
   String? _resolveDiaryRoute() {
     final route = widget.diaryRoute?.trim();
@@ -107,8 +111,8 @@ class _LocTimeSelectionScreenState
         locTime['location_label']?.toString() ??
         locTime['location']?.toString() ??
         locTime['location_desc']?.toString();
-    final description = locTime['location_desc']?.toString() ??
-        locTime['location']?.toString();
+    final description =
+        locTime['location_desc']?.toString() ?? locTime['location']?.toString();
 
     return LocTimeSetting(
       id: locTime['id']?.toString() ?? locTime['alarm_id']?.toString(),
@@ -130,22 +134,25 @@ class _LocTimeSelectionScreenState
   Map<String, dynamic> _locTimePayload(LocTimeSetting setting) {
     final locationLabel = setting.location?.trim();
     final locationDesc = setting.description?.trim();
-    final resolvedLocation = (locationLabel != null && locationLabel.isNotEmpty)
-        ? locationLabel
-        : locationDesc;
+    final resolvedLocation =
+        (locationLabel != null && locationLabel.isNotEmpty)
+            ? locationLabel
+            : locationDesc;
 
     final map = <String, dynamic>{
       'time':
-      setting.time == null
-          ? null
-          : '${setting.time!.hour.toString().padLeft(2, '0')}:${setting.time!.minute.toString().padLeft(2, '0')}',
+          setting.time == null
+              ? null
+              : '${setting.time!.hour.toString().padLeft(2, '0')}:${setting.time!.minute.toString().padLeft(2, '0')}',
       'location': resolvedLocation,
-      'location_label': (locationLabel != null && locationLabel.isNotEmpty)
-          ? locationLabel
-          : null,
-      'location_desc': (locationDesc != null && locationDesc.isNotEmpty)
-          ? locationDesc
-          : null,
+      'location_label':
+          (locationLabel != null && locationLabel.isNotEmpty)
+              ? locationLabel
+              : null,
+      'location_desc':
+          (locationDesc != null && locationDesc.isNotEmpty)
+              ? locationDesc
+              : null,
       'latitude': setting.latitude,
       'longitude': setting.longitude,
     };
@@ -175,6 +182,10 @@ class _LocTimeSelectionScreenState
       if (diaryId == null || diaryId.isEmpty) {
         final created = await _diariesApi.createDiary(
           activation: activationChip,
+          draftProgress:
+              _resolveDiaryRoute() == 'today_task'
+                  ? TodayTaskDraftProgress.diaryWritten
+                  : null,
           belief: belief,
           consequenceP: physical,
           consequenceE: emotion,
@@ -198,6 +209,10 @@ class _LocTimeSelectionScreenState
           if (e.response?.statusCode == 404) {
             final created = await _diariesApi.createDiary(
               activation: activationChip,
+              draftProgress:
+                  _resolveDiaryRoute() == 'today_task'
+                      ? TodayTaskDraftProgress.diaryWritten
+                      : null,
               belief: belief,
               consequenceP: physical,
               consequenceE: emotion,
@@ -230,6 +245,14 @@ class _LocTimeSelectionScreenState
       }
 
       _abcId = diaryId;
+      if (_resolveDiaryRoute() == 'today_task' && mounted) {
+        await syncTodayTaskDraftProgress(
+          context,
+          progress: TodayTaskDraftProgress.diaryWritten,
+          diariesApi: _diariesApi,
+          diaryId: diaryId,
+        );
+      }
       return diaryId;
     }
 
@@ -310,6 +333,7 @@ class _LocTimeSelectionScreenState
     _resolvedSudId = widget.sudId;
     unawaited(_loadExisting());
     _openLocationPickerOnEntryIfNeeded();
+    _openGroupScreenOnEntryIfNeeded();
   }
 
   /// 기존 위치/시간 설정을 불러와 초깃값으로 반영
@@ -337,7 +361,8 @@ class _LocTimeSelectionScreenState
 
       if (rawLocTime != null) {
         final base = _settingFromLocTime(rawLocTime);
-        final hasLocation = (base.location?.trim().isNotEmpty ?? false) ||
+        final hasLocation =
+            (base.location?.trim().isNotEmpty ?? false) ||
             (base.description?.trim().isNotEmpty ?? false);
         final hasTime = base.time != null;
 
@@ -350,10 +375,7 @@ class _LocTimeSelectionScreenState
           );
         }
         if (hasLocation) {
-          locationSetting = base.copyWith(
-            notifyEnter: true,
-            notifyExit: false,
-          );
+          locationSetting = base.copyWith(notifyEnter: true, notifyExit: false);
         }
       }
 
@@ -367,9 +389,9 @@ class _LocTimeSelectionScreenState
       });
     } on DioException catch (e) {
       final message =
-      e.response?.data is Map
-          ? e.response?.data['detail']?.toString()
-          : e.message;
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('위치/시간 정보를 불러오지 못했습니다: ${message ?? '오류'}')),
@@ -385,9 +407,6 @@ class _LocTimeSelectionScreenState
   }
 
   // ====== BottomSheets ======
-
-
-
 
   LocTimeSetting _buildDefaultTimeSetting() {
     final now = TimeOfDay.now();
@@ -433,13 +452,43 @@ class _LocTimeSelectionScreenState
   }
 
   void _openLocationPickerOnEntryIfNeeded() {
-    if (!widget.autoOpenMapOnEntry || !mounted || _openedLocationPickerOnEntry) {
+    if (!widget.autoOpenMapOnEntry ||
+        !mounted ||
+        _openedLocationPickerOnEntry) {
       return;
     }
     _openedLocationPickerOnEntry = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _showLocationSheet(saveAfterPick: true);
+    });
+  }
+
+  void _openGroupScreenOnEntryIfNeeded() {
+    if (!widget.autoNavigateGroupOnEntry ||
+        !mounted ||
+        _openedGroupScreenOnEntry) {
+      return;
+    }
+    _openedGroupScreenOnEntry = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final diaryId = _abcId?.trim();
+      if (diaryId == null || diaryId.isEmpty) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (_) => AbcGroupAddScreen(
+                origin: widget.origin ?? 'etc',
+                diaryRoute: _resolveDiaryRoute(),
+                diaryId: diaryId,
+                label: widget.label,
+                sessionId: widget.sessionId,
+                sudId: _resolvedSudId ?? widget.sudId,
+              ),
+        ),
+      );
     });
   }
 
@@ -454,12 +503,14 @@ class _LocTimeSelectionScreenState
 
     final setting = await Navigator.of(context).push<LocTimeSetting>(
       MaterialPageRoute(
-        builder: (_) => MapPicker(
-          initial: initialLatLng,
-          initialTime: _draftTime?.time ?? _draftLocation?.time,
-          enableLocationLabel: true,
-          initialLocationLabel: _draftLocation?.location,
-        ),
+        builder:
+            (_) => MapPicker(
+              initial: initialLatLng,
+              initialTime: _draftTime?.time ?? _draftLocation?.time,
+              enableLocationLabel: true,
+              initialLocationLabel: _draftLocation?.location,
+              sheetInitialSize: 0.6,
+            ),
       ),
     );
 
@@ -518,7 +569,6 @@ class _LocTimeSelectionScreenState
 
   // ====== 도움말 ======
 
-
   // ====== 내부 상태 동기화 ======
 
   void _syncReminderMinutes() {
@@ -544,6 +594,38 @@ class _LocTimeSelectionScreenState
         weekdays: _selectedWeekdays.toList(),
       );
     }
+  }
+
+  void _updateDraftTime(TimeOfDay time) {
+    final reminderMinutes =
+        _draftTime?.reminderMinutes ??
+        _draftLocation?.reminderMinutes ??
+        _reminderDuration.inMinutes;
+
+    setState(() {
+      _draftTime = LocTimeSetting(
+        id: _draftTime?.id,
+        diaryId: _abcId,
+        time: time,
+        cause: widget.label,
+        repeatOption: _repeatOption,
+        weekdays: _selectedWeekdays.toList(),
+        reminderMinutes: reminderMinutes,
+        notifyEnter: false,
+        notifyExit: false,
+      );
+
+      if (_draftLocation != null) {
+        _draftLocation = _draftLocation!.copyWith(
+          time: time,
+          repeatOption: _repeatOption,
+          weekdays: _selectedWeekdays.toList(),
+          reminderMinutes: reminderMinutes,
+        );
+      }
+
+      _noLocTime = false;
+    });
   }
 
   // ====== 저장 버튼 ======
@@ -577,7 +659,7 @@ class _LocTimeSelectionScreenState
       });
       debugPrint(
         '🟢 일기 위치 백그라운드 업데이트 완료: $diaryId '
-            '(lat=${pos.latitude}, lng=${pos.longitude}, addr=$addressKo)',
+        '(lat=${pos.latitude}, lng=${pos.longitude}, addr=$addressKo)',
       );
     } catch (e, st) {
       debugPrint('⚠️ 일기 위치 백그라운드 업데이트 실패: $e\n$st');
@@ -600,6 +682,14 @@ class _LocTimeSelectionScreenState
       if (_noLocTime) {
         debugPrint('🟡 위치/시간 안 받을래요 선택됨');
         await _diariesApi.deleteLocTime(resolvedDiaryId);
+        if (_resolveDiaryRoute() == 'today_task' && mounted) {
+          await syncTodayTaskDraftProgress(
+            context,
+            progress: TodayTaskDraftProgress.locTimeRecorded,
+            diariesApi: _diariesApi,
+            diaryId: resolvedDiaryId,
+          );
+        }
 
         if (!mounted) return;
         debugPrint('🟢 위치/시간 없음 처리 완료');
@@ -625,7 +715,8 @@ class _LocTimeSelectionScreenState
             _draftLocation!.notifyEnter || _draftLocation!.notifyExit;
         merged = _draftLocation!.copyWith(
           time: _draftTime?.time ?? _draftLocation!.time,
-          repeatOption: _draftTime?.repeatOption ?? _draftLocation!.repeatOption,
+          repeatOption:
+              _draftTime?.repeatOption ?? _draftLocation!.repeatOption,
           weekdays: _draftTime?.weekdays ?? _draftLocation!.weekdays,
           reminderMinutes:
               _draftLocation!.reminderMinutes ?? _draftTime?.reminderMinutes,
@@ -653,22 +744,33 @@ class _LocTimeSelectionScreenState
           'diaryId': resolvedDiaryId,
         });
 
-        _draftTime = updated.time != null
-            ? updated.copyWith(
-                location: null,
-                description: null,
-                notifyEnter: false,
-                notifyExit: false,
-              )
-            : null;
-        final hasLocation = (updated.location?.trim().isNotEmpty ?? false) ||
+        _draftTime =
+            updated.time != null
+                ? updated.copyWith(
+                  location: null,
+                  description: null,
+                  notifyEnter: false,
+                  notifyExit: false,
+                )
+                : null;
+        final hasLocation =
+            (updated.location?.trim().isNotEmpty ?? false) ||
             (updated.description?.trim().isNotEmpty ?? false);
-        _draftLocation = hasLocation
-            ? updated.copyWith(notifyEnter: true, notifyExit: false)
-            : null;
+        _draftLocation =
+            hasLocation
+                ? updated.copyWith(notifyEnter: true, notifyExit: false)
+                : null;
       }
 
       debugPrint('🟢 위치/시간 설정 완료');
+      if (_resolveDiaryRoute() == 'today_task' && mounted) {
+        await syncTodayTaskDraftProgress(
+          context,
+          progress: TodayTaskDraftProgress.locTimeRecorded,
+          diariesApi: _diariesApi,
+          diaryId: resolvedDiaryId,
+        );
+      }
       _handlePostSaveNavigation(resolvedDiaryId);
     } on DioException catch (e, st) {
       debugPrint('위치/시간 저장 중 오류: $e\n$st');
@@ -714,18 +816,24 @@ class _LocTimeSelectionScreenState
   void _handlePostSaveNavigation(String diaryId) {
     if (!mounted) return;
     final resolvedDiaryRoute = _resolveDiaryRoute();
+    final route = MaterialPageRoute(
+      builder:
+          (_) => AbcGroupAddScreen(
+            origin: widget.origin ?? 'etc',
+            diaryRoute: resolvedDiaryRoute,
+            diaryId: diaryId,
+            label: widget.label,
+            sessionId: widget.sessionId,
+            sudId: _resolvedSudId ?? widget.sudId,
+          ),
+    );
+    if (resolvedDiaryRoute == 'today_task') {
+      Navigator.push(context, route);
+      return;
+    }
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) => AbcGroupAddScreen(
-          origin: widget.origin ?? 'etc',
-          diaryRoute: resolvedDiaryRoute,
-          diaryId: diaryId,
-          label: widget.label,
-          sessionId: widget.sessionId,
-          sudId: _resolvedSudId ?? widget.sudId,
-        ),
-      ),
+      route,
     );
   }
 
@@ -733,13 +841,67 @@ class _LocTimeSelectionScreenState
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
-      body: SizedBox.shrink(),
+      appBar: const CustomAppBar(title: '위치/시간 설정'),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Opacity(
+            opacity: 0.35,
+            child: Image.asset(
+              'assets/image/eduhome.png',
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: LocTimeSelectionUI(
+                      label: widget.label,
+                      draftTime: _draftTime,
+                      draftLocation: _draftLocation,
+                      noLocTime: _noLocTime,
+                      repeatOption: _repeatOption,
+                      selectedWeekdays: _selectedWeekdays,
+                      reminderDuration: _reminderDuration,
+                      onTapTime: () {},
+                      onTapLocation: () {
+                        _showLocationSheet();
+                      },
+                      onTapRepeat: () {},
+                      onTapReminder: () {},
+                      onToggleNone: (value) {
+                        setState(() {
+                          _noLocTime = value;
+                        });
+                      },
+                      showInlineTimePicker: true,
+                      onInlineTimeChanged: _updateDraftTime,
+                      onSave: _onSavePressed,
+                      showReminderOption: false,
+                      showDisableLocTimeOption: false,
+                      showRepeatOption: false,
+                    ),
+                  ),
+                  if (_isSaving)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: CircularProgressIndicator(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
-
-
 
   // 📍 위치 + 동의 + 타임아웃까지 한 번에 처리하는 헬퍼
   double? _readDouble(dynamic raw) {
@@ -797,13 +959,14 @@ class _LocTimeSelectionScreenState
         return t.isEmpty ? null : t;
       }
 
-      final chunks = <String?>[
-        clean(p.administrativeArea), // 시/도
-        clean(p.locality),           // 시/군/구
-        clean(p.subLocality),
-        clean(p.thoroughfare),
-        clean(p.subThoroughfare),
-      ].whereType<String>().toList();
+      final chunks =
+          <String?>[
+            clean(p.administrativeArea), // 시/도
+            clean(p.locality), // 시/군/구
+            clean(p.subLocality),
+            clean(p.thoroughfare),
+            clean(p.subThoroughfare),
+          ].whereType<String>().toList();
 
       if (chunks.isEmpty) return null;
       return chunks.join(' ');

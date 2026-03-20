@@ -8,13 +8,13 @@ class DiariesApi {
 
   /// 공통: body에 client_timestamp 붙이는 헬퍼
   Map<String, dynamic> _withClientTimestamp(
-      Map<String, dynamic> body, {
-        DateTime? clientTimestamp,
-      }) {
+    Map<String, dynamic> body, {
+    DateTime? clientTimestamp,
+  }) {
     return {
       ...body,
       'client_timestamp':
-      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
+          (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
     };
   }
 
@@ -34,11 +34,12 @@ class DiariesApi {
 
   Future<Map<String, dynamic>> createDiary({
     Object? groupId, // int든 String이든 허용
-    required Map<String, dynamic> activation,            // DiaryChip 구조
-    List<Map<String, dynamic>> belief = const [],        // List<DiaryChip>
-    List<Map<String, dynamic>> consequenceP = const [],  // List<DiaryChip>
-    List<Map<String, dynamic>> consequenceE = const [],  // List<DiaryChip>
-    List<Map<String, dynamic>> consequenceB = const [],  // List<DiaryChip>
+    required Map<String, dynamic> activation, // DiaryChip 구조
+    int? draftProgress,
+    List<Map<String, dynamic>> belief = const [], // List<DiaryChip>
+    List<Map<String, dynamic>> consequenceP = const [], // List<DiaryChip>
+    List<Map<String, dynamic>> consequenceE = const [], // List<DiaryChip>
+    List<Map<String, dynamic>> consequenceB = const [], // List<DiaryChip>
     List<String> alternativeThoughts = const [],
     Map<String, dynamic>? locTime,
     String? route,
@@ -50,6 +51,7 @@ class DiariesApi {
     final base = <String, dynamic>{
       if (groupId != null) 'group_id': groupId,
       'activation': activation,
+      if (draftProgress != null) 'draft_progress': draftProgress,
       'belief': belief,
       'consequence_physical': consequenceP,
       'consequence_emotion': consequenceE,
@@ -79,9 +81,7 @@ class DiariesApi {
   Future<List<Map<String, dynamic>>> listDiaries({Object? groupId}) async {
     final res = await _client.dio.get(
       '/diaries',
-      queryParameters: {
-        if (groupId != null) 'group_id': groupId,
-      },
+      queryParameters: {if (groupId != null) 'group_id': groupId},
     );
     final data = res.data;
     if (data is List) {
@@ -102,9 +102,7 @@ class DiariesApi {
   }) async {
     final res = await _client.dio.get(
       '/diaries/summaries',
-      queryParameters: {
-        if (groupId != null) 'group_id': groupId,
-      },
+      queryParameters: {if (groupId != null) 'group_id': groupId},
     );
     final data = res.data;
     if (data is List) {
@@ -132,9 +130,7 @@ class DiariesApi {
   Future<Map<String, dynamic>> getLatestDiary({Object? groupId}) async {
     final res = await _client.dio.get(
       '/diaries/latest',
-      queryParameters: {
-        if (groupId != null) 'group_id': groupId,
-      },
+      queryParameters: {if (groupId != null) 'group_id': groupId},
     );
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -144,13 +140,35 @@ class DiariesApi {
     );
   }
 
+  Future<Map<String, dynamic>?> getLatestTodayTaskDraft() async {
+    try {
+      final res = await _client.dio.get('/diaries/today-task/latest-draft');
+      final data = res.data;
+      if (data == null) return null;
+      if (data is Map<String, dynamic>) return data;
+      throw DioException(
+        requestOptions: res.requestOptions,
+        message: 'Invalid /diaries/today-task/latest-draft response',
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> deleteTodayTaskDraft(String diaryId) async {
+    await _client.dio.delete('/diaries/$diaryId/draft');
+  }
+
   /// updateDiary는 body를 그대로 넘기되, client_timestamp만 자동으로 붙여줌.
   /// body는 백엔드 DiaryUpdate(schema)에 맞는 형태여야 함.
   Future<Map<String, dynamic>> updateDiary(
-      String diaryId,
-      Map<String, dynamic> body, {
-        DateTime? clientTimestamp,
-      }) async {
+    String diaryId,
+    Map<String, dynamic> body, {
+    DateTime? clientTimestamp,
+  }) async {
     final payload = _withClientTimestamp(
       body,
       clientTimestamp: clientTimestamp,
@@ -173,10 +191,11 @@ class DiariesApi {
       return data.map((k, v) => MapEntry(k.toString(), v));
     }
     if (data is List) {
-      final mapped = data
-          .whereType<Map>()
-          .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
-          .toList();
+      final mapped =
+          data
+              .whereType<Map>()
+              .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
+              .toList();
       return mapped.isEmpty ? null : mapped.last.cast<String, dynamic>();
     }
     throw DioException(
@@ -186,16 +205,19 @@ class DiariesApi {
   }
 
   Future<Map<String, dynamic>> upsertLocTime(
-      String diaryId,
-      Map<String, dynamic> body, {
-        DateTime? clientTimestamp,
-      }) async {
+    String diaryId,
+    Map<String, dynamic> body, {
+    DateTime? clientTimestamp,
+  }) async {
     final payload = _withClientTimestamp(
       body,
       clientTimestamp: clientTimestamp,
     );
 
-    final res = await _client.dio.put('/diaries/$diaryId/loc_time', data: payload);
+    final res = await _client.dio.put(
+      '/diaries/$diaryId/loc_time',
+      data: payload,
+    );
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
@@ -205,18 +227,15 @@ class DiariesApi {
   }
 
   Future<void> deleteLocTime(
-      String diaryId, {
-        DateTime? clientTimestamp,
-      }) async {
+    String diaryId, {
+    DateTime? clientTimestamp,
+  }) async {
     final payload = _withClientTimestamp(
       <String, dynamic>{},
       clientTimestamp: clientTimestamp,
     );
 
-    await _client.dio.delete(
-      '/diaries/$diaryId/loc_time',
-      data: payload,
-    );
+    await _client.dio.delete('/diaries/$diaryId/loc_time', data: payload);
   }
 
   // ---- Backward compatibility wrappers ----
@@ -230,25 +249,15 @@ class DiariesApi {
     String diaryId,
     Map<String, dynamic> body, {
     DateTime? clientTimestamp,
-  }) => upsertLocTime(
-    diaryId,
-    body,
-    clientTimestamp: clientTimestamp,
-  );
+  }) => upsertLocTime(diaryId, body, clientTimestamp: clientTimestamp);
 
   Future<Map<String, dynamic>> updateLocTime(
     String diaryId,
     String locTimeId,
     Map<String, dynamic> body, {
     DateTime? clientTimestamp,
-  }) => upsertLocTime(
-    diaryId,
-    body,
-    clientTimestamp: clientTimestamp,
-  );
+  }) => upsertLocTime(diaryId, body, clientTimestamp: clientTimestamp);
 
-  Future<void> deleteAllLocTime(
-    String diaryId, {
-    DateTime? clientTimestamp,
-  }) => deleteLocTime(diaryId, clientTimestamp: clientTimestamp);
+  Future<void> deleteAllLocTime(String diaryId, {DateTime? clientTimestamp}) =>
+      deleteLocTime(diaryId, clientTimestamp: clientTimestamp);
 }

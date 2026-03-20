@@ -53,6 +53,9 @@ class ApplyFlowRouteData {
 
   String? get groupId => flow.groupId ?? applyFlowString(args['groupId']);
 
+  int? get draftProgress =>
+      flow.draftProgress ?? applyFlowInt(args['draftProgress']);
+
   int? get beforeSud => flow.beforeSud ?? applyFlowInt(args['beforeSud']);
 
   String? get sudId => flow.sudId ?? applyFlowString(args['sudId']);

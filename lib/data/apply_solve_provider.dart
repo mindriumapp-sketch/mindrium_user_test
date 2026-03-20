@@ -18,6 +18,7 @@ class ApplyOrSolveFlow extends ChangeNotifier {
   String? _sessionId;
   String? _diaryId; // = abcId
   String? _groupId;
+  int? _draftProgress;
   int? _beforeSud;
   String? _sudId;
   dynamic _diary; // 'new' or diary summary map
@@ -36,6 +37,7 @@ class ApplyOrSolveFlow extends ChangeNotifier {
   String? get sessionId => _sessionId;
   String? get diaryId => _diaryId;
   String? get groupId => _groupId;
+  int? get draftProgress => _draftProgress;
   int? get beforeSud => _beforeSud;
   String? get sudId => _sudId;
   dynamic get diary => _diary;
@@ -80,8 +82,10 @@ class ApplyOrSolveFlow extends ChangeNotifier {
       );
     }
     if (override || _sessionId == null) {
-      setValue<String>(castValue<String>(args['sessionId']),
-          (v) => _sessionId = v);
+      setValue<String>(
+        castValue<String>(args['sessionId']),
+        (v) => _sessionId = v,
+      );
     }
     if (override || _diaryId == null) {
       setValue<String>(
@@ -96,8 +100,21 @@ class ApplyOrSolveFlow extends ChangeNotifier {
     }
     if (override || _groupId == null) {
       setValue<String>(
-          castValue<String>(args['groupId']) ?? asString(args['groupId']),
-          (v) => _groupId = v);
+        castValue<String>(args['groupId']) ?? asString(args['groupId']),
+        (v) => _groupId = v,
+      );
+    }
+    if (override || _draftProgress == null) {
+      final rawDraftProgress = args['draftProgress'];
+      int? draftProgress;
+      if (rawDraftProgress is int) {
+        draftProgress = rawDraftProgress;
+      } else if (rawDraftProgress is num) {
+        draftProgress = rawDraftProgress.toInt();
+      } else if (rawDraftProgress is String) {
+        draftProgress = int.tryParse(rawDraftProgress);
+      }
+      setValue<int>(draftProgress, (v) => _draftProgress = v);
     }
     if (override || _beforeSud == null) {
       final rawSud = args['beforeSud'];
@@ -113,8 +130,9 @@ class ApplyOrSolveFlow extends ChangeNotifier {
     }
     if (override || _sudId == null) {
       setValue<String>(
-          castValue<String>(args['sudId']) ?? asString(args['sudId']),
-          (v) => _sudId = v);
+        castValue<String>(args['sudId']) ?? asString(args['sudId']),
+        (v) => _sudId = v,
+      );
     }
     if (override || _diary == null) {
       if (args.containsKey('diary')) {
@@ -133,6 +151,7 @@ class ApplyOrSolveFlow extends ChangeNotifier {
       if (_sessionId != null) 'sessionId': _sessionId,
       if (_diaryId != null) 'abcId': _diaryId,
       if (_groupId != null) 'groupId': _groupId,
+      if (_draftProgress != null) 'draftProgress': _draftProgress,
       if (_beforeSud != null) 'beforeSud': _beforeSud,
       if (_sudId != null) 'sudId': _sudId,
     };
@@ -170,6 +189,12 @@ class ApplyOrSolveFlow extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDraftProgress(int? value) {
+    if (value == _draftProgress || value == null) return;
+    _draftProgress = value;
+    notifyListeners();
+  }
+
   void setBeforeSud(int? value) {
     if (value == _beforeSud || value == null) return;
     _beforeSud = value;
@@ -188,6 +213,7 @@ class ApplyOrSolveFlow extends ChangeNotifier {
     _sessionId = null;
     _diaryId = null;
     _groupId = null;
+    _draftProgress = null;
     _beforeSud = null;
     _sudId = null;
     _diary = null;

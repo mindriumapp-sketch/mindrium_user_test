@@ -17,6 +17,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
+import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 
 /// SUD(0‒10)을 입력받아 저장하고, 점수에 따라 후속 행동을 안내하는 화면
@@ -29,12 +30,14 @@ class BeforeSudRatingScreen extends StatefulWidget {
 }
 
 class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
+  static const String _todayTaskDraftActivationLabel = '오늘의 할 일 작성 중';
   int _sud = 5; // 슬라이더 값 (0‒10)
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
   late final SudApi _sudApi = SudApi(_apiClient);
   bool _saving = false;
+  bool _didInitializeRouteState = false;
 
   @override
   void initState() {
@@ -55,6 +58,27 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
 
     final res = await _sudApi.createSudScore(diaryId: abcId, beforeScore: _sud);
     return res;
+  }
+
+  Future<String> _createTodayTaskDraftDiary() async {
+    final created = await _diariesApi.createDiary(
+      activation: _diariesApi.makeDiaryChip(
+        label: _todayTaskDraftActivationLabel,
+      ),
+      draftProgress: TodayTaskDraftProgress.anxietyEvaluated,
+      belief: const [],
+      consequenceP: const [],
+      consequenceE: const [],
+      consequenceB: const [],
+      alternativeThoughts: const [],
+      route: todayTaskDiaryRoute,
+    );
+
+    final diaryId = created['diary_id']?.toString();
+    if (diaryId == null || diaryId.isEmpty) {
+      throw Exception('draft diary 생성에 실패했습니다.');
+    }
+    return diaryId;
   }
 
   Future<String> _loadGroupId(String abcId) async {
@@ -84,6 +108,46 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
     });
   }
 
+  void _initializeRouteState() {
+    if (_didInitializeRouteState) return;
+    _didInitializeRouteState = true;
+
+    final route = ApplyFlowRouteData.read(
+      context,
+      rawArgs: ModalRoute.of(context)?.settings.arguments,
+    );
+    final initialSud = route.beforeSud;
+    if (initialSud != null) {
+      _sud = initialSud;
+    }
+
+    final shouldAutoNavigateToAbc =
+        route.args[todayTaskAutoNavigateAbcArgKey] == true &&
+        route.origin == 'daily' &&
+        (widget.abcId ?? route.abcId)?.isNotEmpty == true;
+    if (!shouldAutoNavigateToAbc) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.pushNamed(
+        context,
+        '/abc',
+        arguments: buildTodayTaskDiaryArgs(
+          route.flow,
+          diaryId: widget.abcId ?? route.abcId,
+          beforeSud: route.beforeSud,
+          sudId: route.sudId,
+        ),
+      );
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initializeRouteState();
+  }
+
   // ────────────────────────── UI ──────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -91,11 +155,11 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
       context,
       rawArgs: ModalRoute.of(context)?.settings.arguments,
     );
-    final bool isHomeTodayDiary = route.args['isHomeTodayDiary'] == true;
+    final bool isHomeTodayDiary = route.args[todayTaskHomeDiaryArgKey] == true;
     final flow = route.flow;
     final String origin = route.origin;
-    final String? abcId = widget.abcId ?? route.abcId;
-    final bool hasAbcId = abcId?.isNotEmpty ?? false;
+    final String? initialAbcId = widget.abcId ?? route.abcId;
+    final bool hasInitialAbcId = initialAbcId?.isNotEmpty ?? false;
     final String cardTitle =
         isHomeTodayDiary ? '오늘 느낀 불안 정도를\n선택해 주세요' : '지금 느끼는 불안 정도를\n선택해 주세요';
 
@@ -109,20 +173,48 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
         setState(() => _saving = true);
 
         try {
+          String? resolvedAbcId = initialAbcId;
           Map<String, dynamic>? res;
-          if (hasAbcId) {
-            res = await _saveSudAndGet(abcId);
+          if (origin == 'daily' && !hasInitialAbcId) {
+            resolvedAbcId = await _createTodayTaskDraftDiary();
+            flow.setDiaryId(resolvedAbcId);
+            res = await _saveSudAndGet(resolvedAbcId);
+          } else if (hasInitialAbcId) {
+            res = await _saveSudAndGet(initialAbcId);
           }
 
           if (!context.mounted) return;
           flow.setBeforeSud(_sud);
+          if (origin == 'daily') {
+            if (resolvedAbcId != null && resolvedAbcId.isNotEmpty) {
+              flow.setDiaryId(resolvedAbcId);
+            }
+            final sudId = res?['sud_id']?.toString() ?? '';
+            if (sudId.isNotEmpty) flow.setSudId(sudId);
+            await syncTodayTaskDraftProgress(
+              context,
+              progress: TodayTaskDraftProgress.anxietyEvaluated,
+              diariesApi: _diariesApi,
+              diaryId: resolvedAbcId,
+            );
+            if (!context.mounted) return;
+            Navigator.pushNamed(
+              context,
+              '/abc',
+              arguments: buildTodayTaskDiaryArgs(
+                flow,
+                diaryId: resolvedAbcId,
+                beforeSud: _sud,
+                sudId: sudId,
+              ),
+            );
+            return;
+          }
 
-          if (!hasAbcId) {
-            final nextRoute =
-                origin == 'daily' ? '/abc' : '/solve_entry_choice';
+          if (!hasInitialAbcId) {
             Navigator.pushReplacementNamed(
               context,
-              nextRoute,
+              '/solve_entry_choice',
               arguments: route.mergedArgs(
                 extra: {
                   'origin': origin,
@@ -140,12 +232,12 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
             return;
           }
 
-          if (!hasAbcId) {
+          if (!hasInitialAbcId) {
             _showSnack('기록 정보를 찾을 수 없습니다. 다시 시도해 주세요.');
             return;
           }
 
-          final ensuredAbcId = abcId!;
+          final ensuredAbcId = initialAbcId!;
           final groupId = await _loadGroupId(ensuredAbcId);
           if (!context.mounted) return;
           flow

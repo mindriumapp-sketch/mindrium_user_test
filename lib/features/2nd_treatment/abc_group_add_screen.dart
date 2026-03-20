@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 
 import '../../widgets/custom_appbar.dart';
@@ -51,7 +52,8 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   late final WorryGroupsApi _worryGroupsApi = WorryGroupsApi(_apiClient);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
-  final AlarmNotificationService _alarmService = AlarmNotificationService.instance;
+  final AlarmNotificationService _alarmService =
+      AlarmNotificationService.instance;
 
   String? _selectedGroupId;
   List<Map<String, dynamic>> _groups = [];
@@ -112,7 +114,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
 
   bool get _shouldContinueTherapyFlow =>
       (widget.origin == 'apply' || widget.origin == 'daily') &&
-          widget.diaryId != null;
+      widget.diaryId != null;
 
   String? _resolveDiaryRoute() {
     final route = widget.diaryRoute?.trim();
@@ -171,8 +173,8 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         (locTime['location_desc'] ?? locTime['location'])?.toString().trim();
     final resolvedAddress =
         (locationAddressRaw != null && locationAddressRaw.isNotEmpty)
-        ? locationAddressRaw
-        : '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+            ? locationAddressRaw
+            : '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
 
     final localizations = MaterialLocalizations.of(context);
     final formattedTime = localizations.formatTimeOfDay(
@@ -182,26 +184,28 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
 
     final shouldSet = await showDialog<bool>(
       context: context,
-      builder: (dialogCtx) => CustomPopupDesign(
-        title: '알림 설정',
-        message:
-            '마지막에 기록한 위치/시간으로 알림을 설정할까요?\n'
-            '주소: $resolvedAddress\n'
-            '시간: $formattedTime',
-        positiveText: '설정',
-        negativeText: '아니오',
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () => Navigator.pop(dialogCtx, true),
-        onNegativePressed: () => Navigator.pop(dialogCtx, false),
-      ),
+      builder:
+          (dialogCtx) => CustomPopupDesign(
+            title: '알림 설정',
+            message:
+                '마지막에 기록한 위치/시간으로 알림을 설정할까요?\n'
+                '주소: $resolvedAddress\n'
+                '시간: $formattedTime',
+            positiveText: '설정',
+            negativeText: '아니오',
+            backgroundAsset: null,
+            iconAsset: null,
+            onPositivePressed: () => Navigator.pop(dialogCtx, true),
+            onNegativePressed: () => Navigator.pop(dialogCtx, false),
+          ),
     );
     if (shouldSet != true || !mounted) return;
 
     final alarmId = 'solve_loctime_$diaryId';
-    final alarmLabel = (widget.label?.trim().isNotEmpty ?? false)
-        ? '${widget.label!.trim()} 알림'
-        : 'Mindrium 알림';
+    final alarmLabel =
+        (widget.label?.trim().isNotEmpty ?? false)
+            ? '${widget.label!.trim()} 알림'
+            : 'Mindrium 알림';
 
     try {
       final newAlarm = AlarmSetting(
@@ -229,14 +233,14 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('위치/시간 알림이 설정되었습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('위치/시간 알림이 설정되었습니다.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('알림 설정 저장에 실패했습니다: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('알림 설정 저장에 실패했습니다: $e')));
     }
   }
 
@@ -250,15 +254,15 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
 
     final normalizedOrigin = widget.origin == 'solve' ? 'apply' : widget.origin;
     final resolvedDiaryRoute = _resolveDiaryRoute();
-    final flow = context.read<ApplyOrSolveFlow>()
-      ..syncFromArgs({
-        'origin': normalizedOrigin,
-        'diaryRoute': resolvedDiaryRoute,
-        'diaryId': widget.diaryId,
-        'beforeSud': widget.beforeSud,
-        'sudId': widget.sudId,
-        'diary': widget.diary,
-      });
+    final flow =
+        context.read<ApplyOrSolveFlow>()..syncFromArgs({
+          'origin': normalizedOrigin,
+          'diaryRoute': resolvedDiaryRoute,
+          'diaryId': widget.diaryId,
+          'beforeSud': widget.beforeSud,
+          'sudId': widget.sudId,
+          'diary': widget.diary,
+        });
     flow.setOrigin(normalizedOrigin);
     flow.setDiaryRoute(resolvedDiaryRoute);
     flow.setDiaryId(widget.diaryId);
@@ -273,7 +277,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       if (normalizedOrigin != null) 'origin': normalizedOrigin,
       if (widget.sudId != null) 'sudId': widget.sudId,
     };
-    
+
     debugPrint('[Group_add] origin=$normalizedOrigin');
 
     await _maybeOfferSolveLocTimeAlarm(resolvedDiaryRoute);
@@ -284,11 +288,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       final week = userProvider.lastCompletedWeek;
       if (!mounted) return;
       final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
-      Navigator.pushReplacementNamed(
-        context,
-        route,
-        arguments: args,
-      );
+      Navigator.pushReplacementNamed(context, route, arguments: args);
       return;
     }
     Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
@@ -474,9 +474,13 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       onTap: () async {
         final result = await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => AbcGroupCharacterScreen(
-              groups: _groups,
-              sessionId: widget.sessionId)),
+          MaterialPageRoute(
+            builder:
+                (_) => AbcGroupCharacterScreen(
+                  groups: _groups,
+                  sessionId: widget.sessionId,
+                ),
+          ),
         );
 
         if (result == true && mounted) {
@@ -552,7 +556,6 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-
     final characterIdStr = group['character_id']?.toString() ?? '1';
 
     return GestureDetector(
@@ -636,9 +639,12 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                               : Colors.white.withValues(alpha: 0.7),
                       boxShadow: [
                         BoxShadow(
-                          color: isSelected
-                              ? const Color(0xFF5B9FD3).withValues(alpha: 0.3)
-                              : Colors.black.withValues(alpha: 0.05),
+                          color:
+                              isSelected
+                                  ? const Color(
+                                    0xFF5B9FD3,
+                                  ).withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.05),
                           blurRadius: isSelected ? 16 : 12,
                           offset: const Offset(0, 4),
                         ),
@@ -649,13 +655,15 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                       'assets/image/character$characterIdStr.png',
                       height: 60,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stack) => Icon(
-                        Icons.catching_pokemon,
-                        size: 50,
-                        color: isSelected
-                            ? const Color(0xFF5B9FD3)
-                            : Colors.grey.shade400,
-                      ),
+                      errorBuilder:
+                          (context, error, stack) => Icon(
+                            Icons.catching_pokemon,
+                            size: 50,
+                            color:
+                                isSelected
+                                    ? const Color(0xFF5B9FD3)
+                                    : Colors.grey.shade400,
+                          ),
                     ),
                   ),
                 ),
@@ -670,9 +678,10 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: isSelected ? 13 : 12.5,
-                color: isSelected
-                    ? const Color(0xFF0E2C48)
-                    : const Color(0xFF4A5568),
+                color:
+                    isSelected
+                        ? const Color(0xFF0E2C48)
+                        : const Color(0xFF4A5568),
                 height: 1.3,
                 letterSpacing: -0.2,
               ),
@@ -683,13 +692,23 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     );
   }
 
+  void _handleBackNavigation() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    navigator.pushNamedAndRemoveUntil('/home', (_) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
     return PopScope(
-      canPop: false,
+      canPop: canPop,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
+        _handleBackNavigation();
       },
       child: Scaffold(
         extendBody: true,
@@ -697,12 +716,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         backgroundColor: Colors.transparent,
         appBar: CustomAppBar(
           title: '걱정 그룹 - 추가하기',
-          onBack: () {
-            // TODO: 홈으로 돌아가는 게 맞나용...? 경우에 따라 위치/시간으로 돌아가야 하는거 아니에요?
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/home', (_) => false);
-          },
+          onBack: _handleBackNavigation,
         ),
         body: Stack(
           fit: StackFit.expand,
@@ -843,16 +857,18 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                                         ),
                                       ),
                                       GestureDetector(
-                                        onTap: () =>
-                                            _showEditDialog(context, data),
+                                        onTap:
+                                            () =>
+                                                _showEditDialog(context, data),
                                         child: Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
                                             color: const Color(
                                               0xFF5B9FD3,
                                             ).withValues(alpha: 0.1),
-                                            borderRadius:
-                                            BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                           child: const Icon(
                                             Icons.more_vert_rounded,
@@ -871,8 +887,9 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFFF6FAFF),
-                                            borderRadius:
-                                            BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                           ),
                                           child: Column(
                                             children: [
@@ -903,8 +920,9 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFFF6FAFF),
-                                            borderRadius:
-                                            BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                           ),
                                           child: Column(
                                             children: [
@@ -973,65 +991,80 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
             child: NavigationButtons(
               leftLabel: '이전',
               rightLabel: '다음',
-              onBack: _isSubmitting ? null : () => Navigator.pop(context),
+              onBack: _isSubmitting ? null : _handleBackNavigation,
               onNext:
                   (_selectedGroupId == null ||
-                      widget.diaryId == null ||
-                      _isSubmitting)
-                  ? null
-                  : () async {
-                      setState(() => _isSubmitting = true);
-                      try {
-                        debugPrint(
-                          '🔵 그룹 업데이트 시작: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
-                        );
+                          widget.diaryId == null ||
+                          _isSubmitting)
+                      ? null
+                      : () async {
+                        setState(() => _isSubmitting = true);
+                        try {
+                          final isTodayTaskDraft =
+                              _resolveDiaryRoute() == 'today_task';
+                          debugPrint(
+                            '🔵 그룹 업데이트 시작: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
+                          );
 
-                        // ✅ 백엔드 diaries 스키마: group_id(문자열)
-                        await _diariesApi.updateDiary(widget.diaryId!, {
-                          'group_id': _selectedGroupId,
-                        });
+                          // ✅ 백엔드 diaries 스키마: group_id(문자열)
+                          await _diariesApi.updateDiary(widget.diaryId!, {
+                            'group_id': _selectedGroupId,
+                            if (isTodayTaskDraft)
+                              'draft_progress':
+                                  TodayTaskDraftProgress.groupCompleted,
+                          });
 
-                        debugPrint(
-                          '✅ 일기 그룹 할당 완료: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
-                        );
-                        if (!context.mounted) return;
-                        await _navigateAfterGroupSelection();
-                      } on DioException catch (e, stackTrace) {
-                        debugPrint(
-                          '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
-                        );
-                        debugPrint('Response data: ${e.response?.data}');
-                        debugPrint('Request: PUT /diaries/${widget.diaryId}');
-                        debugPrint(
-                          'Body: {group_id: $_selectedGroupId}',
-                        );
-                        debugPrint('Error message: ${e.message}');
-                        debugPrint('Stack trace: $stackTrace');
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '그룹 할당 실패: ${e.response?.data ?? e.message}',
+                          if (isTodayTaskDraft && context.mounted) {
+                            await syncTodayTaskDraftProgress(
+                              context,
+                              progress: TodayTaskDraftProgress.groupCompleted,
+                              diaryId: widget.diaryId,
+                            );
+                            if (!context.mounted) return;
+                            context
+                                .read<TodayTaskProvider>()
+                                .setTodayTaskLocally(diaryDone: true);
+                          }
+
+                          debugPrint(
+                            '✅ 일기 그룹 할당 완료: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
+                          );
+                          if (!context.mounted) return;
+                          await _navigateAfterGroupSelection();
+                        } on DioException catch (e, stackTrace) {
+                          debugPrint(
+                            '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
+                          );
+                          debugPrint('Response data: ${e.response?.data}');
+                          debugPrint('Request: PUT /diaries/${widget.diaryId}');
+                          debugPrint('Body: {group_id: $_selectedGroupId}');
+                          debugPrint('Error message: ${e.message}');
+                          debugPrint('Stack trace: $stackTrace');
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '그룹 할당 실패: ${e.response?.data ?? e.message}',
+                              ),
                             ),
-                          ),
-                        );
-                        return;
-                      } catch (e, stackTrace) {
-                        debugPrint('❌ 일기 그룹 할당 실패: $e');
-                        debugPrint('Stack trace: $stackTrace');
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('그룹 할당 실패: $e')));
-                        return;
-                      } finally {
-                        if (mounted) {
-                          setState(() => _isSubmitting = false);
-                        } else {
-                          _isSubmitting = false;
+                          );
+                          return;
+                        } catch (e, stackTrace) {
+                          debugPrint('❌ 일기 그룹 할당 실패: $e');
+                          debugPrint('Stack trace: $stackTrace');
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('그룹 할당 실패: $e')),
+                          );
+                          return;
+                        } finally {
+                          if (mounted) {
+                            setState(() => _isSubmitting = false);
+                          } else {
+                            _isSubmitting = false;
+                          }
                         }
-                      }
-                    },
+                      },
             ),
           ),
         ),

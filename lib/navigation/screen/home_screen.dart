@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
@@ -8,13 +9,16 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_controller.dart';
 import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_dialog.dart';
+import 'package:gad_app_team/widgets/custom_popup_design.dart';
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
@@ -30,6 +34,7 @@ import 'package:gad_app_team/features/6th_treatment/week6_screen.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_screen.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
+import 'package:gad_app_team/features/2nd_treatment/abc_visualization_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialIndex = 0});
@@ -67,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final DiariesApi _diariesApi = DiariesApi(_apiClient);
   final HomeWidgetTutorialController _widgetTutorialController =
       HomeWidgetTutorialController();
 
@@ -80,6 +86,214 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _lastSyncedRelaxationCount;
   int? _lastSyncedCompletedWeeks;
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
+
+  Future<bool?> _showResumeTodayTaskDraftDialog(
+    TodayTaskDraftSnapshot snapshot,
+  ) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) {
+        return CustomPopupDesign(
+          title: '이어서 하시겠습니까?',
+          highlightText: snapshot.stageDescription,
+          message: '이어서 진행할 수도 있고, 처음부터 다시 시작할 수도 있어요.',
+          positiveText: '이어서',
+          negativeText: '처음부터',
+          onPositivePressed: () => Navigator.pop(dialogCtx, true),
+          onNegativePressed: () => Navigator.pop(dialogCtx, false),
+        );
+      },
+    );
+  }
+
+  Future<bool> _discardTodayTaskDraft(String? diaryId) async {
+    final trimmedDiaryId = diaryId?.trim();
+    if (trimmedDiaryId == null || trimmedDiaryId.isEmpty) {
+      await TodayTaskDraftProgressStore.clear();
+      return true;
+    }
+
+    try {
+      await _diariesApi.deleteTodayTaskDraft(trimmedDiaryId);
+    } on DioException catch (e) {
+      if (e.response?.statusCode != 404) {
+        if (!mounted) return false;
+        final detail =
+            e.response?.data is Map
+                ? e.response?.data['detail']?.toString()
+                : e.message;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('작성 중인 일기를 초기화하지 못했습니다: $detail')),
+        );
+        return false;
+      }
+    } catch (e) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('작성 중인 일기를 초기화하지 못했습니다: $e')));
+      return false;
+    }
+
+    await TodayTaskDraftProgressStore.clear();
+    return true;
+  }
+
+  Future<void> _startFreshTodayTaskDiary({String? discardDiaryId}) async {
+    final flow = context.read<ApplyOrSolveFlow>();
+    if (!await _discardTodayTaskDraft(discardDiaryId)) {
+      return;
+    }
+    if (!mounted) return;
+
+    prepareTodayTaskDiaryFlow(flow);
+    await syncTodayTaskDraftProgress(
+      context,
+      progress: TodayTaskDraftProgress.none,
+      allowLower: true,
+    );
+    if (!mounted) return;
+
+    Navigator.pushNamed(
+      context,
+      '/before_sud',
+      arguments: buildTodayTaskDiaryArgs(flow),
+    );
+  }
+
+  void _applyTodayTaskDraftToFlow(
+    ApplyOrSolveFlow flow,
+    TodayTaskDraftSnapshot draft,
+  ) {
+    if (draft.diaryId != null && draft.diaryId!.isNotEmpty) {
+      flow.setDiaryId(draft.diaryId);
+    }
+    flow.setDraftProgress(draft.progress);
+    if (draft.beforeSud != null) flow.setBeforeSud(draft.beforeSud);
+    if (draft.sudId != null) flow.setSudId(draft.sudId);
+  }
+
+  Widget _buildTodayTaskDraftVisualization(
+    TodayTaskDraftSnapshot draft, {
+    bool autoNavigateGroupOnEntryAfterLocTime = false,
+  }) {
+    return AbcVisualizationScreen(
+      activatingChips: draft.activatingChips,
+      beliefChips: draft.beliefChips,
+      physicalChips: draft.physicalChips,
+      emotionChips: draft.emotionChips,
+      behaviorChips: draft.behaviorChips,
+      isExampleMode: false,
+      origin: 'daily',
+      diaryRoute: todayTaskDiaryRoute,
+      abcId: draft.diaryId,
+      beforeSud: draft.beforeSud,
+      sudId: draft.sudId,
+      autoNavigateToLocTimeOnOpen: true,
+      autoNavigateGroupOnEntryAfterLocTime:
+          autoNavigateGroupOnEntryAfterLocTime,
+    );
+  }
+
+  Future<void> _resumeTodayTaskDiary(TodayTaskDraftSnapshot draft) async {
+    final flow = context.read<ApplyOrSolveFlow>();
+    prepareTodayTaskDiaryFlow(flow);
+    _applyTodayTaskDraftToFlow(flow, draft);
+
+    await TodayTaskDraftProgressStore.save(
+      progress: draft.progress,
+      diaryId: draft.diaryId,
+    );
+
+    if (!mounted) return;
+
+    if (draft.progress >= TodayTaskDraftProgress.locTimeRecorded) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (_) => _buildTodayTaskDraftVisualization(
+                draft,
+                autoNavigateGroupOnEntryAfterLocTime: true,
+              ),
+        ),
+      );
+      return;
+    }
+
+    if (draft.progress >= TodayTaskDraftProgress.diaryWritten) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => _buildTodayTaskDraftVisualization(draft),
+        ),
+      );
+      return;
+    }
+
+    if (draft.progress >= TodayTaskDraftProgress.anxietyEvaluated) {
+      Navigator.pushNamed(
+        context,
+        '/before_sud',
+        arguments: buildTodayTaskDiaryArgs(
+          flow,
+          diaryId: draft.diaryId,
+          beforeSud: draft.beforeSud,
+          sudId: draft.sudId,
+          autoNavigateToAbc: true,
+        ),
+      );
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      '/before_sud',
+      arguments: buildTodayTaskDiaryArgs(flow),
+    );
+  }
+
+  Future<void> _startOrResumeTodayTaskDiary() async {
+    TodayTaskDraftSnapshot? draft;
+    try {
+      final rawDraft = await _diariesApi.getLatestTodayTaskDraft();
+      if (rawDraft != null) {
+        draft = TodayTaskDraftSnapshot.fromMap(rawDraft);
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final detail =
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('작성 중인 일기를 불러오지 못했습니다: $detail')));
+      return;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('작성 중인 일기를 불러오지 못했습니다: $e')));
+      return;
+    }
+
+    if (draft == null) {
+      await _startFreshTodayTaskDiary();
+      return;
+    }
+
+    final shouldResume = await _showResumeTodayTaskDraftDialog(draft);
+    if (!mounted || shouldResume == null) return;
+
+    if (!shouldResume) {
+      await _startFreshTodayTaskDiary(discardDiaryId: draft.diaryId);
+      return;
+    }
+
+    await _resumeTodayTaskDiary(draft);
+  }
 
   @override
   void initState() {
@@ -584,21 +798,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _DailyTask(
         title: '오늘의 일기 작성',
         isDone: todayTask.diaryDone,
-        onTap: () {
-          final flow = context.read<ApplyOrSolveFlow>();
-          flow.clear();
-          flow.setOrigin('daily');
-          flow.setDiaryRoute('today_task');
-          Navigator.pushNamed(
-            context,
-            '/before_sud',
-            arguments: {
-              ...flow.toArgs(),
-              'origin': 'daily',
-              'isHomeTodayDiary': true,
-            },
-          );
-        },
+        onTap: _startOrResumeTodayTaskDiary,
       ),
       _DailyTask(
         title: '이번주 이완 복습',

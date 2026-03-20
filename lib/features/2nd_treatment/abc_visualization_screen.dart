@@ -36,6 +36,8 @@ class AbcVisualizationScreen extends StatefulWidget {
   final String? abcId;
   final int? beforeSud;
   final String? sudId;
+  final bool autoNavigateToLocTimeOnOpen;
+  final bool autoNavigateGroupOnEntryAfterLocTime;
 
   const AbcVisualizationScreen({
     super.key,
@@ -51,6 +53,8 @@ class AbcVisualizationScreen extends StatefulWidget {
     this.beforeSud,
     this.sessionId,
     this.sudId,
+    this.autoNavigateToLocTimeOnOpen = false,
+    this.autoNavigateGroupOnEntryAfterLocTime = false,
   });
 
   @override
@@ -59,6 +63,19 @@ class AbcVisualizationScreen extends StatefulWidget {
 
 class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   bool _isTextView = true;
+  bool _didAutoNavigate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoNavigateToLocTimeOnOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _didAutoNavigate) return;
+        _didAutoNavigate = true;
+        _goNext();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,6 +254,8 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
           emotionChips: widget.emotionChips,
           behaviorChips: widget.behaviorChips,
           autoOpenMapOnEntry: true,
+          autoNavigateGroupOnEntry:
+              widget.autoNavigateGroupOnEntryAfterLocTime,
         ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,

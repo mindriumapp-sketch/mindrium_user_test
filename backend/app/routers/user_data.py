@@ -321,6 +321,17 @@ async def get_today_task(
             },
             # 🔹 자동생성 label 포함된 애들 제외
             "activation.label": {"$not": {"$regex": "자동 생성"}},
+            # today_task는 draft_progress가 100일 때만 완료로 간주.
+            "$or": [
+                {"route": {"$ne": "today_task"}},
+                {
+                    "route": "today_task",
+                    "$or": [
+                        {"draft_progress": 100},
+                        {"draft_progress": {"$exists": False}},
+                    ],
+                },
+            ],
         }
     )
     has_diary_today = diary_count_today > 0

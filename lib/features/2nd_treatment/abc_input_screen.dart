@@ -4,9 +4,14 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/abc_chips_design.dart';
+import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/custom_tags_api.dart';
+import 'package:gad_app_team/data/api/diaries_api.dart';
+import 'package:gad_app_team/data/api/sud_api.dart';
+import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:provider/provider.dart';
 
 import 'abc_visualization_screen.dart';
 import 'step_a_view.dart';
@@ -24,6 +29,7 @@ class AbcInputScreen extends StatefulWidget {
   final String? diaryRoute;
   final int? beforeSud;
   final String? sessionId;
+  final String? sudId;
 
   const AbcInputScreen({
     super.key,
@@ -35,6 +41,7 @@ class AbcInputScreen extends StatefulWidget {
     this.diaryRoute,
     this.beforeSud,
     this.sessionId,
+    this.sudId,
   });
 
   @override
@@ -70,7 +77,10 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final CustomTagsApi _customTagsApi = CustomTagsApi(_apiClient);
+  late final DiariesApi _diariesApi = DiariesApi(_apiClient);
+  late final SudApi _sudApi = SudApi(_apiClient);
   bool _loadingCustomTags = false;
+  bool _isPersistingTodayTaskDraft = false;
 
   @override
   void initState() {
@@ -181,8 +191,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
           final label = (tag['label'] ?? '').toString();
           if (label.isEmpty) continue;
 
-          final chipId =
-          (tag['chip_id'] ?? tag['_id'] ?? '').toString().trim();
+          final chipId = (tag['chip_id'] ?? tag['_id'] ?? '').toString().trim();
           if (chipId.isEmpty) continue;
 
           final isPreset = tag['is_preset'] == true;
@@ -262,8 +271,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
         target = _cachedBehaviorChips;
         break;
     }
-    if (target != null &&
-        !target.any((c) => c.chipId == chip.chipId)) {
+    if (target != null && !target.any((c) => c.chipId == chip.chipId)) {
       target.add(chip);
     }
   }
@@ -284,7 +292,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
       );
 
       final chipId =
-      (created['chip_id'] ?? created['_id'] ?? '').toString().trim();
+          (created['chip_id'] ?? created['_id'] ?? '').toString().trim();
       final label = (created['label'] ?? trimmed).toString();
       final createdType = (created['type'] ?? type).toString();
       final isPreset = created['is_preset'] == true;
@@ -308,18 +316,19 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
         _updateCacheForChip(chip);
       });
     } on DioException catch (e) {
-      final message = e.response?.data is Map
-          ? e.response?.data['detail']?.toString()
-          : e.message;
+      final message =
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('추가에 실패했습니다: ${message ?? '오류'}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('추가에 실패했습니다: ${message ?? '오류'}')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('추가에 실패했습니다: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('추가에 실패했습니다: $e')));
     }
   }
 
@@ -401,24 +410,26 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
       try {
         await _customTagsApi.deleteCustomTag(chipId: chipId);
       } on DioException catch (e) {
-        final message = e.response?.data is Map
-            ? e.response?.data['detail']?.toString()
-            : e.message;
+        final message =
+            e.response?.data is Map
+                ? e.response?.data['detail']?.toString()
+                : e.message;
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('삭제에 실패했습니다: ${message ?? '오류'}')),
         );
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('삭제에 실패했습니다: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('삭제에 실패했습니다: $e')));
       }
     }();
   }
 
   // ---------------------- 다음 버튼 활성화 ----------------------
   bool get _isNextEnabled {
+    if (_isPersistingTodayTaskDraft) return false;
     switch (_currentStep) {
       case 0:
         return _selectedAChipIds.isNotEmpty;
@@ -441,48 +452,188 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
   }
 
   // ---------------------- step 이동 / 완료 ----------------------
-  void _nextStep() {
-    setState(() {
-      if (_currentStep < 2) {
+  Map<String, dynamic> _chipToDiaryChip(AbcChip chip) {
+    return _diariesApi.makeDiaryChip(
+      label: chip.label.trim(),
+      chipId: chip.chipId.isEmpty ? null : chip.chipId,
+    );
+  }
+
+  String? _resolvedSudIdFromFlow() {
+    final flow = context.read<ApplyOrSolveFlow>();
+    final sudId = widget.sudId?.trim();
+    if (sudId != null && sudId.isNotEmpty) return sudId;
+    final flowSudId = flow.sudId?.trim();
+    if (flowSudId != null && flowSudId.isNotEmpty) return flowSudId;
+    return null;
+  }
+
+  Future<({String? diaryId, String? sudId})> _persistTodayTaskDiaryDraft({
+    required List<AbcChip> activatingChips,
+    required List<AbcChip> beliefChips,
+    required List<AbcChip> physicalChips,
+    required List<AbcChip> emotionChips,
+    required List<AbcChip> behaviorChips,
+  }) async {
+    if (widget.diaryRoute?.trim() != 'today_task') {
+      return (diaryId: widget.abcId, sudId: _resolvedSudIdFromFlow());
+    }
+
+    final flow = context.read<ApplyOrSolveFlow>();
+    String? diaryId = widget.abcId?.trim();
+    if (diaryId == null || diaryId.isEmpty) {
+      diaryId = flow.diaryId?.trim();
+    }
+    String? sudId = _resolvedSudIdFromFlow();
+
+    final activation = _chipToDiaryChip(activatingChips.first);
+    final belief = beliefChips.map(_chipToDiaryChip).toList();
+    final physical = physicalChips.map(_chipToDiaryChip).toList();
+    final emotion = emotionChips.map(_chipToDiaryChip).toList();
+    final behavior = behaviorChips.map(_chipToDiaryChip).toList();
+
+    if (diaryId == null || diaryId.isEmpty) {
+      final created = await _diariesApi.createDiary(
+        activation: activation,
+        draftProgress: TodayTaskDraftProgress.diaryWritten,
+        belief: belief,
+        consequenceP: physical,
+        consequenceE: emotion,
+        consequenceB: behavior,
+        alternativeThoughts: const [],
+        route: 'today_task',
+      );
+      diaryId = created['diary_id']?.toString();
+    } else {
+      await _diariesApi.updateDiary(diaryId, {
+        'activation': activation,
+        'belief': belief,
+        'consequence_physical': physical,
+        'consequence_emotion': emotion,
+        'consequence_action': behavior,
+        'alternative_thoughts': const [],
+        'draft_progress': TodayTaskDraftProgress.diaryWritten,
+      });
+    }
+
+    if (diaryId == null || diaryId.isEmpty) {
+      throw Exception('ABC 일기 저장에 실패했습니다.');
+    }
+
+    if ((sudId == null || sudId.isEmpty) && widget.beforeSud != null) {
+      final res = await _sudApi.createSudScore(
+        diaryId: diaryId,
+        beforeScore: widget.beforeSud!,
+      );
+      sudId = res['sud_id']?.toString();
+    }
+
+    flow.setDiaryId(diaryId);
+    if (widget.beforeSud != null) flow.setBeforeSud(widget.beforeSud);
+    if (sudId != null && sudId.isNotEmpty) {
+      flow.setSudId(sudId);
+    }
+    if (!mounted) {
+      return (diaryId: diaryId, sudId: sudId);
+    }
+    await syncTodayTaskDraftProgress(
+      context,
+      progress: TodayTaskDraftProgress.diaryWritten,
+      diaryId: diaryId,
+    );
+    return (diaryId: diaryId, sudId: sudId);
+  }
+
+  void _nextStep() async {
+    if (_currentStep < 2) {
+      setState(() {
         _currentStep++;
         if (_currentStep == 2) _currentCSubStep = 0;
-        return;
-      }
+      });
+      return;
+    }
 
-      if (_currentCSubStep < 2) {
+    if (_currentCSubStep < 2) {
+      setState(() {
         _currentCSubStep++;
-        return;
-      }
+      });
+      return;
+    }
 
-      // A/B/C 모두 끝난 경우
-      if (widget.isExampleMode) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AbcRealStartScreen(sessionId: widget.sessionId),
-          ),
-        );
-      } else {
-        final activatingChips = _aChips
-            .where((c) => _selectedAChipIds.contains(c.chipId))
-            .toList();
-        final beliefChips = _bChips
-            .where((c) => _selectedBChipIds.contains(c.chipId))
-            .toList();
-        final physicalSelected = _physicalChips
+    // A/B/C 모두 끝난 경우
+    if (widget.isExampleMode) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AbcRealStartScreen(sessionId: widget.sessionId),
+        ),
+      );
+      return;
+    }
+
+    final activatingChips =
+        _aChips.where((c) => _selectedAChipIds.contains(c.chipId)).toList();
+    final beliefChips =
+        _bChips.where((c) => _selectedBChipIds.contains(c.chipId)).toList();
+    final physicalSelected =
+        _physicalChips
             .where((c) => _selectedPhysicalChipIds.contains(c.chipId))
             .toList();
-        final emotionSelected = _emotionChips
+    final emotionSelected =
+        _emotionChips
             .where((c) => _selectedEmotionChipIds.contains(c.chipId))
             .toList();
-        final behaviorSelected = _behaviorChips
+    final behaviorSelected =
+        _behaviorChips
             .where((c) => _selectedBehaviorChipIds.contains(c.chipId))
             .toList();
 
-        Navigator.push(
+    String? resolvedDiaryId = widget.abcId;
+    String? resolvedSudId = _resolvedSudIdFromFlow();
+
+    if (widget.diaryRoute?.trim() == 'today_task') {
+      setState(() => _isPersistingTodayTaskDraft = true);
+      try {
+        final persisted = await _persistTodayTaskDiaryDraft(
+          activatingChips: activatingChips,
+          beliefChips: beliefChips,
+          physicalChips: physicalSelected,
+          emotionChips: emotionSelected,
+          behaviorChips: behaviorSelected,
+        );
+        resolvedDiaryId = persisted.diaryId;
+        resolvedSudId = persisted.sudId;
+      } on DioException catch (e) {
+        final detail =
+            e.response?.data is Map
+                ? e.response?.data['detail']?.toString()
+                : e.message;
+        if (!mounted) return;
+        ScaffoldMessenger.of(
           context,
-          MaterialPageRoute(
-            builder: (_) => AbcVisualizationScreen(
+        ).showSnackBar(SnackBar(content: Text('ABC 내용을 저장하지 못했습니다: $detail')));
+        return;
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('ABC 내용을 저장하지 못했습니다: $e')));
+        return;
+      } finally {
+        if (mounted) {
+          setState(() => _isPersistingTodayTaskDraft = false);
+        } else {
+          _isPersistingTodayTaskDraft = false;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (_) => AbcVisualizationScreen(
               sessionId: widget.sessionId,
               activatingChips: activatingChips,
               beliefChips: beliefChips,
@@ -493,13 +644,11 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               origin: widget.origin,
               diaryRoute: widget.diaryRoute,
               beforeSud: widget.beforeSud,
-              abcId: widget.abcId,
-              sudId: null,
+              abcId: resolvedDiaryId,
+              sudId: resolvedSudId,
             ),
-          ),
-        );
-      }
-    });
+      ),
+    );
   }
 
   void _previousStep() {
@@ -523,9 +672,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: (widget.isExampleMode
-            ? '예시 연습하기'
-            : '일기 작성'),
+        title: (widget.isExampleMode ? '예시 연습하기' : '일기 작성'),
         onBack: () {
           if (_currentStep == 0 && _currentCSubStep == 0) {
             Navigator.pop(context);
@@ -534,11 +681,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
           }
         },
         onHomePressed: () {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/home',
-                (route) => false,
-          );
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         },
       ),
       body: Stack(
@@ -567,12 +710,13 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     onBack: _previousStep,
                     onNext: _isNextEnabled ? _nextStep : null,
-                    rightLabel: widget.isExampleMode && _currentCSubStep == 2
-                        ? '확인'
-                        : '다음',
+                    rightLabel:
+                        widget.isExampleMode && _currentCSubStep == 2
+                            ? '확인'
+                            : '다음',
                   ),
                 ),
               ],
@@ -598,34 +742,35 @@ child: NavigationButtons(
                 ..add(chipId);
             });
           },
-          onAddSituation: widget.isExampleMode
-              ? null
-              : () => _showAddPopup(
-            title: '상황 추가',
-            highlightText: 'A - 사건 (Activating Event)',
-            existingLabels: _aChips.map((c) => c.label),
-            onConfirm: (t) {
-              _saveCustomTag(
-                type: 'A',
-                text: t,
-                onSuccess: (chip) {
-                  if (!_aChips
-                      .any((c) => c.chipId == chip.chipId)) {
-                    _aChips.add(chip);
-                  }
-                },
-              );
-            },
-          ),
-          onDeleteSituation: widget.isExampleMode
-              ? null
-              : (chipId) {
-            setState(() {
-              _aChips.removeWhere((c) => c.chipId == chipId);
-              _selectedAChipIds.remove(chipId);
-              _deleteTagLocallyAndRemote(chipId);
-            });
-          },
+          onAddSituation:
+              widget.isExampleMode
+                  ? null
+                  : () => _showAddPopup(
+                    title: '상황 추가',
+                    highlightText: 'A - 사건 (Activating Event)',
+                    existingLabels: _aChips.map((c) => c.label),
+                    onConfirm: (t) {
+                      _saveCustomTag(
+                        type: 'A',
+                        text: t,
+                        onSuccess: (chip) {
+                          if (!_aChips.any((c) => c.chipId == chip.chipId)) {
+                            _aChips.add(chip);
+                          }
+                        },
+                      );
+                    },
+                  ),
+          onDeleteSituation:
+              widget.isExampleMode
+                  ? null
+                  : (chipId) {
+                    setState(() {
+                      _aChips.removeWhere((c) => c.chipId == chipId);
+                      _selectedAChipIds.remove(chipId);
+                      _deleteTagLocallyAndRemote(chipId);
+                    });
+                  },
         );
 
       case 1:
@@ -642,34 +787,35 @@ child: NavigationButtons(
               }
             });
           },
-          onAddBelief: widget.isExampleMode
-              ? null
-              : () => _showAddPopup(
-            title: '생각 추가',
-            highlightText: 'B - 생각 (Belief)',
-            existingLabels: _bChips.map((c) => c.label),
-            onConfirm: (t) {
-              _saveCustomTag(
-                type: 'B',
-                text: t,
-                onSuccess: (chip) {
-                  if (!_bChips
-                      .any((c) => c.chipId == chip.chipId)) {
-                    _bChips.add(chip);
-                  }
-                },
-              );
-            },
-          ),
-          onDeleteBelief: widget.isExampleMode
-              ? null
-              : (chipId) {
-            setState(() {
-              _bChips.removeWhere((c) => c.chipId == chipId);
-              _selectedBChipIds.remove(chipId);
-              _deleteTagLocallyAndRemote(chipId);
-            });
-          },
+          onAddBelief:
+              widget.isExampleMode
+                  ? null
+                  : () => _showAddPopup(
+                    title: '생각 추가',
+                    highlightText: 'B - 생각 (Belief)',
+                    existingLabels: _bChips.map((c) => c.label),
+                    onConfirm: (t) {
+                      _saveCustomTag(
+                        type: 'B',
+                        text: t,
+                        onSuccess: (chip) {
+                          if (!_bChips.any((c) => c.chipId == chip.chipId)) {
+                            _bChips.add(chip);
+                          }
+                        },
+                      );
+                    },
+                  ),
+          onDeleteBelief:
+              widget.isExampleMode
+                  ? null
+                  : (chipId) {
+                    setState(() {
+                      _bChips.removeWhere((c) => c.chipId == chipId);
+                      _selectedBChipIds.remove(chipId);
+                      _deleteTagLocallyAndRemote(chipId);
+                    });
+                  },
         );
 
       case 2:
@@ -683,91 +829,99 @@ child: NavigationButtons(
           selectedEmotionChipIds: _selectedEmotionChipIds,
           selectedBehaviorChipIds: _selectedBehaviorChipIds,
           isExampleMode: widget.isExampleMode,
-          onAddPhysical: widget.isExampleMode
-              ? null
-              : () => _showAddPopup(
-            title: '신체 반응 추가',
-            highlightText: 'C1 - 신체 (Physical)',
-            existingLabels: _physicalChips.map((c) => c.label),
-            onConfirm: (t) {
-              _saveCustomTag(
-                type: 'CP',
-                text: t,
-                onSuccess: (chip) {
-                  if (!_physicalChips
-                      .any((c) => c.chipId == chip.chipId)) {
-                    _physicalChips.add(chip);
-                  }
-                },
-              );
-            },
-          ),
-          onAddEmotion: widget.isExampleMode
-              ? null
-              : () => _showAddPopup(
-            title: '감정 반응 추가',
-            highlightText: 'C2 - 감정 (Emotion)',
-            existingLabels: _emotionChips.map((c) => c.label),
-            onConfirm: (t) {
-              _saveCustomTag(
-                type: 'CE',
-                text: t,
-                onSuccess: (chip) {
-                  if (!_emotionChips
-                      .any((c) => c.chipId == chip.chipId)) {
-                    _emotionChips.add(chip);
-                  }
-                },
-              );
-            },
-          ),
-          onAddBehavior: widget.isExampleMode
-              ? null
-              : () => _showAddPopup(
-            title: '행동 반응 추가',
-            highlightText: 'C3 - 행동 (Behavior)',
-            existingLabels: _behaviorChips.map((c) => c.label),
-            onConfirm: (t) {
-              _saveCustomTag(
-                type: 'CA',
-                text: t,
-                onSuccess: (chip) {
-                  if (!_behaviorChips
-                      .any((c) => c.chipId == chip.chipId)) {
-                    _behaviorChips.add(chip);
-                  }
-                },
-              );
-            },
-          ),
-          onDeletePhysical: widget.isExampleMode
-              ? null
-              : (chipId) {
-            setState(() {
-              _physicalChips
-                  .removeWhere((c) => c.chipId == chipId);
-              _selectedPhysicalChipIds.remove(chipId);
-              _deleteTagLocallyAndRemote(chipId);
-            });
-          },
-          onDeleteEmotion: widget.isExampleMode
-              ? null
-              : (chipId) {
-            setState(() {
-              _emotionChips.removeWhere((c) => c.chipId == chipId);
-              _selectedEmotionChipIds.remove(chipId);
-              _deleteTagLocallyAndRemote(chipId);
-            });
-          },
-          onDeleteBehavior: widget.isExampleMode
-              ? null
-              : (chipId) {
-            setState(() {
-              _behaviorChips.removeWhere((c) => c.chipId == chipId);
-              _selectedBehaviorChipIds.remove(chipId);
-              _deleteTagLocallyAndRemote(chipId);
-            });
-          },
+          onAddPhysical:
+              widget.isExampleMode
+                  ? null
+                  : () => _showAddPopup(
+                    title: '신체 반응 추가',
+                    highlightText: 'C1 - 신체 (Physical)',
+                    existingLabels: _physicalChips.map((c) => c.label),
+                    onConfirm: (t) {
+                      _saveCustomTag(
+                        type: 'CP',
+                        text: t,
+                        onSuccess: (chip) {
+                          if (!_physicalChips.any(
+                            (c) => c.chipId == chip.chipId,
+                          )) {
+                            _physicalChips.add(chip);
+                          }
+                        },
+                      );
+                    },
+                  ),
+          onAddEmotion:
+              widget.isExampleMode
+                  ? null
+                  : () => _showAddPopup(
+                    title: '감정 반응 추가',
+                    highlightText: 'C2 - 감정 (Emotion)',
+                    existingLabels: _emotionChips.map((c) => c.label),
+                    onConfirm: (t) {
+                      _saveCustomTag(
+                        type: 'CE',
+                        text: t,
+                        onSuccess: (chip) {
+                          if (!_emotionChips.any(
+                            (c) => c.chipId == chip.chipId,
+                          )) {
+                            _emotionChips.add(chip);
+                          }
+                        },
+                      );
+                    },
+                  ),
+          onAddBehavior:
+              widget.isExampleMode
+                  ? null
+                  : () => _showAddPopup(
+                    title: '행동 반응 추가',
+                    highlightText: 'C3 - 행동 (Behavior)',
+                    existingLabels: _behaviorChips.map((c) => c.label),
+                    onConfirm: (t) {
+                      _saveCustomTag(
+                        type: 'CA',
+                        text: t,
+                        onSuccess: (chip) {
+                          if (!_behaviorChips.any(
+                            (c) => c.chipId == chip.chipId,
+                          )) {
+                            _behaviorChips.add(chip);
+                          }
+                        },
+                      );
+                    },
+                  ),
+          onDeletePhysical:
+              widget.isExampleMode
+                  ? null
+                  : (chipId) {
+                    setState(() {
+                      _physicalChips.removeWhere((c) => c.chipId == chipId);
+                      _selectedPhysicalChipIds.remove(chipId);
+                      _deleteTagLocallyAndRemote(chipId);
+                    });
+                  },
+          onDeleteEmotion:
+              widget.isExampleMode
+                  ? null
+                  : (chipId) {
+                    setState(() {
+                      _emotionChips.removeWhere((c) => c.chipId == chipId);
+                      _selectedEmotionChipIds.remove(chipId);
+                      _deleteTagLocallyAndRemote(chipId);
+                    });
+                  },
+          onDeleteBehavior:
+              widget.isExampleMode
+                  ? null
+                  : (chipId) {
+                    setState(() {
+                      _behaviorChips.removeWhere((c) => c.chipId == chipId);
+                      _selectedBehaviorChipIds.remove(chipId);
+                      _deleteTagLocallyAndRemote(chipId);
+                    });
+                  },
           onSelectionChanged: () => setState(() {}),
         );
     }

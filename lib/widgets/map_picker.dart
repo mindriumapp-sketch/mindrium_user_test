@@ -22,6 +22,7 @@ class MapPicker extends StatefulWidget {
   final String? initialLocationLabel;
   final bool showSavedMarkers;
   final bool enableTimeSelection;
+  final double sheetInitialSize;
 
   const MapPicker({
     super.key,
@@ -31,6 +32,7 @@ class MapPicker extends StatefulWidget {
     this.initialLocationLabel,
     this.showSavedMarkers = true,
     this.enableTimeSelection = true,
+    this.sheetInitialSize = MindriumPopupDesign.defaultSheetInitialSize,
   });
 
   @override
@@ -569,6 +571,7 @@ class _MapPickerState extends State<MapPicker> {
       onTimeChanged: (dt) {
         _selectedTime = TimeOfDay.fromDateTime(dt);
       },
+      sheetInitialSize: widget.sheetInitialSize,
       showTimePicker: widget.enableTimeSelection,
       locationText: _displayLocationText,
       showLocationLabelInput: widget.enableLocationLabel,

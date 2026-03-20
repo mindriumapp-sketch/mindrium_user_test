@@ -6,6 +6,7 @@ import 'package:gad_app_team/widgets/location_picker_map.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 
 class MindriumPopupDesign extends StatefulWidget {
+  static const double defaultSheetInitialSize = 0.35;
   final TextEditingController? searchController;
   final LocationPickerMapController? mapController;
   final VoidCallback? onMapReady;
@@ -26,6 +27,7 @@ class MindriumPopupDesign extends StatefulWidget {
   final ValueChanged<String>? onLocationLabelSelected;
   final Future<void> Function()? onAddLocationLabel;
   final bool showTimePicker;
+  final double sheetInitialSize;
 
   const MindriumPopupDesign({
     super.key,
@@ -49,6 +51,7 @@ class MindriumPopupDesign extends StatefulWidget {
     this.onLocationLabelSelected,
     this.onAddLocationLabel,
     this.showTimePicker = true,
+    this.sheetInitialSize = defaultSheetInitialSize,
   });
 
   @override
@@ -58,7 +61,6 @@ class MindriumPopupDesign extends StatefulWidget {
 class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   static const LatLng _kDefaultCenter = LatLng(37.5665, 126.9780);
   static const double _sheetMinSize = 0.075;
-  static const double _sheetInitialSize = 0.35;
   static const double _sheetMaxSize = 0.75;
 
   late DateTime _pickerTime;
@@ -488,7 +490,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
     return Positioned.fill(
       child: DraggableScrollableSheet(
         expand: false,
-        initialChildSize: _sheetInitialSize,
+        initialChildSize: widget.sheetInitialSize,
         minChildSize: _sheetMinSize,
         maxChildSize: _sheetMaxSize,
         snap: false,

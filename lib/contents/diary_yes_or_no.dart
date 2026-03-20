@@ -13,9 +13,8 @@ import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
-import 'package:provider/provider.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 
 class DiaryYesOrNo extends StatelessWidget {
@@ -159,6 +158,10 @@ class DiaryYesOrNo extends StatelessWidget {
       // 🔹 FastAPI + MongoDB에 빈 일기 생성
       final diaryRes = await diariesApi.createDiary(
         activation: activationChip,
+        draftProgress:
+            _resolveDiaryRoute(flow, origin) == 'today_task'
+                ? TodayTaskDraftProgress.diaryWritten
+                : null,
         belief: const [],
         consequenceP: const [],
         consequenceE: const [],
@@ -174,8 +177,13 @@ class DiaryYesOrNo extends StatelessWidget {
         throw Exception('생성된 일기 ID를 확인할 수 없습니다.');
       }
       flow.setDiaryId(abcId);
-      if (context.mounted) {
-        context.read<TodayTaskProvider>().setTodayTaskLocally(diaryDone: true);
+      if (context.mounted && _resolveDiaryRoute(flow, origin) == 'today_task') {
+        await syncTodayTaskDraftProgress(
+          context,
+          progress: TodayTaskDraftProgress.diaryWritten,
+          diariesApi: diariesApi,
+          diaryId: abcId,
+        );
       }
 
       Map<String, dynamic>? res;

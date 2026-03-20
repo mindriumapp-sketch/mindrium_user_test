@@ -54,6 +54,7 @@ class DiaryChip(BaseModel):
 class DiaryBase(BaseModel):
     group_id: Optional[str] = None
     route: Optional[Literal["notification", "today_task", "solve"]] = None
+    draft_progress: Optional[Literal[0, 25, 50, 75, 100]] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)
@@ -73,6 +74,7 @@ class DiaryCreate(DiaryBase):
 
 class DiaryUpdate(BaseModel):
     group_id: Optional[str] = None
+    draft_progress: Optional[Literal[0, 25, 50, 75, 100]] = None
     activation: Optional[DiaryChip] = None
     belief: Optional[List[DiaryChip]] = None
     consequence_physical: Optional[List[DiaryChip]] = None
@@ -101,6 +103,7 @@ class DiarySummaryResponse(BaseModel):
     diary_id: str
     group_id: Optional[str] = None
     route: Optional[Literal["notification", "today_task", "solve"]] = None
+    draft_progress: Optional[Literal[0, 25, 50, 75, 100]] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)

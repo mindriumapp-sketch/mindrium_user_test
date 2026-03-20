@@ -1,9 +1,9 @@
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 import uuid
 from core.security import get_current_user_id
-from core.utils import parse_datetime_value, ensure_utc
+from core.utils import kst_midnight, parse_datetime_value, ensure_utc
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -27,6 +27,8 @@ router = APIRouter(prefix="/diaries", tags=["diaries"])
 
 DIARY_COLLECTION = "diaries"
 DEFAULT_GROUP_ID = "group_example"
+TODAY_TASK_ROUTE = "today_task"
+COMPLETED_DRAFT_PROGRESS = 100
 
 # ---------- 공통 헬퍼 ----------
 async def update_diary_chip_category(
@@ -78,6 +80,7 @@ def _build_diary_query(
         user_id: str,
         group_id: Optional[str] = None,
         exclude_auto: bool = False,
+        include_drafts: bool = False,
 ) -> Dict[str, Any]:
     query: Dict[str, Any] = {"user_id": user_id}
     if group_id is not None:
@@ -87,6 +90,44 @@ def _build_diary_query(
         # activation.label 에 "자동 생성" 이 포함된 문서는 제외
         pattern = re.compile("자동 생성")
         query["activation.label"] = {"$not": pattern}
+
+    if not include_drafts:
+        query["$or"] = [
+            {"draft_progress": {"$exists": False}},
+            {"draft_progress": COMPLETED_DRAFT_PROGRESS},
+        ]
+
+    return query
+
+
+def _is_incomplete_draft_progress(progress: Optional[int]) -> bool:
+    return progress is not None and progress < COMPLETED_DRAFT_PROGRESS
+
+
+def _today_task_incomplete_draft_query(
+    user_id: str,
+    *,
+    diary_id: Optional[str] = None,
+    limit_to_today: bool = False,
+    now_utc: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    query: Dict[str, Any] = {
+        "user_id": user_id,
+        "route": TODAY_TASK_ROUTE,
+        "draft_progress": {"$lt": COMPLETED_DRAFT_PROGRESS},
+    }
+
+    if diary_id:
+        query["diary_id"] = diary_id
+
+    if limit_to_today:
+        reference_time = now_utc or datetime.now(timezone.utc)
+        today_start_kst = kst_midnight(reference_time)
+        today_end_kst = today_start_kst + timedelta(days=1)
+        query["created_at"] = {
+            "$gte": today_start_kst.astimezone(timezone.utc),
+            "$lt": today_end_kst.astimezone(timezone.utc),
+        }
 
     return query
 
@@ -273,6 +314,7 @@ def _serialize_diary(doc: dict) -> dict:
         "diary_id": diary_id,
         "group_id": doc.get("group_id"),
         "route": doc.get("route"),
+        "draft_progress": doc.get("draft_progress"),
 
         # DiaryChip 구조 필드들
         "activation": _serialize_chip(doc.get("activation")),
@@ -313,6 +355,7 @@ def _serialize_diary_summary(doc: dict) -> dict:
         "diary_id": doc.get("diary_id"),
         "group_id": doc.get("group_id"),
         "route": doc.get("route"),
+        "draft_progress": doc.get("draft_progress"),
         "activation": _serialize_chip(doc.get("activation")),
         "belief": _serialize_chip_list(doc.get("belief")),
         "consequence_physical": _serialize_chip_list(doc.get("consequence_physical")),
@@ -335,7 +378,12 @@ async def create_diary(
     collection = db[DIARY_COLLECTION]
     now_utc = datetime.now(timezone.utc)
     client_ts_utc = ensure_utc(payload.client_timestamp)
-    group_id = payload.group_id or DEFAULT_GROUP_ID
+    is_incomplete_draft = _is_incomplete_draft_progress(payload.draft_progress)
+    group_id = (
+        payload.group_id
+        if is_incomplete_draft
+        else (payload.group_id or DEFAULT_GROUP_ID)
+    )
 
     is_auto_generated = _is_auto_generated_from_activation(payload)
 
@@ -358,6 +406,7 @@ async def create_diary(
         "diary_id": f"diary_{uuid.uuid4().hex[:8]}",
         "group_id": group_id,
         "route": payload.route,
+        "draft_progress": payload.draft_progress,
 
         "activation": payload.activation.model_dump(),
         "belief": [chip.model_dump() for chip in payload.belief],
@@ -379,7 +428,7 @@ async def create_diary(
     await collection.insert_one(diary_doc)
 
     # 4) 그룹 카운터 반영
-    if group_id and not is_auto_generated:
+    if group_id and not is_auto_generated and not is_incomplete_draft:
         await adjust_group_metrics(
             db=db,
             user_id=user_id,
@@ -407,6 +456,7 @@ async def list_diaries(
         user_id=user_id,
         group_id=group_id,
         exclude_auto=not include_auto,
+        include_drafts=False,
     )
 
     cursor = collection.find(query).sort("created_at", -1)
@@ -435,11 +485,13 @@ async def list_diary_summaries(
         user_id=user_id,
         group_id=group_id,
         exclude_auto=not include_auto,
+        include_drafts=False,
     )
 
     projection = {
         "diary_id": 1,
         "group_id": 1,
+        "draft_progress": 1,
         "activation": 1,
         "belief": 1,
         "consequence_physical": 1,
@@ -474,11 +526,13 @@ async def get_latest_diary(
         user_id=user_id,
         group_id=group_id,
         exclude_auto=not include_auto,
+        include_drafts=False,
     )
 
     projection = {
         "diary_id": 1,
         "group_id": 1,
+        "draft_progress": 1,
         "activation": 1,
         "belief": 1,
         "consequence_physical": 1,
@@ -517,7 +571,7 @@ async def list_today_task_diaries(
 
     query: Dict[str, Any] = {
         "user_id": user_id,
-        "route": "today_task",
+        "route": TODAY_TASK_ROUTE,
     }
     if start_utc or end_utc:
         created_range: Dict[str, Any] = {}
@@ -532,6 +586,43 @@ async def list_today_task_diaries(
     async for doc in cursor:
         diaries.append(DiaryResponse(**_serialize_diary(doc)))
     return diaries
+
+
+@router.get("/today-task/latest-draft", response_model=Optional[DiaryResponse])
+async def get_latest_today_task_draft(
+    db=Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    collection = db[DIARY_COLLECTION]
+    doc = await collection.find_one(
+        _today_task_incomplete_draft_query(
+            user_id,
+            limit_to_today=True,
+        ),
+        sort=[("updated_at", -1), ("created_at", -1)],
+    )
+
+    if not doc:
+        return None
+
+    return DiaryResponse(**_serialize_diary(doc))
+
+
+@router.delete("/{diary_id}/draft", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_incomplete_today_task_draft(
+    diary_id: str,
+    db=Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    collection = db[DIARY_COLLECTION]
+    result = await collection.delete_one(
+        _today_task_incomplete_draft_query(user_id, diary_id=diary_id)
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Draft diary not found")
+
+    return None
 
 
 @router.get("/{diary_id}", response_model=DiaryResponse)
