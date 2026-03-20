@@ -5,17 +5,14 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 
 /// ABC 3단계 탭 + 하얀 카드 본문을 한 번에 보여주는 위젯
 /// - activeIndex: 0(A), 1(B), 2(C)
-/// - smallText: 위쪽 작은 텍스트
 /// - bigText: 중앙 큰 텍스트
 class AbcStepCard extends StatelessWidget {
   final int activeIndex;
-  final String smallText;
   final String bigText;
 
   const AbcStepCard({
     super.key,
     required this.activeIndex,
-    required this.smallText,
     required this.bigText,
   });
 
@@ -29,7 +26,7 @@ class AbcStepCard extends StatelessWidget {
         // 본문 카드
         Container(
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 200),
+          constraints: const BoxConstraints(minHeight: 130),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -51,20 +48,9 @@ class AbcStepCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  smallText,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF263C69),
-                    height: 1.4,
-                    fontFamily: 'Noto Sans KR',
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Text(
                   bigText,
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF141F35),
                     height: 1.3,

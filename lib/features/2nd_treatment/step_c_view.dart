@@ -77,95 +77,93 @@ class _StepCViewState extends State<StepCView> {
   Widget _buildPhysicalStep() {
     return _buildCommonSection(
       title: '불안할 때 몸에\n어떤 증상이 있었나요?',
-      smallText: '그때의 결과를 차례대로 살펴봐요',
       chips: widget.physicalChips,
       selectedChipIds: widget.selectedPhysicalChipIds,
-      guideMessage: widget.isExampleMode
-          ? "아래에서 '두근거림'을 선택해보세요!"
-          : "몸에서 느낀 반응(C-신체)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.",
+      guideMessage:
+          widget.isExampleMode
+              ? "아래에서 '두근거림'을 선택해보세요!"
+              : "질문에 따라 그때의 결과를 하나씩 살펴봐요.",
       onAdd: widget.isExampleMode ? null : widget.onAddPhysical,
-      onDelete:
-      widget.isExampleMode ? null : widget.onDeletePhysical,
+      onDelete: widget.isExampleMode ? null : widget.onDeletePhysical,
     );
   }
 
   /// 💬 1단계: 감정 반응 선택 화면
   Widget _buildEmotionStep() {
     return _buildCommonSection(
-      title: '불안할 때\n어떤 감정을 느꼈나요?',
-      smallText: '그때의 결과를 차례대로 살펴봐요',
+      title: '불안한 그 순간, \n어떤 감정을 느꼈나요?',
       chips: widget.emotionChips,
       selectedChipIds: widget.selectedEmotionChipIds,
-      guideMessage: widget.isExampleMode
-          ? "아래에서 '불안'을 선택해보세요!"
-          : "느껴진 감정(C-감정)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.",
+      guideMessage:
+          widget.isExampleMode
+              ? "아래에서 '불안'을 선택해보세요!"
+              : "질문에 따라 그때의 결과를 하나씩 살펴봐요.",
       onAdd: widget.isExampleMode ? null : widget.onAddEmotion,
-      onDelete:
-      widget.isExampleMode ? null : widget.onDeleteEmotion,
+      onDelete: widget.isExampleMode ? null : widget.onDeleteEmotion,
     );
   }
 
   /// 🏃‍♀️ 2단계: 행동 반응 선택 화면
   Widget _buildBehaviorStep() {
     return _buildCommonSection(
-      title: '그때 어떤 행동을 했나요?',
-      smallText: '그때의 결과를 차례대로 살펴봐요',
+      title: '불안할 때 실제로 어떤 행동을 했나요?',
       chips: widget.behaviorChips,
       selectedChipIds: widget.selectedBehaviorChipIds,
-      guideMessage: widget.isExampleMode
-          ? "아래에서 '자전거를 타지 않았어요'를 선택해보세요!"
-          : "실제로 한 행동(C-행동)을 선택해보세요.\n원하는 항목이 없다면 + 추가로 입력할 수 있어요.",
+      guideMessage:
+          widget.isExampleMode
+              ? "아래에서 '자전거를 타지 않았어요'를 선택해보세요!"
+              : "질문에 따라 그때의 결과를 하나씩 살펴봐요.",
       onAdd: widget.isExampleMode ? null : widget.onAddBehavior,
-      onDelete:
-      widget.isExampleMode ? null : widget.onDeleteBehavior,
+      onDelete: widget.isExampleMode ? null : widget.onDeleteBehavior,
     );
   }
 
   /// 🎯 공통 구성 (신체/감정/행동 공용 뷰) — chipId 기반
   Widget _buildCommonSection({
     required String title,
-    required String smallText,
     required List<AbcChip> chips,
     required Set<String> selectedChipIds,
     required String guideMessage,
     required VoidCallback? onAdd,
     required void Function(String chipId)? onDelete,
   }) {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AbcStepCard(
-            activeIndex: 2,
-            smallText: smallText,
-            bigText: title,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+          child: AbcStepCard(activeIndex: 2, bigText: title),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: JellyfishBanner(message: guideMessage),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: AbcChipsDesign(
+              chips: chips,
+              selectedChipIds: selectedChipIds,
+              singleSelect: false,
+              isExampleMode: widget.isExampleMode,
+              onChipToggle: (chipId, selected) {
+                setState(() {
+                  if (selected) {
+                    selectedChipIds.add(chipId);
+                  } else {
+                    selectedChipIds.remove(chipId);
+                  }
+                });
+                widget.onSelectionChanged?.call();
+              },
+              onChipAdd: onAdd,
+              onChipDelete: onDelete,
+            ),
           ),
-          const SizedBox(height: 30),
-          AbcChipsDesign(
-            chips: chips,
-            selectedChipIds: selectedChipIds,
-            singleSelect: false, // C단계는 다중 선택 가능
-            isExampleMode: widget.isExampleMode,
-            onChipToggle: (chipId, selected) {
-              setState(() {
-                if (selected) {
-                  selectedChipIds.add(chipId);
-                } else {
-                  selectedChipIds.remove(chipId);
-                }
-              });
-              widget.onSelectionChanged?.call();
-            },
-            onChipAdd: onAdd,
-            onChipDelete: onDelete,
-          ),
-          const SizedBox(height: 20),
-          JellyfishBanner(message: guideMessage),
-          const SizedBox(height: 50),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
