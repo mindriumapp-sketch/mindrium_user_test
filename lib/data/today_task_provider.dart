@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/api/relaxation_api.dart';
+import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
@@ -26,6 +28,7 @@ class TodayTaskProvider extends ChangeNotifier {
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _client = ApiClient(tokens: _tokens);
   late final UserDataApi _userDataApi = UserDataApi(_client);
+  late final DiariesApi _diariesApi = DiariesApi(_client);
   late final EduSessionsApi _eduSessionsApi = EduSessionsApi(_client);
   late final RelaxationApi _relaxationApi = RelaxationApi(_client);
 
@@ -35,6 +38,17 @@ class TodayTaskProvider extends ChangeNotifier {
 
   bool _diaryDone = false;
   bool get diaryDone => _diaryDone;
+
+  int _diaryDraftProgress = TodayTaskDraftProgress.none;
+  int get diaryDraftProgress => _effectiveDiaryProgress;
+  bool get diaryAnxietyDone =>
+      _effectiveDiaryProgress >= TodayTaskDraftProgress.anxietyEvaluated;
+  bool get diaryAbcDone =>
+      _effectiveDiaryProgress >= TodayTaskDraftProgress.diaryWritten;
+  bool get diaryLocTimeDone =>
+      _effectiveDiaryProgress >= TodayTaskDraftProgress.locTimeRecorded;
+  bool get diaryGroupDone =>
+      _effectiveDiaryProgress >= TodayTaskDraftProgress.groupCompleted;
 
   bool _relaxationDone = false;
   bool get relaxationDone => _relaxationDone;
@@ -185,7 +199,32 @@ class TodayTaskProvider extends ChangeNotifier {
     }
     _lastEducationAt = parsedLastEdu;
 
+    await _loadDiaryDraftProgress(requestId: requestId);
+
     await _syncTodayTaskReminderState();
+  }
+
+  int get _effectiveDiaryProgress =>
+      _diaryDone ? TodayTaskDraftProgress.groupCompleted : _diaryDraftProgress;
+
+  Future<void> _loadDiaryDraftProgress({required int requestId}) async {
+    if (_diaryDone) {
+      _diaryDraftProgress = TodayTaskDraftProgress.groupCompleted;
+      return;
+    }
+
+    try {
+      final draft = await _diariesApi.getLatestTodayTaskDraft();
+      if (requestId != _requestId) return;
+      _diaryDraftProgress =
+          draft == null
+              ? TodayTaskDraftProgress.none
+              : TodayTaskDraftProgress.normalize(draft['draft_progress']);
+    } catch (e) {
+      if (requestId != _requestId) return;
+      _diaryDraftProgress = TodayTaskDraftProgress.none;
+      debugPrint('TodayTaskProvider._loadDiaryDraftProgress 실패: $e');
+    }
   }
 
   // ───────────────────── 로컬에서만 살짝 건드릴 때 ─────────────────────
@@ -196,12 +235,32 @@ class TodayTaskProvider extends ChangeNotifier {
   /// 나중에 꼬린 것 같으면 `refresh()`로 서버 기준으로 리셋하면 됨.
   void setTodayTaskLocally({
     bool? diaryDone,
+    int? diaryDraftProgress,
     bool? relaxationDone,
     bool? educationDoneWeek,
     DateTime? lastEducationAt,
   }) {
+    final normalizedDiaryProgress =
+        diaryDraftProgress == null
+            ? null
+            : TodayTaskDraftProgress.normalize(diaryDraftProgress);
+
     if (diaryDone != null) {
       _diaryDone = diaryDone;
+    }
+    if (normalizedDiaryProgress != null) {
+      final shouldResetDiaryProgress =
+          diaryDone == false &&
+          normalizedDiaryProgress == TodayTaskDraftProgress.none;
+      _diaryDraftProgress =
+          shouldResetDiaryProgress
+              ? TodayTaskDraftProgress.none
+              : (_diaryDraftProgress >= normalizedDiaryProgress
+                  ? _diaryDraftProgress
+                  : normalizedDiaryProgress);
+    }
+    if (_diaryDone) {
+      _diaryDraftProgress = TodayTaskDraftProgress.groupCompleted;
     }
     if (relaxationDone != null) {
       _relaxationDone = relaxationDone;
@@ -252,6 +311,7 @@ class TodayTaskProvider extends ChangeNotifier {
     _requestId++;
     _date = null;
     _diaryDone = false;
+    _diaryDraftProgress = TodayTaskDraftProgress.none;
     _relaxationDone = false;
     _educationDoneWeek = false;
     _cbtDoneWeeks.clear();

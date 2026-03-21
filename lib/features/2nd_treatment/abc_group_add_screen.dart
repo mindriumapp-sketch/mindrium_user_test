@@ -4,6 +4,7 @@ import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 
 import '../../widgets/custom_appbar.dart';
@@ -1015,15 +1016,12 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                           });
 
                           if (isTodayTaskDraft && context.mounted) {
-                            await syncTodayTaskDraftProgress(
+                            await syncTodayTaskDraftState(
                               context,
                               progress: TodayTaskDraftProgress.groupCompleted,
                               diaryId: widget.diaryId,
                             );
                             if (!context.mounted) return;
-                            context
-                                .read<TodayTaskProvider>()
-                                .setTodayTaskLocally(diaryDone: true);
                           }
 
                           debugPrint(

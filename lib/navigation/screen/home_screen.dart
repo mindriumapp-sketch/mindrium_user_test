@@ -8,9 +8,10 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
-import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -25,14 +26,6 @@ import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
 import 'package:gad_app_team/features/menu/report/report_screen.dart';
 import 'package:gad_app_team/navigation/screen/myinfo_screen.dart';
 import 'package:gad_app_team/navigation/screen/treatment_screen.dart';
-import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
-import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
-import 'package:gad_app_team/features/3rd_treatment/week3_screen.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_screen.dart';
-import 'package:gad_app_team/features/5th_treatment/week5_screen.dart';
-import 'package:gad_app_team/features/6th_treatment/week6_screen.dart';
-import 'package:gad_app_team/features/7th_treatment/week7_screen.dart';
-import 'package:gad_app_team/features/8th_treatment/week8_screen.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_visualization_screen.dart';
 
@@ -58,16 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
       '규칙적인 루틴을 위해 알림 시간을 설정해 보세요.';
   static const String _alarmCardDisabledDescription = _week2LockedMessage;
   static const Color _alarmCardBaseColor = Color(0xFFE4F3FF);
-  static const List<Widget> _weekScreens = [
-    Week1Screen(),
-    Week2Screen(),
-    Week3Screen(),
-    Week4Screen(),
-    Week5Screen(),
-    Week6Screen(),
-    Week7Screen(),
-    Week8Screen(),
-  ];
 
   int _selectedIndex = 0;
   final TokenStorage _tokens = TokenStorage();
@@ -148,10 +131,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     prepareTodayTaskDiaryFlow(flow);
-    await syncTodayTaskDraftProgress(
+    await syncTodayTaskDraftState(
       context,
       progress: TodayTaskDraftProgress.none,
       allowLower: true,
+      diaryDone: false,
     );
     if (!mounted) return;
 
@@ -255,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startOrResumeTodayTaskDiary() async {
+    final todayTask = context.read<TodayTaskProvider>();
     TodayTaskDraftSnapshot? draft;
     try {
       final rawDraft = await _diariesApi.getLatestTodayTaskDraft();
@@ -280,6 +265,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (draft == null) {
+      if (todayTask.diaryDone) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('오늘의 일기는 이미 완료했어요.')));
+        return;
+      }
       await _startFreshTodayTaskDiary();
       return;
     }
@@ -791,53 +783,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required UserProvider user,
     required TodayTaskProvider todayTask,
   }) {
-    final navigator = Navigator.of(context);
-    final weekNumber = user.currentWeek;
-
-    final List<_DailyTask> todayTasks = [
-      _DailyTask(
-        title: '오늘의 일기 작성',
-        isDone: todayTask.diaryDone,
-        onTap: _startOrResumeTodayTaskDiary,
-      ),
-      _DailyTask(
-        title: '이번주 이완 복습',
-        isDone: todayTask.relaxationDone,
-        onTap: () {
-          final taskId = 'week${weekNumber}_daily';
-          final assets = _resolveRelaxationAssets(weekNumber);
-
-          navigator.pushNamed(
-            '/relaxation_education',
-            arguments: {
-              'taskId': taskId,
-              'weekNumber': weekNumber,
-              'mp3Asset': assets['mp3Asset']!,
-              'riveAsset': assets['riveAsset']!,
-              'nextPage': '/home',
-            },
-          );
-        },
-      ),
-      _DailyTask(
-        title: '이번주 교육 활동',
-        isDone: todayTask.educationDoneWeek,
-        onTap: () {
-          final selectedWeek = user.currentWeek; // 1~8이라고 가정
-
-          // 안전하게 인덱스 계산
-          var index = selectedWeek - 1;
-          if (index < 0) index = 0;
-          if (index >= _weekScreens.length) {
-            index = _weekScreens.length - 1;
-          }
-
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => _weekScreens[index]));
-        },
-      ),
-    ];
+    final todayTasks = _buildTodayTasks(user: user, todayTask: todayTask);
 
     return _WhiteCard(
       child: Column(
@@ -852,13 +798,93 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          ...todayTasks.map(
-            (t) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _buildTaskCard(t),
-            ),
-          ),
+          _buildTaskList(todayTasks),
         ],
+      ),
+    );
+  }
+
+  List<_DailyTask> _buildTodayTasks({
+    required UserProvider user,
+    required TodayTaskProvider todayTask,
+  }) {
+    return [
+      ..._buildDiarySequenceTasks(todayTask),
+      _buildRelaxationTask(
+        weekNumber: user.currentWeek,
+        isDone: todayTask.relaxationDone,
+      ),
+    ];
+  }
+
+  List<_DailyTask> _buildDiarySequenceTasks(TodayTaskProvider todayTask) {
+    final steps = [
+      _DiaryTaskDefinition(title: '불안 평가', isDone: todayTask.diaryAnxietyDone),
+      _DiaryTaskDefinition(title: 'ABC 작성', isDone: todayTask.diaryAbcDone),
+      _DiaryTaskDefinition(
+        title: '위치/시간 설정',
+        isDone: todayTask.diaryLocTimeDone,
+      ),
+      _DiaryTaskDefinition(title: '그룹 선택', isDone: todayTask.diaryGroupDone),
+    ];
+    final currentIndex = _resolveCurrentDiaryTaskIndex(steps);
+
+    return List.generate(steps.length, (index) {
+      final step = steps[index];
+      return _DailyTask(
+        title: step.title,
+        isDone: step.isDone,
+        isCurrent: !step.isDone && currentIndex == index,
+        connectToPrevious: index > 0,
+        connectToNext: index < steps.length - 1,
+        onTap: _startOrResumeTodayTaskDiary,
+      );
+    });
+  }
+
+  int _resolveCurrentDiaryTaskIndex(List<_DiaryTaskDefinition> steps) {
+    final firstPendingIndex = steps.indexWhere((step) => !step.isDone);
+    if (firstPendingIndex >= 0) {
+      return firstPendingIndex;
+    }
+    return steps.length - 1;
+  }
+
+  _DailyTask _buildRelaxationTask({
+    required int weekNumber,
+    required bool isDone,
+  }) {
+    return _DailyTask(
+      title: '이번주 이완 복습',
+      isDone: isDone,
+      onTap: () => _openRelaxationTask(weekNumber),
+    );
+  }
+
+  void _openRelaxationTask(int weekNumber) {
+    final taskId = 'week${weekNumber}_daily';
+    final assets = _resolveRelaxationAssets(weekNumber);
+
+    Navigator.of(context).pushNamed(
+      '/relaxation_education',
+      arguments: {
+        'taskId': taskId,
+        'weekNumber': weekNumber,
+        'mp3Asset': assets['mp3Asset']!,
+        'riveAsset': assets['riveAsset']!,
+        'nextPage': '/home',
+      },
+    );
+  }
+
+  Widget _buildTaskList(List<_DailyTask> tasks) {
+    return Column(
+      children: List.generate(
+        tasks.length,
+        (index) => Padding(
+          padding: EdgeInsets.only(bottom: tasks[index].connectToNext ? 0 : 10),
+          child: _buildTaskCard(tasks[index]),
+        ),
       ),
     );
   }
@@ -873,34 +899,92 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTaskCard(_DailyTask task) {
     final isDone = task.isDone;
+    final onTap = isDone ? null : task.onTap;
+    final taskHeight = task.isSequenceTask ? 60.0 : 54.0;
+    final iconTop = task.isSequenceTask ? 8.0 : 4.0;
+    final connectorSplit = taskHeight / 2;
     final imagePath =
         isDone ? 'assets/image/finish.png' : 'assets/image/progressing.png';
-    final bgColor = isDone ? const Color(0xFFFFE5E9) : const Color(0xFFD9F3FF);
+    final bgColor =
+        isDone
+            ? const Color(0xFFFFE5E9)
+            : task.isCurrent
+            ? const Color(0xFFDFF2FF)
+            : const Color(0xFFD9F3FF);
+    final connectorColor =
+        isDone || task.isCurrent
+            ? const Color(0xFF9BC9EE)
+            : const Color(0xFFD6E3EE);
 
     return InkWell(
-      onTap: task.onTap,
+      onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: bgColor),
-            padding: const EdgeInsets.all(10),
-            child: Image.asset(imagePath, fit: BoxFit.contain),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              task.title,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black,
-                fontWeight: FontWeight.w600,
+      child: SizedBox(
+        height: taskHeight,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 52,
+              height: taskHeight,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (task.connectToPrevious)
+                    Positioned(
+                      top: 0,
+                      bottom: connectorSplit,
+                      left: 25,
+                      child: Container(
+                        width: 2,
+                        decoration: BoxDecoration(
+                          color: connectorColor,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  if (task.connectToNext)
+                    Positioned(
+                      top: connectorSplit,
+                      bottom: 0,
+                      left: 25,
+                      child: Container(
+                        width: 2,
+                        decoration: BoxDecoration(
+                          color: connectorColor,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    top: iconTop,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: bgColor,
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: Image.asset(imagePath, fit: BoxFit.contain),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                task.title,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDone ? const Color(0xFF96A1AC) : Colors.black,
+                  fontWeight:
+                      task.isCurrent ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1064,7 +1148,26 @@ class _WhiteCard extends StatelessWidget {
 class _DailyTask {
   final String title;
   final bool isDone;
+  final bool isCurrent;
+  final bool connectToPrevious;
+  final bool connectToNext;
   final VoidCallback? onTap;
 
-  const _DailyTask({required this.title, required this.isDone, this.onTap});
+  const _DailyTask({
+    required this.title,
+    required this.isDone,
+    this.isCurrent = false,
+    this.connectToPrevious = false,
+    this.connectToNext = false,
+    this.onTap,
+  });
+
+  bool get isSequenceTask => connectToPrevious || connectToNext;
+}
+
+class _DiaryTaskDefinition {
+  final String title;
+  final bool isDone;
+
+  const _DiaryTaskDefinition({required this.title, required this.isDone});
 }

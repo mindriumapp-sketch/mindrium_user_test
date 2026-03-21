@@ -14,6 +14,7 @@ import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 import 'package:gad_app_team/widgets/inner_btn_card.dart';
 
@@ -178,7 +179,7 @@ class DiaryYesOrNo extends StatelessWidget {
       }
       flow.setDiaryId(abcId);
       if (context.mounted && _resolveDiaryRoute(flow, origin) == 'today_task') {
-        await syncTodayTaskDraftProgress(
+        await syncTodayTaskDraftState(
           context,
           progress: TodayTaskDraftProgress.diaryWritten,
           diariesApi: diariesApi,

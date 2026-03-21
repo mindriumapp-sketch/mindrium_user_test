@@ -3,6 +3,12 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 import uuid
 from core.security import get_current_user_id
+from core.today_task_draft_progress import (
+    COMPLETED_DRAFT_PROGRESS,
+    TODAY_TASK_ROUTE,
+    completed_draft_progress_filter,
+    is_incomplete_draft_progress,
+)
 from core.utils import kst_midnight, parse_datetime_value, ensure_utc
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -27,8 +33,6 @@ router = APIRouter(prefix="/diaries", tags=["diaries"])
 
 DIARY_COLLECTION = "diaries"
 DEFAULT_GROUP_ID = "group_example"
-TODAY_TASK_ROUTE = "today_task"
-COMPLETED_DRAFT_PROGRESS = 100
 
 # ---------- 공통 헬퍼 ----------
 async def update_diary_chip_category(
@@ -94,14 +98,10 @@ def _build_diary_query(
     if not include_drafts:
         query["$or"] = [
             {"draft_progress": {"$exists": False}},
-            {"draft_progress": COMPLETED_DRAFT_PROGRESS},
+            {"draft_progress": completed_draft_progress_filter()},
         ]
 
     return query
-
-
-def _is_incomplete_draft_progress(progress: Optional[int]) -> bool:
-    return progress is not None and progress < COMPLETED_DRAFT_PROGRESS
 
 
 def _today_task_incomplete_draft_query(
@@ -378,7 +378,7 @@ async def create_diary(
     collection = db[DIARY_COLLECTION]
     now_utc = datetime.now(timezone.utc)
     client_ts_utc = ensure_utc(payload.client_timestamp)
-    is_incomplete_draft = _is_incomplete_draft_progress(payload.draft_progress)
+    is_incomplete_draft = is_incomplete_draft_progress(payload.draft_progress)
     group_id = (
         payload.group_id
         if is_incomplete_draft

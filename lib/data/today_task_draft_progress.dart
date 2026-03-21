@@ -11,17 +11,21 @@ const String todayTaskAutoNavigateAbcArgKey = 'autoNavigateToTodayTaskAbc';
 
 class TodayTaskDraftProgress {
   static const int none = 0;
-  static const int anxietyEvaluated = 25;
-  static const int diaryWritten = 50;
-  static const int locTimeRecorded = 75;
-  static const int groupCompleted = 100;
+  static const int anxietyEvaluated = 20;
+  static const int diaryWritten = 40;
+  static const int locTimeRecorded = 60;
+  static const int groupCompleted = 80;
 
-  static const Set<int> _allowedValues = {
-    none,
-    anxietyEvaluated,
-    diaryWritten,
-    locTimeRecorded,
-    groupCompleted,
+  static const Map<int, int> _normalizedValues = {
+    none: none,
+    anxietyEvaluated: anxietyEvaluated,
+    diaryWritten: diaryWritten,
+    locTimeRecorded: locTimeRecorded,
+    groupCompleted: groupCompleted,
+    25: anxietyEvaluated,
+    50: diaryWritten,
+    75: locTimeRecorded,
+    100: groupCompleted,
   };
 
   static int normalize(dynamic raw, {int fallback = none}) {
@@ -34,10 +38,14 @@ class TodayTaskDraftProgress {
       value = int.tryParse(raw.trim());
     }
 
-    if (value == null || !_allowedValues.contains(value)) {
+    if (value == null) {
       return fallback;
     }
-    return value;
+    return _normalizedValues[value] ?? fallback;
+  }
+
+  static bool isCompleted(dynamic raw) {
+    return normalize(raw) >= groupCompleted;
   }
 }
 

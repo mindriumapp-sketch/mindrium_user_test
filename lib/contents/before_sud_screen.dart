@@ -18,6 +18,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 
 /// SUD(0‒10)을 입력받아 저장하고, 점수에 따라 후속 행동을 안내하는 화면
@@ -191,7 +192,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
             }
             final sudId = res?['sud_id']?.toString() ?? '';
             if (sudId.isNotEmpty) flow.setSudId(sudId);
-            await syncTodayTaskDraftProgress(
+            await syncTodayTaskDraftState(
               context,
               progress: TodayTaskDraftProgress.anxietyEvaluated,
               diariesApi: _diariesApi,

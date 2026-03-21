@@ -11,6 +11,7 @@ import 'package:gad_app_team/data/api/custom_tags_api.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:provider/provider.dart';
 
 import 'abc_visualization_screen.dart';
@@ -536,11 +537,14 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
     if (!mounted) {
       return (diaryId: diaryId, sudId: sudId);
     }
-    await syncTodayTaskDraftProgress(
+    await syncTodayTaskDraftState(
       context,
       progress: TodayTaskDraftProgress.diaryWritten,
       diaryId: diaryId,
     );
+    if (!mounted) {
+      return (diaryId: diaryId, sudId: sudId);
+    }
     return (diaryId: diaryId, sudId: sudId);
   }
 

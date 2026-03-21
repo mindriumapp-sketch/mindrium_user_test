@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 from schemas.sud import SudScoreResponse  # 경로 맞게
 
+DraftProgressValue = Literal[0, 20, 25, 40, 50, 60, 75, 80, 100]
+
 # ---------- LocTime ----------
 
 
@@ -54,7 +56,7 @@ class DiaryChip(BaseModel):
 class DiaryBase(BaseModel):
     group_id: Optional[str] = None
     route: Optional[Literal["notification", "today_task", "solve"]] = None
-    draft_progress: Optional[Literal[0, 25, 50, 75, 100]] = None
+    draft_progress: Optional[DraftProgressValue] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)
@@ -74,7 +76,7 @@ class DiaryCreate(DiaryBase):
 
 class DiaryUpdate(BaseModel):
     group_id: Optional[str] = None
-    draft_progress: Optional[Literal[0, 25, 50, 75, 100]] = None
+    draft_progress: Optional[DraftProgressValue] = None
     activation: Optional[DiaryChip] = None
     belief: Optional[List[DiaryChip]] = None
     consequence_physical: Optional[List[DiaryChip]] = None
@@ -103,7 +105,7 @@ class DiarySummaryResponse(BaseModel):
     diary_id: str
     group_id: Optional[str] = None
     route: Optional[Literal["notification", "today_task", "solve"]] = None
-    draft_progress: Optional[Literal[0, 25, 50, 75, 100]] = None
+    draft_progress: Optional[DraftProgressValue] = None
     activation: DiaryChip
     belief: List[DiaryChip] = Field(default_factory=list)
     consequence_physical: List[DiaryChip] = Field(default_factory=list)

@@ -11,6 +11,10 @@ from datetime import datetime, timezone, timedelta
 from pymongo import ReturnDocument
 
 from core.security import get_current_user
+from core.today_task_draft_progress import (
+    TODAY_TASK_ROUTE,
+    completed_draft_progress_filter,
+)
 from core.utils import parse_datetime_value, ensure_utc, get_week_range_kst, kst_midnight
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -321,13 +325,14 @@ async def get_today_task(
             },
             # 🔹 자동생성 label 포함된 애들 제외
             "activation.label": {"$not": {"$regex": "자동 생성"}},
-            # today_task는 draft_progress가 100일 때만 완료로 간주.
+            # today_task는 draft_progress가 80일 때 완료로 간주하고,
+            # 기존 100 완료 데이터도 계속 완료로 인정한다.
             "$or": [
-                {"route": {"$ne": "today_task"}},
+                {"route": {"$ne": TODAY_TASK_ROUTE}},
                 {
-                    "route": "today_task",
+                    "route": TODAY_TASK_ROUTE,
                     "$or": [
-                        {"draft_progress": 100},
+                        {"draft_progress": completed_draft_progress_filter()},
                         {"draft_progress": {"$exists": False}},
                     ],
                 },

@@ -17,6 +17,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -246,7 +247,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
 
       _abcId = diaryId;
       if (_resolveDiaryRoute() == 'today_task' && mounted) {
-        await syncTodayTaskDraftProgress(
+        await syncTodayTaskDraftState(
           context,
           progress: TodayTaskDraftProgress.diaryWritten,
           diariesApi: _diariesApi,
@@ -683,7 +684,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
         debugPrint('🟡 위치/시간 안 받을래요 선택됨');
         await _diariesApi.deleteLocTime(resolvedDiaryId);
         if (_resolveDiaryRoute() == 'today_task' && mounted) {
-          await syncTodayTaskDraftProgress(
+          await syncTodayTaskDraftState(
             context,
             progress: TodayTaskDraftProgress.locTimeRecorded,
             diariesApi: _diariesApi,
@@ -764,7 +765,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
 
       debugPrint('🟢 위치/시간 설정 완료');
       if (_resolveDiaryRoute() == 'today_task' && mounted) {
-        await syncTodayTaskDraftProgress(
+        await syncTodayTaskDraftState(
           context,
           progress: TodayTaskDraftProgress.locTimeRecorded,
           diariesApi: _diariesApi,
@@ -831,10 +832,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
       Navigator.push(context, route);
       return;
     }
-    Navigator.pushReplacement(
-      context,
-      route,
-    );
+    Navigator.pushReplacement(context, route);
   }
 
   // ====== 빌드 ======
