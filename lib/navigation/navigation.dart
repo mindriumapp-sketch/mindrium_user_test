@@ -25,7 +25,7 @@ class CustomNavigationBar extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 104 + bottomInset,
+      height: 90 + bottomInset,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
@@ -35,20 +35,26 @@ class CustomNavigationBar extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            height: 82 + bottomInset,
+            height: 70 + bottomInset,
             child: Container(
               padding: EdgeInsets.only(bottom: bottomInset),
               decoration: BoxDecoration(
                 color: AppColors.grey100,
+                border: const Border(
+                  top: BorderSide(
+                    color: Color(0x1A0E2C48),
+                    width: 0.8,
+                  ),
+                ),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, -1),
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, -2),
                   ),
                 ],
               ),
@@ -59,8 +65,8 @@ class CustomNavigationBar extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            top: 22,
-            bottom: bottomInset + 4,
+            top: 15,
+            bottom: bottomInset,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: List.generate(items.length, (index) {
@@ -116,9 +122,9 @@ class _NavBarItem extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Transform.translate(
-                    offset: const Offset(0, -22),
+                    offset: const Offset(0, -18),
                     child: SizedBox(
-                      width: 60,
+                      width: 50,
                       height: 60,
                       child: Image.asset(
                         'assets/image/popup1.png',
@@ -126,9 +132,8 @@ class _NavBarItem extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Transform.translate(
-                    offset: const Offset(0, -20),
+                    offset: const Offset(0, -18),
                     child: Text(
                       label,
                       textAlign: TextAlign.center,
@@ -157,9 +162,9 @@ class _NavBarItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.only(top: 12),
         child: Padding(
-          padding: const EdgeInsets.only(top: 6),
+          padding: const EdgeInsets.only(top: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
