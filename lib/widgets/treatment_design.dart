@@ -255,7 +255,7 @@ class TreatmentDesign extends StatelessWidget {
                       showStatusBadge: canOpenWeek,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   GestureDetector(
                     onTap:
                         canOpenWeek
@@ -389,7 +389,8 @@ class TreatmentDesign extends StatelessWidget {
     required bool showStatusBadge,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      constraints: const BoxConstraints(minHeight: 54),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: enabled ? const Color(0xFFF7FCFF) : const Color(0xFFF2F4F7),
         borderRadius: BorderRadius.circular(12),
@@ -403,7 +404,7 @@ class TreatmentDesign extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Noto Sans KR',
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 14,
                 color: enabled ? c.textPrimary : const Color(0xFF7F8895),
               ),
             ),
