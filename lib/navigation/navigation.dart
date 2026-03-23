@@ -15,6 +15,8 @@ class CustomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+    final navBottomInset = isIOS ? bottomInset.clamp(8.0, 16.0) : bottomInset;
 
     const items = [
       _NavItemData(icon: Icons.home, label: '홈'),
@@ -25,7 +27,7 @@ class CustomNavigationBar extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 90 + bottomInset,
+      height: 90 + navBottomInset,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
@@ -35,9 +37,9 @@ class CustomNavigationBar extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            height: 70 + bottomInset,
+            height: 70 + navBottomInset,
             child: Container(
-              padding: EdgeInsets.only(bottom: bottomInset),
+              padding: EdgeInsets.only(bottom: navBottomInset),
               decoration: BoxDecoration(
                 color: AppColors.grey100,
                 border: const Border(
@@ -66,7 +68,7 @@ class CustomNavigationBar extends StatelessWidget {
             left: 0,
             right: 0,
             top: 15,
-            bottom: bottomInset,
+            bottom: navBottomInset,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: List.generate(items.length, (index) {
@@ -108,6 +110,8 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final centerLift = Theme.of(context).platform == TargetPlatform.iOS ? -12.0 : -18.0;
+
     if (isCenter) {
       final centerLabelColor = isSelected ? AppColors.indigo : Colors.black87;
       return InkWell(
@@ -122,7 +126,7 @@ class _NavBarItem extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Transform.translate(
-                    offset: const Offset(0, -18),
+                    offset: Offset(0, centerLift),
                     child: SizedBox(
                       width: 50,
                       height: 60,
@@ -133,7 +137,7 @@ class _NavBarItem extends StatelessWidget {
                     ),
                   ),
                   Transform.translate(
-                    offset: const Offset(0, -18),
+                    offset: Offset(0, centerLift),
                     child: Text(
                       label,
                       textAlign: TextAlign.center,
