@@ -119,6 +119,10 @@ class _ScreenTimeAutoTrackerState extends State<ScreenTimeAutoTracker>
     }
 
     try {
+      if (!await _canAttemptUpload()) {
+        await _enqueuePending(start, end, platform);
+        return;
+      }
       await _screenTimeApi.logSession(
         start: start,
         end: end,
@@ -156,13 +160,17 @@ class _ScreenTimeAutoTrackerState extends State<ScreenTimeAutoTracker>
   Future<void> _flushPendingQueue() async {
     final prefs = _prefs;
     if (prefs == null || _isFlushingQueue) return;
-    final queue = List<String>.from(prefs.getStringList(_pendingKey) ?? const []);
+    final queue = List<String>.from(
+      prefs.getStringList(_pendingKey) ?? const [],
+    );
     if (queue.isEmpty) return;
+    if (!await _canAttemptUpload()) return;
     _isFlushingQueue = true;
 
     try {
       final remaining = <String>[];
-      for (final raw in queue) {
+      for (var i = 0; i < queue.length; i++) {
+        final raw = queue[i];
         final payload = _decodePendingPayload(raw);
         if (payload == null) {
           continue;
@@ -174,6 +182,11 @@ class _ScreenTimeAutoTrackerState extends State<ScreenTimeAutoTracker>
             platform: payload.platform ?? _platformLabel(),
           );
         } on DioException catch (e) {
+          if (e.response?.statusCode == 401) {
+            debugPrint('Pausing screen time retry until auth is restored.');
+            remaining.addAll(queue.skip(i));
+            break;
+          }
           debugPrint('Retrying screen time later: ${e.message}');
           remaining.add(raw);
         }
@@ -199,6 +212,15 @@ class _ScreenTimeAutoTrackerState extends State<ScreenTimeAutoTracker>
     } catch (_) {
       return null;
     }
+  }
+
+  Future<bool> _canAttemptUpload() async {
+    final access = await _tokens.access;
+    if (access != null && access.isNotEmpty) {
+      return true;
+    }
+    final refresh = await _tokens.refresh;
+    return refresh != null && refresh.isNotEmpty;
   }
 
   String? _platformLabel() {

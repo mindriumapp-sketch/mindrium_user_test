@@ -37,7 +37,6 @@ class LocTimeSetting {
 
   Map<String, dynamic> toJson({bool includeSavedAt = true}) {
     final map = <String, dynamic>{
-      'reminder_minutes': reminderMinutes,
       'description': description,
       'cause': cause,
       'notify_enter': notifyEnter,
@@ -122,7 +121,7 @@ class LocTimeSetting {
           json['location_desc']?.toString() ??
           json['description']?.toString() ??
           json['location']?.toString(),
-      reminderMinutes: _intFrom(json['reminder_minutes'] ?? json['reminderMinutes']),
+      // reminderMinutes: _intFrom(json['reminder_minutes'] ?? json['reminderMinutes']),
       savedAt: _dateFrom(savedAtRaw),
       notifyEnter: _boolFrom(json['notify_enter'] ?? json['notifyEnter']),
       notifyExit: _boolFrom(json['notify_exit'] ?? json['notifyExit']),
@@ -169,11 +168,11 @@ double? _doubleFrom(dynamic raw) {
   return null;
 }
 
-int? _intFrom(dynamic raw) {
-  if (raw is num) return raw.toInt();
-  if (raw is String) return int.tryParse(raw);
-  return null;
-}
+// int? _intFrom(dynamic raw) {
+//   if (raw is num) return raw.toInt();
+//   if (raw is String) return int.tryParse(raw);
+//   return null;
+// }
 
 DateTime? _dateFrom(dynamic raw) {
   if (raw is DateTime) return raw;
