@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode;
 import 'package:uuid/uuid.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/map_picker.dart';
@@ -51,6 +52,7 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   bool _isLoading = true;
+  bool _didShowExactFallbackNotice = false;
   List<AlarmSetting> _alarms = [];
 
   @override
@@ -149,6 +151,10 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
   }
 
   Future<void> _upsert(AlarmSetting updated) async {
+    if (!await _ensureAlarmPermissions(updated)) {
+      return;
+    }
+
     final copied = List<AlarmSetting>.from(_alarms);
     final index = copied.indexWhere((a) => a.id == updated.id);
     if (index >= 0) {
@@ -194,6 +200,56 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
     if (label?.isNotEmpty ?? false) return label!;
     if (address?.isNotEmpty ?? false) return address!;
     return '위치 알림 사용';
+  }
+
+  Future<bool> _ensureAlarmPermissions(AlarmSetting alarm) async {
+    if (!alarm.enabled) return true;
+
+    final usesLocationAlarm =
+        alarm.locationEnabled &&
+        alarm.latitude != null &&
+        alarm.longitude != null;
+
+    await _service.requestPermissions(requestExactAlarms: !usesLocationAlarm);
+
+    var notificationStatus = await Permission.notification.status;
+    if (!notificationStatus.isGranted && !notificationStatus.isProvisional) {
+      notificationStatus = await Permission.notification.request();
+    }
+
+    if (!notificationStatus.isGranted && !notificationStatus.isProvisional) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('알림을 받으려면 알림 권한을 허용해주세요.')));
+      return false;
+    }
+
+    if (usesLocationAlarm) {
+      final locationAllowed = await _service.requestLocationPermission(
+        requireAlways: true,
+      );
+      if (!locationAllowed) {
+        if (!mounted) return false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('위치 기반 알림을 받으려면 위치 권한을 항상 허용으로 설정해주세요.'),
+          ),
+        );
+        return false;
+      }
+      return true;
+    }
+
+    final canExact = await _service.canScheduleExactAlarms(refresh: true);
+    if (!canExact && !_didShowExactFallbackNotice && mounted) {
+      _didShowExactFallbackNotice = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('정확한 알람 권한이 없어 알림이 몇 분 정도 늦게 도착할 수 있어요.')),
+      );
+    }
+
+    return true;
   }
 
   @override

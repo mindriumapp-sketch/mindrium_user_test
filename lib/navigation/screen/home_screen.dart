@@ -397,8 +397,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         'getInitialLaunchAction',
       );
       _handleWidgetLaunchAction(action);
+    } on MissingPluginException {
+      debugPrint('초기 위젯 액션 채널이 아직 등록되지 않았습니다.');
     } on PlatformException catch (e) {
       debugPrint('초기 위젯 액션 조회 실패: ${e.message}');
+    } catch (e) {
+      debugPrint('초기 위젯 액션 조회 실패: $e');
     }
   }
 
@@ -547,7 +551,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // 알림 관련(플러그인/플랫폼) 권한은 홈 화면에서 선요청.
     await AlarmNotificationService.instance.requestPermissions();
     await _syncAlarmSchedulesBestEffort();
-    AlarmNotificationService.instance.handlePendingNotificationTap();
 
     _permissionsChecked = true;
     await _refreshRequiredPermissionState();

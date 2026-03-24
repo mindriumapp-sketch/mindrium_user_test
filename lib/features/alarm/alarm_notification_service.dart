@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geofence_service/geofence_service.dart'
     show
         GeofenceService,
@@ -11,6 +14,7 @@ import 'package:geofence_service/geofence_service.dart'
         Location;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -152,7 +156,8 @@ class AlarmSetting {
     final latitude = _readDouble(location['latitude'] ?? json['latitude']);
     final longitude = _readDouble(location['longitude'] ?? json['longitude']);
     final locationEnabled =
-        (hasLocationObject || json['location_enabled'] == true) &&
+        (hasLocationObject ||
+            _readBool(json['location_enabled'], fallback: false)) &&
         latitude != null &&
         longitude != null;
 
@@ -173,10 +178,10 @@ class AlarmSetting {
           (json['label']?.toString().trim().isNotEmpty ?? false)
               ? json['label'].toString().trim()
               : 'Mindrium 알림',
-      enabled: json['enabled'] == true,
+      enabled: _readBool(json['enabled'], fallback: false),
       weekdays:
           parsedWeekdays.isEmpty ? const [1, 2, 3, 4, 5, 6, 7] : parsedWeekdays,
-      vibration: json['vibration'] != false,
+      vibration: _readBool(json['vibration'], fallback: true),
       locationEnabled: locationEnabled,
       latitude: latitude,
       longitude: longitude,
@@ -189,14 +194,16 @@ class AlarmSetting {
         location['radius_meters'] ?? json['location_radius_meters'],
         fallback: 100,
       ).clamp(30, 1000),
-      notifyOnEnter:
-          hasLocationObject
-              ? location['notify_on_enter'] != false
-              : json['notify_on_enter'] != false,
-      notifyOnExit:
-          hasLocationObject
-              ? location['notify_on_exit'] == true
-              : json['notify_on_exit'] == true,
+      notifyOnEnter: _readBool(
+        hasLocationObject
+            ? location['notify_on_enter']
+            : json['notify_on_enter'],
+        fallback: true,
+      ),
+      notifyOnExit: _readBool(
+        hasLocationObject ? location['notify_on_exit'] : json['notify_on_exit'],
+        fallback: false,
+      ),
     );
   }
 
@@ -209,6 +216,23 @@ class AlarmSetting {
   static double? _readDouble(dynamic raw) {
     if (raw is num) return raw.toDouble();
     return double.tryParse(raw?.toString() ?? '');
+  }
+
+  static bool _readBool(dynamic raw, {required bool fallback}) {
+    if (raw is bool) return raw;
+    if (raw is num) return raw != 0;
+
+    final normalized = raw?.toString().trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) return fallback;
+
+    if (const {'true', '1', 'yes', 'y', 'on'}.contains(normalized)) {
+      return true;
+    }
+    if (const {'false', '0', 'no', 'n', 'off'}.contains(normalized)) {
+      return false;
+    }
+
+    return fallback;
   }
 }
 
@@ -239,6 +263,46 @@ class AlarmNotificationService {
   static const String _todayTaskChannelId = 'mindrium_today_task_channel';
   static const String _todayTaskLastActiveDateKeyPrefix =
       'today_task_last_active_date_v1';
+  static const DarwinInitializationSettings _darwinInitializationSettings =
+      DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestSoundPermission: false,
+        requestBadgePermission: false,
+        defaultPresentAlert: true,
+        defaultPresentSound: true,
+        defaultPresentBadge: true,
+        defaultPresentBanner: true,
+        defaultPresentList: true,
+      );
+  static const DarwinNotificationDetails _darwinNotificationDetails =
+      DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        presentBanner: true,
+        presentList: true,
+      );
+  static const DarwinNotificationDetails _darwinTimeSensitiveDetails =
+      DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        presentBanner: true,
+        presentList: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      );
+  static const DarwinNotificationDetails _darwinMacNotificationDetails =
+      DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+  static const MethodChannel _notificationLaunchChannel = MethodChannel(
+    'mindrium/notification_launch',
+  );
+  static const EventChannel _notificationLaunchEventChannel = EventChannel(
+    'mindrium/notification_launch_events',
+  );
   static const int _todayTaskReminderHour = 19;
   static const int _todayTaskReminderMinute = 30;
   static const List<_EducationReminderSlot> _educationReminderSlots = [
@@ -262,9 +326,13 @@ class AlarmNotificationService {
 
   bool _initialized = false;
   bool _geofenceListenerBound = false;
+  bool? _canScheduleExactAlarms;
+  StreamSubscription<dynamic>? _notificationLaunchSubscription;
   final Map<String, AlarmSetting> _locationAlarmMap = {};
   final Map<String, DateTime> _lastLocationNotifyAt = {};
   Map<String, dynamic>? _pendingTapPayload;
+  String? _lastHandledPayloadRaw;
+  DateTime? _lastHandledPayloadAt;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -275,17 +343,18 @@ class AlarmNotificationService {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
-    const iosSettings = DarwinInitializationSettings();
     const settings = InitializationSettings(
       android: androidSettings,
-      iOS: iosSettings,
-      macOS: iosSettings,
+      iOS: _darwinInitializationSettings,
+      macOS: _darwinInitializationSettings,
     );
 
     await _plugin.initialize(
       settings,
       onDidReceiveNotificationResponse: _onDidReceiveNotificationResponse,
     );
+
+    await _initializeNativeNotificationLaunchBridge();
 
     const channel = AndroidNotificationChannel(
       _channelId,
@@ -342,20 +411,34 @@ class AlarmNotificationService {
     _initialized = true;
   }
 
-  Future<void> requestPermissions() async {
+  Future<void> requestPermissions({bool requestExactAlarms = false}) async {
     await initialize();
 
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+    final androidPlugin =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
 
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestExactAlarmsPermission();
+    await androidPlugin?.requestNotificationsPermission();
+
+    _canScheduleExactAlarms = await _queryCanScheduleExactAlarms(
+      androidPlugin: androidPlugin,
+    );
+    if (requestExactAlarms && _canScheduleExactAlarms == false) {
+      final requestResult = await androidPlugin?.requestExactAlarmsPermission();
+      if (requestResult != null) {
+        _canScheduleExactAlarms = requestResult;
+      }
+      _canScheduleExactAlarms = await _queryCanScheduleExactAlarms(
+        androidPlugin: androidPlugin,
+      );
+      if (_canScheduleExactAlarms == false) {
+        debugPrint(
+          'exact alarm permission unavailable; falling back to inexact scheduling.',
+        );
+      }
+    }
 
     await _plugin
         .resolvePlatformSpecificImplementation<
@@ -368,6 +451,28 @@ class AlarmNotificationService {
           MacOSFlutterLocalNotificationsPlugin
         >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
+
+    if (kDebugMode) {
+      try {
+        final notificationStatus = await Permission.notification.status;
+        debugPrint(
+          '[requestPermissions] notificationStatus=$notificationStatus',
+        );
+      } catch (e) {
+        debugPrint('[requestPermissions] notification status check failed: $e');
+      }
+    }
+  }
+
+  Future<bool> canScheduleExactAlarms({bool refresh = false}) async {
+    await initialize();
+
+    if (!refresh && _canScheduleExactAlarms != null) {
+      return _canScheduleExactAlarms!;
+    }
+
+    _canScheduleExactAlarms = await _queryCanScheduleExactAlarms();
+    return _canScheduleExactAlarms!;
   }
 
   void handlePendingNotificationTap() {
@@ -383,6 +488,13 @@ class AlarmNotificationService {
   }
 
   void _handleNotificationTapPayload(String? payloadRaw) {
+    if (_isDuplicateNotificationPayload(payloadRaw)) {
+      if (kDebugMode) {
+        debugPrint('[notificationTap] duplicate payload ignored: $payloadRaw');
+      }
+      return;
+    }
+
     final payload = _decodeNotificationPayload(payloadRaw);
     if (_tryHandleNotificationAction(payload)) {
       _pendingTapPayload = null;
@@ -421,10 +533,78 @@ class AlarmNotificationService {
     return const {'action': 'start_apply'};
   }
 
+  Future<void> _initializeNativeNotificationLaunchBridge() async {
+    _notificationLaunchSubscription ??= _notificationLaunchEventChannel
+        .receiveBroadcastStream()
+        .listen(
+          (dynamic event) {
+            final payload = event?.toString();
+            if (kDebugMode) {
+              debugPrint('[notificationTap][nativeEvent] payload=$payload');
+            }
+            _handleNotificationTapPayload(payload);
+          },
+          onError: (Object error) {
+            if (kDebugMode) {
+              debugPrint('[notificationTap][nativeEvent] stream error: $error');
+            }
+          },
+        );
+
+    try {
+      final payload = await _notificationLaunchChannel.invokeMethod<String>(
+        'getInitialNotificationPayload',
+      );
+      if (payload != null && payload.trim().isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint('[notificationTap][nativeInitial] payload=$payload');
+        }
+        _handleNotificationTapPayload(payload);
+      }
+    } on MissingPluginException {
+      // Android and older iOS builds won't provide this fallback channel.
+    } on PlatformException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[notificationTap][nativeInitial] failed: ${e.code} ${e.message}',
+        );
+      }
+    }
+  }
+
+  bool _isDuplicateNotificationPayload(String? payloadRaw) {
+    final normalized = payloadRaw?.trim();
+    final now = DateTime.now();
+    if (normalized == null || normalized.isEmpty) {
+      return false;
+    }
+
+    final isDuplicate =
+        _lastHandledPayloadRaw == normalized &&
+        _lastHandledPayloadAt != null &&
+        now.difference(_lastHandledPayloadAt!) < const Duration(seconds: 2);
+
+    _lastHandledPayloadRaw = normalized;
+    _lastHandledPayloadAt = now;
+    return isDuplicate;
+  }
+
   bool _tryNavigateToApplyFlow(Map<String, dynamic> payload) {
     final context = appNavigatorKey.currentContext;
     final navigator = appNavigatorKey.currentState;
     if (context == null || navigator == null) {
+      if (kDebugMode) {
+        debugPrint('[notificationTap] navigator not ready yet');
+      }
+      return false;
+    }
+
+    if (!_isReadyForNotificationNavigation(navigator)) {
+      if (kDebugMode) {
+        debugPrint(
+          '[notificationTap] route not ready yet: route=${currentAppRouteName()} canPop=${navigator.canPop()}',
+        );
+      }
       return false;
     }
 
@@ -439,8 +619,17 @@ class AlarmNotificationService {
       args['alarmId'] = alarmId;
     }
 
+    if (kDebugMode) {
+      debugPrint(
+        '[notificationTap] navigating to /before_sud route=${currentAppRouteName()} args=$args',
+      );
+    }
     navigator.pushNamed('/before_sud', arguments: args);
     return true;
+  }
+
+  bool _isReadyForNotificationNavigation(NavigatorState navigator) {
+    return isReadyForExternalNavigation(navigator);
   }
 
   bool _tryNavigateToEducationHome() {
@@ -469,7 +658,7 @@ class AlarmNotificationService {
     return jsonEncode({'action': 'open_home'});
   }
 
-  Future<bool> requestLocationPermission() async {
+  Future<bool> requestLocationPermission({bool requireAlways = false}) async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return false;
 
@@ -477,8 +666,30 @@ class AlarmNotificationService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    return permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return false;
+    }
+
+    if (permission == LocationPermission.always) {
+      return true;
+    }
+
+    final alwaysStatus = await Permission.locationAlways.status;
+    if (alwaysStatus.isGranted) {
+      return true;
+    }
+
+    final requestedAlwaysStatus = await Permission.locationAlways.request();
+    if (requestedAlwaysStatus.isGranted) {
+      return true;
+    }
+
+    if (requireAlways) {
+      return false;
+    }
+
+    return permission == LocationPermission.whileInUse;
   }
 
   Future<List<AlarmSetting>> loadAlarms() async {
@@ -617,16 +828,8 @@ class AlarmNotificationService {
             enableVibration: true,
             playSound: true,
           ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-          macOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
+          iOS: _darwinNotificationDetails,
+          macOS: _darwinMacNotificationDetails,
         ),
         payload: _buildEducationTapPayload(),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -687,16 +890,8 @@ class AlarmNotificationService {
           enableVibration: true,
           playSound: true,
         ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-        macOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
+        iOS: _darwinNotificationDetails,
+        macOS: _darwinMacNotificationDetails,
       ),
       payload: _buildTodayTaskTapPayload(),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -743,6 +938,13 @@ class AlarmNotificationService {
             )
             .toList();
     await _syncLocationGeofences(locationEnabled);
+
+    await _logPendingNotificationState(
+      source: 'syncAlarms',
+      totalAlarms: alarms.length,
+      enabledAlarms: alarms.where((alarm) => alarm.enabled).length,
+      locationAlarms: locationEnabled.length,
+    );
   }
 
   bool _shouldScheduleEducationReminders({
@@ -778,6 +980,7 @@ class AlarmNotificationService {
   Future<void> _scheduleAlarm(AlarmSetting alarm) async {
     final weekdays =
         alarm.weekdays.toSet().where((d) => d >= 1 && d <= 7).toList()..sort();
+    final preferredScheduleMode = await _resolveTimeAlarmScheduleMode();
 
     for (final weekday in weekdays) {
       final scheduled = _nextInstanceForWeekday(
@@ -786,38 +989,38 @@ class AlarmNotificationService {
         minute: alarm.minute,
       );
 
-      await _plugin.zonedSchedule(
-        _notificationId(alarm.id, weekday),
-        alarm.label,
-        '설정한 알림 시간입니다.',
-        scheduled,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _channelId,
-            'Mindrium Alarm',
-            channelDescription: 'Mindrium에서 설정한 일정 알림',
-            importance: Importance.max,
-            priority: Priority.high,
-            category: AndroidNotificationCategory.alarm,
-            enableVibration: alarm.vibration,
-            playSound: true,
-          ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-            interruptionLevel: InterruptionLevel.timeSensitive,
-          ),
-          macOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        payload: _buildTapPayload(alarm.id),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-      );
+      try {
+        await _scheduleWeeklyAlarmOccurrence(
+          alarm: alarm,
+          weekday: weekday,
+          scheduled: scheduled,
+          scheduleMode: preferredScheduleMode,
+        );
+      } catch (e) {
+        if (preferredScheduleMode == AndroidScheduleMode.exactAllowWhileIdle) {
+          debugPrint(
+            'exact alarm schedule failed for ${alarm.id} on weekday $weekday; retrying inexact: $e',
+          );
+          _canScheduleExactAlarms = false;
+          try {
+            await _scheduleWeeklyAlarmOccurrence(
+              alarm: alarm,
+              weekday: weekday,
+              scheduled: scheduled,
+              scheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            );
+          } catch (fallbackError) {
+            debugPrint(
+              'inexact alarm schedule failed for ${alarm.id} on weekday $weekday: $fallbackError',
+            );
+          }
+          continue;
+        }
+
+        debugPrint(
+          'alarm schedule failed for ${alarm.id} on weekday $weekday: $e',
+        );
+      }
     }
   }
 
@@ -944,16 +1147,8 @@ class AlarmNotificationService {
           enableVibration: alarm.vibration,
           playSound: true,
         ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-        macOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
+        iOS: _darwinNotificationDetails,
+        macOS: _darwinMacNotificationDetails,
       ),
       payload: _buildTapPayload(alarm.id),
     );
@@ -961,6 +1156,82 @@ class AlarmNotificationService {
 
   void _onGeofenceError(dynamic error) {
     debugPrint('geofence stream error: $error');
+  }
+
+  Future<bool> _queryCanScheduleExactAlarms({
+    AndroidFlutterLocalNotificationsPlugin? androidPlugin,
+  }) async {
+    final plugin =
+        androidPlugin ??
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+    final canSchedule = await plugin?.canScheduleExactNotifications();
+    return canSchedule ?? true;
+  }
+
+  Future<AndroidScheduleMode> _resolveTimeAlarmScheduleMode() async {
+    final canUseExact = await canScheduleExactAlarms();
+    return canUseExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+  }
+
+  Future<void> _scheduleWeeklyAlarmOccurrence({
+    required AlarmSetting alarm,
+    required int weekday,
+    required tz.TZDateTime scheduled,
+    required AndroidScheduleMode scheduleMode,
+  }) async {
+    await _plugin.zonedSchedule(
+      _notificationId(alarm.id, weekday),
+      alarm.label,
+      '설정한 알림 시간입니다.',
+      scheduled,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          'Mindrium Alarm',
+          channelDescription: 'Mindrium에서 설정한 일정 알림',
+          importance: Importance.max,
+          priority: Priority.high,
+          category: AndroidNotificationCategory.alarm,
+          enableVibration: alarm.vibration,
+          playSound: true,
+        ),
+        iOS: _darwinTimeSensitiveDetails,
+        macOS: _darwinMacNotificationDetails,
+      ),
+      payload: _buildTapPayload(alarm.id),
+      androidScheduleMode: scheduleMode,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
+
+    if (kDebugMode) {
+      debugPrint(
+        '[scheduleAlarm] id=${alarm.id} label=${alarm.label} weekday=$weekday scheduled=$scheduled tz=${tz.local.name}',
+      );
+    }
+  }
+
+  Future<void> _logPendingNotificationState({
+    required String source,
+    required int totalAlarms,
+    required int enabledAlarms,
+    required int locationAlarms,
+  }) async {
+    if (!kDebugMode) return;
+
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      final canExact = await canScheduleExactAlarms();
+      debugPrint(
+        '[$source] total=$totalAlarms enabled=$enabledAlarms pending=${pending.length} location=$locationAlarms exact=$canExact',
+      );
+    } catch (e) {
+      debugPrint('[$source] pending notification introspection failed: $e');
+    }
   }
 
   bool _isWithinScheduledWindow(AlarmSetting alarm, DateTime now) {

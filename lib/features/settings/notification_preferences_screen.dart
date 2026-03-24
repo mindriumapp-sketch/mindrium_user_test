@@ -50,7 +50,7 @@ class _NotificationPreferencesScreenState
     if (value) {
       await service.requestPermissions();
       final status = await Permission.notification.request();
-      if (!status.isGranted) {
+      if (!status.isGranted && !status.isProvisional) {
         await service.setEducationReminderEnabled(
           false,
           currentWeek: user.currentWeek,
@@ -100,7 +100,7 @@ class _NotificationPreferencesScreenState
     if (value) {
       await service.requestPermissions();
       final status = await Permission.notification.request();
-      if (!status.isGranted) {
+      if (!status.isGranted && !status.isProvisional) {
         await service.setTodayTaskReminderEnabled(
           false,
           todayDate: todayTask.date,

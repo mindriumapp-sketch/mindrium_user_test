@@ -29,6 +29,7 @@ import 'package:gad_app_team/features/other/tutorial_screen.dart';
 import 'package:gad_app_team/features/settings/setting_screen.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
 import 'package:gad_app_team/features/alarm/alarm_settings_screen.dart';
+import 'package:gad_app_team/features/alarm/notification_launch_coordinator.dart';
 
 // Menu imports
 import 'package:gad_app_team/features/menu/menu_screen.dart';
@@ -66,9 +67,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
-      navigatorObservers: [week7RouteObserver],
+      navigatorObservers: [notificationLaunchRouteObserver, week7RouteObserver],
       debugShowCheckedModeBanner: false,
       title: 'Mindrium',
+      builder: (context, child) {
+        return NotificationLaunchCoordinator(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
 
       // ✅ 전역 테마 (NotoSansKR + Material3)
       theme: ThemeData(
