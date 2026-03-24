@@ -15,8 +15,6 @@ class Week7PlanSummaryScreen extends StatefulWidget {
 }
 
 class _Week7PlanSummaryScreenState extends State<Week7PlanSummaryScreen> {
-  bool _showJellyText = false;
-
   @override
   Widget build(BuildContext context) {
     return EduhomeBg(
@@ -47,80 +45,81 @@ class _Week7PlanSummaryScreenState extends State<Week7PlanSummaryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  const Text(
-                    '이번 주 실천 행동 정리',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1F3A56),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '계획 세우기에서 추가한 행동 ${widget.plannedBehaviors.length}개',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF5F748A),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (widget.plannedBehaviors.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Center(
-                        child: Text(
-                          '추가한 행동이 없습니다.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7C8D),
-                            fontWeight: FontWeight.w500,
-                          ),
+                      const Text(
+                        '이번 주 실천 행동 정리',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1F3A56),
                         ),
                       ),
-                    )
-                  else
-                    ...widget.plannedBehaviors.map(
-                      (behavior) => Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
+                      const SizedBox(height: 8),
+                      Text(
+                        '계획 세우기에서 추가한 행동 ${widget.plannedBehaviors.length}개',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF5F748A),
+                          fontWeight: FontWeight.w600,
                         ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5FBFF),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFD8EAF8)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: Color(0xFF36A4EB),
-                              size: 18,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                behavior,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Color(0xFF2D3748),
-                                  fontWeight: FontWeight.w600,
-                                ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (widget.plannedBehaviors.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: Text(
+                              '추가한 행동이 없습니다.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF6B7C8D),
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ],
+                          ),
+                        )
+                      else
+                        ...widget.plannedBehaviors.map(
+                          (behavior) => Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5FBFF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFD8EAF8),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Color(0xFF36A4EB),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    behavior,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF2D3748),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 const JellyfishNotice(
-                  feedback:
-                      '추가한 행동을 다시 확인해보시고\n내용이 맞다면 다음 버튼을 눌러 진행해주세요.',
+                  feedback: '추가한 행동을 다시 확인해보시고\n내용이 맞다면 다음 버튼을 눌러 진행해주세요.',
                   feedbackColor: Color(0xFF35546D),
                   textAlign: TextAlign.left,
                 ),
@@ -150,4 +149,3 @@ class _Week7PlanSummaryScreenState extends State<Week7PlanSummaryScreen> {
     );
   }
 }
-

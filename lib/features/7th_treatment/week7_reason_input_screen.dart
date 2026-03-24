@@ -77,10 +77,7 @@ class _Week7ReasonInputScreenState extends State<Week7ReasonInputScreen> {
             textAlignVertical: TextAlignVertical.top,
             decoration: const InputDecoration(
               hintText: '여기에 입력해주세요...',
-              hintStyle: TextStyle(
-                fontSize: 16,
-                color: Color(0xFFA0AEC0),
-              ),
+              hintStyle: TextStyle(fontSize: 16, color: Color(0xFFA0AEC0)),
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
             ),
@@ -94,28 +91,29 @@ class _Week7ReasonInputScreenState extends State<Week7ReasonInputScreen> {
 
         // 네비게이션
         onBack: () => Navigator.pop(context),
-        onNext: _isNextEnabled
-            ? () {
-                final reason = _reasonController.text.trim();
-                Navigator.push<bool>(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => Week7GainLoseScreen(
-                      behavior: widget.behavior,
-                      chipId: widget.chipId,
-                      reason: reason,
+        onNext:
+            _isNextEnabled
+                ? () async {
+                  final navigator = Navigator.of(context);
+                  final reason = _reasonController.text.trim();
+                  final added = await navigator.push<bool>(
+                    PageRouteBuilder(
+                      pageBuilder:
+                          (_, __, ___) => Week7GainLoseScreen(
+                            behavior: widget.behavior,
+                            chipId: widget.chipId,
+                            reason: reason,
+                          ),
+                      transitionDuration: Duration.zero,
+                      reverseTransitionDuration: Duration.zero,
                     ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                ).then((added) {
+                  );
                   if (!mounted) return;
                   if (added == true) {
-                    Navigator.pop(context, true);
+                    navigator.pop(true);
                   }
-                });
-              }
-            : null,
+                }
+                : null,
 
         pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 20),
         panelsGap: 26,

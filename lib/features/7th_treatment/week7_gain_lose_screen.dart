@@ -160,7 +160,8 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
   Future<String> _ensureWeek7Session() async {
     final existing = await _week7Api.fetchWeek7Session();
     final existingId =
-        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+        existing?['session_id']?.toString() ??
+        existing?['sessionId']?.toString();
     if (existingId != null && existingId.isNotEmpty) return existingId;
 
     final created = await _week7Api.createWeek7Session(
@@ -234,7 +235,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
     final isStep1 = _currentStep == 1;
     final question = isStep1 ? '장기적으로 이익이 있나요?' : '장기적으로 불이익이 있나요?';
     final currentValue =
-    isStep1 ? _hasLongTermBenefit : _hasLongTermDisadvantage;
+        isStep1 ? _hasLongTermBenefit : _hasLongTermDisadvantage;
 
     const matrixBlue = Color(0xFF8ED7FF);
 
@@ -273,21 +274,21 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color:
-                    currentValue == true
-                        ? matrixBlue
-                        : const Color(0xFFBEE7FF),
+                        currentValue == true
+                            ? matrixBlue
+                            : const Color(0xFFBEE7FF),
                     width: 2,
                   ),
                   boxShadow:
-                  currentValue == true
-                      ? [
-                    BoxShadow(
-                      color: matrixBlue.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                      : [],
+                      currentValue == true
+                          ? [
+                            BoxShadow(
+                              color: matrixBlue.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                          : [],
                 ),
                 child: Center(
                   child: Text(
@@ -320,21 +321,21 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color:
-                    currentValue == false
-                        ? matrixBlue
-                        : const Color(0xFFBEE7FF),
+                        currentValue == false
+                            ? matrixBlue
+                            : const Color(0xFFBEE7FF),
                     width: 2,
                   ),
                   boxShadow:
-                  currentValue == false
-                      ? [
-                    BoxShadow(
-                      color: matrixBlue.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                      : [],
+                      currentValue == false
+                          ? [
+                            BoxShadow(
+                              color: matrixBlue.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                          : [],
                 ),
                 child: Center(
                   child: Text(
@@ -374,7 +375,12 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
           hintText: '여기에 입력해주세요...',
           hintStyle: TextStyle(
             fontSize: 16,
-            color: const Color.fromARGB(255, 108, 119, 139).withValues(alpha: 0.5),
+            color: const Color.fromARGB(
+              255,
+              108,
+              119,
+              139,
+            ).withValues(alpha: 0.5),
           ),
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,
@@ -388,11 +394,9 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
     );
   }
 
-
   void _showAddToHealthyHabitsDialog() {
-    final parentContext = context;
     showDialog(
-      context: parentContext,
+      context: context,
       barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (BuildContext dialogContext) {
         return CustomPopupDesign(
@@ -410,7 +414,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
             try {
               await _persistAvoidBehavior();
               if (!mounted) return;
-              Navigator.of(parentContext).pop(true);
+              Navigator.of(context).pop(true);
             } catch (_) {
               // 오류 메시지는 _persistAvoidBehavior에서 처리
             }
@@ -437,9 +441,9 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
                   margin: EdgeInsets.only(right: index < 4 ? 8 : 0),
                   decoration: BoxDecoration(
                     color:
-                    index <= _currentStep
-                        ? _getStepColor()
-                        : Colors.white.withValues(alpha: 0.35),
+                        index <= _currentStep
+                            ? _getStepColor()
+                            : Colors.white.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -478,9 +482,10 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
       // ─── 하단 패널 ───
       bottomChild: SizedBox(
         height: 180,
-        child: (_currentStep == 1 || _currentStep == 4)
-            ? _buildYesNoSelector()
-            : _buildTextInput(),
+        child:
+            (_currentStep == 1 || _currentStep == 4)
+                ? _buildYesNoSelector()
+                : _buildTextInput(),
       ),
 
       // 네비게이션 버튼 동작은 기존과 동일하게
@@ -502,15 +507,15 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
         }
       },
       onNext:
-      _isNextEnabled
-          ? () {
-        if (_currentStep < 4) {
-          _nextStep();
-        } else {
-          _showAddToHealthyHabitsDialog();
-        }
-      }
-          : null,
+          _isNextEnabled
+              ? () {
+                if (_currentStep < 4) {
+                  _nextStep();
+                } else {
+                  _showAddToHealthyHabitsDialog();
+                }
+              }
+              : null,
 
       // 원래 여백이 좀 넉넉했으니까 비슷하게
       pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 20),

@@ -1,10 +1,7 @@
 // File: lib/features/7th_treatment/week7_add_display_screen.dart
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/features/7th_treatment/week7_reason_input_screen.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_planning_screen.dart';
-import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/custom_tags_api.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
@@ -66,7 +63,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
   String? _error;
 
   List<Map<String, String>> _behaviorCards = [];
-  Set<String> _addedBehaviors = {};
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -79,12 +75,9 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
   static final Set<String> _globalAddedBehaviors = {};
   static final List<String> _globalNewBehaviors = [];
   static final Map<String, String> _globalBehaviorToChip = {};
-  String? _week7SessionId;
 
   List<Map<String, dynamic>> _customTags = [];
   final Map<String, String> _chipToBehavior = {};
-  final Map<String, String> _behaviorToChip = {};
-  final Set<String> _addedChipIds = {};
 
   static const EdgeInsets _listInnerPad = EdgeInsets.symmetric(horizontal: 12);
 
@@ -122,15 +115,13 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     // 이 화면은 6주차 분류 결과(로그)만 보여준다.
     if (!_isLoading) {
       _loadBehaviorCardsFromLogs();
+      _refreshWeek7Session();
     }
   }
 
   Future<void> _refreshWeek7Session() async {
     try {
       final session = await _week7Api.fetchWeek7Session();
-      _week7SessionId =
-          session?['session_id']?.toString() ?? session?['sessionId']?.toString();
-      final newChipIds = <String>{};
       final newBehaviors = <String>{};
 
       if (session != null) {
@@ -139,8 +130,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
           final chipId = raw['chip_id']?.toString();
           final classification = _extractClassification(raw);
           if (chipId == null || classification == null) continue;
-
-          newChipIds.add(chipId);
 
           final behavior =
               _chipToBehavior[chipId] ??
@@ -159,24 +148,10 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
         }
       }
 
-      if (mounted) {
-        setState(() {
-          _addedChipIds
-            ..clear()
-            ..addAll(newChipIds);
-          _addedBehaviors = newBehaviors;
-        });
-        Week7AddDisplayScreen.updateGlobalAddedBehaviors(newBehaviors);
-      }
+      Week7AddDisplayScreen.updateGlobalAddedBehaviors(newBehaviors);
     } catch (e) {
       debugPrint('Week7 세션 새로고침 오류: $e');
     }
-  }
-
-  @override
-  void didUpdateWidget(covariant Week7AddDisplayScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncWithGlobalState();
   }
 
   @override
@@ -185,13 +160,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
-  }
-
-  void _syncWithGlobalState() {
-    if (!mounted) return;
-    setState(() {
-      _addedBehaviors = Set<String>.from(_globalAddedBehaviors);
-    });
   }
 
   Future<void> _initializeWeek7Data() async {
@@ -203,6 +171,7 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     try {
       await _loadCustomTags();
       await _loadBehaviorCardsFromLogs();
+      await _refreshWeek7Session();
 
       if (mounted) {
         setState(() {
@@ -239,7 +208,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
 
   void _registerChipBehavior(String chipId, String behavior) {
     _chipToBehavior[chipId] = behavior;
-    _behaviorToChip[behavior] = chipId;
     _globalBehaviorToChip[behavior] = chipId; // 전역 맵도 업데이트
   }
 
@@ -251,68 +219,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     });
   }
 
-  Future<void> _loadWeek7Session() async {
-    final session = await _week7Api.fetchWeek7Session();
-    _week7SessionId =
-        session?['session_id']?.toString() ?? session?['sessionId']?.toString();
-    final newChipIds = <String>{};
-    final newBehaviors = <String>{};
-    final updatedCards = List<Map<String, String>>.from(_behaviorCards);
-
-    if (session != null) {
-      final items = _extractWeek7Items(session);
-      for (final raw in items) {
-        final chipId = raw['chip_id']?.toString();
-        final classification = _extractClassification(raw);
-        if (chipId == null || classification == null) continue;
-
-        newChipIds.add(chipId);
-
-        final behavior =
-            _chipToBehavior[chipId] ??
-            _customTags
-                .where((tag) => tag['chip_id']?.toString() == chipId)
-                .map((tag) => (tag['text'] ?? tag['label'])?.toString())
-                .firstWhere(
-                  (value) => value != null && value.isNotEmpty,
-                  orElse: () => null,
-                );
-
-        if (behavior != null) {
-          _registerChipBehavior(chipId, behavior);
-          newBehaviors.add(behavior);
-          final exists = updatedCards.any(
-            (card) => card['behavior'] == behavior,
-          );
-          if (!exists) {
-            updatedCards.add({
-              'behavior': behavior,
-              'classification': _toClassificationLabel(classification),
-            });
-          }
-        }
-      }
-    }
-
-    updatedCards.sort((a, b) {
-      final aOrder = _getClassificationOrder(a['classification'] ?? '');
-      final bOrder = _getClassificationOrder(b['classification'] ?? '');
-      if (aOrder != bOrder) {
-        return aOrder.compareTo(bOrder);
-      }
-      return (a['behavior'] ?? '').compareTo(b['behavior'] ?? '');
-    });
-
-    setState(() {
-      _behaviorCards = updatedCards;
-      _addedChipIds
-        ..clear()
-        ..addAll(newChipIds);
-      _addedBehaviors = newBehaviors;
-    });
-    Week7AddDisplayScreen.updateGlobalAddedBehaviors(newBehaviors);
-  }
-
   List<Map<String, dynamic>> _extractWeek7Items(Map<String, dynamic> session) {
     final dynamic rawItems =
         session['classification_items'] ?? session['behavior_items'];
@@ -322,42 +228,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
 
   String? _extractClassification(Map<String, dynamic> raw) {
     return raw['classification']?.toString() ?? raw['category']?.toString();
-  }
-
-  String _toClassificationLabel(String value) {
-    if (value == 'confront' || value == '직면') return '직면';
-    if (value == 'avoid' || value == '회피') return '회피';
-    return value;
-  }
-
-  Future<String> _ensureChipIdForBehavior(String behavior) async {
-    final existing = _behaviorToChip[behavior];
-    if (existing != null) return existing;
-
-    for (final tag in _customTags) {
-      final label = (tag['text'] ?? tag['label'])?.toString();
-      if (label == behavior && tag['chip_id'] != null) {
-        final chipId = tag['chip_id'].toString();
-        _registerChipBehavior(chipId, behavior);
-        return chipId;
-      }
-    }
-
-    final created = await _customTagsApi.createCustomTag(
-      label: behavior,
-      type: 'CA',
-    );
-    final chipId =
-        (created['chip_id'] ?? created['_id'])?.toString().trim();
-    if (chipId == null || chipId.isEmpty) {
-      throw Exception('chip_id 생성 실패');
-    }
-    final normalized = Map<String, dynamic>.from(created);
-    normalized['chip_id'] = chipId;
-    normalized['text'] ??= behavior;
-    _customTags.add(normalized);
-    _registerChipBehavior(chipId, behavior);
-    return chipId;
   }
 
   void _initBehaviorCardsFromLogs(List<Map<String, dynamic>> logs) {
@@ -422,174 +292,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
       default:
         return '미분류';
     }
-  }
-
-  // ── 팝업 (BehaviorConfirmDialog 사용: 기존 플로우 유지)
-  void _showAddConfirmationDialog(String behavior) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      builder: (context) {
-        return CustomPopupDesign(
-          title: '건강한 생활 습관 추가',
-          highlightText: '[$behavior]',
-          message: '이 불안 회피 행동을 건강한 생활 습관에 \n추가하시겠습니까?',
-          negativeText: '취소',
-          positiveText: '추가',
-          onNegativePressed: () => Navigator.of(context).pop(),
-          onPositivePressed: () async {
-            final ctx = context;
-            final nav = Navigator.of(ctx);
-            nav.pop();
-            try {
-              final chipId = await _ensureChipIdForBehavior(behavior);
-              if (!mounted) return;
-              nav.push(
-                PageRouteBuilder(
-                  pageBuilder:
-                      (_, __, ___) => Week7ReasonInputScreen(
-                        behavior: behavior,
-                        chipId: chipId,
-                      ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            } catch (e) {
-              if (!mounted || !ctx.mounted) return;
-              BlueBanner.show(ctx, '추가 화면으로 이동할 수 없습니다: $e');
-            }
-          },
-        );
-      },
-    );
-  }
-
-  void _showRemoveConfirmationDialog(String behavior) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      builder: (context) {
-        return CustomPopupDesign(
-          title: '생활 습관 제거',
-          highlightText: '[$behavior]',
-          message: '이 행동을 건강한 생활 습관에서 제거하시겠습니까?',
-          negativeText: '취소',
-          positiveText: '제거',
-          onNegativePressed: () => Navigator.of(context).pop(),
-          onPositivePressed: () async {
-            final nav = Navigator.of(context);
-            nav.pop();
-            await _removeFromHealthyHabits(behavior);
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _removeFromHealthyHabits(String behavior) async {
-    try {
-      final chipId = await _ensureChipIdForBehavior(behavior);
-      final sessionId = await _ensureWeek7Session();
-      await _week7Api.deleteClassificationItem(
-        sessionId: sessionId,
-        chipId: chipId,
-      );
-
-      final newGlobalBehaviors = Set<String>.from(_globalAddedBehaviors)
-        ..remove(behavior);
-      Week7AddDisplayScreen.updateGlobalAddedBehaviors(newGlobalBehaviors);
-
-      setState(() {
-        _addedBehaviors.remove(behavior);
-        _addedChipIds.remove(chipId);
-      });
-
-      if (!mounted) return;
-      BlueBanner.show(context, '"$behavior"이(가) 건강한 생활 습관에서 제거되었습니다.');
-    } catch (e) {
-      if (!mounted) return;
-      BlueBanner.show(context, '제거에 실패했습니다: $e');
-    }
-  }
-
-  Future<void> _addConfrontBehavior(String behavior) async {
-    if (_addedBehaviors.contains(behavior)) {
-      BlueBanner.show(context, '"$behavior"은(는) 이미 추가되어 있습니다.');
-      return;
-    }
-
-    try {
-      final chipId = await _ensureChipIdForBehavior(behavior);
-      final sessionId = await _ensureWeek7Session();
-      await _week7Api.upsertClassificationItem(
-        sessionId: sessionId,
-        chipId: chipId,
-        classification: 'confront',
-      );
-
-      final updated = Set<String>.from(_globalAddedBehaviors)..add(behavior);
-      Week7AddDisplayScreen.updateGlobalAddedBehaviors(updated);
-
-      setState(() {
-        _addedBehaviors = Set<String>.from(updated);
-        _addedChipIds.add(chipId);
-      });
-
-      if (!mounted) return;
-      BlueBanner.show(context, '"$behavior"이(가) 건강한 생활 습관에 추가되었습니다.');
-    } catch (e) {
-      if (!mounted) return;
-      BlueBanner.show(context, '추가에 실패했습니다: $e');
-    }
-  }
-
-  Future<String> _ensureWeek7Session() async {
-    if (_week7SessionId != null && _week7SessionId!.isNotEmpty) {
-      return _week7SessionId!;
-    }
-
-    final existing = await _week7Api.fetchWeek7Session();
-    _week7SessionId = existing?['session_id']?.toString() ??
-        existing?['sessionId']?.toString();
-    if (_week7SessionId != null && _week7SessionId!.isNotEmpty) {
-      return _week7SessionId!;
-    }
-
-    final created = await _week7Api.createWeek7Session(
-      totalScreens: 1,
-      lastScreenIndex: 1,
-      startTime: DateTime.now(),
-      completed: false,
-    );
-    _week7SessionId = created['session_id']?.toString() ??
-        created['sessionId']?.toString();
-
-    if (_week7SessionId == null || _week7SessionId!.isEmpty) {
-      throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
-    }
-    return _week7SessionId!;
-  }
-
-  void _showAddToHealthyHabitsDialog(String behavior) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      builder: (context) {
-        return CustomPopupDesign(
-          title: '건강한 생활 습관 추가',
-          highlightText: '[$behavior]', // 메모 띠 안의 행동 표시
-          message: '이 불안 직면 행동을 건강한 생활 습관에 추가하시겠습니까??',
-          negativeText: '취소',
-          positiveText: '추가',
-          onNegativePressed: () => Navigator.of(context).pop(),
-          onPositivePressed: () async {
-            Navigator.of(context).pop();
-            await _addConfrontBehavior(behavior);
-          },
-        );
-      },
-    );
   }
 
   // ── 리스트 카드 (조회 전용: 분류 결과만 표시)
