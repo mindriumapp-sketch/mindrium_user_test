@@ -1,12 +1,11 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
-import 'package:gad_app_team/features/8th_treatment/week8_schedule_screen.dart';
+import 'package:gad_app_team/features/8th_treatment/week8_user_journey_screen.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/eduhome_bg.dart';
-import 'package:gad_app_team/widgets/jellyfish_notice.dart';
 import 'package:gad_app_team/widgets/quiz_card.dart';
 import 'package:gad_app_team/widgets/choice_card_button.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dart';
@@ -65,8 +64,8 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
   static const chipBorderBlue = Color(0xFF6DBEF2);
   static const checkedChipFill = Color(0xFFDDEEFF);
 
-  // 처음에는 “체크된 계획”만 보여주는 상태
-  bool _showingCheckedList = true;
+  // 첫 화면(체크된 계획 목록)을 생략하고 바로 질문 시작
+  bool _showingCheckedList = false;
 
   final List<String> _checkedBehaviors = [];
   final Set<String> _removedBehaviors = {};
@@ -78,12 +77,6 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
   bool? _willContinue;
 
   bool _loading = true;
-  String? _userName;
-  String? _userValueGoal;
-
-  // ✅ JellyfishNotice에 띄울 말 제어용 UI 상태
-  bool _answered = false; // 이번 질문에 예/아니오를 눌렀는가
-  bool _answeredYes = true; // true면 예, false면 아니오
 
   // 평가 결과 저장 (behavior -> {was_effective, will_continue})
   final Map<String, Map<String, bool>> _evaluationResults = {};
@@ -105,19 +98,7 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
     _checkedBehaviors
       ..clear()
       ..addAll(widget.checkedBehaviors);
-    await _loadUser();
     setState(() => _loading = false);
-  }
-
-  Future<void> _loadUser() async {
-    // TODO: 사용자 정보는 필요시 UserDataApi에서 가져오기
-    // 현재는 사용하지 않으므로 주석 처리
-    // try {
-    //   final userDataApi = UserDataApi(_apiClient);
-    //   final user = await userDataApi.getUser();
-    //   _userName = user['name'] as String?;
-    //   _userValueGoal = user['value_goal'] as String?;
-    // } catch (_) {}
   }
 
   String get _currentBehavior => _checkedBehaviors[_currentBehaviorIndex];
@@ -135,7 +116,6 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
         _currentBehaviorIndex = 0;
         _wasEffective = null;
         _willContinue = null;
-        _answered = false; // ✅ 새로운 질문이니까 초기화
       });
       return;
     }
@@ -144,7 +124,6 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
     if (_step == 0) {
       setState(() {
         _step = 1;
-        _answered = false; // ✅ 다음 질문(유지 질문)으로 넘어가므로 초기화
       });
       return;
     }
@@ -167,7 +146,6 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
         _step = 0;
         _wasEffective = null;
         _willContinue = null;
-        _answered = false; // ✅ 새 행동이므로 초기화
       });
     } else {
       _saveEvaluations();
@@ -186,7 +164,6 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
       setState(() {
         _step = 0;
         _wasEffective = null;
-        _answered = false; // 다시 효과성 질문으로 왔으니 초기화
       });
       return;
     }
@@ -239,7 +216,7 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
         title: '평가 완료',
         highlightText:
         keep.isEmpty ? '유지할 행동이 없습니다.' : '유지할 행동: ${keep.join(", ")}',
-        message: '평가가 완료되었습니다! \n스케줄 관리하는 페이지로 넘어가겠습니다.',
+        message: '평가가 완료되었습니다! \n다음 단계로 넘어가겠습니다.',
         negativeText: '닫기',
         positiveText: '다음',
         onNegativePressed: () {
@@ -249,8 +226,10 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
           Navigator.pop(context);
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => Week8ScheduleScreen(behaviorsToKeep: keep),
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const Week8UserJourneyScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
             ),
           );
         },
@@ -268,7 +247,7 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
 
     final created = await _week8Api.createWeek8Session(
       totalScreens: 1,
-      lastScreenIndex: 0,
+      lastScreenIndex: 1,
       startTime: DateTime.now(),
       completed: false,
     );
@@ -335,35 +314,6 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
       );
     }
 
-    final String defaultDesc =
-    _userName != null && _userValueGoal != null
-        ? '$_userName님의 불안을 줄이고,\n소중히 여기는 가치\n"$_userValueGoal"를 향상하는 데\n도움이 되셨습니까?'
-        : '이 행동이 불안을 줄이고\n소중히 여기는 가치를 향상하는 데\n도움이 되셨습니까?';
-
-    // ✅ Jellyfish에 들어갈 실제 텍스트 결정
-    Color jellyColor = const Color(0xFF626262);
-    String jellyText;
-    if (!_answered) {
-      jellyText = _step == 0
-          ? defaultDesc
-          : '이 행동을 앞으로도 유지하고 싶은지 한 번 생각해볼까요?';
-    } else {
-      if (_step == 0) {
-        jellyText = _answeredYes
-            ? '효과가 있었다고 생각하시는군요!'
-            : '효과가 없었다고 생각하시는군요!';
-        jellyColor = _answeredYes
-            ? const Color(0xFF329CF1)
-            : const Color(0xFFE84551);
-      } else {
-        jellyText =
-        _answeredYes ? '앞으로 유지할게요!' : '앞으로 유지하지 않을게요!';
-        jellyColor = _answeredYes
-            ? const Color(0xFF329CF1)
-            : const Color(0xFFE84551);
-      }
-    }
-
     return EduhomeBg(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -395,24 +345,23 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
                             children: [
                               const SizedBox(height: 12),
                               _questionCard(),
-                              const SizedBox(height: 14),
-                              Container(
-                                color: Colors.transparent,
-                                height: 130,
-                                child: JellyfishNotice(
-                                  feedback: jellyText,
-                                  feedbackColor: jellyColor,
-                                ),
-                              ),
-                              // const SizedBox(height: 10),
-                              ChoiceCardButton(
-                                type: ChoiceType.other,
-                                othText: '예',
+                              const SizedBox(height: 18),
+                              SelectableChoiceCardButton(
+                                label: '예',
+                                backgroundColor: const Color(0xFF329CF1),
+                                isSelected:
+                                    _step == 0
+                                        ? _wasEffective == true
+                                        : _willContinue == true,
+                                isDimmed:
+                                    _step == 0
+                                        ? (_wasEffective != null &&
+                                            _wasEffective != true)
+                                        : (_willContinue != null &&
+                                            _willContinue != true),
                                 height: 54,
                                 onPressed: () {
                                   setState(() {
-                                    _answered = true;
-                                    _answeredYes = true;
                                     if (_step == 0) {
                                       _wasEffective = true;
                                     } else {
@@ -422,14 +371,22 @@ class _Week8EffectivenessScreenState extends State<Week8EffectivenessScreen> {
                                 },
                               ),
                               const SizedBox(height: 10),
-                              ChoiceCardButton(
-                                type: ChoiceType.another,
-                                anoText: '아니오',
+                              SelectableChoiceCardButton(
+                                label: '아니오',
+                                backgroundColor: const Color(0xFFFDB0B5),
+                                isSelected:
+                                    _step == 0
+                                        ? _wasEffective == false
+                                        : _willContinue == false,
+                                isDimmed:
+                                    _step == 0
+                                        ? (_wasEffective != null &&
+                                            _wasEffective != false)
+                                        : (_willContinue != null &&
+                                            _willContinue != false),
                                 height: 54,
                                 onPressed: () {
                                   setState(() {
-                                    _answered = true;
-                                    _answeredYes = false;
                                     if (_step == 0) {
                                       _wasEffective = false;
                                     } else {
@@ -466,9 +423,10 @@ child: NavigationButtons(
 
   // ✅ quiz_card로 바꾼 질문 카드
   Widget _questionCard() {
+    final questionText = _step == 0 ? '효과가 있었나요?' : '앞으로도 유지하실 건가요?';
     return QuizCard(
-      noticeText: _currentBehavior,
-      quizText: _step == 0 ? '효과가 있었나요?' : '앞으로도 유지하실 건가요?',
+      noticeText: questionText,
+      quizText: _currentBehavior,
       currentIndex: _currentBehaviorIndex + 1,
       totalCount: _checkedBehaviors.length,
     );

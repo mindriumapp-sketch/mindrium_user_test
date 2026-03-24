@@ -38,8 +38,9 @@ class Week7Api {
   }) async {
     final payload = <String, dynamic>{
       'week_number': 7,
-      'total_screens': totalScreens,
-      'last_screen_idx': lastScreenIndex,
+      // backend schema(EduSessionCreate7): total_stages / last_stage_idx
+      'total_stages': totalScreens,
+      'last_stage_idx': lastScreenIndex,
       'start_time': _encodeDateTime(startTime),
       'completed': completed,
       if (diaryId != null && diaryId.isNotEmpty) 'diary_id': diaryId,
@@ -192,8 +193,9 @@ class Week7Api {
     final payload = <String, dynamic>{
       'completed': completed,
       if (endTime != null) 'end_time': _encodeDateTime(endTime),
-      if (lastScreenIndex != null) 'last_screen_idx': lastScreenIndex,
-      if (totalScreens != null) 'total_screens': totalScreens,
+      // backend schema(EduSessionUpdate): total_stages / last_stage_idx
+      if (lastScreenIndex != null) 'last_stage_idx': lastScreenIndex,
+      if (totalScreens != null) 'total_stages': totalScreens,
     };
 
     final res = await _client.dio.put(

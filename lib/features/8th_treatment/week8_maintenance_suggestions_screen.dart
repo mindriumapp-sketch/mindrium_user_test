@@ -13,40 +13,28 @@ class Week8MaintenanceSuggestionsScreen extends StatefulWidget {
 
 class _Week8MaintenanceSuggestionsScreenState
     extends State<Week8MaintenanceSuggestionsScreen> {
-  int _currentStep = 0;
-  final bool _isNextEnabled = true;
-
   final List<String> _suggestions = [
     '연습을 매일 하세요. \n비록 짧은 시간이라도 괜찮습니다.',
     '가능하다면 매일 같은 시간, \n같은 장소에서 연습하세요.',
     '연습을 해야 할 일 목록의 하나로 생각하기보다, \n자신을 돌보는 방법으로 여기세요.',
-    '다른 사람들과 함께 연습할 수 있는 \n방법을 찾아보세요.',
+    '연습할 때마다 이것이 나의 가치와 \n어떻게 연결되는지 떠올려보세요.',
     '어려움이 오면 언제든 이 앱으로 돌아와 \n다시 시작할 수 있다는 것을 기억하세요.',
   ];
 
   void _nextStep() async {
-    if (_currentStep < _suggestions.length - 1) {
-      setState(() => _currentStep++);
-    } else {
-      //await _saveSession();
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const Week8Gad7Screen(),
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
-      );
-    }
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const Week8Gad7Screen(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
   }
 
   void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() => _currentStep--);
-    } else {
-      Navigator.pop(context);
-    }
+    Navigator.pop(context);
   }
 
   @override
@@ -55,56 +43,13 @@ class _Week8MaintenanceSuggestionsScreenState
       appBarTitle: '유지방법 제안',
       cardTitle: '건강한 습관을 지속하기 위한 \n다섯 가지 제안',
       onBack: _previousStep,
-      onNext: _isNextEnabled ? _nextStep : () {},
+      onNext: _nextStep,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildProgressBar(),
-          const SizedBox(height: 20),
-          ...List.generate(_currentStep + 1, _buildSuggestionCard),
+          ...List.generate(_suggestions.length, _buildSuggestionCard),
         ],
       ),
-    );
-  }
-
-  /// 💧 진행 상태 바
-  Widget _buildProgressBar() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '제안 ${_currentStep + 1}',
-              style: const TextStyle(
-                fontFamily: 'NotoSansKR',
-                fontSize: 14,
-                color: Color(0xFF356D91),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '${_currentStep + 1}/${_suggestions.length}',
-              style: const TextStyle(
-                fontFamily: 'NotoSansKR',
-                fontSize: 14,
-                color: Color(0xFF356D91),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: (_currentStep + 1) / _suggestions.length,
-            backgroundColor: const Color(0xFFE6F3FA),
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF74D2FF)),
-            minHeight: 8,
-          ),
-        ),
-      ],
     );
   }
 

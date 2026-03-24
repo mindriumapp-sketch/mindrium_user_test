@@ -119,9 +119,9 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
   // 다른 화면에서 돌아왔을 때 호출됨
   @override
   void didPopNext() {
-    // 화면 복귀 시 백엔드에서 최신 데이터를 다시 로드
-    if (!_isLoading && _behaviorCards.isNotEmpty) {
-      _refreshWeek7Session();
+    // 이 화면은 6주차 분류 결과(로그)만 보여준다.
+    if (!_isLoading) {
+      _loadBehaviorCardsFromLogs();
     }
   }
 
@@ -134,30 +134,27 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
       final newBehaviors = <String>{};
 
       if (session != null) {
-        final items = session['classification_items'];
-        if (items is List) {
-          for (final raw in items) {
-            if (raw is! Map) continue;
-            final chipId = raw['chip_id']?.toString();
-            final classification = raw['classification']?.toString();
-            if (chipId == null || classification == null) continue;
+        final items = _extractWeek7Items(session);
+        for (final raw in items) {
+          final chipId = raw['chip_id']?.toString();
+          final classification = _extractClassification(raw);
+          if (chipId == null || classification == null) continue;
 
-            newChipIds.add(chipId);
+          newChipIds.add(chipId);
 
-            final behavior =
-                _chipToBehavior[chipId] ??
-                _customTags
-                    .where((tag) => tag['chip_id'] == chipId)
-                    .map((tag) => tag['text']?.toString())
-                    .firstWhere(
-                      (value) => value != null && value.isNotEmpty,
-                      orElse: () => null,
-                    );
+          final behavior =
+              _chipToBehavior[chipId] ??
+              _customTags
+                  .where((tag) => tag['chip_id'] == chipId)
+                  .map((tag) => tag['text']?.toString())
+                  .firstWhere(
+                    (value) => value != null && value.isNotEmpty,
+                    orElse: () => null,
+                  );
 
-            if (behavior != null) {
-              _registerChipBehavior(chipId, behavior);
-              newBehaviors.add(behavior);
-            }
+          if (behavior != null) {
+            _registerChipBehavior(chipId, behavior);
+            newBehaviors.add(behavior);
           }
         }
       }
@@ -206,7 +203,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     try {
       await _loadCustomTags();
       await _loadBehaviorCardsFromLogs();
-      await _loadWeek7Session();
 
       if (mounted) {
         setState(() {
@@ -264,38 +260,35 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     final updatedCards = List<Map<String, String>>.from(_behaviorCards);
 
     if (session != null) {
-      final items = session['classification_items'];
-      if (items is List) {
-        for (final raw in items) {
-          if (raw is! Map) continue;
-          final chipId = raw['chip_id']?.toString();
-          final classification = raw['classification']?.toString();
-          if (chipId == null || classification == null) continue;
+      final items = _extractWeek7Items(session);
+      for (final raw in items) {
+        final chipId = raw['chip_id']?.toString();
+        final classification = _extractClassification(raw);
+        if (chipId == null || classification == null) continue;
 
-          newChipIds.add(chipId);
+        newChipIds.add(chipId);
 
-          final behavior =
-              _chipToBehavior[chipId] ??
-              _customTags
-                  .where((tag) => tag['chip_id']?.toString() == chipId)
-                  .map((tag) => (tag['text'] ?? tag['label'])?.toString())
-                  .firstWhere(
-                    (value) => value != null && value.isNotEmpty,
-                    orElse: () => null,
-                  );
+        final behavior =
+            _chipToBehavior[chipId] ??
+            _customTags
+                .where((tag) => tag['chip_id']?.toString() == chipId)
+                .map((tag) => (tag['text'] ?? tag['label'])?.toString())
+                .firstWhere(
+                  (value) => value != null && value.isNotEmpty,
+                  orElse: () => null,
+                );
 
-          if (behavior != null) {
-            _registerChipBehavior(chipId, behavior);
-            newBehaviors.add(behavior);
-            final exists = updatedCards.any(
-              (card) => card['behavior'] == behavior,
-            );
-            if (!exists) {
-              updatedCards.add({
-                'behavior': behavior,
-                'classification': classification == 'confront' ? '직면' : '회피',
-              });
-            }
+        if (behavior != null) {
+          _registerChipBehavior(chipId, behavior);
+          newBehaviors.add(behavior);
+          final exists = updatedCards.any(
+            (card) => card['behavior'] == behavior,
+          );
+          if (!exists) {
+            updatedCards.add({
+              'behavior': behavior,
+              'classification': _toClassificationLabel(classification),
+            });
           }
         }
       }
@@ -318,6 +311,23 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
       _addedBehaviors = newBehaviors;
     });
     Week7AddDisplayScreen.updateGlobalAddedBehaviors(newBehaviors);
+  }
+
+  List<Map<String, dynamic>> _extractWeek7Items(Map<String, dynamic> session) {
+    final dynamic rawItems =
+        session['classification_items'] ?? session['behavior_items'];
+    if (rawItems is! List) return const [];
+    return rawItems.whereType<Map>().map(Map<String, dynamic>.from).toList();
+  }
+
+  String? _extractClassification(Map<String, dynamic> raw) {
+    return raw['classification']?.toString() ?? raw['category']?.toString();
+  }
+
+  String _toClassificationLabel(String value) {
+    if (value == 'confront' || value == '직면') return '직면';
+    if (value == 'avoid' || value == '회피') return '회피';
+    return value;
   }
 
   Future<String> _ensureChipIdForBehavior(String behavior) async {
@@ -548,7 +558,7 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
 
     final created = await _week7Api.createWeek7Session(
       totalScreens: 1,
-      lastScreenIndex: 0,
+      lastScreenIndex: 1,
       startTime: DateTime.now(),
       completed: false,
     );
@@ -582,7 +592,7 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     );
   }
 
-  // ── 리스트 카드 (표시 로직: 최초=추가하기만 / 확정 후=추가됨+제거하기)
+  // ── 리스트 카드 (조회 전용: 분류 결과만 표시)
   Widget _buildBehaviorCard(Map<String, String> card, int index) {
     final classification = card['classification'] ?? '';
     final behavior = card['behavior'] ?? '';
@@ -602,10 +612,6 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
     final Color shadowColor =
         isFacing ? const Color(0x332E6B45) : const Color(0x33D6455F);
 
-    // ⭐️ 정렬을 위한 수직 간격 계산:
-    // Pill Container (패딩 상하 4+4 + 폰트 12 ≈ 20) + 중간 SizedBox(10) ≈ 30.0
-    const double verticalSpacingForAlignment = 30.0;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -622,121 +628,33 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // 상단 정렬 유지
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔹 좌측 Pill + 텍스트 영역
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 🔸 상태 Pill
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: pillBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _getClassificationText(classification),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: pillText,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // 🔸 행동 내용 (이 텍스트의 상단과 우측 버튼이 수평 정렬됩니다.)
-                Text(
-                  behavior,
-                  style: const TextStyle(
-                    color: Color(0xFF263C69),
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: pillBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _getClassificationText(classification),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: pillText,
+              ),
             ),
           ),
-
-          // 🔹 우측 버튼 영역
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // 🚨 수정된 부분: 행동 내용 텍스트와 수평 정렬하기 위한 공간 추가
-              const SizedBox(height: verticalSpacingForAlignment),
-
-              if (_addedBehaviors.contains(behavior)) ...[
-                // 🔸 추가됨 badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Text(
-                    '추가됨',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-
-                // 🔸 제거하기
-                GestureDetector(
-                  onTap: () => _showRemoveConfirmationDialog(behavior),
-                  child: const Text(
-                    '제거하기',
-                    style: TextStyle(
-                      color: Color(0xFFE85D85),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ] else ...[
-                // 🔸 추가하기 버튼
-                GestureDetector(
-                  onTap: () {
-                    if (classification == '회피') {
-                      _showAddConfirmationDialog(behavior);
-                    } else {
-                      _showAddToHealthyHabitsDialog(behavior);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12, // 크기 축소 유지
-                      vertical: 8, // 크기 축소 유지
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF33A4F0),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      '추가하기',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
+          const SizedBox(height: 10),
+          Text(
+            behavior,
+            style: const TextStyle(
+              color: Color(0xFF263C69),
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -748,7 +666,7 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
   Widget build(BuildContext context) {
     return ApplyDesign(
       appBarTitle: '생활 습관 개선',
-      cardTitle: '행동 분석 결과',
+      cardTitle: '6주차 분석 결과',
       onBack: () => Navigator.pop(context),
       onNext: () {
         Navigator.push(

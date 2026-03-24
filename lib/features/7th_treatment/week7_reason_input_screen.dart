@@ -97,7 +97,7 @@ class _Week7ReasonInputScreenState extends State<Week7ReasonInputScreen> {
         onNext: _isNextEnabled
             ? () {
                 final reason = _reasonController.text.trim();
-                Navigator.push(
+                Navigator.push<bool>(
                   context,
                   PageRouteBuilder(
                     pageBuilder: (_, __, ___) => Week7GainLoseScreen(
@@ -108,7 +108,12 @@ class _Week7ReasonInputScreenState extends State<Week7ReasonInputScreen> {
                     transitionDuration: Duration.zero,
                     reverseTransitionDuration: Duration.zero,
                   ),
-                );
+                ).then((added) {
+                  if (!mounted) return;
+                  if (added == true) {
+                    Navigator.pop(context, true);
+                  }
+                });
               }
             : null,
 

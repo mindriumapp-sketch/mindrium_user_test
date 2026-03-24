@@ -17,11 +17,11 @@ class Week8UserJourneyScreen extends StatefulWidget {
 
 class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
   final List<TextEditingController> _controllers = List.generate(
-    5,
+    4,
         (index) => TextEditingController(),
   );
 
-  int _currentStep = 0; // 0-4
+  int _currentStep = 0; // 0-3
   bool _isNextEnabled = false;
 
   final List<String> _questions = const [
@@ -29,7 +29,6 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
     '내가 소중히 여기는 삶의 가치를 \n떠올려보며, 이 교육이 어떤 도움을 주는가?',
     '이런 교육들이 왜 가치 있는 \n실천인가?',
     '배운 것들을 활용하며, \n앞으로 불안이 느껴진다면 어떻게 \n대처할 것인가?',
-    '이러한 건강한 생활 습관 계획들이 불안 완화에 어떻게 영향을 \n미칠 것인가?',
   ];
 
   // 스타일
@@ -99,6 +98,7 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
       );
 
       if (!mounted) return;
+      setState(() => _isSaving = false);
       Navigator.push(
         context,
         PageRouteBuilder(
@@ -135,7 +135,7 @@ class _Week8UserJourneyScreenState extends State<Week8UserJourneyScreen> {
 
     final created = await _week8Api.createWeek8Session(
       totalScreens: 1,
-      lastScreenIndex: 0,
+      lastScreenIndex: 1,
       startTime: DateTime.now(),
       completed: false,
     );

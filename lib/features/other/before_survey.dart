@@ -40,6 +40,13 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
     "8. 최근 2주간, 다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말한다. 또는 반대로 평소보다 많이 움직여서 너무 안절부절못하거나 들떠 있다.",
     "9. 최근 2주간, 자신이 죽는 것이 더 낫다고 생각하거나, 어떤 식으로든 자신을 해칠 것이라고 생각한다.",
   ];
+  late final List<GlobalKey> _questionKeys;
+
+  @override
+  void initState() {
+    super.initState();
+    _questionKeys = List.generate(_questions.length, (_) => GlobalKey());
+  }
 
   void _next() {
     if (_answers.contains(null)) {
@@ -62,6 +69,7 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
     // 질문 텍스트에서 번호 제거 (이미 번호가 포함되어 있음)
     final questionText = question;
     return Container(
+      key: _questionKeys[qIndex],
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -135,7 +143,20 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
   Widget _buildOption(int q, int opt) {
     final selected = _answers[q] == opt;
     return GestureDetector(
-      onTap: () => setState(() => _answers[q] = opt),
+      onTap: () {
+        setState(() => _answers[q] = opt);
+        if (q < _questions.length - 1) {
+          final nextContext = _questionKeys[q + 1].currentContext;
+          if (nextContext != null) {
+            Scrollable.ensureVisible(
+              nextContext,
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              alignment: 0.08,
+            );
+          }
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 8),
@@ -243,10 +264,12 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
     "6. 지난 2주 동안, 집중하기 어렵거나 마음이 멍해진 느낌이 들었습니까?",
     "7. 지난 2주 동안, 신체적으로 긴장하거나 근육이 뻣뻣하거나 떨렸습니까?",
   ];
+  late final List<GlobalKey> _questionKeys;
 
   @override
   void initState() {
     super.initState();
+    _questionKeys = List.generate(_gadQuestions.length, (_) => GlobalKey());
     final tokens = TokenStorage();
     final client = ApiClient(tokens: tokens);
     _surveyApi = SurveyApi(client);
@@ -311,6 +334,7 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
     // 질문 텍스트에서 번호 제거 (이미 번호가 포함되어 있음)
     final questionText = question;
     return Container(
+      key: _questionKeys[qIndex],
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -384,7 +408,20 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
   Widget _buildGadOption(int q, int opt) {
     final selected = _gadAnswers[q] == opt;
     return GestureDetector(
-      onTap: () => setState(() => _gadAnswers[q] = opt),
+      onTap: () {
+        setState(() => _gadAnswers[q] = opt);
+        if (q < _gadQuestions.length - 1) {
+          final nextContext = _questionKeys[q + 1].currentContext;
+          if (nextContext != null) {
+            Scrollable.ensureVisible(
+              nextContext,
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              alignment: 0.08,
+            );
+          }
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 8),

@@ -18,6 +18,7 @@ class _Week8Gad7ScreenState extends State<Week8Gad7Screen> {
   final List<int> _answers = List.filled(7, -1);
   bool _isCompleted = false;
   bool _isSubmitting = false;
+  late final List<GlobalKey> _questionKeys;
 
   // API 클라이언트
   late final ApiClient _apiClient;
@@ -40,27 +41,26 @@ class _Week8Gad7ScreenState extends State<Week8Gad7Screen> {
       _answers[q] = a;
       _isCompleted = _answers.every((v) => v >= 0);
     });
+
+    if (q < _questions.length - 1) {
+      final nextContext = _questionKeys[q + 1].currentContext;
+      if (nextContext != null) {
+        Scrollable.ensureVisible(
+          nextContext,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          alignment: 0.08,
+        );
+      }
+    }
   }
 
   int _score() => _answers.reduce((a, b) => a + b);
 
-  String _interpret(int score) {
-    if (score <= 4) return '🌱 최소한의 불안';
-    if (score <= 9) return '🌿 경미한 불안';
-    if (score <= 14) return '🌊 중등도의 불안';
-    return '💧 심한 불안';
-  }
-
-  Color _tone(int score) {
-    if (score <= 4) return const Color(0xFF66D0F9);
-    if (score <= 9) return const Color(0xFF4FC3F7);
-    if (score <= 14) return const Color(0xFF42A5F5);
-    return const Color(0xFF1976D2);
-  }
-
   @override
   void initState() {
     super.initState();
+    _questionKeys = List.generate(_questions.length, (_) => GlobalKey());
     _apiClient = ApiClient(tokens: TokenStorage());
     _surveyApi = SurveyApi(_apiClient);
   }
@@ -92,7 +92,7 @@ class _Week8Gad7ScreenState extends State<Week8Gad7Screen> {
   Widget build(BuildContext context) {
     return ApplyDesign(
       appBarTitle: '불안 평가',
-      cardTitle: 'Mindrium 사용 후\n불안이 얼마나 줄었나요?',
+      cardTitle: '마인드리움 사용 후\n불안이 얼마나 줄었나요?',
       onBack: () => Navigator.pop(context),
       onNext:
           _isCompleted
@@ -107,7 +107,6 @@ class _Week8Gad7ScreenState extends State<Week8Gad7Screen> {
           const SizedBox(height: 30),
           ...List.generate(_questions.length, _buildQuestionCard),
           const SizedBox(height: 28),
-          if (_isCompleted) _buildResultCard(),
         ],
       ),
     );
@@ -117,6 +116,7 @@ class _Week8Gad7ScreenState extends State<Week8Gad7Screen> {
   Widget _buildQuestionCard(int i) {
     final question = _questions[i];
     return Container(
+      key: _questionKeys[i],
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -250,109 +250,4 @@ class _Week8Gad7ScreenState extends State<Week8Gad7Screen> {
     );
   }
 
-  /// 💧 결과 카드
-  Widget _buildResultCard() {
-    final score = _score();
-    final color = _tone(score);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.analytics_outlined, color: color, size: 26),
-              const SizedBox(width: 10),
-              const Text(
-                '평가 결과',
-                style: TextStyle(
-                  fontFamily: 'NotoSansKR',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1B3A57),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  '$score점',
-                  style: const TextStyle(
-                    fontFamily: 'NotoSansKR',
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _interpret(score),
-                  style: TextStyle(
-                    fontFamily: 'NotoSansKR',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Row(
-            children: [
-              Icon(
-                Icons.info_outline_rounded,
-                color: Color(0xFF718096),
-                size: 18,
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '1주차와 비교하여 불안 수준의 변화를 확인해보세요.',
-                  style: TextStyle(
-                    fontFamily: 'NotoSansKR',
-                    fontSize: 14,
-                    color: Color(0xFF718096),
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -3,7 +3,7 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dart';
-import 'package:gad_app_team/features/7th_treatment/week7_final_screen.dart';
+import 'package:gad_app_team/features/7th_treatment/week7_plan_summary_screen.dart';
 import 'package:gad_app_team/features/7th_treatment/week7_behavior_type_select_screen.dart';
 import 'package:gad_app_team/widgets/behavior_confirm_dialog.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
@@ -179,6 +179,17 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
 
       if (result == 'face') {
         await _addConfrontBehaviorFromPlanning(behavior, chipId);
+      } else if (result == 'avoid_added') {
+        final updatedAdded = Set<String>.from(
+          Week7AddDisplayScreen.globalAddedBehaviors,
+        );
+        setState(() {
+          _addedBehaviors
+            ..clear()
+            ..addAll(updatedAdded);
+          _newBehaviors.remove(behavior);
+        });
+        BlueBanner.show(context, '"$behavior"이(가) 회피 행동으로 추가되었습니다.');
       }
 
       _newBehaviorController.clear();
@@ -308,7 +319,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
 
     final created = await _week7Api.createWeek7Session(
       totalScreens: 1,
-      lastScreenIndex: 0,
+      lastScreenIndex: 1,
       startTime: DateTime.now(),
       completed: false,
     );
@@ -351,10 +362,18 @@ child: NavigationButtons(
             rightLabel: '다음',
             onBack: () => Navigator.pop(context),
             onNext: () {
+              final planned = <String>[];
+              for (final behavior in [..._addedBehaviors, ..._newBehaviors]) {
+                if (!planned.contains(behavior)) {
+                  planned.add(behavior);
+                }
+              }
               Navigator.push(
                 context,
                 PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const Week7FinalScreen(),
+                  pageBuilder:
+                      (_, __, ___) =>
+                          Week7PlanSummaryScreen(plannedBehaviors: planned),
                   transitionDuration: Duration.zero,
                   reverseTransitionDuration: Duration.zero,
                 ),

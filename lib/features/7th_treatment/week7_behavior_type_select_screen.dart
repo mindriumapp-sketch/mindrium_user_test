@@ -33,7 +33,7 @@ class _Week7BehaviorTypeSelectScreenState
       return;
     }
 
-    Navigator.pushReplacement(
+    Navigator.push<bool>(
       context,
       PageRouteBuilder(
         pageBuilder:
@@ -44,7 +44,12 @@ class _Week7BehaviorTypeSelectScreenState
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
-    );
+    ).then((added) {
+      if (!mounted) return;
+      if (added == true) {
+        Navigator.pop(context, 'avoid_added');
+      }
+    });
   }
 
   @override

@@ -1,6 +1,5 @@
 // File: features/8th_treatment/week8_roadmap_screen.dart
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/features/8th_treatment/week8_planning_check_screen.dart';
 import 'package:gad_app_team/data/user_provider.dart';
@@ -46,7 +45,7 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
 
     return ApplyDesign(
       appBarTitle: '여정 로드맵',
-      cardTitle: '8주간의 여정 되돌아보기',
+      cardTitle: _userName.isNotEmpty ? '$_userName님의 8회차 여정' : '8회차 여정',
       onBack: () => Navigator.pop(context),
       onNext:
           () => Navigator.push(
@@ -58,9 +57,6 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHeaderSection(),
-          const SizedBox(height: 28),
-
           // 주차별 카드 리스트
           ...List.generate(8, (i) {
             final week = i + 1;
@@ -71,25 +67,6 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
           const SizedBox(height: 12),
         ],
       ),
-    );
-  }
-
-  /// 상단 헤더
-  Widget _buildHeaderSection() {
-    return Column(
-      children: [
-        Text(
-          _userName.isNotEmpty ? '$_userName님의 8주간 여정' : '8주간의 여정',
-          style: const TextStyle(
-            fontFamily: 'NotoSansKR',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1B3A57),
-          ),
-        ),
-        const SizedBox(height: 16),
-        JellyfishBanner(message: '8주간의 Mindrium 훈련을 \n함께 되돌아봅시다 🌊'),
-      ],
     );
   }
 
@@ -184,33 +161,33 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
   Map<String, String> _getWeekData(int week) {
     switch (week) {
       case 1:
-        return {'title': '1주차: 불안에 대한 교육', 'description': '가치를 돌아보고 불안을 이해하기'};
+        return {'title': '1회차: 불안에 대한 교육', 'description': '가치를 돌아보고 불안을 이해하기'};
       case 2:
         return {
-          'title': '2주차: ABC 모델',
+          'title': '2회차: ABC 모델',
           'description': '걱정일기 작성, 위치/시간 설정, 그룹 분류하기',
         };
       case 3:
         return {
-          'title': '3주차: Self Talk',
+          'title': '3회차: Self Talk',
           'description': '도움이 되는 생각과 그렇지 않은 생각 구분하기',
         };
       case 4:
         return {
-          'title': '4주차: 인지 왜곡 찾기',
+          'title': '4회차: 인지 왜곡 찾기',
           'description': '생각을 점검하고 현실적인 관점 연습하기',
         };
       case 5:
         return {
-          'title': '5주차: 불안 직면 vs 회피',
+          'title': '5회차: 불안 직면 vs 회피',
           'description': '행동이 직면인지 회피인지 구분하기',
         };
       case 6:
-        return {'title': '6주차: 실전 구분 연습', 'description': '걱정일기 속 행동을 분석해보기'};
+        return {'title': '6회차: 실전 구분 연습', 'description': '걱정일기 속 행동을 분석해보기'};
       case 7:
-        return {'title': '7주차: 건강한 생활 습관', 'description': '한 주간 실천할 습관 세우기'};
+        return {'title': '7회차: 건강한 생활 습관', 'description': '한 주간 실천할 습관 세우기'};
       case 8:
-        return {'title': '8주차: 인지 재구성', 'description': '인지 재구성 연습하기'};
+        return {'title': '8회차: 인지 재구성', 'description': '인지 재구성 연습하기'};
       default:
         return {'title': '', 'description': ''};
     }

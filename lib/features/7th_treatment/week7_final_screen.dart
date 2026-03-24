@@ -194,7 +194,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
           sessionId: sessionId,
           completed: true,
           endTime: DateTime.now(),
-          lastScreenIndex: 0,
+          lastScreenIndex: 1,
           totalScreens: 1,
         );
         if (ctx.mounted) {
@@ -277,7 +277,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
 
     final created = await _week7Api.createWeek7Session(
       totalScreens: 1,
-      lastScreenIndex: 0,
+      lastScreenIndex: 1,
       startTime: DateTime.now(),
       completed: false,
     );

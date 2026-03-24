@@ -88,7 +88,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
   Map<String, dynamic> _buildAnalysisPayload() {
     final map = <String, dynamic>{
       'execution_short_gain': _executionGainController.text.trim(),
-      'execution_long_benefit': _hasLongTermBenefit,
+      'execution_long_gain': _hasLongTermBenefit,
       'non_execution_gain': _nonExecutionGainController.text.trim(),
       'non_execution_short_loss': _executionLoseController.text.trim(),
       'non_execution_long_loss': _hasLongTermDisadvantage,
@@ -114,6 +114,22 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
         reason: widget.reason,
         analysis: analysis.isEmpty ? null : analysis,
       );
+
+      // 저장 성공 즉시 전역 상태 동기화 (planning/add 화면 복귀 시 반영 보장)
+      final updatedAdded = Set<String>.from(
+        Week7AddDisplayScreen.globalAddedBehaviors,
+      )..add(widget.behavior);
+      Week7AddDisplayScreen.updateGlobalAddedBehaviors(updatedAdded);
+      Week7AddDisplayScreen.registerGlobalBehaviorToChip(
+        widget.behavior,
+        widget.chipId,
+      );
+
+      final updatedNew = List<String>.from(
+        Week7AddDisplayScreen.globalNewBehaviors,
+      )..remove(widget.behavior);
+      Week7AddDisplayScreen.updateGlobalNewBehaviors(updatedNew);
+
       if (mounted) {
         BlueBanner.show(
           context,
@@ -149,7 +165,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
 
     final created = await _week7Api.createWeek7Session(
       totalScreens: 1,
-      lastScreenIndex: 0,
+      lastScreenIndex: 1,
       startTime: DateTime.now(),
       completed: false,
     );
@@ -374,41 +390,27 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
 
 
   void _showAddToHealthyHabitsDialog() {
+    final parentContext = context;
     showDialog(
-      context: context,
+      context: parentContext,
       barrierColor: Colors.black.withValues(alpha: 0.35),
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return CustomPopupDesign(
           title: '건강한 생활 습관 추가',
           highlightText: '[${widget.behavior}]',
           message: '이 행동을 건강한 생활 습관에 추가하시겠습니까?',
+          negativeText: '취소',
+          positiveText: '추가',
           onNegativePressed: () {
-            Navigator.of(context).pop();
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const Week7AddDisplayScreen(),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
+            Navigator.of(dialogContext).pop();
           },
           onPositivePressed: () async {
-            final nav = Navigator.of(context);
+            final nav = Navigator.of(dialogContext);
             nav.pop();
             try {
               await _persistAvoidBehavior();
               if (!mounted) return;
-              nav.pushReplacement(
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => Week7AddDisplayScreen(
-                    initialBehavior: widget.behavior,
-                    deferInitialMarkAsAdded: false,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
+              Navigator.of(parentContext).pop(true);
             } catch (_) {
               // 오류 메시지는 _persistAvoidBehavior에서 처리
             }
@@ -489,7 +491,14 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
             _onTextChanged();
           });
         } else {
-          Navigator.pop(context);
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const Week7AddDisplayScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
         }
       },
       onNext:
