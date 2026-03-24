@@ -12,30 +12,31 @@ class AuthApi {
     required String email,
     required String password,
     required String name,
-    required String phone, // (추가) 필수
-    required String code,  // (권장) 통합 가입이므로 필수로 강제
+    required String patientCode,
     String gender = 'male',
+    String? address,
   }) async {
     final body = {
       'email': email,
       'password': password,
       'name': name,
-      'phone': phone,   // (추가) 서버에서 digits로 저장
       'gender': gender,
-      'code': code,     // (의미 변경) code == mindrium_code(6자리)
+      // Keep both keys for backend compatibility across deployments.
+      'code': patientCode,
+      'patient_code': patientCode,
+      'mindrium_code': patientCode,
+      if (address != null && address.isNotEmpty) 'address': address,
     };
 
     await _client.dio.post('/auth/signup', data: body);
   }
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
-    final res = await _client.dio.post('/auth/login', data: {
-      'email': email,
-      'password': password,
-    });
+  Future<void> login({required String email, required String password}) async {
+    final res = await _client.dio.post(
+      '/api/login',
+      data: {'email': email, 'password': password},
+    );
+
     final data = res.data;
     if (data is! Map<String, dynamic>) {
       throw DioException(
@@ -43,6 +44,7 @@ class AuthApi {
         message: 'Invalid login response',
       );
     }
+
     final access = data['access_token'] as String?;
     final refresh = data['refresh_token'] as String?;
     if (access == null || refresh == null) {
@@ -51,11 +53,12 @@ class AuthApi {
         message: 'Tokens missing in response',
       );
     }
+
     await _tokens.save(access, refresh);
   }
 
   Future<Map<String, dynamic>> me() async {
-    final res = await _client.dio.get('/users/me');
+    final res = await _client.dio.get('/api/me');
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
@@ -69,9 +72,10 @@ class AuthApi {
   }
 
   Future<String?> requestPasswordResetToken(String email) async {
-    final res = await _client.dio.post('/auth/password/reset/start', data: {
-      'email': email,
-    });
+    final res = await _client.dio.post(
+      '/auth/password/reset/start',
+      data: {'email': email},
+    );
     final data = res.data;
     if (data is Map<String, dynamic>) {
       return data['token_debug'] as String?;
@@ -86,19 +90,19 @@ class AuthApi {
     required String token,
     required String newPassword,
   }) async {
-    await _client.dio.post('/auth/password/reset/finish', data: {
-      'token': token,
-      'new_password': newPassword,
-    });
+    await _client.dio.post(
+      '/auth/password/reset/finish',
+      data: {'token': token, 'new_password': newPassword},
+    );
   }
 
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
-    await _client.dio.post('/auth/password/change', data: {
-      'current_password': currentPassword,
-      'new_password': newPassword,
-    });
+    await _client.dio.post(
+      '/auth/password/change',
+      data: {'current_password': currentPassword, 'new_password': newPassword},
+    );
   }
 }

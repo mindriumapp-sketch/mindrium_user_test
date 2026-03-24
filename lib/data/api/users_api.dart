@@ -16,4 +16,15 @@ class UsersApi {
       message: 'Invalid me response',
     );
   }
+
+  Future<Map<String, dynamic>> updateMe(Map<String, dynamic> payload) async {
+    final authClient = ApiClient.platformAuth(tokens: _client.tokens);
+    final res = await authClient.dio.patch('/api/me', data: payload);
+    final data = res.data;
+    if (data is Map<String, dynamic>) return data;
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid update me response',
+    );
+  }
 }
