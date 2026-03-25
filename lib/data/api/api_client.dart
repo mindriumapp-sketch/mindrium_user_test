@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../storage/token_storage.dart';
@@ -23,9 +25,12 @@ class ApiClient {
       // 웹에서는 Render 백엔드 서버 사용 (배포용)
       return 'https://mindrium-backend.onrender.com';
     }
-    // return 'http://115.145.134.180:8070';
-    // return 'http://10.0.2.2:8080'; // Android 에뮬레이터에서 localhost 접근
-    return 'http://127.0.0.1:8080'; //ios 시뮬레이터 localhost 접근
+    if (Platform.isAndroid) {
+      // Android 에뮬레이터에서 호스트 머신(localhost) 접근용
+      return 'http://10.0.2.2:8080';
+    }
+    // iOS 시뮬레이터에서 호스트 머신(localhost) 접근용
+    return 'http://127.0.0.1:8080';
   }
 
   ApiClient({required this.tokens, String? baseUrl})

@@ -37,7 +37,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const MethodChannel _widgetLaunchChannel = MethodChannel(
     'mindrium/widget_launch',
   );
@@ -60,6 +60,8 @@ class _HomeScreenState extends State<HomeScreen> {
       HomeWidgetTutorialController();
 
   bool _permissionsChecked = false;
+  bool _hasRequiredPermissions = false;
+  bool _isCheckingPermissions = true;
   Future<void>? _permissionFuture;
   StreamSubscription<dynamic>? _widgetLaunchSubscription;
   bool _checkedInitialWidgetAction = false;
@@ -290,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedIndex = widget.initialIndex;
 
     // ✅ HomeScreen에서는 Provider 데이터 로딩/refresh 안 함
@@ -311,8 +314,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _widgetLaunchSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshRequiredPermissionState();
+    }
   }
 
   void _onDestinationSelected(int index) =>
@@ -485,6 +496,12 @@ class _HomeScreenState extends State<HomeScreen> {
               onDestinationSelected: _onDestinationSelected,
             ),
           ),
+          if (_isCheckingPermissions || !_hasRequiredPermissions)
+            Positioned.fill(
+              child: _buildRequiredPermissionBlocker(
+                isChecking: _isCheckingPermissions,
+              ),
+            ),
         ],
       ),
     );
@@ -533,6 +550,131 @@ class _HomeScreenState extends State<HomeScreen> {
     AlarmNotificationService.instance.handlePendingNotificationTap();
 
     _permissionsChecked = true;
+    await _refreshRequiredPermissionState();
+  }
+
+  Future<void> _refreshRequiredPermissionState() async {
+    if (!mounted) return;
+    setState(() => _isCheckingPermissions = true);
+
+    final location = await Permission.locationWhenInUse.status;
+    final notification = await Permission.notification.status;
+    final hasAllRequired = location.isGranted && notification.isGranted;
+
+    if (!mounted) return;
+    setState(() {
+      _hasRequiredPermissions = hasAllRequired;
+      _isCheckingPermissions = false;
+    });
+  }
+
+  Future<void> _requestRequiredPermissionsFromBlocker() async {
+    setState(() => _isCheckingPermissions = true);
+
+    var locationStatus = await Permission.locationWhenInUse.status;
+    var notificationStatus = await Permission.notification.status;
+
+    if (!locationStatus.isGranted) {
+      locationStatus = await Permission.locationWhenInUse.request();
+    }
+    if (!notificationStatus.isGranted) {
+      notificationStatus = await Permission.notification.request();
+    }
+
+    await AlarmNotificationService.instance.requestPermissions();
+    await _refreshRequiredPermissionState();
+
+    if (!_hasRequiredPermissions && mounted) {
+      final shouldOpenSettings =
+          locationStatus.isPermanentlyDenied ||
+          notificationStatus.isPermanentlyDenied ||
+          locationStatus.isRestricted ||
+          notificationStatus.isRestricted;
+
+      if (shouldOpenSettings) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('권한이 시스템에서 차단되어 있어요. 앱 설정에서 허용해 주세요.'),
+            action: SnackBarAction(
+              label: '설정 열기',
+              onPressed: openAppSettings,
+            ),
+          ),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('권한 팝업에서 위치/알림을 모두 허용해 주세요.')),
+      );
+    }
+  }
+
+  Widget _buildRequiredPermissionBlocker({required bool isChecking}) {
+    return ColoredBox(
+      color: const Color(0xEFFFFFFF),
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.lock_outline_rounded,
+                size: 30,
+                color: Color(0xFF2C4154),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '필수 권한이 필요해요',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E2F3F),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '치료 프로토콜 진행을 위해 위치/알림 권한을 모두 허용해 주세요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.45,
+                  color: Color(0xFF5F6B76),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isChecking ? null : _requestRequiredPermissionsFromBlocker,
+                  child:
+                      isChecking
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('권한 허용하기'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _syncAlarmSchedulesBestEffort() async {

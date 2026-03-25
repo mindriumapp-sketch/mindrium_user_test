@@ -1,9 +1,9 @@
 // 환경설정 화면: 앱 설정, 고객지원, 서비스 정보, 계정
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
 import 'package:gad_app_team/features/settings/notification_preferences_screen.dart';
+import 'package:gad_app_team/features/settings/permission_settings_screen.dart';
 import 'package:gad_app_team/features/settings/terms_policy_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
@@ -91,10 +91,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap:
                               () => Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) =>
-                                          const NotificationPreferencesScreen(),
+                                PageRouteBuilder(
+                                  pageBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                      ) => const NotificationPreferencesScreen(),
+                                  transitionsBuilder: (
+                                    context,
+                                    animation,
+                                    secondaryAnimation,
+                                    child,
+                                  ) {
+                                    const begin = Offset(1.0, 0.0);
+                                    const end = Offset.zero;
+                                    const curve = Curves.easeInOutCubic;
+                                    final tween = Tween(
+                                      begin: begin,
+                                      end: end,
+                                    ).chain(CurveTween(curve: curve));
+                                    return SlideTransition(
+                                      position: animation.drive(tween),
+                                      child: child,
+                                    );
+                                  },
+                                  transitionDuration: const Duration(
+                                    milliseconds: 300,
+                                  ),
                                 ),
                               ),
                         ),
@@ -102,9 +126,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildMenuRow(
                           icon: Icons.tune_rounded,
                           title: '권한 설정',
-                          subtitle: '알림, 저장공간 등 앱에서 사용하는 권한을 확인해보세요.',
+                          subtitle: '필수 권한과 선택 권한을 구분해 확인해보세요.',
                           showDivider: false,
-                          onTap: () => openAppSettings(),
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                      ) => const PermissionSettingsScreen(),
+                                  transitionsBuilder: (
+                                    context,
+                                    animation,
+                                    secondaryAnimation,
+                                    child,
+                                  ) {
+                                    const begin = Offset(1.0, 0.0);
+                                    const end = Offset.zero;
+                                    const curve = Curves.easeInOutCubic;
+                                    final tween = Tween(
+                                      begin: begin,
+                                      end: end,
+                                    ).chain(CurveTween(curve: curve));
+                                    return SlideTransition(
+                                      position: animation.drive(tween),
+                                      child: child,
+                                    );
+                                  },
+                                  transitionDuration: const Duration(
+                                    milliseconds: 300,
+                                  ),
+                                ),
+                              ),
                         ),
                       ],
                     ),

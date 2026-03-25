@@ -1,0 +1,365 @@
+import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
+
+class PermissionSettingsScreen extends StatefulWidget {
+  const PermissionSettingsScreen({super.key});
+
+  @override
+  State<PermissionSettingsScreen> createState() =>
+      _PermissionSettingsScreenState();
+}
+
+class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
+    with WidgetsBindingObserver {
+  PermissionStatus _notificationStatus = PermissionStatus.denied;
+  PermissionStatus _locationStatus = PermissionStatus.denied;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshStatuses();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshStatuses();
+    }
+  }
+
+  Future<void> _refreshStatuses() async {
+    setState(() => _isLoading = true);
+    final notification = await Permission.notification.status;
+    final location = await Permission.locationWhenInUse.status;
+    if (!mounted) return;
+    setState(() {
+      _notificationStatus = notification;
+      _locationStatus = location;
+      _isLoading = false;
+    });
+  }
+
+  bool _isGranted(PermissionStatus status) => status.isGranted;
+
+  Future<void> _requestRequiredPermission({
+    required String label,
+    required Permission permission,
+    required bool desiredValue,
+  }) async {
+    if (!desiredValue) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label 권한은 치료 프로토콜 진행을 위해 필수예요. 시스템 설정에서만 해제할 수 있어요.'),
+        ),
+      );
+      await openAppSettings();
+      return;
+    }
+
+    final status = await permission.request();
+    if (!mounted) return;
+
+    if (status.isGranted) {
+      await _refreshStatuses();
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label 권한이 거부되어 치료 기능이 제한될 수 있어요. 설정에서 허용해 주세요.'),
+        action: SnackBarAction(label: '설정', onPressed: openAppSettings),
+      ),
+    );
+    await _refreshStatuses();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      appBar: const CustomAppBar(
+        title: '권한 설정',
+        showHome: true,
+        confirmOnBack: false,
+        confirmOnHome: false,
+        centerTitle: true,
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset('assets/image/eduhome.png', fit: BoxFit.cover),
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xAAFFFFFF), Color(0x66FFFFFF)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PermissionSection(
+                    title: '필수 권한',
+                    description: '치료 프로토콜 진행을 위해 꼭 필요한 권한이에요.',
+                    children: [
+                      _PermissionToggleTile(
+                        icon: Icons.notifications_active_outlined,
+                        title: '알림',
+                        subtitle: '과제 리마인더와 교육 진행 안내를 위해 필요해요.',
+                        value: _isGranted(_notificationStatus),
+                        enabled: !_isLoading,
+                        requiredPermission: true,
+                        onChanged:
+                            (value) => _requestRequiredPermission(
+                              label: '알림',
+                              permission: Permission.notification,
+                              desiredValue: value,
+                            ),
+                      ),
+                      const SizedBox(height: 10),
+                      _PermissionToggleTile(
+                        icon: Icons.location_on_outlined,
+                        title: '위치',
+                        subtitle: '위치 기반 과제/리마인더 제공을 위해 필요해요.',
+                        value: _isGranted(_locationStatus),
+                        enabled: !_isLoading,
+                        requiredPermission: true,
+                        onChanged:
+                            (value) => _requestRequiredPermission(
+                              label: '위치',
+                              permission: Permission.locationWhenInUse,
+                              desiredValue: value,
+                            ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _PermissionSection(
+                    title: '선택 권한',
+                    description: '부가 기능 제공을 위한 권한이에요. 추후 기능 오픈 시 사용할 수 있어요.',
+                    children: const [
+                      _PermissionToggleTile(
+                        icon: Icons.mic_none_rounded,
+                        title: '마이크',
+                        subtitle: '음성 기반 기능에서만 사용해요. 현재는 선택 사항이에요.',
+                        value: false,
+                        enabled: false,
+                        requiredPermission: false,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: openAppSettings,
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('시스템 권한 설정 열기'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionSection extends StatelessWidget {
+  const _PermissionSection({
+    required this.title,
+    required this.description,
+    required this.children,
+  });
+
+  final String title;
+  final String description;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
+      decoration: BoxDecoration(
+        color: const Color(0xFCFFFFFF),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE5EDF4)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E2F3F),
+              fontFamily: 'Noto Sans KR',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.4,
+              color: Color(0xFF8A97A3),
+              fontFamily: 'Noto Sans KR',
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionToggleTile extends StatelessWidget {
+  const _PermissionToggleTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.enabled,
+    required this.requiredPermission,
+    this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final bool enabled;
+  final bool requiredPermission;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEAF0F5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F7FB),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, size: 22, color: const Color(0xFF2C4154)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2C4154),
+                          fontFamily: 'Noto Sans KR',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              requiredPermission
+                                  ? const Color(0xFFEAF4FF)
+                                  : const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          requiredPermission ? '필수' : '선택',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                requiredPermission
+                                    ? const Color(0xFF2E6EA3)
+                                    : const Color(0xFF6B7280),
+                            fontFamily: 'Noto Sans KR',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      height: 1.4,
+                      color: Color(0xFF8A97A3),
+                      fontFamily: 'Noto Sans KR',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: value,
+            onChanged: enabled ? onChanged : null,
+            activeThumbColor: Colors.white,
+            activeTrackColor: const Color(0xFF5B9FD3),
+            inactiveThumbColor: Colors.white,
+            inactiveTrackColor: const Color(0xFFD7E0E8),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
+      ),
+    );
+  }
+}
