@@ -14,6 +14,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
     with WidgetsBindingObserver {
   PermissionStatus _notificationStatus = PermissionStatus.denied;
   PermissionStatus _locationStatus = PermissionStatus.denied;
+  PermissionStatus _microphoneStatus = PermissionStatus.denied;
   bool _isLoading = true;
 
   @override
@@ -40,10 +41,12 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
     setState(() => _isLoading = true);
     final notification = await Permission.notification.status;
     final location = await Permission.locationWhenInUse.status;
+    final microphone = await Permission.microphone.status;
     if (!mounted) return;
     setState(() {
       _notificationStatus = notification;
       _locationStatus = location;
+      _microphoneStatus = microphone;
       _isLoading = false;
     });
   }
@@ -58,14 +61,17 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
     if (!desiredValue) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$label 권한은 치료 프로토콜 진행을 위해 필수예요. 시스템 설정에서만 해제할 수 있어요.'),
+          content: Text('$label 권한은 치료 프로토콜 진행을 위해 필수예요. 해제할 수 없어요.'),
         ),
       );
-      await openAppSettings();
+      await _refreshStatuses();
       return;
     }
 
-    final status = await permission.request();
+    var status = await permission.status;
+    if (!status.isGranted) {
+      status = await permission.request();
+    }
     if (!mounted) return;
 
     if (status.isGranted) {
@@ -75,10 +81,51 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label 권한이 거부되어 치료 기능이 제한될 수 있어요. 설정에서 허용해 주세요.'),
-        action: SnackBarAction(label: '설정', onPressed: openAppSettings),
+        content: Text('$label 권한이 거부되었어요. 허용해야 치료 기능을 사용할 수 있어요.'),
+        action:
+            status.isPermanentlyDenied || status.isRestricted
+                ? SnackBarAction(label: '설정 열기', onPressed: openAppSettings)
+                : null,
       ),
     );
+    await _refreshStatuses();
+  }
+
+  Future<void> _requestOptionalPermission({
+    required String label,
+    required Permission permission,
+    required bool desiredValue,
+  }) async {
+    if (!desiredValue) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$label 권한 해제는 시스템 권한 설정에서 변경할 수 있어요.')),
+      );
+      await _refreshStatuses();
+      return;
+    }
+
+    var status = await permission.status;
+    if (!status.isGranted) {
+      status = await permission.request();
+    }
+    if (!mounted) return;
+
+    if (status.isGranted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$label 권한이 허용되었어요.')));
+    } else if (status.isPermanentlyDenied || status.isRestricted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label 권한이 시스템에서 차단되어 있어요. 설정에서 변경해 주세요.'),
+          action: SnackBarAction(label: '설정 열기', onPressed: openAppSettings),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$label 권한이 거부되었어요.')));
+    }
     await _refreshStatuses();
   }
 
@@ -161,15 +208,21 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                   const SizedBox(height: 14),
                   _PermissionSection(
                     title: '선택 권한',
-                    description: '부가 기능 제공을 위한 권한이에요. 추후 기능 오픈 시 사용할 수 있어요.',
-                    children: const [
+                    description: '부가 기능 제공을 위한 권한이에요. 필요할 때만 허용해도 돼요.',
+                    children: [
                       _PermissionToggleTile(
                         icon: Icons.mic_none_rounded,
                         title: '마이크',
-                        subtitle: '음성 기반 기능에서만 사용해요. 현재는 선택 사항이에요.',
-                        value: false,
-                        enabled: false,
+                        subtitle: '음성 기반 기능에서 사용해요. 선택 권한이에요.',
+                        value: _isGranted(_microphoneStatus),
+                        enabled: !_isLoading,
                         requiredPermission: false,
+                        onChanged:
+                            (value) => _requestOptionalPermission(
+                              label: '마이크',
+                              permission: Permission.microphone,
+                              desiredValue: value,
+                            ),
                       ),
                     ],
                   ),
