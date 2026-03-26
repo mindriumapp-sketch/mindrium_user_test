@@ -284,7 +284,12 @@ class _MapPickerState extends State<MapPicker> {
 
   Future<void> _onSearch() async {
     final query = _searchController.text.trim();
-    if (query.isEmpty) return;
+    if (query.isEmpty) {
+      _showSearchMessage('검색어를 입력해주세요.');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
 
     try {
       final kakaoResult = await _kakaoLocalApi.searchLocation(
@@ -292,20 +297,64 @@ class _MapPickerState extends State<MapPicker> {
         around: _picked ?? _current,
       );
       if (kakaoResult != null) {
-        await _pickLocation(kakaoResult.point, moveMap: true);
+        await _pickLocation(
+          kakaoResult.point,
+          moveMap: true,
+          resolvedLabel: kakaoResult.displayLabel,
+        );
         return;
       }
 
       final res = await locationFromAddress(query);
-      if (res.isEmpty) return;
+      if (res.isEmpty) {
+        _showSearchFailure(query);
+        return;
+      }
       final latlng = LatLng(res.first.latitude, res.first.longitude);
       await _pickLocation(latlng, moveMap: true);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Location search failed for "$query": $e');
+      _showSearchFailure(query);
+    }
   }
 
-  Future<void> _pickLocation(LatLng latlng, {bool moveMap = false}) async {
-    _applyState(() => _picked = latlng);
-    await _reverseGeocode(latlng);
+  void _showSearchFailure(String query) {
+    final kakaoConfigured = _kakaoLocalApi.isConfigured;
+    debugPrint(
+      'Search returned no result for "$query". Kakao Local configured: $kakaoConfigured',
+    );
+
+    final message =
+        kakaoConfigured
+            ? '검색 결과를 찾지 못했어요. 주소를 조금 더 자세히 입력해 주세요.'
+            : '검색 설정을 불러오지 못했어요. 앱을 다시 실행해 주세요.';
+    _showSearchMessage(message);
+  }
+
+  void _showSearchMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _pickLocation(
+    LatLng latlng, {
+    bool moveMap = false,
+    String? resolvedLabel,
+  }) async {
+    final normalizedLabel = resolvedLabel?.trim();
+    _applyState(() {
+      _picked = latlng;
+      if (normalizedLabel != null && normalizedLabel.isNotEmpty) {
+        _addr = normalizedLabel;
+        _isResolvingAddress = false;
+        _hasAddressLookupFailure = false;
+      }
+    });
+    if (normalizedLabel == null || normalizedLabel.isEmpty) {
+      await _reverseGeocode(latlng);
+    }
     if (moveMap) {
       _moveMapSafely(latlng, zoom: _kInitialZoom);
     }

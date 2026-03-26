@@ -162,12 +162,20 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
         ),
         child: TextField(
           controller: widget.searchController,
+          textInputAction: TextInputAction.search,
           onSubmitted: (_) => widget.onSearch?.call(),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: '주소 검색',
-            prefixIcon: Icon(Icons.search, color: Color(0xFF4A90E2)),
+            prefixIcon: IconButton(
+              onPressed: widget.onSearch,
+              icon: const Icon(Icons.search, color: Color(0xFF4A90E2)),
+              tooltip: '주소 검색',
+            ),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
           ),
         ),
       ),
@@ -179,9 +187,17 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
       return const SizedBox.shrink();
     }
 
-    Future<void> moveToFocusPoint() async {
-      final target = widget.picked ?? widget.current ?? _initialCenter;
-      await widget.mapController!.move(target, zoom: 16);
+    Future<void> moveToCurrentLocation() async {
+      final current = widget.current;
+      if (current == null) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('현재 위치를 아직 확인하지 못했어요.')));
+        return;
+      }
+
+      await widget.mapController!.move(current, zoom: 16);
     }
 
     return Positioned(
@@ -215,7 +231,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
               Container(width: 42, height: 1, color: const Color(0xFFE5EBF3)),
               _MapControlButton(
                 icon: Icons.my_location_rounded,
-                onPressed: moveToFocusPoint,
+                onPressed: moveToCurrentLocation,
               ),
             ],
           ),

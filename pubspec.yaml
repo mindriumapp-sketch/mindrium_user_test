@@ -61,6 +61,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - dart_defines/
     - assets/image/Background_wave.png
     - assets/image/activating event.png
     - assets/image/alternative thoughts.png

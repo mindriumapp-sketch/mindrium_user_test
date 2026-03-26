@@ -47,6 +47,7 @@ coverage/
 ##### iOS / macOS (Xcode/CocoaPods) #####
 **/ios/**/Flutter/.last_build_id
 **/ios/**/Flutter/Generated.xcconfig
+**/ios/**/Flutter/Local.xcconfig
 **/ios/**/Flutter/flutter_export_environment.sh
 **/ios/**/.symlinks/
 **/ios/**/Pods/
