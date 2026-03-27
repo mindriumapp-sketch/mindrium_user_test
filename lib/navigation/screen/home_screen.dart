@@ -62,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _permissionsChecked = false;
   bool _hasRequiredPermissions = false;
   bool _isCheckingPermissions = true;
+  bool _didResolveRequiredPermissionState = false;
   Future<void>? _permissionFuture;
   StreamSubscription<dynamic>? _widgetLaunchSubscription;
   bool _checkedInitialWidgetAction = false;
@@ -500,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onDestinationSelected: _onDestinationSelected,
             ),
           ),
-          if (_isCheckingPermissions || !_hasRequiredPermissions)
+          if (_didResolveRequiredPermissionState && !_hasRequiredPermissions)
             Positioned.fill(
               child: _buildRequiredPermissionBlocker(
                 isChecking: _isCheckingPermissions,
@@ -568,6 +569,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() {
       _hasRequiredPermissions = hasAllRequired;
       _isCheckingPermissions = false;
+      _didResolveRequiredPermissionState = true;
     });
   }
 
