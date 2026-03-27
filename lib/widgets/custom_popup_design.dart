@@ -21,6 +21,7 @@ class CustomPopupDesign extends StatefulWidget {
   final String inputMaxLengthErrorText;
   final String? Function(String text)? inputValidator;
   final Duration? autoPositiveAfter;
+  final double? dialogWidth;
 
   const CustomPopupDesign({
     super.key,
@@ -41,6 +42,7 @@ class CustomPopupDesign extends StatefulWidget {
     this.inputMaxLengthErrorText = '입력 길이를 확인해주세요.',
     this.inputValidator,
     this.autoPositiveAfter,
+    this.dialogWidth,
   });
 
   @override
@@ -153,13 +155,15 @@ class _CustomPopupDesignState extends State<CustomPopupDesign>
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxDialogHeight),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: double.infinity,
+      child: SizedBox(
+        width: widget.dialogWidth,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxDialogHeight),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: double.infinity,
               padding: const EdgeInsets.fromLTRB(28, 60, 28, 28),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.92),
@@ -346,41 +350,42 @@ class _CustomPopupDesignState extends State<CustomPopupDesign>
               ),
             ),
             // 상단 아이콘
-            Positioned(
-              top: -40,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF74D2FF).withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+              Positioned(
+                top: -40,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
                       ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child:
-                        widget.iconAsset != null
-                            ? Image.asset(widget.iconAsset!, fit: BoxFit.cover)
-                            : const Icon(
-                              Icons.auto_awesome,
-                              color: Colors.white,
-                              size: 36,
-                            ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF74D2FF).withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child:
+                          widget.iconAsset != null
+                              ? Image.asset(widget.iconAsset!, fit: BoxFit.cover)
+                              : const Icon(
+                                Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 36,
+                              ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,1008 +1,392 @@
-// 📊 Mindrium ReportScreen — 치료 진행 상황 리포트
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/diaries_api.dart';
+import 'package:gad_app_team/data/api/edu_sessions_api.dart';
+import 'package:gad_app_team/data/api/relaxation_api.dart';
 
-class ReportScreen extends StatelessWidget {
+class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
+
+  @override
+  State<ReportScreen> createState() => _ReportScreenState();
+}
+
+class _ReportScreenState extends State<ReportScreen> {
+  final TokenStorage _tokens = TokenStorage();
+  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final DiariesApi _diariesApi = DiariesApi(_apiClient);
+  late final EduSessionsApi _eduApi = EduSessionsApi(_apiClient);
+  late final RelaxationApi _relaxationApi = RelaxationApi(_apiClient);
+
+  DateTime _selectedDate = _startOfDay(DateTime.now());
+  DateTime _focusedWeekStart = _startOfWeek(_startOfDay(DateTime.now()));
+
+  bool _isLoading = true;
+  String? _error;
+
+  List<Map<String, dynamic>> _diarySummaries = const [];
+  List<Map<String, dynamic>> _eduSessions = const [];
+  List<Map<String, dynamic>> _relaxationTasks = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReportData();
+  }
+
+  static DateTime _startOfDay(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  static DateTime _startOfWeek(DateTime date) {
+    final d = _startOfDay(date);
+    final diff = d.weekday % 7; // 일요일 시작
+    return d.subtract(Duration(days: diff));
+  }
+
+  static bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  DateTime? _parseDate(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is DateTime) return raw.toLocal();
+    if (raw is String) {
+      final parsed = DateTime.tryParse(raw);
+      return parsed?.toLocal();
+    }
+    return null;
+  }
+
+  Future<void> _loadReportData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final results = await Future.wait([
+        _diariesApi.listDiarySummaries(),
+        _eduApi.listEduSessions(),
+        _relaxationApi.listRelaxationTasks(),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _diarySummaries = (results[0] as List).cast<Map<String, dynamic>>();
+        _eduSessions = (results[1] as List).cast<Map<String, dynamic>>();
+        _relaxationTasks = (results[2] as List).cast<Map<String, dynamic>>();
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '리포트 데이터를 불러오지 못했어요.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _diariesFor(DateTime date) {
+    return _diarySummaries.where((d) {
+      final created = _parseDate(d['created_at']);
+      return created != null && _isSameDay(created, date);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _eduFor(DateTime date) {
+    return _eduSessions.where((s) {
+      final start = _parseDate(s['start_time']) ?? _parseDate(s['created_at']);
+      return start != null && _isSameDay(start, date);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _relaxFor(DateTime date) {
+    return _relaxationTasks.where((r) {
+      final start = _parseDate(r['start_time']) ?? _parseDate(r['created_at']);
+      return start != null && _isSameDay(start, date);
+    }).toList();
+  }
+
+  int _completionRateDiary(DateTime date) {
+    final diaries = _diariesFor(date);
+    if (diaries.isEmpty) return 0;
+    final completed =
+        diaries.where((d) => (d['draft_progress'] as num?)?.toInt() == 100).length;
+    if (completed == 0) return 50;
+    return 100;
+  }
+
+  int _completionRateEducation(DateTime date) {
+    final sessions = _eduFor(date);
+    if (sessions.isEmpty) return 0;
+    final completed = sessions.where((s) => s['completed'] == true).length;
+    if (completed == 0) return 50;
+    return 100;
+  }
+
+  int _completionRateRelaxation(DateTime date) {
+    final sessions = _relaxFor(date);
+    if (sessions.isEmpty) return 0;
+    final completed = sessions.where((s) => s['end_time'] != null).length;
+    if (completed == 0) return 50;
+    return 100;
+  }
+
+  List<double> _sudWeeklySeries(DateTime centerDate) {
+    final days = List.generate(
+      7,
+      (i) => _startOfDay(centerDate.subtract(Duration(days: 6 - i))),
+    );
+    return days.map((day) {
+      final entries = _diariesFor(day)
+          .map((d) => d['latest_sud'])
+          .whereType<num>()
+          .map((v) => v.toDouble())
+          .toList();
+      if (entries.isEmpty) return 0.0;
+      final avg = entries.reduce((a, b) => a + b) / entries.length;
+      return avg.clamp(0, 10).toDouble();
+    }).toList();
+  }
+
+  String _dateKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
+  Set<String> _activityDateKeysInWeek(DateTime weekStart) {
+    final keys = <String>{};
+    final weekEnd = weekStart.add(const Duration(days: 7));
+
+    void addFrom(dynamic raw) {
+      final parsed = _parseDate(raw);
+      if (parsed == null) return;
+      final day = _startOfDay(parsed);
+      if (!day.isBefore(weekStart) && day.isBefore(weekEnd)) {
+        keys.add(_dateKey(day));
+      }
+    }
+
+    for (final d in _diarySummaries) {
+      addFrom(d['created_at']);
+    }
+    for (final e in _eduSessions) {
+      addFrom(e['start_time'] ?? e['created_at']);
+    }
+    for (final r in _relaxationTasks) {
+      addFrom(r['start_time'] ?? r['created_at']);
+    }
+    return keys;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: CustomAppBar(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      appBar: const CustomAppBar(
         title: '리포트',
+        showBack: false,
         showHome: true,
-        titleTextStyle: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-        ),
+        confirmOnBack: false,
+        confirmOnHome: false,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 전체 진행률 카드
-            _buildProgressCard(),
-            const SizedBox(height: 24),
-
-            // 일기 작성 요약 카드 (클릭 가능)
-            _buildSummaryCard(
-              context,
-              title: '일기 작성 통계',
-              icon: Icons.edit_note_rounded,
-              mainValue: '42개',
-              subValue: '이번 주 5개',
-              color: const Color(0xFFFFD93D),
-              onTap: () => _showDiaryDetailSheet(context),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset('assets/image/eduhome.png', fit: BoxFit.cover),
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xAAFFFFFF), Color(0x66FFFFFF)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // SUD 점수 요약 카드 (클릭 가능)
-            _buildSummaryCard(
-              context,
-              title: 'SUD 점수 분석',
-              icon: Icons.bar_chart_rounded,
-              mainValue: '6.2점',
-              subValue: '지난 주 대비 -18%',
-              color: const Color(0xFFEF4444),
-              onTap: () => _showSudDetailSheet(context),
-            ),
-            const SizedBox(height: 16),
-
-            // 칩 사용 요약 카드 (클릭 가능)
-            _buildSummaryCard(
-              context,
-              title: '사용한 칩 통계',
-              icon: Icons.psychology_rounded,
-              mainValue: '187개',
-              subValue: '가장 많이 사용: 걱정',
-              color: const Color(0xFF6EE7B7),
-              onTap: () => _showChipDetailSheet(context),
-            ),
-            const SizedBox(height: 16),
-
-            // 이완 훈련 요약 카드 (클릭 가능)
-            _buildSummaryCard(
-              context,
-              title: '이완 훈련 통계',
-              icon: Icons.self_improvement_rounded,
-              mainValue: '28회',
-              subValue: '총 3시간 24분',
-              color: const Color(0xFF93C5FD),
-              onTap: () => _showRelaxationDetailSheet(context),
-            ),
-            const SizedBox(height: 16),
-
-            // 걸정 그룹 요약 카드 (클릭 가능)
-            _buildSummaryCard(
-              context,
-              title: '걱정 그룹 통계',
-              icon: Icons.folder_rounded,
-              mainValue: '8개',
-              subValue: '보관함 3개',
-              color: const Color(0xFFFBBF24),
-              onTap: () => _showWorryGroupDetailSheet(context),
-            ),
-          ],
-        ),
+          ),
+          SafeArea(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(child: Text(_error!))
+                    : RefreshIndicator(
+                        onRefresh: _loadReportData,
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                          children: [
+                            _buildCalendarCard(),
+                            const SizedBox(height: 10),
+                            _buildSelectedDateHeader(),
+                            const SizedBox(height: 14),
+                            _buildSudCard(),
+                            const SizedBox(height: 14),
+                            _buildCompletionCard(),
+                          ],
+                        ),
+                      ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildProgressCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1F2937), Color(0xFF374151)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+  Widget _buildCalendarCard() {
+    final weekStart = _focusedWeekStart;
+    final weekEnd = weekStart.add(const Duration(days: 6));
+    final weekLabel =
+        '${weekStart.month}.${weekStart.day} - ${weekEnd.month}.${weekEnd.day}';
+    final weekDates =
+        List.generate(7, (i) => _startOfDay(weekStart.add(Duration(days: i))));
+    final activeDateKeys = _activityDateKeysInWeek(weekStart);
+    const weekLabels = ['일', '월', '화', '수', '목', '금', '토'];
+
+    return _sectionCard(
+      title: '주간 캘린더',
+      subtitle: '해당 주의 날짜를 선택하면 일자별 기록이 보여요.',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '전체 진행률',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '5주차 / 8주차',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: 5 / 8,
-                        minHeight: 12,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFFFFD93D),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _focusedWeekStart = _focusedWeekStart.subtract(
+                      const Duration(days: 7),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.chevron_left_rounded),
               ),
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD93D),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  '62.5%',
-                  style: TextStyle(
-                    fontSize: 24,
+              Expanded(
+                child: Text(
+                  weekLabel,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2F3F),
                   ),
                 ),
+              ),
+              TextButton(
+                onPressed: () {
+                  final today = _startOfDay(DateTime.now());
+                  setState(() {
+                    _selectedDate = today;
+                    _focusedWeekStart = _startOfWeek(today);
+                  });
+                },
+                child: const Text(
+                  '오늘',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF5B9FD3),
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _focusedWeekStart = _focusedWeekStart.add(
+                      const Duration(days: 7),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.chevron_right_rounded),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // 요약 카드 위젯
-  Widget _buildSummaryCard(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required String mainValue,
-    required String subValue,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F2937),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFD1D5DB),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    mainValue,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subValue,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: color.withValues(alpha: 0.5),
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 일기 상세 바텀시트
-  void _showDiaryDetailSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => DraggableScrollableSheet(
-            initialChildSize: 0.7,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder:
-                (context, scrollController) => Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1F2937),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4B5563),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.edit_note_rounded,
-                              color: Color(0xFFFFD93D),
-                              size: 28,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              '일기 작성 상세',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children: [
-                            _buildStatRow(
-                              '총 작성한 일기',
-                              '42개',
-                              Icons.edit_note_rounded,
-                              Colors.white,
-                              const Color(0xFFFFD93D),
-                            ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              '주차별 작성 현황',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildWeeklyDiaryGraph(),
-                            const SizedBox(height: 24),
-                            const Text(
-                              '추가 통계',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              '평균 작성 시간',
-                              '8분 23초',
-                              Icons.timer_rounded,
-                              Colors.white,
-                              const Color(0xFFFFD93D),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              '가장 많이 작성한 요일',
-                              '화요일',
-                              Icons.event_rounded,
-                              Colors.white,
-                              const Color(0xFFFFD93D),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              '연속 작성 일수',
-                              '12일',
-                              Icons.local_fire_department_rounded,
-                              Colors.white,
-                              const Color(0xFFFFD93D),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-          ),
-    );
-  }
-
-  // 칩 상세 바텀시트
-  void _showChipDetailSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => DraggableScrollableSheet(
-            initialChildSize: 0.7,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder:
-                (context, scrollController) => Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1F2937),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4B5563),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.psychology_rounded,
-                              color: Color(0xFF6EE7B7),
-                              size: 28,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              '사용한 칩 상세',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children: [
-                            _buildStatRow(
-                              '총 사용한 칩',
-                              '187개',
-                              Icons.analytics_rounded,
-                              Colors.white,
-                              const Color(0xFF6EE7B7),
-                            ),
-                            const SizedBox(height: 24),
-                            // A (Activation)
-                            const Text(
-                              'A - 활성화 사건',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFFFD93D),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildChipStatRow(
-                              '학업',
-                              '18회',
-                              const Color(0xFFFFD93D),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildChipStatRow(
-                              '대인관계',
-                              '15회',
-                              const Color(0xFFFFD93D),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildChipStatRow(
-                              '건강',
-                              '12회',
-                              const Color(0xFFFFD93D),
-                            ),
-                            const SizedBox(height: 20),
-                            // B (Belief)
-                            const Text(
-                              'B - 생각/신념',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF93C5FD),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildChipStatRow(
-                              '걱정',
-                              '32회',
-                              const Color(0xFF93C5FD),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildChipStatRow(
-                              '불안',
-                              '28회',
-                              const Color(0xFF93C5FD),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildChipStatRow(
-                              '두려움',
-                              '21회',
-                              const Color(0xFF93C5FD),
-                            ),
-                            const SizedBox(height: 20),
-                            // C (Consequence)
-                            const Text(
-                              'C - 결과 (감정/신체/행동)',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF6EE7B7),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildChipStatRow(
-                              '초조함',
-                              '24회',
-                              const Color(0xFF6EE7B7),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildChipStatRow(
-                              '긴장',
-                              '18회',
-                              const Color(0xFF6EE7B7),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildChipStatRow(
-                              '회피',
-                              '19회',
-                              const Color(0xFF6EE7B7),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-          ),
-    );
-  }
-
-  // SUD 상세 바텀시트
-  void _showSudDetailSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => DraggableScrollableSheet(
-            initialChildSize: 0.7,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder:
-                (context, scrollController) => Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1F2937),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4B5563),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.bar_chart_rounded,
-                              color: Color(0xFFEF4444),
-                              size: 28,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              'SUD 점수 상세',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children: [
-                            _buildStatRow(
-                              '전체 평균 SUD 점수',
-                              '6.2점',
-                              Icons.bar_chart_rounded,
-                              Colors.white,
-                              const Color(0xFFEF4444),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStatRow(
-                              '최고 SUD 점수',
-                              '9점',
-                              Icons.arrow_upward_rounded,
-                              Colors.white,
-                              const Color(0xFFEF4444),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStatRow(
-                              '최저 SUD 점수',
-                              '2점',
-                              Icons.arrow_downward_rounded,
-                              Colors.white,
-                              const Color(0xFF6EE7B7),
-                            ),
-                            const SizedBox(height: 24),
-                            // 주차별 평균 SUD 그래프
-                            const Text(
-                              '주차별 평균 SUD 점수',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildWeeklySudGraph(),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'SUD 점수 변동 추이',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildSudTrendGraph(),
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF059669),
-                                    Color(0xFF10B981),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(
-                                      Icons.trending_down_rounded,
-                                      color: Colors.white,
-                                      size: 32,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'SUD 점수 감소율',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        const Text(
-                                          '지난 주 대비 -18%',
-                                          style: TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '치료가 효과적으로 진행되고 있어요!',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.white.withValues(
-                                              alpha: 0.8,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-          ),
-    );
-  }
-
-  // 이완 훈련 상세 바텀시트
-  void _showRelaxationDetailSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => DraggableScrollableSheet(
-            initialChildSize: 0.7,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder:
-                (context, scrollController) => Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1F2937),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4B5563),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.self_improvement_rounded,
-                              color: Color(0xFF93C5FD),
-                              size: 28,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              '이완 훈련 상세',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children: [
-                            _buildStatRow(
-                              '총 훈련 횟수',
-                              '28회',
-                              Icons.self_improvement_rounded,
-                              Colors.white,
-                              const Color(0xFF93C5FD),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStatRow(
-                              '이번 주 훈련',
-                              '4회',
-                              Icons.calendar_today_rounded,
-                              Colors.white,
-                              const Color(0xFF93C5FD),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStatRow(
-                              '총 훈련 시간',
-                              '3시간 24분',
-                              Icons.timer_rounded,
-                              Colors.white,
-                              const Color(0xFF93C5FD),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStatRow(
-                              '평균 훈련 시간',
-                              '7분 17초',
-                              Icons.timelapse_rounded,
-                              Colors.white,
-                              const Color(0xFF93C5FD),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-          ),
-    );
-  }
-
-  Widget _buildChipStatRow(String label, String value, Color accentColor) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFFD1D5DB),
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: accentColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatRow(
-    String label,
-    String value,
-    IconData icon,
-    Color labelColor,
-    Color accentColor,
-  ) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: accentColor, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: labelColor,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: accentColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWeeklyDiaryGraph() {
-    final weeklyData = [6, 8, 7, 9, 7, 5, 4, 3];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 170,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(8, (index) {
-                final count = weeklyData[index];
-                final height = (count / 10.0) * 120;
-                final color = const Color(0xFFFFD93D);
-
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$count개',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: 32,
-                      height: height,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${index + 1}주',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF9CA3AF),
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // SUD 추이 그래프 (라인 그래프 느낌)
-  Widget _buildSudTrendGraph() {
-    final weeklyData = [7.8, 7.2, 6.9, 6.5, 6.0, 5.6];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
+          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(6, (index) {
-              final score = weeklyData[index];
-              final height = (score / 10.0) * 120;
-              final color =
-                  score >= 7.0
-                      ? const Color(0xFFEF4444)
-                      : score >= 5.0
-                      ? const Color(0xFFFBBF24)
-                      : const Color(0xFF6EE7B7);
-
-              return Column(
-                children: [
-                  Text(
-                    score.toStringAsFixed(1),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: 32,
-                    height: height,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(8),
+            children: weekLabels
+                .map(
+                  (w) => Expanded(
+                    child: Center(
+                      child: Text(
+                        w,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF7B8A98),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${index + 1}주',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF9CA3AF),
-                    ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(7, (index) {
+              final date = weekDates[index];
+              final isSelected = _isSameDay(date, _selectedDate);
+              final isToday = _isSameDay(date, _startOfDay(DateTime.now()));
+              final hasActivity = activeDateKeys.contains(_dateKey(date));
+
+              return Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => setState(() => _selectedDate = date),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
+                                  ? const Color(0xFF5B9FD3)
+                                  : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border:
+                              isToday && !isSelected
+                                  ? Border.all(color: const Color(0xFF9EC6E9))
+                                  : null,
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Text(
+                              '${date.day}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    isSelected
+                                        ? Colors.white
+                                        : const Color(0xFF263747),
+                              ),
+                            ),
+                            if (hasActivity)
+                              Positioned(
+                                bottom: 4,
+                                child: Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF5B9FD3),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               );
             }),
           ),
@@ -1011,227 +395,50 @@ class ReportScreen extends StatelessWidget {
     );
   }
 
-  // 걱정 그룹 상세 바텀시트
-  void _showWorryGroupDetailSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => DraggableScrollableSheet(
-            initialChildSize: 0.7,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder:
-                (context, scrollController) => Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1F2937),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4B5563),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.folder_rounded,
-                              color: Color(0xFFFBBF24),
-                              size: 28,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              '걱정 그룹 상세',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children: [
-                            _buildStatRow(
-                              '총 걱정 그룹',
-                              '8개',
-                              Icons.folder_rounded,
-                              Colors.white,
-                              const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStatRow(
-                              '활성 그룹',
-                              '5개',
-                              Icons.folder_open_rounded,
-                              Colors.white,
-                              const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildStatRow(
-                              '보관함 그룹',
-                              '3개',
-                              Icons.archive_rounded,
-                              Colors.white,
-                              const Color(0xFF6EE7B7),
-                            ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              '그룹별 일기 수',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildGroupDiaryRow(
-                              '학업 스트레스',
-                              12,
-                              const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildGroupDiaryRow(
-                              '대인관계',
-                              9,
-                              const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildGroupDiaryRow(
-                              '건강 걱정',
-                              8,
-                              const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildGroupDiaryRow(
-                              '진로 고민',
-                              7,
-                              const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildGroupDiaryRow(
-                              '기타',
-                              6,
-                              const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              '보관함 그룹',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildArchivedGroupCard('시험 불안', '2024.11.05'),
-                            const SizedBox(height: 12),
-                            _buildArchivedGroupCard('발표 두려움', '2024.10.28'),
-                            const SizedBox(height: 12),
-                            _buildArchivedGroupCard('과제 스트레스', '2024.10.15'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-          ),
-    );
-  }
+  Widget _buildSelectedDateHeader() {
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    final weekdayLabel = weekdays[_selectedDate.weekday % 7];
+    final label =
+        '${_selectedDate.year}년 ${_selectedDate.month}월 ${_selectedDate.day}일 ($weekdayLabel)';
 
-  Widget _buildGroupDiaryRow(String groupName, int count, Color color) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            groupName,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFFD1D5DB),
-            ),
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          letterSpacing: 0.2,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF97A4B1),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$count개',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildArchivedGroupCard(String groupName, String date) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF374151),
-        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+    );
+  }
+
+  Widget _buildSudCard() {
+    final series = _sudWeeklySeries(_selectedDate);
+    final labels = List.generate(
+      7,
+      (i) => '${_selectedDate.subtract(Duration(days: 6 - i)).day}',
+    );
+    final latest = series.last;
+
+    return _sectionCard(
+      title: '증상 추이 그래프 (SUD)',
+      subtitle: '${_selectedDate.month}월 ${_selectedDate.day}일 기준 최근 7일',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6EE7B7).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.archive_rounded,
-              color: Color(0xFF6EE7B7),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  groupName,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  date,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ),
-              ],
+          _SudMiniBarChart(values: series, labels: labels),
+          const SizedBox(height: 10),
+          Text(
+            latest > 0
+                ? '선택일 평균 SUD ${latest.toStringAsFixed(1)}점'
+                : '선택일 SUD 기록이 없어요.',
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF5F6B76),
             ),
           ),
         ],
@@ -1239,75 +446,285 @@ class ReportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWeeklySudGraph() {
-    final weeklyData = [
-      {'week': '1주', 'score': 7.8},
-      {'week': '2주', 'score': 7.2},
-      {'week': '3주', 'score': 6.9},
-      {'week': '4주', 'score': 6.5},
-      {'week': '5주', 'score': 6.0},
-      {'week': '6주', 'score': 5.6},
-    ];
+  Widget _buildCompletionCard() {
+    final diaries = _diariesFor(_selectedDate);
+    final education = _eduFor(_selectedDate);
+    final relax = _relaxFor(_selectedDate);
 
-    final maxScore = 10.0;
+    final diaryRate = _completionRateDiary(_selectedDate);
+    final eduRate = _completionRateEducation(_selectedDate);
+    final relaxRate = _completionRateRelaxation(_selectedDate);
 
-    return Column(
-      children:
-          weeklyData.map((data) {
-            final week = data['week'] as String;
-            final score = data['score'] as double;
-            final progress = score / maxScore;
-            final color =
-                score >= 7.0
-                    ? const Color(0xFFEF4444)
-                    : score >= 5.0
-                    ? const Color(0xFFFBBF24)
-                    : const Color(0xFF6EE7B7);
+    return _sectionCard(
+      title: '수행률',
+      subtitle: '교육/이완/일기 수행률과 상세 로그',
+      child: Column(
+        children: [
+          _CompletionRow(
+            label: '교육',
+            icon: Icons.menu_book_rounded,
+            value: eduRate,
+            logs: education
+                .map((e) {
+                  final week = (e['week_number'] as num?)?.toInt();
+                  final completed = e['completed'] == true ? '완료' : '진행';
+                  return week == null ? completed : '$week주차 $completed';
+                })
+                .toList(),
+          ),
+          const SizedBox(height: 12),
+          _CompletionRow(
+            label: '이완',
+            icon: Icons.self_improvement_rounded,
+            value: relaxRate,
+            logs: relax
+                .map((r) {
+                  final task = (r['task_id']?.toString() ?? '이완');
+                  final done = r['end_time'] != null ? '완료' : '진행';
+                  return '$task $done';
+                })
+                .toList(),
+          ),
+          const SizedBox(height: 12),
+          _CompletionRow(
+            label: '일기',
+            icon: Icons.edit_note_rounded,
+            value: diaryRate,
+            logs: diaries
+                .map((d) {
+                  final activation = d['activation'];
+                  if (activation is Map) {
+                    final label = activation['label']?.toString();
+                    if (label != null && label.isNotEmpty) return label;
+                  }
+                  return '일기 기록';
+                })
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
+  Widget _sectionCard({
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFCFFFFFF),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE5EDF4)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E2F3F),
+              fontFamily: 'Noto Sans KR',
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.45,
+              color: Color(0xFF8A97A3),
+              fontFamily: 'Noto Sans KR',
+            ),
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _SudMiniBarChart extends StatelessWidget {
+  const _SudMiniBarChart({required this.values, required this.labels});
+
+  final List<double> values;
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 170,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(values.length, (index) {
+          final value = values[index];
+          final normalized = (value / 10).clamp(0.0, 1.0);
+          final height = 24 + (normalized * 92);
+          final color = value >= 7
+              ? const Color(0xFFE4686C)
+              : value >= 4
+                  ? const Color(0xFFF4C159)
+                  : const Color(0xFF6FB8E6);
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  SizedBox(
-                    width: 45,
-                    child: Text(
-                      week,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFD1D5DB),
-                      ),
+                  Text(
+                    value > 0 ? value.toStringAsFixed(1) : '-',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: value > 0 ? color : const Color(0xFFB3BDC7),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 20,
-                        backgroundColor: const Color(0xFF374151),
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                      ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 20,
+                    height: height,
+                    decoration: BoxDecoration(
+                      color: value > 0 ? color : const Color(0xFFE8EEF3),
+                      borderRadius: BorderRadius.circular(7),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 35,
-                    child: Text(
-                      score.toStringAsFixed(1),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
-                      textAlign: TextAlign.end,
+                  const SizedBox(height: 6),
+                  Text(
+                    labels[index],
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF8A97A3),
                     ),
                   ),
                 ],
               ),
-            );
-          }).toList(),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _CompletionRow extends StatelessWidget {
+  const _CompletionRow({
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.logs,
+  });
+
+  final String label;
+  final IconData icon;
+  final int value;
+  final List<String> logs;
+
+  Color _progressColor(int value) {
+    if (value >= 100) return const Color(0xFF60B27E);
+    if (value >= 50) return const Color(0xFFF4C159);
+    return const Color(0xFFD5DEE7);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _progressColor(value);
+    final displayLogs = logs.isEmpty ? const ['기록 없음'] : logs;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8EEF3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F7FB),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 19, color: const Color(0xFF2C4154)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1E2F3F),
+                  ),
+                ),
+              ),
+              Text(
+                '$value%',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: value / 100,
+              backgroundColor: const Color(0xFFF0F4F8),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 30,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: displayLogs.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF6F9FC),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFE2EAF1)),
+                  ),
+                  child: Text(
+                    displayLogs[index],
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF5F6B76),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

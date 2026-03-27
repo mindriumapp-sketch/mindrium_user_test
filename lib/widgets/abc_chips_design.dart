@@ -33,6 +33,7 @@ class AbcChipsDesign extends StatefulWidget {
   final VoidCallback? onChipAdd;
   final bool isExampleMode;
   final bool singleSelect;
+  final int openAllItemsSignal;
 
   const AbcChipsDesign({
     super.key,
@@ -43,6 +44,7 @@ class AbcChipsDesign extends StatefulWidget {
     this.onChipAdd,
     this.isExampleMode = false,
     this.singleSelect = false,
+    this.openAllItemsSignal = 0,
   });
 
   @override
@@ -50,8 +52,13 @@ class AbcChipsDesign extends StatefulWidget {
 }
 
 class _AbcChipsDesignState extends State<AbcChipsDesign> {
+  static const int _collapsedChipLimit = 6;
+  static const double _allItemsModalInitialHeight = 560;
+  static const double _allItemsModalExpandedHeight = 700;
+  static const double _allItemsModalFixedWidth = 430;
   late Set<String> _selectedChipIds;
   late final ScrollController _scrollController;
+  bool _isAllItemsModalOpen = false;
 
   @override
   void initState() {
@@ -65,6 +72,14 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
     super.didUpdateWidget(oldWidget);
     // 상위에서 selectedChipIds가 바뀌면 내부 상태 동기화
     _selectedChipIds = Set<String>.from(widget.selectedChipIds);
+
+    if (widget.openAllItemsSignal != oldWidget.openAllItemsSignal &&
+        !widget.isExampleMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _isAllItemsModalOpen) return;
+        _showAllChipsModal();
+      });
+    }
   }
 
   void _toggleChip(AbcChip chip, bool selected) {
@@ -102,52 +117,271 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
     widget.onChipDelete?.call(chip.chipId);
   }
 
+  Widget _buildChipWidget(AbcChip chip) {
+    final bool isSelected = _selectedChipIds.contains(chip.chipId);
+    final bool canDelete = !widget.isExampleMode;
+
+    if (isSelected) {
+      return _SelectedChip(
+        label: chip.label,
+        showClose: canDelete,
+        onTap: () => _toggleChip(chip, false),
+        onRemove: canDelete ? () => _deleteChip(chip) : null,
+      );
+    }
+    return _UnselectedChip(
+      label: chip.label,
+      showClose: canDelete,
+      onTap: () => _toggleChip(chip, true),
+      onRemove: canDelete ? () => _deleteChip(chip) : null,
+    );
+  }
+
+  Widget _buildChipWidgetForModal(
+    AbcChip chip,
+    void Function(void Function()) setModalState,
+  ) {
+    final bool isSelected = _selectedChipIds.contains(chip.chipId);
+    final bool canDelete = !widget.isExampleMode;
+
+    if (isSelected) {
+      return _SelectedChip(
+        label: chip.label,
+        showClose: canDelete,
+        onTap: () {
+          _toggleChip(chip, false);
+          setModalState(() {});
+        },
+        onRemove:
+            canDelete
+                ? () {
+                  _deleteChip(chip);
+                  setModalState(() {});
+                }
+                : null,
+      );
+    }
+    return _UnselectedChip(
+      label: chip.label,
+      showClose: canDelete,
+      onTap: () {
+        _toggleChip(chip, true);
+        setModalState(() {});
+      },
+      onRemove:
+          canDelete
+              ? () {
+                _deleteChip(chip);
+                setModalState(() {});
+              }
+              : null,
+    );
+  }
+
+  Future<void> _showAllChipsModal() async {
+    if (_isAllItemsModalOpen) return;
+    _isAllItemsModalOpen = true;
+    try {
+      final sheetController = DraggableScrollableController();
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          final media = MediaQuery.of(context);
+          final maxAllowedHeight =
+              media.size.height - media.padding.top - 8;
+          final initialHeight = _allItemsModalInitialHeight.clamp(
+            380.0,
+            maxAllowedHeight,
+          );
+          final expandedHeight = _allItemsModalExpandedHeight.clamp(
+            initialHeight,
+            maxAllowedHeight,
+          );
+          final minHeight = 380.0.clamp(320.0, initialHeight).toDouble();
+          final minChildSize = (minHeight / maxAllowedHeight).clamp(0.3, 1.0);
+          final initialChildSize = (initialHeight / maxAllowedHeight).clamp(
+            minChildSize,
+            1.0,
+          );
+          final maxChildSize = (expandedHeight / maxAllowedHeight).clamp(
+            initialChildSize,
+            1.0,
+          );
+          final maxAllowedWidth = media.size.width - 16;
+          final modalWidth =
+              _allItemsModalFixedWidth > maxAllowedWidth
+                  ? maxAllowedWidth
+                  : _allItemsModalFixedWidth;
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              return SafeArea(
+                top: false,
+                bottom: false,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SizedBox(
+                    width: modalWidth,
+                    child: DraggableScrollableSheet(
+                      controller: sheetController,
+                      expand: false,
+                      minChildSize: minChildSize,
+                      initialChildSize: initialChildSize,
+                      maxChildSize: maxChildSize,
+                      builder: (context, sheetScrollController) {
+                        return Container(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF8FCFF),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onVerticalDragUpdate: (details) {
+                                  if (!sheetController.isAttached) return;
+                                  final dy = details.primaryDelta ?? 0;
+                                  final deltaSize = -dy / maxAllowedHeight;
+                                  final nextSize = (sheetController.size +
+                                          deltaSize)
+                                      .clamp(minChildSize, maxChildSize);
+                                  sheetController.jumpTo(nextSize);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFBFD2E6),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        '전체 항목',
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF1F3A4D),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '현재 칩 ${widget.chips.length}개',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF6C8194),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Stack(
+                                  children: [
+                                    SingleChildScrollView(
+                                      controller: sheetScrollController,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        18,
+                                        0,
+                                        18,
+                                        84,
+                                      ),
+                                      physics: const BouncingScrollPhysics(),
+                                      child: Wrap(
+                                        spacing: 10,
+                                        runSpacing: 12,
+                                        children: [
+                                          ...widget.chips.map(
+                                            (chip) => _buildChipWidgetForModal(
+                                              chip,
+                                              setModalState,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (!widget.isExampleMode)
+                                      Positioned(
+                                        right: 18,
+                                        bottom: 14,
+                                        child: _FloatingAddButton(
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            widget.onChipAdd?.call();
+                                          },
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      _isAllItemsModalOpen = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scrollbar(
+    final int visibleCount =
+        widget.chips.length > _collapsedChipLimit
+            ? _collapsedChipLimit
+            : widget.chips.length;
+    final visibleChips = widget.chips.take(visibleCount).toList();
+    final int hiddenCount = widget.chips.length - visibleCount;
+
+    final chipsArea = SingleChildScrollView(
       controller: _scrollController,
-      thumbVisibility: true,
-      radius: const Radius.circular(12),
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        physics: const BouncingScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 12,
-            children: [
-              ...widget.chips.map((chip) {
-                final bool isSelected =
-                _selectedChipIds.contains(chip.chipId);
-
-                // ✅ 프리셋도 삭제 가능하게: isPreset 안 막음
-                final bool canDelete = !widget.isExampleMode;
-
-                if (isSelected) {
-                  return _SelectedChip(
-                    label: chip.label,
-                    showClose: canDelete,
-                    onTap: () => _toggleChip(chip, false),
-                    onRemove: canDelete ? () => _deleteChip(chip) : null,
-                  );
-                } else {
-                  return _UnselectedChip(
-                    label: chip.label,
-                    showClose: canDelete,
-                    onTap: () => _toggleChip(chip, true),
-                    onRemove: canDelete ? () => _deleteChip(chip) : null,
-                  );
-                }
-              }),
-
-              // ✅ 예시모드가 아닐 때만 "+추가" 칩 보여주기
-              if (!widget.isExampleMode)
-                _AddChipButton(onTap: widget.onChipAdd),
-            ],
-          ),
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        // 우측 하단 고정 + 버튼/행이 겹치지 않도록 여유를 넉넉히 확보
+        padding: const EdgeInsets.only(bottom: 104),
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 12,
+          children: [
+            ...visibleChips.map(_buildChipWidget),
+            if (hiddenCount > 0)
+              _MoreChipButton(
+                hiddenCount: hiddenCount,
+                onTap: _showAllChipsModal,
+              ),
+          ],
         ),
       ),
+    );
+    if (widget.isExampleMode) return chipsArea;
+
+    return Stack(
+      children: [
+        Positioned.fill(child: chipsArea),
+        Positioned(
+          right: 0,
+          bottom: 8,
+          child: _FloatingAddButton(onTap: widget.onChipAdd),
+        ),
+      ],
     );
   }
 
@@ -316,10 +550,11 @@ class _UnselectedChip extends StatelessWidget {
   }
 }
 
-/// ✅ “+추가” 칩
-class _AddChipButton extends StatelessWidget {
+class _MoreChipButton extends StatelessWidget {
+  final int hiddenCount;
   final VoidCallback? onTap;
-  const _AddChipButton({this.onTap});
+
+  const _MoreChipButton({required this.hiddenCount, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -327,27 +562,60 @@ class _AddChipButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFEAF4FF),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFF47A6FF), width: 1.2),
+          border: Border.all(color: const Color(0xFF9FCBF0), width: 1.1),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add, size: 18, color: Color(0xFF47A6FF)),
-            SizedBox(width: 4),
+            const Icon(Icons.expand_more_rounded, size: 18, color: Color(0xFF3B82C4)),
+            const SizedBox(width: 3),
             Text(
-              '추가',
-              style: TextStyle(
-                color: Color(0xFF47A6FF),
-                fontSize: 14.5,
+              '더보기 +$hiddenCount',
+              style: const TextStyle(
+                color: Color(0xFF2E6EA3),
+                fontSize: 14,
                 fontFamily: 'Noto Sans KR',
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingAddButton extends StatelessWidget {
+  final VoidCallback? onTap;
+
+  const _FloatingAddButton({this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFF47A6FF),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF47A6FF).withValues(alpha: 0.35),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
         ),
       ),
     );

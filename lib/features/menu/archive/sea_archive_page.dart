@@ -135,7 +135,8 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                         data: groups[i],
                         area: fishArea,
                         avoidBottom: 64,
-                        avoidTop: avoidTop,
+                        // 오버레이(그룹명/SUD바)가 캐릭터 위에 뜨므로 상단 여유를 추가
+                        avoidTop: avoidTop + 34,
                         field: _fieldController!,
                         onTap: (img, data) {
                           showDialog(
@@ -346,6 +347,11 @@ class _SmoothFishState extends State<_SmoothFish>
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
+    final title = (data['group_title'] ?? '그룹').toString();
+    final sudAverage = _resolveSudAverage(data);
+    final sudRatio = sudAverage == null ? 0.0 : (sudAverage / 10).clamp(0.0, 1.0);
+    final barColor = _sudColor(sudAverage);
+    final sudTextColor = _sudTextColor(sudAverage);
     final img = AssetImage(
       'assets/image/character${data['character_id'] ?? data['group_id'] ?? 1}.png',
     );
@@ -357,18 +363,142 @@ class _SmoothFishState extends State<_SmoothFish>
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
           onTap: () => widget.onTap(img, data),
-          child: Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.diagonal3Values(
-              _facingRight ? 1.0 : -1.0,
-              1.0,
-              1.0,
+          child: SizedBox(
+            width: fishSize,
+            height: fishSize,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.diagonal3Values(
+                    _facingRight ? 1.0 : -1.0,
+                    1.0,
+                    1.0,
+                  ),
+                  child: Image(image: img, width: fishSize, height: fishSize),
+                ),
+                Positioned(
+                  top: -34,
+                  left: -8,
+                  right: -8,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFF4FAFF),
+                          shadows: [
+                            Shadow(
+                              color: Color(0x7A16384C),
+                              blurRadius: 2,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 0.1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xCCFFFFFF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0x99DCEAF5)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x22000000),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(999),
+                                child: LinearProgressIndicator(
+                                  minHeight: 3.5,
+                                  value: sudRatio,
+                                  backgroundColor: const Color(0xFFD7E2EB),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    barColor,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              sudAverage == null
+                                  ? '-/10.0'
+                                  : '${sudAverage.toStringAsFixed(1)}/10.0',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: sudTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: Image(image: img, width: fishSize, height: fishSize),
           ),
         ),
       ),
     );
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  double? _resolveSudAverage(Map<String, dynamic> data) {
+    final candidates = [
+      data['avg_sud'],
+      data['sud_avg'],
+      data['average_sud'],
+      data['mean_sud'],
+      data['sud_mean'],
+      data['latest_sud'],
+    ];
+
+    for (final value in candidates) {
+      final parsed = _asDouble(value);
+      if (parsed != null) {
+        return parsed.clamp(0.0, 10.0);
+      }
+    }
+    return null;
+  }
+
+  Color _sudColor(double? sudAverage) {
+    if (sudAverage == null) return const Color(0xFF9CB1C5);
+    if (sudAverage >= 8.0) return const Color(0xFFE4686C);
+    if (sudAverage >= 3.0) return const Color(0xFFF4C159);
+    return const Color(0xFF5B9FD3);
+  }
+
+  Color _sudTextColor(double? sudAverage) {
+    if (sudAverage == null) return const Color(0xFF5D7184);
+    if (sudAverage >= 8.0) return const Color(0xFFC34D58);
+    if (sudAverage >= 3.0) return const Color(0xFFAD7F1E);
+    return const Color(0xFF2F6FA1);
   }
 }
 
@@ -399,6 +529,42 @@ class _FishInfoPopup extends StatelessWidget {
     final month = local.month.toString().padLeft(2, '0');
     final day = local.day.toString().padLeft(2, '0');
     return '$year.$month.$day';
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  double? _resolveSudAverage(Map<String, dynamic> raw) {
+    final candidates = [
+      raw['avg_sud'],
+      raw['sud_avg'],
+      raw['average_sud'],
+      raw['mean_sud'],
+      raw['sud_mean'],
+      raw['latest_sud'],
+    ];
+    for (final value in candidates) {
+      final parsed = _asDouble(value);
+      if (parsed != null) return parsed.clamp(0.0, 10.0);
+    }
+    return null;
+  }
+
+  Color _sudColor(double? sudAverage) {
+    if (sudAverage == null) return const Color(0xFF9CB1C5);
+    if (sudAverage >= 7.0) return const Color(0xFFE4686C);
+    if (sudAverage >= 4.0) return const Color(0xFFF4C159);
+    return const Color(0xFF5B9FD3);
+  }
+
+  Color _sudTextColor(double? sudAverage) {
+    if (sudAverage == null) return const Color(0xFF5D7184);
+    if (sudAverage >= 7.0) return const Color(0xFFC34D58);
+    if (sudAverage >= 4.0) return const Color(0xFFAD7F1E);
+    return const Color(0xFF2F6FA1);
   }
 
   Widget _buildInfoRow(String label, String value) {
@@ -480,8 +646,13 @@ class _FishInfoPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dialogMaxHeight = min(620.0, MediaQuery.of(context).size.height - 56);
     final title = (data['group_title'] ?? '이름 없는 캐릭터').toString();
     final desc = (data['group_contents'] ?? '').toString();
+    final sudAverage = _resolveSudAverage(data);
+    final sudRatio = sudAverage == null ? 0.0 : (sudAverage / 10).clamp(0.0, 1.0);
+    final sudBarColor = _sudColor(sudAverage);
+    final sudTextColor = _sudTextColor(sudAverage);
     final archivedAt =
         _asDateTime(data['archived_at']) ?? _asDateTime(data['updated_at']);
     final createdAt = _asDateTime(data['created_at']);
@@ -497,7 +668,7 @@ class _FishInfoPopup extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 520),
+          constraints: BoxConstraints(maxWidth: 360, maxHeight: dialogMaxHeight),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -522,7 +693,55 @@ class _FishInfoPopup extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 _buildDescriptionText(desc),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
+                const Padding(
+                  padding: EdgeInsets.only(left: 4),
+                  child: Text(
+                    '불안 점수',
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF456178),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xCCFFFFFF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0x99DCEAF5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            minHeight: 5,
+                            value: sudRatio,
+                            backgroundColor: const Color(0xFFD7E2EB),
+                            valueColor: AlwaysStoppedAnimation<Color>(sudBarColor),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        sudAverage == null
+                            ? '-/10.0'
+                            : '${sudAverage.toStringAsFixed(1)}/10.0',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: sudTextColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
                 _buildInfoRow('보관일', _formatDate(archivedAt)),
                 const SizedBox(height: 10),
                 _buildInfoRow('생성일', _formatDate(createdAt)),

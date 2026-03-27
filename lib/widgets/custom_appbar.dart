@@ -10,6 +10,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final VoidCallback? onBack;
   final VoidCallback? onHomePressed;
+  final bool showBack;
   final bool showHome;
   final bool confirmOnBack;
   final bool confirmOnHome;
@@ -31,6 +32,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.onBack,
     this.onHomePressed,
+    this.showBack = true,
     this.showHome = true,
     this.confirmOnBack = false,
     this.confirmOnHome = true,
@@ -94,27 +96,40 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       bottom: bottom, // ← 추가
 
       titleSpacing: 4,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 8),
-        child: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: leadingIconColor ?? _indigo,
-          ),
-          splashRadius: 22,
-          onPressed: () async {
-            if (confirmOnBack) {
-              final confirmed = await _confirmExit(context);
-              if (!confirmed || !context.mounted) return;
-            }
-            if (onBack != null) {
-              onBack!();
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
-      ),
+      leading:
+          showBack
+              ? Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.arrow_back_ios_new,
+                    color: leadingIconColor ?? _indigo,
+                  ),
+                  splashRadius: 22,
+                  onPressed: () async {
+                    if (confirmOnBack) {
+                      final confirmed = await _confirmExit(context);
+                      if (!confirmed || !context.mounted) return;
+                    }
+                    if (onBack != null) {
+                      onBack!();
+                    } else {
+                      final navigator = Navigator.of(context);
+                      if (navigator.canPop()) {
+                        navigator.pop();
+                      } else {
+                        // 루트(예: 탭 메인)에서는 pop 불가이므로 안전하게 홈으로 이동.
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/home',
+                          (route) => false,
+                        );
+                      }
+                    }
+                  },
+                ),
+              )
+              : null,
       title: Text(
         title,
         maxLines: maxTitleLines,

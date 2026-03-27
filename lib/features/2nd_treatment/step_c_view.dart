@@ -22,6 +22,7 @@ class StepCView extends StatefulWidget {
   final Set<String> selectedBehaviorChipIds;
 
   final bool isExampleMode;
+  final int openAllItemsSignal;
 
   /// "+추가" 눌렀을 때 (팝업은 상위 AbcInputScreen에서 처리)
   final VoidCallback? onAddPhysical;
@@ -53,6 +54,7 @@ class StepCView extends StatefulWidget {
     this.onDeleteEmotion,
     this.onDeleteBehavior,
     this.onSelectionChanged,
+    this.openAllItemsSignal = 0,
   });
 
   @override
@@ -140,14 +142,14 @@ class _StepCViewState extends State<StepCView> {
         ),
         const SizedBox(height: 10),
         Expanded(
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: AbcChipsDesign(
               chips: chips,
               selectedChipIds: selectedChipIds,
               singleSelect: false,
               isExampleMode: widget.isExampleMode,
+              openAllItemsSignal: widget.openAllItemsSignal,
               onChipToggle: (chipId, selected) {
                 setState(() {
                   if (selected) {

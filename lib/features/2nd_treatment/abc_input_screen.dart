@@ -50,6 +50,7 @@ class AbcInputScreen extends StatefulWidget {
 }
 
 class _AbcInputScreenState extends State<AbcInputScreen> {
+  static const int _chipModalAutoOpenThreshold = 6;
   // ====== 🔹 메모리 캐시 (앱 켜져 있는 동안 재사용) ======
   static List<AbcChip>? _cachedAChips;
   static List<AbcChip>? _cachedBChips;
@@ -82,6 +83,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
   late final SudApi _sudApi = SudApi(_apiClient);
   bool _loadingCustomTags = false;
   bool _isPersistingTodayTaskDraft = false;
+  int _openAllItemsSignal = 0;
 
   @override
   void initState() {
@@ -347,6 +349,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
         return CustomPopupDesign(
           title: title,
           highlightText: highlightText,
+          dialogWidth: 326,
           message: '',
           positiveText: '추가',
           negativeText: '취소',
@@ -386,6 +389,11 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
     _cachedPhysicalChips?.removeWhere((c) => c.chipId == chipId);
     _cachedEmotionChips?.removeWhere((c) => c.chipId == chipId);
     _cachedBehaviorChips?.removeWhere((c) => c.chipId == chipId);
+  }
+
+  void _requestOpenAllItemsModalIfNeeded(int chipCount) {
+    if (chipCount <= _chipModalAutoOpenThreshold) return;
+    _openAllItemsSignal++;
   }
 
   void _deleteTagLocallyAndRemote(String chipId) {
@@ -503,7 +511,6 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
         consequenceB: behavior,
         alternativeThoughts: const [],
         route: 'today_task',
-        locAutoFilled: false,
       );
       diaryId = created['diary_id']?.toString();
     } else {
@@ -705,10 +712,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               children: [
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 34,
-                      vertical: 24,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(34, 24, 34, 8),
                     child: _buildStepContent(),
                   ),
                 ),
@@ -739,6 +743,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
         return StepAView(
           chips: _aChips,
           selectedChipIds: _selectedAChipIds,
+          openAllItemsSignal: _openAllItemsSignal,
           isExampleMode: widget.isExampleMode,
           onChipTap: (chipId, selected) {
             setState(() {
@@ -761,6 +766,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                         onSuccess: (chip) {
                           if (!_aChips.any((c) => c.chipId == chip.chipId)) {
                             _aChips.add(chip);
+                            _requestOpenAllItemsModalIfNeeded(_aChips.length);
                           }
                         },
                       );
@@ -782,6 +788,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
         return StepBView(
           chips: _bChips,
           selectedChipIds: _selectedBChipIds,
+          openAllItemsSignal: _openAllItemsSignal,
           isExampleMode: widget.isExampleMode,
           onChipTap: (chipId, selected) {
             setState(() {
@@ -806,6 +813,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                         onSuccess: (chip) {
                           if (!_bChips.any((c) => c.chipId == chip.chipId)) {
                             _bChips.add(chip);
+                            _requestOpenAllItemsModalIfNeeded(_bChips.length);
                           }
                         },
                       );
@@ -827,6 +835,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
       default:
         return StepCView(
           subStep: _currentCSubStep,
+          openAllItemsSignal: _openAllItemsSignal,
           physicalChips: _physicalChips,
           emotionChips: _emotionChips,
           behaviorChips: _behaviorChips,
@@ -850,6 +859,9 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                             (c) => c.chipId == chip.chipId,
                           )) {
                             _physicalChips.add(chip);
+                            _requestOpenAllItemsModalIfNeeded(
+                              _physicalChips.length,
+                            );
                           }
                         },
                       );
@@ -871,6 +883,9 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                             (c) => c.chipId == chip.chipId,
                           )) {
                             _emotionChips.add(chip);
+                            _requestOpenAllItemsModalIfNeeded(
+                              _emotionChips.length,
+                            );
                           }
                         },
                       );
@@ -892,6 +907,9 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                             (c) => c.chipId == chip.chipId,
                           )) {
                             _behaviorChips.add(chip);
+                            _requestOpenAllItemsModalIfNeeded(
+                              _behaviorChips.length,
+                            );
                           }
                         },
                       );

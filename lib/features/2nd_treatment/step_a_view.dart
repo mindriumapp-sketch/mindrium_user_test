@@ -21,6 +21,7 @@ class StepAView extends StatefulWidget {
 
   /// 예시 모드 여부
   final bool isExampleMode;
+  final int openAllItemsSignal;
 
   const StepAView({
     super.key,
@@ -30,6 +31,7 @@ class StepAView extends StatefulWidget {
     this.onAddSituation,
     this.onDeleteSituation,
     this.isExampleMode = false,
+    this.openAllItemsSignal = 0,
   });
 
   @override
@@ -62,14 +64,14 @@ class _StepAViewState extends State<StepAView> {
         ),
         const SizedBox(height: 10),
         Expanded(
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: AbcChipsDesign(
               chips: widget.chips,
               selectedChipIds: widget.selectedChipIds,
               singleSelect: true,
               isExampleMode: widget.isExampleMode,
+              openAllItemsSignal: widget.openAllItemsSignal,
               onChipToggle: (chipId, selected) {
                 widget.onChipTap?.call(chipId, selected);
 
