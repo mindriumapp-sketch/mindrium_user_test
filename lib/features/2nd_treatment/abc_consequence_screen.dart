@@ -11,7 +11,7 @@ class AbcConsequenceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return AbcActivateDesign(
       appBarTitle: 'ABC 모델',
-      scenarioImage: 'assets/image/week2_scenario3.jpg', // ✅ 시각 자료 (원하시는 걸로 교체 가능)
+      scenarioImage: 'assets/image/consequence.png', // ✅ 시각 자료 (원하시는 걸로 교체 가능)
       descriptionText:
           '그 생각이 든 뒤 몸과 마음, 행동에도 변화가 나타났어요.\n'
           '심장이 빨리 뛰고 몸이 긴장됐고(신체), 불안과 두려움이 커졌어요(감정).\n'

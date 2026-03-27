@@ -41,7 +41,7 @@ class _StepBViewState extends State<StepBView> {
 
   String get _guideMessage {
     if (widget.isExampleMode) return _bannerMessage;
-    return "원하는 항목이 없다면 + 추가로 입력할 수 있어요.";
+    return "원하는 항목이 없다면 아래 + 버튼\n으로 추가할 수 있어요.";
   }
 
   @override

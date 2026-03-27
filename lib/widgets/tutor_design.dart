@@ -83,7 +83,7 @@ class AbcActivateDesign extends StatelessWidget {
                                     aspectRatio: 4 / 5,
                                     child: Image.asset(
                                       scenarioImage,
-                                      fit: BoxFit.cover,
+                                      fit: BoxFit.contain,
                                       errorBuilder:
                                           (_, __, ___) => Container(
                                             color: Colors.grey[200],

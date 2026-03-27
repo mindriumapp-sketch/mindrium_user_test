@@ -9,7 +9,7 @@ class DesignPalette {
 
   static const TextStyle contentText = TextStyle(
     color: textBlack,
-    fontSize: 20,
+    fontSize: 15.5,
     fontFamily: 'Noto Sans KR',
     height: 1.5,
     letterSpacing: 0.3,
@@ -104,7 +104,7 @@ class AbcVisualizationDesign extends StatelessWidget {
                       const SizedBox(width: 24),
                       _buildMemoColumn(
                         texts: [situationText, beliefText, resultText],
-                        memoWidth: memoWidth,
+                        memoWidth: memoWidth - 5,
                         minMemoHeight: baseMemoMinHeight,
                       ),
                     ],
@@ -121,7 +121,7 @@ class AbcVisualizationDesign extends StatelessWidget {
   /// 🩵 왼쪽 컬럼 (그라데이션 물방울)
   static Widget _buildGradientColumn({required List<String> labels}) {
     return Container(
-      width: 75,
+      width: 68,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(40),
         boxShadow: [
@@ -223,8 +223,8 @@ class AbcVisualizationDesign extends StatelessWidget {
                       border: Border.all(color: Colors.black12, width: 1),
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                     alignment: Alignment.center,
                     child: Text(

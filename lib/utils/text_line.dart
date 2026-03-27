@@ -21,6 +21,7 @@ class TextLine extends StatelessWidget {
     this.textWidthBasis,
     this.textHeightBehavior,
     this.selectionColor,
+    this.applyWordJoiner = true,
   }) : textSpan = null;
 
   const TextLine.rich(
@@ -39,6 +40,7 @@ class TextLine extends StatelessWidget {
     this.textWidthBasis,
     this.textHeightBehavior,
     this.selectionColor,
+    this.applyWordJoiner = true,
   }) : data = null;
 
   final String? data;
@@ -56,8 +58,10 @@ class TextLine extends StatelessWidget {
   final TextWidthBasis? textWidthBasis;
   final TextHeightBehavior? textHeightBehavior;
   final Color? selectionColor;
+  final bool applyWordJoiner;
 
   InlineSpan _protectSpan(InlineSpan span) {
+    if (!applyWordJoiner) return span;
     if (span is TextSpan) {
       return TextSpan(
         text: span.text != null ? protectKoreanWords(span.text!) : null,
@@ -91,7 +95,9 @@ class TextLine extends StatelessWidget {
         textScaler: textScaler,
         maxLines: maxLines,
         semanticsLabel: semanticsLabel != null
-            ? protectKoreanWords(semanticsLabel!)
+            ? (applyWordJoiner
+                  ? protectKoreanWords(semanticsLabel!)
+                  : semanticsLabel!)
             : null,
         textWidthBasis: textWidthBasis,
         textHeightBehavior: textHeightBehavior,
@@ -100,7 +106,7 @@ class TextLine extends StatelessWidget {
     }
 
     return Text(
-      protectKoreanWords(data ?? ''),
+      applyWordJoiner ? protectKoreanWords(data ?? '') : (data ?? ''),
       style: style,
       strutStyle: strutStyle,
       textAlign: textAlign,
@@ -111,7 +117,9 @@ class TextLine extends StatelessWidget {
       textScaler: textScaler,
       maxLines: maxLines,
       semanticsLabel: semanticsLabel != null
-          ? protectKoreanWords(semanticsLabel!)
+          ? (applyWordJoiner
+                ? protectKoreanWords(semanticsLabel!)
+                : semanticsLabel!)
           : null,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior,
