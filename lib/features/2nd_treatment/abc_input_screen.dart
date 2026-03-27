@@ -361,8 +361,8 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
           enableInput: true,
           controller: controller,
           inputHint: '새로운 항목을 입력해주세요',
-          inputMaxLength: 15,
-          inputMaxLengthErrorText: '15자 이내로 작성해주세요.',
+          // inputMaxLength: 15, // TODO: 없앨까 말까
+          // inputMaxLengthErrorText: '15자 이내로 작성해주세요.',
           inputValidator: (text) {
             if (text.isEmpty) return null;
             String normalize(String value) =>
@@ -503,6 +503,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
         consequenceB: behavior,
         alternativeThoughts: const [],
         route: 'today_task',
+        locAutoFilled: false,
       );
       diaryId = created['diary_id']?.toString();
     } else {

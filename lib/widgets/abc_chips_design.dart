@@ -174,15 +174,20 @@ class _SelectedChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final maxChipWidth = MediaQuery.sizeOf(context).width * 0.72;
+    const radius = 14.0;
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(radius),
       onTap: onTap,
       child: Container(
-        height: 38,
+        constraints: BoxConstraints(
+          minHeight: 38,
+          maxWidth: maxChipWidth,
+        ),
         padding: EdgeInsets.only(left: 16, right: showClose ? 6 : 16),
         decoration: BoxDecoration(
           color: const Color(0xFF47A6FF),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(radius),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF47A6FF).withValues(alpha: 0.35),
@@ -197,9 +202,9 @@ class _SelectedChip extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
+                maxLines: null,
+                softWrap: true,
+                overflow: TextOverflow.visible,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,

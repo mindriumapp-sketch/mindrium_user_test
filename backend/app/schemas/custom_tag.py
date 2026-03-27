@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 class CustomTagBase(BaseModel):
     is_preset: bool = False
-    label: str = Field(..., min_length=1, max_length=100)
+    label: str = Field(..., min_length=1)
     type: Literal["A", "B", "CP", "CE", "CA"]
 
 class CustomTagCreate(CustomTagBase):
@@ -57,4 +57,3 @@ class CategoryLogResponse(CategoryLogsCreate):
     log_id: str
     created_at: datetime
     updated_at: datetime
-
