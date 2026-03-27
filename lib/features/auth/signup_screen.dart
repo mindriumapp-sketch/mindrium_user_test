@@ -22,15 +22,12 @@ class _SignupScreenState extends State<SignupScreen> {
   static const String _passwordPolicyMessage =
       '비밀번호는 8~20자이며, 영문자/숫자/특수문자를 각각 1자 이상 포함해야 합니다.';
 
-  // (추가) mindrium_code는 숫자 6자리
-  static final RegExp _codeRegex = RegExp(r'^\d{6}$');
-
   final emailController = TextEditingController();
   final nameController = TextEditingController();
-  final phoneController = TextEditingController(); // (추가) 전화번호
+  // final phoneController = TextEditingController(); // (추가) 전화번호
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
-  final codeController = TextEditingController();
+  final patientCodeController = TextEditingController();
 
   bool showPassword = false;
   bool showConfirmPassword = false;
@@ -45,21 +42,16 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup() async {
     final email = emailController.text.trim();
     final name = nameController.text.trim();
-    final phone = phoneController.text.trim(); // (추가)
+    // final phone = phoneController.text.trim(); // (추가)
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
-    final code = codeController.text.trim();
+    final patientCode = patientCodeController.text.trim();
 
     // (변경) phone 필수
-    if ([
-      email,
-      name,
-      phone,
-      password,
-      confirmPassword,
-      code,
+    if ([email, name, password, confirmPassword, patientCode
+      // phone
     ].any((e) => e.isEmpty)) {
-      _showError('모든 필드를 입력해주세요.');
+      _showError('이메일, 이름, 비밀번호, 환자코드를 모두 입력해주세요.');
       return;
     }
 
@@ -73,12 +65,6 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    // (추가) 마인드리움 코드는 숫자 6자리만 허용(서버에서도 검증함)
-    if (!_codeRegex.hasMatch(code)) {
-      _showError('마인드리움 코드는 숫자 6자리여야 합니다.');
-      return;
-    }
-
     try {
       final tokens = TokenStorage();
       final client = ApiClient(tokens: tokens);
@@ -88,14 +74,14 @@ class _SignupScreenState extends State<SignupScreen> {
         email: email,
         password: password,
         name: name,
-        phone: phone,
-        code: code,
+        // phone: phone, // TODO: 앱에서 전화번호 입력 안 받아?..
+        patientCode: patientCode,
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.')));
+      ScaffoldMessenger.of(context,).showSnackBar(
+          const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.'))
+      );
       Navigator.pushReplacementNamed(
         context,
         '/login',
@@ -116,6 +102,16 @@ class _SignupScreenState extends State<SignupScreen> {
       passwordController.text = args['password'] ?? '';
     }
     super.didChangeDependencies();
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    nameController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    patientCodeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -152,16 +148,15 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: AppSizes.space),
 
-            // (추가) 전화번호
-            InputTextField(
-              controller: phoneController,
-              label: '전화번호',
-              fillColor: Colors.white,
-              keyboardType: TextInputType.phone,
-              hintText: '예) 01012345678 또는 010-1234-5678',
-            ),
-
-            const SizedBox(height: AppSizes.space),
+            // TODO: (추가) 전화번호..?
+            // InputTextField(
+            //   controller: phoneController,
+            //   label: '전화번호',
+            //   fillColor: Colors.white,
+            //   keyboardType: TextInputType.phone,
+            //   hintText: '예) 01012345678 또는 010-1234-5678',
+            // ),
+            // const SizedBox(height: AppSizes.space),
             _buildPasswordPolicy(),
             const SizedBox(height: AppSizes.space),
             PasswordTextField(
@@ -185,7 +180,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
             // (변경) 마인드리움 코드: 숫자 6자리
             InputTextField(
-              controller: codeController,
+              controller: patientCodeController,
               label: '마인드리움 코드(6자리)',
               fillColor: Colors.white,
               keyboardType: TextInputType.number,

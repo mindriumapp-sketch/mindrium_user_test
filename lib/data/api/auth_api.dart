@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'api_client.dart';
+import '../storage/token_storage.dart';
 
 class AuthApi {
   final ApiClient _client;
@@ -12,19 +12,18 @@ class AuthApi {
     required String email,
     required String password,
     required String name,
-    required String phone, // (추가) 필수
-    required String code,  // (권장) 통합 가입이므로 필수로 강제
+    required String patientCode,
     String gender = 'male',
+    String? address,
   }) async {
     final body = {
       'email': email,
       'password': password,
       'name': name,
-      'phone': phone,   // (추가) 서버에서 digits로 저장
       'gender': gender,
-      'code': code,     // (의미 변경) code == mindrium_code(6자리)
+      'patient_code': patientCode,
+      if (address != null && address.isNotEmpty) 'address': address,
     };
-
     await _client.dio.post('/auth/signup', data: body);
   }
 

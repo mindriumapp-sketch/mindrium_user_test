@@ -28,7 +28,7 @@ class TokenPair(BaseModel):
 
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=20)  # 비밀번호 정책 변화
+    password: str = Field(min_length=8, max_length=20)
 
     @field_validator("password")
     @classmethod
@@ -38,9 +38,9 @@ class SignupRequest(BaseModel):
         return v
 
     name: str
-    phone: str
     gender: str | None = None
-    code: Optional[str] = None
+    address: Optional[str] = None
+    patient_code: str = Field(min_length=1, description="플랫폼 환자코드")
 
 
 class LoginRequest(BaseModel):
@@ -82,4 +82,3 @@ class PasswordChangeRequest(BaseModel):
         if not PASSWORD_REGEX.match(v):
             raise ValueError(PASSWORD_RULE_MESSAGE)
         return v
-

@@ -49,11 +49,14 @@ class UserProvider extends ChangeNotifier {
   DateTime? _createdAt;
   DateTime? get createdAt => _createdAt;
 
+  String _patientId = '';
+  String get patientId => _patientId;
+
   // ───────────────────── 진행도 / 설문 상태 (/users/me/progress) ─────────────────────
   bool _surveyCompleted = false;
   bool get surveyCompleted => _surveyCompleted;
 
-  /// 서버에서 계산한 "현재 주차"
+  /// 서버에서 계산한 "현재 회차"
   int _currentWeek = 1;
   int get currentWeek => _currentWeek;
 
@@ -126,6 +129,7 @@ class UserProvider extends ChangeNotifier {
 
       _userEmail = (me['email'] as String?) ?? '';
       _uid = (me['user_id'] as String?) ?? (me['_id'] as String? ?? '');
+      _patientId = (me['patient_id'] as String?) ?? '';
 
       // created_at 파싱
       final createdAtRaw = me['created_at'];
@@ -166,7 +170,7 @@ class UserProvider extends ChangeNotifier {
   /// 서버의 /users/me/progress 값을 다시 읽어서
   /// 진행도 + 핵심 가치 캐시만 새로 세팅.
   ///
-  /// - 예: "주차 완료 API 호출 후, 서버 기준으로 다시 맞추고 싶을 때".
+  /// - 예: "회차 완료 API 호출 후, 서버 기준으로 다시 맞추고 싶을 때".
   Future<void> refreshProgress() async {
     final myRequest = ++_requestId;
     _hasError = false;
