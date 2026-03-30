@@ -918,47 +918,45 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                       const Divider(height: 22),
                       _sectionTitle('반복 요일', Icons.repeat_rounded),
                       const SizedBox(height: 10),
-                      Center(
-                        child: Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: List.generate(7, (index) {
-                            final day = index + 1;
-                            final selected = _weekdays.contains(day);
-                            return FilterChip(
-                              label: Text(labels[index]),
-                              selected: selected,
-                              showCheckmark: false,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: const VisualDensity(
-                                horizontal: -2,
-                                vertical: -2,
+                      Row(
+                        children: List.generate(7, (index) {
+                          final day = index + 1;
+                          final selected = _weekdays.contains(day);
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              child: FilterChip(
+                                label: Center(child: Text(labels[index])),
+                                selected: selected,
+                                showCheckmark: false,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: const VisualDensity(
+                                  horizontal: -2,
+                                  vertical: -2,
+                                ),
+                                labelPadding: EdgeInsets.zero,
+                                selectedColor: const Color(0xFFD8ECFF),
+                                backgroundColor: const Color(0xFFF4F7FB),
+                                side: BorderSide(
+                                  color:
+                                      selected
+                                          ? const Color(0xFF79AEE0)
+                                          : const Color(0xFFD5DEE8),
+                                ),
+                                labelStyle: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color:
+                                      selected
+                                          ? const Color(0xFF1F5E93)
+                                          : const Color(0xFF5B6A79),
+                                ),
+                                onSelected: (_) => _toggleWeekday(day),
                               ),
-                              labelPadding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                              ),
-                              selectedColor: const Color(0xFFD8ECFF),
-                              backgroundColor: const Color(0xFFF4F7FB),
-                              side: BorderSide(
-                                color:
-                                    selected
-                                        ? const Color(0xFF79AEE0)
-                                        : const Color(0xFFD5DEE8),
-                              ),
-                              labelStyle: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12.5,
-                                color:
-                                    selected
-                                        ? const Color(0xFF1F5E93)
-                                        : const Color(0xFF5B6A79),
-                              ),
-                              onSelected: (_) => _toggleWeekday(day),
-                            );
-                          }),
-                        ),
+                            ),
+                          );
+                        }),
                       ),
                       const SizedBox(height: 22),
                       DecoratedBox(

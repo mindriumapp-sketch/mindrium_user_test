@@ -94,10 +94,14 @@ class _ReportScreenState extends State<ReportScreen> {
     }).toList();
   }
 
-  List<Map<String, dynamic>> _eduFor(DateTime date) {
+  List<Map<String, dynamic>> _eduForWeek(DateTime date) {
+    final weekStart = _startOfWeek(date);
+    final weekEnd = weekStart.add(const Duration(days: 7));
     return _eduSessions.where((s) {
       final start = _parseDate(s['start_time']) ?? _parseDate(s['created_at']);
-      return start != null && _isSameDay(start, date);
+      if (start == null) return false;
+      final day = _startOfDay(start);
+      return !day.isBefore(weekStart) && day.isBefore(weekEnd);
     }).toList();
   }
 
@@ -115,11 +119,40 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   int _completionRateEducation(DateTime date) {
-    final sessions = _eduFor(date);
+    final sessions = _eduForWeek(date);
     if (sessions.isEmpty) return 0;
-    final completed = sessions.where((s) => s['completed'] == true).length;
-    if (completed == 0) return 50;
-    return 100;
+    final hasCompleted = sessions.any((s) => s['completed'] == true);
+    return hasCompleted ? 100 : 0;
+  }
+
+  List<String> _educationWeeklyLogs(DateTime date) {
+    final sessions = _eduForWeek(date);
+    if (sessions.isEmpty) {
+      return const ['이번 주 0/1 (미완료)'];
+    }
+
+    final completedSessions = sessions.where((s) => s['completed'] == true).toList()
+      ..sort((a, b) {
+        final aDate = _parseDate(a['start_time']) ?? _parseDate(a['created_at']);
+        final bDate = _parseDate(b['start_time']) ?? _parseDate(b['created_at']);
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return aDate.compareTo(bDate);
+      });
+    if (completedSessions.isEmpty) {
+      return const ['이번 주 0/1 (미완료)'];
+    }
+
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    final completedAt =
+        _parseDate(completedSessions.first['start_time']) ??
+        _parseDate(completedSessions.first['created_at']);
+    final completedDayLabel =
+        completedAt == null
+            ? '완료일 기록'
+            : '${completedAt.month}/${completedAt.day}(${weekdays[completedAt.weekday % 7]}) 완료';
+    return ['이번 주 1/1 완료', completedDayLabel];
   }
 
   int _completionRateRelaxation(DateTime date) {
@@ -421,7 +454,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final latest = series.last;
 
     return _sectionCard(
-      title: '증상 추이 그래프 (SUD)',
+      title: '나의 불안 변화',
       subtitle: '${_selectedDate.month}월 ${_selectedDate.day}일 기준 최근 7일',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,8 +463,8 @@ class _ReportScreenState extends State<ReportScreen> {
           const SizedBox(height: 10),
           Text(
             latest > 0
-                ? '선택일 평균 SUD ${latest.toStringAsFixed(1)}점'
-                : '선택일 SUD 기록이 없어요.',
+                ? '선택하신 날의 불안 점수는 ${latest.toStringAsFixed(1)}점이에요.'
+                : '선택하신 날에 불안 점수 기록이 없어요.',
             style: const TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w600,
@@ -445,7 +478,6 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildCompletionCard() {
     final diaries = _diariesFor(_selectedDate);
-    final education = _eduFor(_selectedDate);
     final relax = _relaxFor(_selectedDate);
 
     final diaryRate = _completionRateDiary(_selectedDate);
@@ -454,20 +486,14 @@ class _ReportScreenState extends State<ReportScreen> {
 
     return _sectionCard(
       title: '수행률',
-      subtitle: '교육/이완/일기 수행률과 상세 로그',
+      subtitle: '교육(주간 1회)/이완/일기 수행률과 상세 로그',
       child: Column(
         children: [
           _CompletionRow(
             label: '교육',
             icon: Icons.menu_book_rounded,
             value: eduRate,
-            logs: education
-                .map((e) {
-                  final week = (e['week_number'] as num?)?.toInt();
-                  final completed = e['completed'] == true ? '완료' : '진행';
-                  return week == null ? completed : '$week주차 $completed';
-                })
-                .toList(),
+            logs: _educationWeeklyLogs(_selectedDate),
           ),
           const SizedBox(height: 12),
           _CompletionRow(
