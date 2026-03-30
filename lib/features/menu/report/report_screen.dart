@@ -111,9 +111,6 @@ class _ReportScreenState extends State<ReportScreen> {
   int _completionRateDiary(DateTime date) {
     final diaries = _diariesFor(date);
     if (diaries.isEmpty) return 0;
-    final completed =
-        diaries.where((d) => (d['draft_progress'] as num?)?.toInt() == 100).length;
-    if (completed == 0) return 50;
     return 100;
   }
 
