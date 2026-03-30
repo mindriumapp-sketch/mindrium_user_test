@@ -39,128 +39,160 @@ from core.security import (
 settings = get_settings()
 router = APIRouter(prefix="/auth")
 
-PLATFORM_VERIFY_URL = os.getenv(
-    "PLATFORM_VERIFY_URL",
-    "http://host.docker.internal:8061/api/integrations/mindrium/verify-signup",
+# =========================================================
+# phone 정규화 정책
+# - MongoDB users.phone: digits(예: 01038472918) 로 저장
+# =========================================================
+def phone_to_digits(phone: str) -> str:
+    raw = (phone or "").strip()
+    return "".join(ch for ch in raw if ch.isdigit())
+
+
+PLATFORM_SIGNUP_URL = (
+    os.getenv("PLATFORM_SIGNUP_URL")
+    or os.getenv("PLATFORM_VERIFY_URL")
+    or "http://host.docker.internal:8061/auth/signup"
 )
 
 
-async def verify_patient_code_with_platform(patient_code: str, email: str) -> str:
+async def signup_with_platform(payload: SignupRequest) -> str:
     """
-    플랫폼에 patient_code + email 검증 요청 후 patient_id를 반환.
-    플랫폼 응답 예시:
-    {
-      "valid": true,
-      "patient_id": "P000123"
-    }
-
-    실패 예시:
-    {
-      "valid": false,
-      "reason": "INVALID_CODE"
-    }
+    플랫폼 /auth/signup에 회원가입을 위임하고 patient_id를 반환한다.
+    플랫폼은 검증 전용 API가 아닌, 실제 가입(write)까지 수행한다.
     """
-    payload = {
-        "service": "mindrium",
-        "patient_code": patient_code,
-        "email": email,
+    platform_payload = {
+        "email": payload.email,
+        "password": payload.password,
+        "name": payload.name,
+        "patient_code": (payload.patient_code or "").strip(),
+        "gender": payload.gender,
+        "address": payload.address,
     }
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            res = await client.post(PLATFORM_VERIFY_URL, json=payload)
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.post(PLATFORM_SIGNUP_URL, json=platform_payload)
     except httpx.RequestError:
         raise HTTPException(
             status_code=502,
-            detail="Platform verification service unavailable",
+            detail="Platform signup service unavailable",
         )
-
-    if res.status_code != 200:
-        # 플랫폼이 4xx/5xx를 반환한 경우
-        try:
-            data = res.json()
-            detail = data.get("detail") or data.get("reason") or "Platform verification failed"
-        except Exception:
-            detail = "Platform verification failed"
-        raise HTTPException(status_code=400, detail=detail)
 
     try:
         data = res.json()
     except Exception:
-        raise HTTPException(status_code=500, detail="Invalid platform verification response")
+        data = {}
 
-    if not data.get("valid"):
-        reason = data.get("reason", "INVALID_CODE")
-        raise HTTPException(status_code=400, detail=reason)
+    if res.status_code != 200:
+        detail = data.get("detail") or data.get("message") or "Platform signup failed"
+        raise HTTPException(status_code=res.status_code, detail=detail)
 
-    patient_id = data.get("patient_id")
+    patient_id = data.get("patient_id") or data.get("user_id") or (payload.patient_code or "").strip()
     if not patient_id:
-        raise HTTPException(status_code=500, detail="patient_id missing from platform response")
+        raise HTTPException(status_code=500, detail="patient_id missing from platform signup response")
 
-    return patient_id
+    return str(patient_id)
 
 
 @router.post("/signup", response_model=TokenPair)
 async def signup(payload: SignupRequest, db=Depends(get_db)):
-    # 1) 이메일 중복 체크
-    existing = await db["users"].find_one({"email": payload.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    # 1) 입력 검증
+    phone_digits = phone_to_digits(payload.phone)
+    if not phone_digits:
+        raise HTTPException(status_code=400, detail="phone은 필수입니다.")
+    if len(phone_digits) < 9:
+        raise HTTPException(status_code=400, detail="phone 형식이 올바르지 않습니다.")
 
-    # 2) 플랫폼에서 patient_code + email 검증 후 patient_id 확보
-    patient_id = await verify_patient_code_with_platform(
-        patient_code=payload.patient_code,
-        email=payload.email,
+    patient_code = (payload.patient_code or "").strip()
+    if not patient_code:
+        raise HTTPException(status_code=400, detail="patient_code는 필수입니다.")
+
+    # 2) 동일 이메일 선검사 — 플랫폼 호출 전 (MySQL만 CLAIMED 되고 Mongo는 갱신 안 되는 불일치 방지)
+    existing_by_email = await db["users"].find_one({"email": payload.email})
+    if existing_by_email:
+        pid = existing_by_email.get("patient_id")
+        has_patient_link = pid is not None and (not isinstance(pid, str) or pid.strip() != "")
+        if not has_patient_link:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "이 이메일은 처방 연동 없이 등록된 계정입니다. "
+                    "처방에 등록된 이메일로 새로 가입하거나 고객센터로 문의해 주세요."
+                ),
+            )
+        raise HTTPException(
+            status_code=409,
+            detail="이미 등록된 이메일입니다. (동일 이메일이 Mongo에 이미 있음, 플랫폼 호출 전)",
+        )
+
+    # 3) 플랫폼 /auth/signup 위임 (플랫폼이 write 수행)
+    patient_id = await signup_with_platform(payload)
+
+    # 4) 로컬 users 동기화 (upsert) — 동시 가입 등 레이스 시 patient_id 불일치만 차단
+    existing = await db["users"].find_one({"email": payload.email})
+    if existing and existing.get("patient_id") != patient_id:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "가입을 마무리할 수 없습니다: 이 이메일은 Mongo에 다른 patient_id와 이미 연결되어 있습니다. "
+                "(플랫폼은 이미 처리됐을 수 있으니 Mongo users·플랫폼 MySQL을 맞춰 주세요.)"
+            ),
+        )
+
+    existing_patient = await db["users"].find_one({"patient_id": patient_id})
+    now = datetime.now(timezone.utc)
+    user_id = (
+        existing_patient.get("user_id")
+        if existing_patient and existing_patient.get("user_id")
+        else f"user_{uuid.uuid4().hex[:8]}"
     )
 
-    # 3) 동일 patient_id 중복 가입 방지
-    existing_patient = await db["users"].find_one({"patient_id": patient_id})
-    if existing_patient:
-        raise HTTPException(status_code=400, detail="Patient already linked")
-
-    obj_id = ObjectId()
-    user_id = f"user_{uuid.uuid4().hex[:8]}"  # 1차에서는 유지
-    now = datetime.now(timezone.utc)
-
-    doc = {
-        "_id": obj_id,
+    update_doc = {
         "user_id": user_id,
         "patient_id": patient_id,
         "email": payload.email,
         "name": payload.name,
         "gender": payload.gender,
         "address": payload.address,
-        "patient_code": payload.patient_code,
+        "patient_code": patient_code,
+        "phone": phone_digits,
         "password_hash": hash_password(payload.password),
-        "survey_completed": False,
-        "surveys": [],
-        "email_verified": False,
-        "created_at": now,
         "updated_at": now,
     }
 
-    try:
-        await db["users"].insert_one(doc)
-    except DuplicateKeyError:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    if existing_patient:
+        obj_id = existing_patient["_id"]
+        await db["users"].update_one({"_id": obj_id}, {"$set": update_doc})
+    else:
+        obj_id = ObjectId()
+        doc = {
+            "_id": obj_id,
+            **update_doc,
+            "survey_completed": False,
+            "surveys": [],
+            "email_verified": False,
+            "created_at": now,
+        }
+        try:
+            await db["users"].insert_one(doc)
+        except DuplicateKeyError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "가입을 마무리할 수 없습니다: Mongo users에 동일 이메일이 이미 있습니다(유니크 인덱스). "
+                    "로그인을 시도하거나, 올바른 DB·중복 문서를 확인해 주세요."
+                ),
+            )
 
-    # 1차에서는 기존 user_id 기반 보조 데이터 생성 유지
     await ensure_default_custom_tags(db, user_id)
     await ensure_default_worry_group(db, user_id)
 
     sub = str(obj_id)
     refresh_raw = create_refresh_token(sub)
-
     await db["users"].update_one(
         {"_id": obj_id},
-        {
-            "$set": {
-                "refresh_hash": hash_refresh_token(refresh_raw),
-                "refresh_issued_at": now,
-            }
-        },
+        {"$set": {"refresh_hash": hash_refresh_token(refresh_raw), "refresh_issued_at": now}},
     )
-
     return TokenPair(
         access_token=create_access_token(sub),
         refresh_token=refresh_raw,
@@ -170,7 +202,8 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
 @router.post("/login", response_model=TokenPair)
 async def login(payload: LoginRequest, db=Depends(get_db)):
     user = await db["users"].find_one({"email": payload.email})
-    if not user or not verify_password(payload.password, user["password_hash"]):
+    stored_hash = user.get("password_hash") if user else None
+    if not user or not stored_hash or not verify_password(payload.password, stored_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     sub = str(user["_id"])

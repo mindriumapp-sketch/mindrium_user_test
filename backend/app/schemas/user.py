@@ -9,7 +9,6 @@ class UserBase(BaseModel):
     gender: Optional[str] = None
     address: Optional[str] = None
 
-
 class UserMe(UserBase):
     user_id: str
     patient_id: Optional[str] = None

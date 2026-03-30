@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
@@ -7,7 +8,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 
-/// 회원가입 화면 - 이메일, 이름, 전화번호, 비밀번호, 마인드리움 코드(6자리)로 회원가입
+/// 회원가입 화면 - 이메일, 이름, 전화번호, 비밀번호, 환자코드로 회원가입
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -24,7 +25,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   final emailController = TextEditingController();
   final nameController = TextEditingController();
-  // final phoneController = TextEditingController(); // (추가) 전화번호
+  final phoneController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
   final patientCodeController = TextEditingController();
@@ -39,19 +40,41 @@ class _SignupScreenState extends State<SignupScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// FastAPI `detail`(문자열 또는 validation 배열)까지 스낵바에 넘기기
+  String _signupErrorMessage(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final detail = data['detail'];
+        if (detail is String && detail.trim().isNotEmpty) return detail;
+        if (detail is List && detail.isNotEmpty) {
+          final first = detail.first;
+          if (first is Map && first['msg'] is String) {
+            return first['msg'] as String;
+          }
+        }
+      }
+    }
+    return '회원가입 실패: $e';
+  }
+
   Future<void> _signup() async {
     final email = emailController.text.trim();
     final name = nameController.text.trim();
-    // final phone = phoneController.text.trim(); // (추가)
+    final phone = phoneController.text.trim();
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
     final patientCode = patientCodeController.text.trim();
 
-    // (변경) phone 필수
-    if ([email, name, password, confirmPassword, patientCode
-      // phone
+    if ([
+      email,
+      name,
+      phone,
+      password,
+      confirmPassword,
+      patientCode,
     ].any((e) => e.isEmpty)) {
-      _showError('이메일, 이름, 비밀번호, 환자코드를 모두 입력해주세요.');
+      _showError('이메일, 이름, 전화번호, 비밀번호, 환자코드를 모두 입력해주세요.');
       return;
     }
 
@@ -74,7 +97,7 @@ class _SignupScreenState extends State<SignupScreen> {
         email: email,
         password: password,
         name: name,
-        // phone: phone, // TODO: 앱에서 전화번호 입력 안 받아?..
+        phone: phone,
         patientCode: patientCode,
       );
 
@@ -88,7 +111,7 @@ class _SignupScreenState extends State<SignupScreen> {
         arguments: {'email': email, 'password': password},
       );
     } catch (e, stack) {
-      _showError('회원가입 실패: $e');
+      _showError(_signupErrorMessage(e));
       debugPrint('Signup error: $e');
       debugPrint('Stack: $stack');
     }
@@ -108,6 +131,7 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
     emailController.dispose();
     nameController.dispose();
+    phoneController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
     patientCodeController.dispose();
@@ -148,15 +172,15 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: AppSizes.space),
 
-            // TODO: (추가) 전화번호..?
-            // InputTextField(
-            //   controller: phoneController,
-            //   label: '전화번호',
-            //   fillColor: Colors.white,
-            //   keyboardType: TextInputType.phone,
-            //   hintText: '예) 01012345678 또는 010-1234-5678',
-            // ),
-            // const SizedBox(height: AppSizes.space),
+            InputTextField(
+              controller: phoneController,
+              label: '전화번호',
+              fillColor: Colors.white,
+              keyboardType: TextInputType.phone,
+              hintText: '예) 01012345678 또는 010-1234-5678',
+            ),
+
+            const SizedBox(height: AppSizes.space),
             _buildPasswordPolicy(),
             const SizedBox(height: AppSizes.space),
             PasswordTextField(
@@ -178,13 +202,11 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: AppSizes.space),
 
-            // (변경) 마인드리움 코드: 숫자 6자리
             InputTextField(
               controller: patientCodeController,
-              label: '마인드리움 코드(6자리)',
+              label: '환자코드',
               fillColor: Colors.white,
-              keyboardType: TextInputType.number,
-              hintText: '예) 111111',
+              hintText: '병원 또는 플랫폼에서 받은 코드를 입력해주세요.',
             ),
 
             const SizedBox(height: AppSizes.space),
