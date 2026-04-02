@@ -30,11 +30,15 @@ class _ApplyAlternativeThoughtScreenState
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
   bool _didPostFrameSync = false;
+  bool _returnAfterSave = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final rawArgs = ModalRoute.of(context)?.settings.arguments;
+    final routeArgs =
+        rawArgs is Map ? rawArgs.cast<String, dynamic>() : <String, dynamic>{};
+    _returnAfterSave = routeArgs['returnAfterSave'] == true;
     final route = ApplyFlowRouteData.read(
       context,
       rawArgs: rawArgs,
@@ -157,7 +161,7 @@ class _ApplyAlternativeThoughtScreenState
     return [belief.toString()];
   }
 
-  void _onSelect(String b) {
+  Future<void> _onSelect(String b) async {
     final all = _bList;
     final remaining = List<String>.from(all)..remove(b);
     final route = ApplyFlowRouteData.read(
@@ -165,12 +169,12 @@ class _ApplyAlternativeThoughtScreenState
       rawArgs: ModalRoute.of(context)?.settings.arguments,
     );
     final diary = route.diary;
-    Navigator.push(
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         settings: RouteSettings(
           arguments: route.mergedArgs(
-            extra: {'origin': 'apply'},
+            extra: {'origin': 'apply', 'returnAfterSave': _returnAfterSave},
             includeDiary: true,
           ),
         ),
@@ -184,13 +188,22 @@ class _ApplyAlternativeThoughtScreenState
               origin: 'apply',
               diary: diary,
               flowMode: Week4AlternativeThoughtsFlowMode.applyAfterSud,
+              returnAfterSave: _returnAfterSave,
             ),
       ),
     );
+    if (!mounted) return;
+    if (_returnAfterSave && result == true) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   void _skipSelection() {
     if (!mounted) return;
+    if (_returnAfterSave) {
+      Navigator.of(context).pop(false);
+      return;
+    }
     Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
   }
 

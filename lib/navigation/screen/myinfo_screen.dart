@@ -977,38 +977,18 @@ class _MyInfoScreenState extends State<MyInfoScreen>
               children: [
                 Hero(
                   tag: 'detail_character_$groupId',
-                  child: Container(
+                  child: SizedBox(
                     width: 62,
                     height: 62,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFB8DAF5), Color(0xFFD4E7F7)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF5B9FD3,
-                          ).withValues(alpha: 0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(5),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/image/character$characterId.png',
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (_, __, ___) => const Icon(
-                              Icons.catching_pokemon,
-                              size: 32,
-                              color: Color(0xFF0E2C48),
-                            ),
-                      ),
+                    child: Image.asset(
+                      'assets/image/character$characterId.png',
+                      fit: BoxFit.contain,
+                      errorBuilder:
+                          (_, __, ___) => const Icon(
+                            Icons.catching_pokemon,
+                            size: 32,
+                            color: Color(0xFF0E2C48),
+                          ),
                     ),
                   ),
                 ),
@@ -1138,16 +1118,20 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                 ),
                 child: Row(
                   children: [
-                    const Text(
-                      '일기',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF566370),
-                        fontFamily: 'Noto Sans KR',
+                    const Expanded(
+                      child: Text(
+                        '그룹의 일기를 보러가기',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF566370),
+                          fontFamily: 'Noto Sans KR',
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,

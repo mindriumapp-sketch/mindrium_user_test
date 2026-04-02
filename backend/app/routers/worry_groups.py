@@ -322,13 +322,6 @@ async def archive_worry_group(
     """
     걱정 그룹을 아카이브합니다 (소프트 삭제).
     """
-    # 🔴 기본 그룹은 아카이브 불가
-    if group_id == DEFAULT_GROUP_ID:
-        raise HTTPException(
-            status_code=400,
-            detail="기본 걱정 그룹은 보관함으로 옮길 수 없습니다.",
-        )
-
     collection = db[WORRY_GROUP_COLLECTION]
 
     now_utc = datetime.now(timezone.utc)

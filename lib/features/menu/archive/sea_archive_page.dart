@@ -2,11 +2,13 @@
 // 🌊 Mindrium SeaArchivePage — Immersive Aquarium with following speech bubble
 import 'dart:math';
 import 'dart:ui';
+import 'package:dio/dio.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
+import 'package:gad_app_team/features/menu/archive/character_battle.dart';
 
 class SeaArchivePage extends StatefulWidget {
   const SeaArchivePage({super.key});
@@ -42,7 +44,61 @@ class _SeaArchivePageState extends State<SeaArchivePage>
     try {
       // 기본 조회는 archived != true 그룹만 내려옴
       final groups = await _worryGroupsApi.listWorryGroups();
-      return groups;
+
+      final enriched = await Future.wait(
+        groups.map((group) async {
+          final rawGroupId = group['group_id'];
+          final groupId = rawGroupId?.toString() ?? '';
+          if (groupId.isEmpty) return group;
+
+          try {
+            final response = await _apiClient.dio.get(
+              '/diaries',
+              queryParameters: {
+                'group_id': groupId,
+                'include_drafts': true,
+                // 목록 화면과 동일한 기준으로 집계해야 점수/개수가 일치한다.
+                'include_auto': false,
+              },
+            );
+
+            final rawList = response.data as List? ?? const [];
+            final diaries =
+                rawList
+                    .whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList();
+
+            double sudSum = 0.0;
+            for (final diary in diaries) {
+              final raw = diary['latest_sud'];
+              if (raw is num) {
+                sudSum += raw.toDouble().clamp(0.0, 10.0);
+              } else if (raw is String) {
+                final parsed = double.tryParse(raw);
+                if (parsed != null) {
+                  sudSum += parsed.clamp(0.0, 10.0);
+                }
+              }
+            }
+
+            final avgSud =
+                diaries.isEmpty
+                    ? null
+                    : sudSum / diaries.length;
+
+            return {
+              ...group,
+              'avg_sud': avgSud,
+              'diary_count': diaries.length,
+            };
+          } catch (_) {
+            return group;
+          }
+        }),
+      );
+
+      return enriched;
     } catch (e) {
       debugPrint('worry_groups(archived=false) 로드 실패: $e');
       return [];
@@ -142,7 +198,14 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                           showDialog(
                             context: context,
                             builder:
-                                (_) => _FishInfoPopup(image: img, data: data),
+                                (_) => _FishInfoPopup(
+                                  image: img,
+                                  data: data,
+                                  onResolveCompleted:
+                                      () => setState(
+                                        () => _groupsFuture = _loadGroups(),
+                                      ),
+                                ),
                           );
                         },
                       ),
@@ -505,8 +568,13 @@ class _SmoothFishState extends State<_SmoothFish>
 class _FishInfoPopup extends StatelessWidget {
   final ImageProvider image;
   final Map<String, dynamic> data;
+  final VoidCallback? onResolveCompleted;
 
-  const _FishInfoPopup({required this.image, required this.data});
+  const _FishInfoPopup({
+    required this.image,
+    required this.data,
+    this.onResolveCompleted,
+  });
 
   DateTime? _asDateTime(dynamic value) {
     if (value is DateTime) return value;
@@ -567,53 +635,40 @@ class _FishInfoPopup extends StatelessWidget {
     return const Color(0xFF2F6FA1);
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildDescriptionText(String desc) {
+    final description = desc.isEmpty ? '저장된 설명이 없습니다.' : desc;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3FAFF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD8EEF8)),
+        color: const Color(0xFFF6FAFF),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF2D5B73),
-              ),
+          Container(
+            width: 3,
+            height: 20,
+            decoration: BoxDecoration(
+              color: const Color(0xFF5B9FD3).withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(width: 12),
-          Flexible(
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0E2C48),
+              description,
+              style: TextStyle(
+                fontSize: 14,
+                color: const Color(0xFF1B405C),
+                height: 1.58,
+                fontWeight: desc.isEmpty ? FontWeight.w500 : FontWeight.w600,
+                fontFamily: 'Noto Sans KR',
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDescriptionText(String desc) {
-    return Text(
-      desc.isEmpty ? '저장된 설명이 없습니다.' : desc,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 14,
-        color: const Color(0xFF35546C),
-        height: 1.62,
-        fontWeight: desc.isEmpty ? FontWeight.w500 : FontWeight.w600,
-        letterSpacing: -0.1,
       ),
     );
   }
@@ -644,6 +699,106 @@ class _FishInfoPopup extends StatelessWidget {
     );
   }
 
+  Future<void> _startResolveFlow(
+    BuildContext context, {
+    required String groupId,
+    required String characterName,
+    required String characterDescription,
+  }) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    navigator.pop(); // 팝업 닫기
+
+    final status = await _resolveAlternativeThoughtStatus(groupId);
+    if (!status.hasAlternativeThoughts) {
+      final targetDiaryId = status.targetDiaryId;
+      if (targetDiaryId == null || targetDiaryId.isEmpty) {
+        ScaffoldMessenger.of(
+          navigator.context,
+        ).showSnackBar(const SnackBar(content: Text('대체 생각을 작성할 일기가 없어요.')));
+        return;
+      }
+      final result = await navigator.pushNamed(
+        '/apply_alt_thought',
+        arguments: {
+          'abcId': targetDiaryId,
+          'origin': 'apply',
+          'returnAfterSave': true,
+        },
+      );
+      if (result != true) return;
+    }
+
+    await navigator.push(
+      MaterialPageRoute(
+        builder:
+            (_) => PokemonBattleDeletePage(
+              groupId: groupId,
+              characterName: characterName,
+              characterDescription: characterDescription,
+            ),
+      ),
+    );
+    onResolveCompleted?.call();
+  }
+
+  Future<({bool hasAlternativeThoughts, String? targetDiaryId})>
+  _resolveAlternativeThoughtStatus(String groupId) async {
+    final tokens = TokenStorage();
+    final client = ApiClient(tokens: tokens);
+    try {
+      final response = await client.dio.get(
+        '/diaries',
+        queryParameters: {'group_id': groupId},
+      );
+      final diaries = (response.data as List?)?.cast<Map<String, dynamic>>() ?? const [];
+      if (diaries.isEmpty) {
+        return (hasAlternativeThoughts: false, targetDiaryId: null);
+      }
+      String? latestDiaryId;
+      for (final diary in diaries) {
+        latestDiaryId ??= diary['diary_id']?.toString();
+        if (_hasAlternativeThought(diary['alternative_thoughts'])) {
+          return (hasAlternativeThoughts: true, targetDiaryId: latestDiaryId);
+        }
+      }
+      return (hasAlternativeThoughts: false, targetDiaryId: latestDiaryId);
+    } on DioException {
+      return (hasAlternativeThoughts: false, targetDiaryId: null);
+    } catch (_) {
+      return (hasAlternativeThoughts: false, targetDiaryId: null);
+    }
+  }
+
+  Future<int> _fetchDiaryCount(String groupId) async {
+    if (groupId.isEmpty) return 0;
+    final tokens = TokenStorage();
+    final client = ApiClient(tokens: tokens);
+    try {
+      final response = await client.dio.get(
+        '/diaries',
+        queryParameters: {
+          'group_id': groupId,
+          'include_drafts': true,
+        },
+      );
+      final diaries =
+          (response.data as List?)?.cast<Map<String, dynamic>>() ?? const [];
+      return diaries.length;
+    } catch (_) {
+      return _asInt(data['diary_count']) ?? 0;
+    }
+  }
+
+  bool _hasAlternativeThought(dynamic value) {
+    if (value is List) {
+      return value.any((e) => e.toString().trim().isNotEmpty);
+    }
+    if (value is String) {
+      return value.trim().isNotEmpty;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final dialogMaxHeight = min(620.0, MediaQuery.of(context).size.height - 56);
@@ -656,11 +811,16 @@ class _FishInfoPopup extends StatelessWidget {
     final archivedAt =
         _asDateTime(data['archived_at']) ?? _asDateTime(data['updated_at']);
     final createdAt = _asDateTime(data['created_at']);
-    final diaryCount = _asInt(data['diary_count']);
+    final diaryCount = _asInt(data['diary_count']) ?? 0;
     final groupId = (data['group_id'] ?? '').toString();
     final characterId = _asInt(data['character_id']) ?? 1;
     final resolvedCreatedAt = createdAt ?? DateTime.now();
     final resolvedArchivedAt = archivedAt ?? resolvedCreatedAt;
+    final canResolve =
+        groupId.isNotEmpty &&
+        groupId != 'group_example' &&
+        sudAverage != null &&
+        sudAverage <= 3.0;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -680,20 +840,81 @@ class _FishInfoPopup extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Image(image: image, width: 80, height: 80),
-                const SizedBox(height: 12),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0E2C48),
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 62,
+                      height: 62,
+                      child: Image(
+                        image: image,
+                        fit: BoxFit.contain,
+                        errorBuilder:
+                            (_, __, ___) => const Icon(
+                              Icons.catching_pokemon,
+                              size: 30,
+                              color: Color(0xFF0E2C48),
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 19,
+                              color: Color(0xFF0E2C48),
+                              height: 1.3,
+                              letterSpacing: -0.3,
+                              fontFamily: 'Noto Sans KR',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF1FF),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFD6E2FF)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 14,
+                                  color: Color(0xFF496AC6),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '생성일: ${_formatDate(createdAt)}',
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF496AC6),
+                                    fontFamily: 'Noto Sans KR',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 _buildDescriptionText(desc),
-                const SizedBox(height: 10),
+                const SizedBox(height: 14),
                 const Padding(
                   padding: EdgeInsets.only(left: 4),
                   child: Text(
@@ -741,11 +962,7 @@ class _FishInfoPopup extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                _buildInfoRow('보관일', _formatDate(archivedAt)),
-                const SizedBox(height: 10),
-                _buildInfoRow('생성일', _formatDate(createdAt)),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -760,7 +977,7 @@ class _FishInfoPopup extends StatelessWidget {
                     children: [
                       const Expanded(
                         child: Text(
-                          '보관된 일기 보러가기',
+                          '그룹의 일기 보러가기',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -768,23 +985,30 @@ class _FishInfoPopup extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDCE8FF),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '${diaryCount ?? 0}개',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF4659C2),
-                          ),
-                        ),
+                      FutureBuilder<int>(
+                        future: _fetchDiaryCount(groupId),
+                        initialData: diaryCount,
+                        builder: (context, snapshot) {
+                          final resolvedCount = snapshot.data ?? diaryCount;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDCE8FF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '$resolvedCount개',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF4659C2),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(width: 8),
                       InkWell(
@@ -818,15 +1042,40 @@ class _FishInfoPopup extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
+                if (canResolve) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed:
+                          () => _startResolveFlow(
+                            context,
+                            groupId: groupId,
+                            characterName: title,
+                            characterDescription: desc,
+                          ),
+                      icon: const Icon(Icons.auto_fix_high_rounded),
+                      label: const Text('해결하기'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2F8FD8),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
-                  width: 120,
+                  width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent.withValues(
-                        alpha: 0.45,
-                      ),
+                      backgroundColor: const Color(0xFF6FD3D4),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),

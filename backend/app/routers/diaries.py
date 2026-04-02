@@ -446,6 +446,7 @@ async def list_diaries(
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     include_auto: bool = False,
+    include_drafts: bool = False,
 ):
     """
     전체 일기 목록 (풀 데이터) 반환.
@@ -456,7 +457,7 @@ async def list_diaries(
         user_id=user_id,
         group_id=group_id,
         exclude_auto=not include_auto,
-        include_drafts=False,
+        include_drafts=include_drafts,
     )
 
     cursor = collection.find(query).sort("created_at", -1)
@@ -686,6 +687,12 @@ async def update_diary(
 
     # 2) 나머지 필드(activation, belief, consequence_*, 좌표 등)는
     #    이미 model_dump 된 dict/list[dict]라 그대로 덮어쓰기
+    if "alternative_thoughts" in update_data:
+        update_data["alternative_thoughts"] = merge_unique_str_list(
+            diary.get("alternative_thoughts"),
+            update_data.get("alternative_thoughts"),
+        )
+
     set_fields.update(update_data)
 
     # group_id 고정

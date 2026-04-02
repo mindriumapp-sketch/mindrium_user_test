@@ -25,6 +25,7 @@ class Week4AlternativeThoughtsScreen extends StatefulWidget {
   final String? origin;
   final dynamic diary;
   final Week4AlternativeThoughtsFlowMode flowMode;
+  final bool returnAfterSave;
 
   const Week4AlternativeThoughtsScreen({
     super.key,
@@ -39,6 +40,7 @@ class Week4AlternativeThoughtsScreen extends StatefulWidget {
     this.origin,
     this.diary,
     this.flowMode = Week4AlternativeThoughtsFlowMode.week4BeliefLoop,
+    this.returnAfterSave = false,
   });
 
   @override
@@ -218,6 +220,10 @@ class _Week4AlternativeThoughtsScreenState
     if (widget.flowMode == Week4AlternativeThoughtsFlowMode.applyAfterSud) {
       await _saveAlternativeThoughts();
       if (!mounted) return;
+      if (widget.returnAfterSave) {
+        navigator.pop(true);
+        return;
+      }
       navigator.pushNamed(
         '/after_sud',
         arguments: {

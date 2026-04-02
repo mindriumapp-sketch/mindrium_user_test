@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/apply_solve_provider.dart';
+import 'package:provider/provider.dart';
 
 /// 보관함 일기 목록 화면
 class ArchivedDiaryScreen extends StatefulWidget {
@@ -51,7 +53,7 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
     try {
       final response = await _apiClient.dio.get(
         '/diaries',
-        queryParameters: {'group_id': widget.groupId},
+        queryParameters: {'group_id': widget.groupId, 'include_drafts': true},
       );
 
       final diaries =
@@ -81,13 +83,42 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
     }
   }
 
+  Future<void> _startApplyFlowForDiary(Map<String, dynamic> diary) async {
+    final diaryId = diary['diary_id']?.toString().trim() ?? '';
+    if (diaryId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('선택한 일기 정보를 찾을 수 없어요.')));
+      return;
+    }
+
+    final flow = context.read<ApplyOrSolveFlow>();
+    flow.clear();
+    flow.setOrigin('apply');
+    flow.setDiaryRoute('notification');
+    flow.setDiaryId(diaryId);
+
+    if (!mounted) return;
+    Navigator.pushNamed(
+      context,
+      '/before_sud',
+      arguments: {
+        ...flow.toArgs(),
+        'origin': 'apply',
+        'abcId': diaryId,
+        'isHomeTodayDiary': false,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
       appBar: CustomAppBar(
-        title: '보관함 일기',
+        title: '그룹 일기 목록',
         showHome: true,
         confirmOnHome: false,
         confirmOnBack: false,
@@ -134,9 +165,6 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
     final createdStr = DateFormat(
       'yyyy년 MM월 dd일 HH:mm',
     ).format(widget.createdAt);
-    final archivedStr = DateFormat(
-      'yyyy년 MM월 dd일 HH:mm',
-    ).format(widget.archivedAt);
 
     return Container(
       width: double.infinity,
@@ -255,10 +283,8 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
 
           const SizedBox(height: 16),
 
-          // 생성일시 & 보관일시
+          // 생성일시
           _buildDateRow(Icons.create_outlined, '생성일시', createdStr),
-          const SizedBox(height: 8),
-          _buildDateRow(Icons.archive_outlined, '보관함 저장일시', archivedStr),
         ],
       ),
     );
@@ -358,6 +384,7 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
         return _ExpandableDiaryCard(
           diary: diary,
           characterId: widget.characterId,
+          onStartFlow: () => _startApplyFlowForDiary(diary),
         );
       },
     );
@@ -367,8 +394,13 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
 class _ExpandableDiaryCard extends StatefulWidget {
   final Map<String, dynamic> diary;
   final int characterId;
+  final VoidCallback onStartFlow;
 
-  const _ExpandableDiaryCard({required this.diary, required this.characterId});
+  const _ExpandableDiaryCard({
+    required this.diary,
+    required this.characterId,
+    required this.onStartFlow,
+  });
 
   @override
   State<_ExpandableDiaryCard> createState() => _ExpandableDiaryCardState();
@@ -485,8 +517,7 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF0E2C48),
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            softWrap: true,
                           ),
                           const SizedBox(height: 6),
                           Row(
@@ -512,7 +543,7 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
+                        horizontal: 8,
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
@@ -526,7 +557,7 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
                       child: Column(
                         children: [
                           const Text(
-                            'SUD',
+                            '불안 점수',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -588,6 +619,23 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
                       consequenceAction,
                       Icons.directions_run_outlined,
                     ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: widget.onStartFlow,
+                      icon: const Icon(Icons.auto_fix_high_rounded, size: 18),
+                      label: const Text('일기에 대해 도움이 되는 생각 해보기'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2F6FA1),
+                        side: const BorderSide(color: Color(0xFF9CC5E8)),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),

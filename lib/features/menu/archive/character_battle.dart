@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
+import 'package:gad_app_team/widgets/jellyfish_notice.dart';
 
 class PokemonBattleDeletePage extends StatefulWidget {
   final String groupId;
@@ -87,7 +88,8 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     );
 
     _voice = CharacterBattleAsr();
-    _initializeVoice();
+    // iOS에서 화면 진입 시 즉시 STT 초기화가 앱 종료로 이어지는 경우가 있어
+    // 마이크 버튼을 눌렀을 때만 초기화하도록 지연한다.
     _loadData();
     _startEmotionCycle();
   }
@@ -151,7 +153,11 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
       // 2. 그룹의 모든 일기 조회 (한 번만)
       final response = await _apiClient.dio.get(
         '/diaries',
-        queryParameters: {'group_id': widget.groupId},
+        queryParameters: {
+          'group_id': widget.groupId,
+          'include_drafts': true,
+          'include_auto': true,
+        },
       );
 
       debugPrint('📦 [일기 응답]: ${response.data}');
@@ -182,16 +188,35 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
           final List<dynamic>? altThoughts = item['alternative_thoughts'];
           if (altThoughts != null) {
             for (final alt in altThoughts) {
-              if (alt is String && alt.trim().isNotEmpty) {
-                skills.add(alt.trim());
+              if (alt is String) {
+                final text = alt.trim();
+                if (text.isNotEmpty) skills.add(text);
+                continue;
+              }
+              if (alt is Map) {
+                final raw =
+                    alt['label'] ??
+                    alt['text'] ??
+                    alt['value'] ??
+                    alt['content'] ??
+                    alt['thought'];
+                final text = raw?.toString().trim() ?? '';
+                if (text.isNotEmpty) skills.add(text);
               }
             }
           }
         }
       }
 
+      final battleSkills = List<String>.from(skills);
+      // 모든 대체 생각을 보여주되, 전투 완료는 최대 3개 발화 성공으로 제한
+      final requiredHits = battleSkills.isEmpty ? 1 : min(3, battleSkills.length);
+
       debugPrint('🎯 [최종 감정 목록]: $emotions');
-      debugPrint('🎯 [최종 스킬 목록]: $skills');
+      debugPrint('🎯 [최종 스킬 목록(전투용)]: $battleSkills');
+      debugPrint(
+        '📊 [전투 데이터] diaries=${(response.data as List?)?.length ?? 0}, thoughts=${battleSkills.length}',
+      );
 
       // belief를 랜덤으로 섞어서 다양하게 보여주기
       if (emotions.isNotEmpty) {
@@ -203,8 +228,8 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         _characterId = characterId;
         _characterEmotions = emotions.isNotEmpty ? emotions : ['감정 데이터가 없습니다'];
         _currentEmotionIndex = 0;
-        _skillsList = skills.isNotEmpty ? skills : ['대체 생각이 없습니다'];
-        _maxHp = _skillsList.length;
+        _skillsList = battleSkills.isNotEmpty ? battleSkills : ['대체 생각이 없습니다'];
+        _maxHp = requiredHits;
         _targetHp = _maxHp;
         _isLoading = false;
       });
@@ -289,6 +314,10 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
       debugPrint('⚠️ [공격 중 또는 패배] 마이크 입력 무시');
       return;
     }
+    if (_selectedSkill == null) {
+      _showToast('먼저 아래 대체 생각을 선택해주세요');
+      return;
+    }
 
     if (!_voice.isReady) {
       debugPrint('❌ [준비 안됨] 재초기화 시도');
@@ -344,11 +373,18 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     final text = utter.trim();
     if (text.isEmpty || _skillsList.isEmpty) return;
     if (_isAttacking || _isDefeated) return;
+    if (_selectedSkill == null) {
+      _showToast('먼저 대체 생각을 선택해주세요');
+      return;
+    }
 
-    final idx = CharacterBattleAsr.chooseBestIndex(_skillsList, text);
-    if (idx < 0) return;
+    final selectedIndex = _skillsList.indexOf(_selectedSkill!);
+    if (selectedIndex < 0 || _shrunkChips.contains(selectedIndex)) {
+      _showToast('다른 대체 생각을 선택해주세요');
+      return;
+    }
 
-    final chosen = _skillsList[idx];
+    final chosen = _skillsList[selectedIndex];
     final score = CharacterBattleAsr.similarity(
       text.toLowerCase(),
       chosen.toLowerCase(),
@@ -359,7 +395,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ "$text"와(과) 일치하는 스킬을 찾지 못했습니다'),
+          content: Text('❌ 선택한 생각 "$chosen"과(와) 다르게 인식됐어요'),
           duration: const Duration(seconds: 2),
           backgroundColor: Colors.redAccent.withValues(alpha: 0.9),
         ),
@@ -454,25 +490,27 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
 
     const bgImage = 'assets/image/battle_scene_bg.png';
     final myChar = 'assets/image/men.png';
+    final mediaQuery = MediaQuery.of(context);
+    final topInset = mediaQuery.padding.top;
+    final safeBottom = mediaQuery.padding.bottom;
+    const contentTopOffset = 52.0;
+    const bottomBarBottomSpacing = 20.0;
+    const bottomBarEstimatedHeight = 220.0;
+    const micSpacingAboveBottomBar = 28.0;
+
+    final bottomBarBottom = safeBottom + bottomBarBottomSpacing;
+    final micBottom =
+        bottomBarBottom + bottomBarEstimatedHeight + micSpacingAboveBottomBar;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF222222),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          '불안 격파 챌린지',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
       body: Stack(
         children: [
           Positioned.fill(child: Image.asset(bgImage, fit: BoxFit.cover)),
-          _buildTopBanner(),
-          _buildHpPanel(),
-          _buildCharacters(myChar),
-          _buildMicButton(),
-          _buildBottomBar(),
+          _buildBackButton(topInset),
+          _buildHpPanel(contentTopOffset),
+          _buildCharacters(myChar, contentTopOffset),
+          _buildMicButton(micBottom),
+          _buildBottomBar(bottomBarBottom),
           if (_isDefeated)
             Positioned.fill(
               child: Container(
@@ -485,35 +523,27 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     );
   }
 
-  Widget _buildTopBanner() {
+  Widget _buildBackButton(double topInset) {
     return Positioned(
-      top: 16,
-      left: 16,
-      right: 16,
-      child: Container(
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 65, 79, 79).withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          '대체 생각을 말하고\n$_characterName을 물리치세요!',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            height: 1.25,
-            fontWeight: FontWeight.w800,
-          ),
-          textAlign: TextAlign.center,
+      top: topInset + 6,
+      left: 10,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.28),
+        shape: const CircleBorder(),
+        child: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          color: Colors.white,
+          iconSize: 20,
+          tooltip: '뒤로가기',
         ),
       ),
     );
   }
 
-  Widget _buildHpPanel() {
+  Widget _buildHpPanel(double contentTopOffset) {
     return Positioned(
-      top: 190,
+      top: 190 + contentTopOffset,
       right: 200,
       child: Container(
         width: 150,
@@ -547,27 +577,78 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
   }
 
   Widget _buildHpBar() {
-    final factor = _targetHp / max(1, _maxHp);
+    final segments = max(1, _maxHp);
+    final hpRatio = (_targetHp / segments).clamp(0.0, 1.0);
+
+    Color hpColor;
+    if (hpRatio > 0.5) {
+      // 초록 -> 노랑
+      final t = (1.0 - hpRatio) / 0.5;
+      hpColor = Color.lerp(const Color(0xFF2CE0B7), const Color(0xFFFFD54F), t)!;
+    } else {
+      // 노랑 -> 빨강
+      final t = (0.5 - hpRatio) / 0.5;
+      hpColor = Color.lerp(const Color(0xFFFFD54F), const Color(0xFFFF5D5D), t)!;
+    }
+
     return Container(
       height: 12,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.25),
+        // 불안 점수 바와 유사한 밝은 트랙 톤
+        color: const Color(0xFFD7E2EB),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0x99DCEAF5),
+          width: 0.9,
+        ),
       ),
-      child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
-        widthFactor: factor,
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF9C60FF),
-            borderRadius: BorderRadius.circular(10),
-          ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final fillWidth = constraints.maxWidth * hpRatio;
+
+            return Stack(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  width: fillWidth,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        hpColor.withValues(alpha: 0.95),
+                        hpColor,
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                ),
+                if (segments > 1)
+                  ...List.generate(segments - 1, (idx) {
+                    final dividerIndex = idx + 1;
+                    final x =
+                        (constraints.maxWidth * dividerIndex / segments) - 0.5;
+                    return Positioned(
+                      left: x,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 1,
+                        color: Colors.white.withValues(alpha: 0.75),
+                      ),
+                    );
+                  }),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildCharacters(String myChar) {
+  Widget _buildCharacters(String myChar, double contentTopOffset) {
     final dx = _shakeController.value;
 
     return Stack(
@@ -598,7 +679,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
 
         // 타겟 캐릭터 + 감정 말풍선
         Positioned(
-          top: 210,
+          top: 210 + contentTopOffset,
           right: 24 + dx,
           child: Stack(
             clipBehavior: Clip.none,
@@ -676,10 +757,10 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     );
   }
 
-  Widget _buildMicButton() {
+  Widget _buildMicButton(double bottom) {
     return Positioned(
-      bottom: 160,
-      right: 40,
+      bottom: bottom,
+      right: 24,
       child: GestureDetector(
         onTap: () async {
           if (_isAttacking || _isDefeated) return;
@@ -694,8 +775,8 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          width: 120,
-          height: 120,
+          width: 112,
+          height: 112,
           decoration: BoxDecoration(
             color:
                 _listening
@@ -715,15 +796,15 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
               Icon(
                 _listening ? Icons.hearing : Icons.mic,
                 color: Colors.white,
-                size: 60,
+                size: 54,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 _listening ? '듣는 중...' : '터치하여\n마이크 켜기',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white70,
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -734,13 +815,13 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildBottomBar(double bottom) {
     return Positioned(
       left: 10,
       right: 10,
-      bottom: 50,
+      bottom: bottom,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
         decoration: BoxDecoration(
           color: const Color.fromARGB(255, 65, 79, 79).withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(16),
@@ -748,78 +829,81 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              '스킬(대체 생각)을 골라 공격하세요!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 18),
+                child: Transform.scale(
+                  scale: 0.74,
+                  alignment: Alignment.centerLeft,
+                  child: const JellyfishNotice(
+                    feedback: '도움이 되는 생각을 하나씩 선택 후 말해보세요!',
+                    feedbackColor: Color(0xFF35546C),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 36,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _skillsList.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, idx) {
-                        if (_shrunkChips.contains(idx)) {
-                          return const SizedBox.shrink();
-                        }
+            const SizedBox(height: 2),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 8.0;
+                final chipWidth = (constraints.maxWidth - spacing) / 2;
 
+                return ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 148),
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: spacing,
+                      runSpacing: 8,
+                      children: List.generate(_skillsList.length, (idx) {
                         final skill = _skillsList[idx];
-                        final selected = skill == _selectedSkill;
+                        final used = _shrunkChips.contains(idx);
+                        final selected = skill == _selectedSkill && !used;
 
-                        return ChoiceChip(
-                          label: Text(skill),
-                          selected: selected,
-                          onSelected: (v) {
-                            if (!_isAttacking && !_isDefeated && v) {
-                              setState(() => _selectedSkill = skill);
-                            }
-                          },
-                          labelStyle: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
+                        return SizedBox(
+                          width: chipWidth,
+                          child: Opacity(
+                            opacity: used ? 0.45 : 1.0,
+                            child: ChoiceChip(
+                              label: SizedBox(
+                                width: double.infinity,
+                                child: Text(
+                                  skill,
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              selected: selected,
+                              showCheckmark: false,
+                              onSelected: (v) {
+                                if (used || _isAttacking || _isDefeated) return;
+                                setState(() {
+                                  _selectedSkill = v ? skill : null;
+                                });
+                              },
+                              labelStyle: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 12,
+                              ),
+                              selectedColor: const Color(0xFF56E0C6),
+                              backgroundColor: Colors.white,
+                            ),
                           ),
-                          selectedColor: const Color(0xFF56E0C6),
-                          backgroundColor: Colors.white,
                         );
-                      },
+                      }),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                // 공격 버튼
-                ElevatedButton(
-                  onPressed:
-                      (_selectedSkill != null && !_isAttacking && !_isDefeated)
-                          ? _handleAttack
-                          : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF56E0C6),
-                    foregroundColor: Colors.black87,
-                    disabledBackgroundColor: Colors.grey.withValues(alpha: 0.3),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    '공격',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
+                );
+              },
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '전체 생각 ${_skillsList.length}개 · 진행 ${_shrunkChips.length}/${_maxHp} · 남은 생각 ${_targetHp}개',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
