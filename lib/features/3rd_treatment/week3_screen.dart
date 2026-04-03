@@ -1,13 +1,13 @@
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/session_start.dart';
-import 'package:gad_app_team/features/3rd_treatment/week3_belief_screen.dart';
 // week3_screen.dart
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:provider/provider.dart';
+import 'package:gad_app_team/features/3rd_treatment/week3_classification_screen.dart';
 
 class Week3Screen extends StatefulWidget {
   final String? sessionId;
@@ -96,8 +96,8 @@ class _Week3ScreenState extends State<Week3Screen> {
       weekNumber: 3,
       weekTitle: '불안에 도움이 되는 생각을\n알아보겠습니다.',
       weekDescription:
-          '이번 주차에서는 어떤 생각이 불안에 도움 되는지를 배워보겠습니다. 성인 여성의 상황을 예시로 살펴볼게요.',
-      nextPageBuilder: () => Week3BeliefScreen(sessionId: _sessionId),
+          '이번 주차에서는 어떤 생각이 불안에 도움 되는지를 배우고, 내 생각을 도움이 되는 방향으로 바꿔보겠습니다.',
+      nextPageBuilder: () => Week3ClassificationScreen(sessionId: _sessionId),
     );
   }
 }

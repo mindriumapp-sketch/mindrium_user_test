@@ -6,7 +6,7 @@ import 'package:gad_app_team/widgets/location_picker_map.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 
 class MindriumPopupDesign extends StatefulWidget {
-  static const double defaultSheetInitialSize = 0.35;
+  static const double defaultSheetInitialSize = 0.45;
   final TextEditingController? searchController;
   final LocationPickerMapController? mapController;
   final VoidCallback? onMapReady;
@@ -525,43 +525,59 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                 ),
               ],
             ),
-            child: ListView(
-              controller: scrollController,
-              padding: EdgeInsets.fromLTRB(
-                16,
-                10,
-                16,
-                MediaQuery.of(context).padding.bottom + 12,
-              ),
+            child: Column(
               children: [
-                _buildDragHandle(),
-                const SizedBox(height: 10),
-                Text(
-                  _sheetTitleText,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF3A4760),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                    children: [
+                      _buildDragHandle(),
+                      const SizedBox(height: 10),
+                      Text(
+                        _sheetTitleText,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF3A4760),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLocationCard(
+                        _hasLocationText,
+                        _resolvedLocationText,
+                      ),
+                      if (widget.showLocationLabelInput &&
+                          widget.locationLabelController != null) ...[
+                        const SizedBox(height: 10),
+                        _buildLocationLabelCard(),
+                      ],
+                      if (widget.showTimePicker) ...[
+                        const SizedBox(height: 10),
+                        _buildTimeCard(timeText),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                _buildLocationCard(_hasLocationText, _resolvedLocationText),
-                if (widget.showLocationLabelInput &&
-                    widget.locationLabelController != null) ...[
-                  const SizedBox(height: 10),
-                  _buildLocationLabelCard(),
-                ],
-                if (widget.showTimePicker) ...[
-                  const SizedBox(height: 10),
-                  _buildTimeCard(timeText),
-                ],
-                const SizedBox(height: 12),
-                NavigationButtons(
-                  leftLabel: '이전',
-                  rightLabel: '저장',
-                  onBack: widget.onBack ?? () => Navigator.pop(context),
-                  onNext: widget.onNext ?? () {},
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7FAFF).withValues(alpha: 0.99),
+                    border: Border(
+                      top: BorderSide(
+                        color: const Color(0xFFD8E3F0).withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: NavigationButtons(
+                      leftLabel: '이전',
+                      rightLabel: '저장',
+                      onBack: widget.onBack ?? () => Navigator.pop(context),
+                      onNext: widget.onNext ?? () {},
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -1051,7 +1051,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final iconTop = task.isSequenceTask ? 8.0 : 4.0;
     final connectorSplit = taskHeight / 2;
     final imagePath =
-        isDone ? 'assets/image/finish.png' : 'assets/image/progressing.png';
+        'assets/image/finish.png';
     final bgColor =
         isDone
             ? const Color(0xFFFFE5E9)
