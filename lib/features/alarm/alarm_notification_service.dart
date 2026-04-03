@@ -738,7 +738,7 @@ class AlarmNotificationService {
 
   Future<bool> isTodayTaskReminderEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(todayTaskReminderPreferenceKey) ?? false;
+    return prefs.getBool(todayTaskReminderPreferenceKey) ?? true;
   }
 
   Future<void> setEducationReminderEnabled(
