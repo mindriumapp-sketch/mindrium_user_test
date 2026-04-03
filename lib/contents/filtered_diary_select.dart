@@ -29,6 +29,7 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
   bool _didLoad = false;
   String? _groupId;
   List<Map<String, dynamic>> _docs = const [];
+  String? _expandedDiaryId;
   bool _isLoading = true;
   bool _isRefiningOrder = false;
   String? _error;
@@ -64,27 +65,19 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
       final label = raw['label']?.toString().trim();
       return label == null || label.isEmpty ? const [] : [label];
     }
+    if (raw is String) {
+      return raw
+          .split(',')
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
     return const [];
   }
 
   String _buildBelief(dynamic raw) {
     final labels = _chipLabels(raw);
     return labels.join(', ');
-  }
-
-  String _buildConsequence(Map<String, dynamic> diary) {
-    final pieces = <String>[];
-
-    for (final key in [
-      'consequence_physical',
-      'consequence_emotion',
-      'consequence_action',
-    ]) {
-      final labels = _chipLabels(diary[key]);
-      pieces.addAll(labels);
-    }
-
-    return pieces.join(', ');
   }
 
   String _buildActivationTitle(dynamic activationRaw) {
@@ -165,6 +158,29 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
     if (raw is DateTime) return raw;
     if (raw is String) return DateTime.tryParse(raw);
     return null;
+  }
+
+  String _buildCreatedAtLabel(Map<String, dynamic> diary) {
+    final date = _resolveCreatedAt(diary);
+    if (date == null) return '작성일 정보 없음';
+    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} '
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  List<String> _buildPhysicalItems(Map<String, dynamic> diary) {
+    return _chipLabels(diary['consequence_physical'] ?? diary['consequence_p']);
+  }
+
+  List<String> _buildEmotionItems(Map<String, dynamic> diary) {
+    return _chipLabels(diary['consequence_emotion'] ?? diary['consequence_e']);
+  }
+
+  List<String> _buildBehaviorItems(Map<String, dynamic> diary) {
+    return _chipLabels(
+      diary['consequence_action'] ??
+          diary['consequence_behavior'] ??
+          diary['consequence_b'],
+    );
   }
 
   Future<Position?> _tryGetCurrentPosition() async {
@@ -486,15 +502,24 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
             error: _error,
             groupId: _groupId,
             selectedId: selectedId,
+            expandedDiaryId: _expandedDiaryId,
             buildTitle: _buildActivationTitle,
             buildBelief: _buildBelief,
-            buildConsequence: _buildConsequence,
+            buildDateLabel: _buildCreatedAtLabel,
+            buildPhysicalItems: _buildPhysicalItems,
+            buildEmotionItems: _buildEmotionItems,
+            buildBehaviorItems: _buildBehaviorItems,
             onSelectDiary: (diaryId) {
               setState(() {
                 _selectedIds.clear();
                 if (diaryId.isNotEmpty) {
                   _selectedIds.add(diaryId);
                 }
+              });
+            },
+            onExpandDiary: (diaryId) {
+              setState(() {
+                _expandedDiaryId = _expandedDiaryId == diaryId ? null : diaryId;
               });
             },
           ),
@@ -524,10 +549,15 @@ class _DiarySelectBody extends StatelessWidget {
     required this.error,
     required this.groupId,
     required this.selectedId,
+    required this.expandedDiaryId,
     required this.buildTitle,
     required this.buildBelief,
-    required this.buildConsequence,
+    required this.buildDateLabel,
+    required this.buildPhysicalItems,
+    required this.buildEmotionItems,
+    required this.buildBehaviorItems,
     required this.onSelectDiary,
+    required this.onExpandDiary,
   });
 
   final List<Map<String, dynamic>> docs;
@@ -536,10 +566,15 @@ class _DiarySelectBody extends StatelessWidget {
   final String? error;
   final String? groupId;
   final String? selectedId;
+  final String? expandedDiaryId;
   final String Function(dynamic activationRaw) buildTitle;
   final String Function(dynamic raw) buildBelief;
-  final String Function(Map<String, dynamic> diary) buildConsequence;
+  final String Function(Map<String, dynamic> diary) buildDateLabel;
+  final List<String> Function(Map<String, dynamic> diary) buildPhysicalItems;
+  final List<String> Function(Map<String, dynamic> diary) buildEmotionItems;
+  final List<String> Function(Map<String, dynamic> diary) buildBehaviorItems;
   final ValueChanged<String> onSelectDiary;
+  final ValueChanged<String> onExpandDiary;
 
   @override
   Widget build(BuildContext context) {
@@ -577,25 +612,80 @@ class _DiarySelectBody extends StatelessWidget {
       );
     }
 
-    return Stack(
-      children: [
-        ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 100, 20, 120),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final diary = docs[index];
-            final diaryId = diary['diary_id']?.toString() ?? '';
-            return _DiaryOptionCard(
-              title: buildTitle(diary['activation']),
-              belief: buildBelief(diary['belief']),
-              consequence: buildConsequence(diary),
-              selected: selectedId == diaryId,
-              onTap: () => onSelectDiary(diaryId),
+    final selectedDiary =
+        selectedId == null
+            ? null
+            : docs.cast<Map<String, dynamic>?>().firstWhere(
+              (doc) =>
+                  (doc?['diary_id'] ?? doc?['diaryId'] ?? doc?['id'])
+                      ?.toString() ==
+                  selectedId,
+              orElse: () => null,
             );
-          },
-        ),
-        if (isRefiningOrder) const _DiaryOrderRefiningBanner(),
-      ],
+
+    return SafeArea(
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SelectionHeaderCard(
+                  title: '걱정 일기 선택',
+                  subtitle: '카드를 탭하면 선택되고, 오른쪽 화살표를 누르면 세부 내용을 펼쳐볼 수 있어요.',
+                ),
+                if (selectedDiary != null) ...[
+                  const SizedBox(height: 14),
+                  _SelectedDiaryNoticeCard(
+                    title: buildTitle(
+                      selectedDiary['activation'] ??
+                          selectedDiary['activating_events'] ??
+                          selectedDiary['activatingEvent'],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: docs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  itemBuilder: (context, index) {
+                    final diary = docs[index];
+                    final diaryId =
+                        (diary['diary_id'] ?? diary['diaryId'] ?? diary['id'])
+                            ?.toString() ??
+                        '';
+                    return _DiaryOptionCard(
+                      title: buildTitle(
+                        diary['activation'] ??
+                            diary['activating_events'] ??
+                            diary['activatingEvent'],
+                      ),
+                      dateLabel: buildDateLabel(diary),
+                      beliefItems:
+                          buildBelief(diary['belief'])
+                              .split(',')
+                              .map((item) => item.trim())
+                              .where((item) => item.isNotEmpty)
+                              .toList(),
+                      physicalItems: buildPhysicalItems(diary),
+                      emotionItems: buildEmotionItems(diary),
+                      behaviorItems: buildBehaviorItems(diary),
+                      selected: selectedId == diaryId,
+                      expanded: expandedDiaryId == diaryId,
+                      onTap: () => onSelectDiary(diaryId),
+                      onExpandTap: () => onExpandDiary(diaryId),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          if (isRefiningOrder) const _DiaryOrderRefiningBanner(),
+        ],
+      ),
     );
   }
 }
@@ -603,104 +693,384 @@ class _DiarySelectBody extends StatelessWidget {
 class _DiaryOptionCard extends StatelessWidget {
   const _DiaryOptionCard({
     required this.title,
-    required this.belief,
-    required this.consequence,
+    required this.dateLabel,
+    required this.beliefItems,
+    required this.physicalItems,
+    required this.emotionItems,
+    required this.behaviorItems,
     required this.selected,
+    required this.expanded,
     required this.onTap,
+    required this.onExpandTap,
   });
 
   final String title;
-  final String belief;
-  final String consequence;
+  final String dateLabel;
+  final List<String> beliefItems;
+  final List<String> physicalItems;
+  final List<String> emotionItems;
+  final List<String> behaviorItems;
   final bool selected;
+  final bool expanded;
   final VoidCallback onTap;
+  final VoidCallback onExpandTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(18),
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color:
+              selected || expanded
+                  ? const Color(0xFF5B9FD3)
+                  : const Color(0xFFE3F2FD),
+          width: selected ? 2.2 : 1.4,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color:
+                selected
+                    ? const Color(0xFF5B9FD3).withValues(alpha: 0.20)
+                    : Colors.black.withValues(alpha: 0.07),
+            blurRadius: selected ? 18 : 12,
+            offset: Offset(0, selected ? 8 : 5),
           ),
         ],
-        border: Border.all(
-          color: selected ? const Color(0xFF47A6FF) : Colors.transparent,
-          width: 2,
-        ),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                margin: const EdgeInsets.only(top: 4, right: 12),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color:
-                        selected
-                            ? const Color(0xFF47A6FF)
-                            : Colors.grey.shade400,
-                    width: 2,
-                  ),
-                  color: selected ? const Color(0xFF47A6FF) : Colors.white,
-                ),
-                child:
-                    selected
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
-                        : null,
-              ),
-              Expanded(
-                child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '상황: $title',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Noto Sans KR',
-                        color: Colors.black87,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (selected) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF5B9FD3),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Text(
+                                '선택됨',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0E2C48),
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                size: 15,
+                                color: Color(0xFF5B9FD3),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  dateLabel,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    color: Color(0xFF5B9FD3),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    if (belief.isNotEmpty)
-                      Text(
-                        '생각: $belief',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                          fontFamily: 'Noto Sans KR',
-                        ),
+                    IconButton(
+                      onPressed: onExpandTap,
+                      splashRadius: 20,
+                      icon: Icon(
+                        expanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: const Color(0xFF5B9FD3),
+                        size: 32,
                       ),
-                    if (consequence.isNotEmpty)
-                      Text(
-                        '결과: $consequence',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                          fontFamily: 'Noto Sans KR',
-                        ),
-                      ),
+                    ),
                   ],
+                ),
+                AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 220),
+                  crossFadeState:
+                      expanded
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 18),
+                      const Divider(color: Color(0xFFE3F2FD), height: 1),
+                      const SizedBox(height: 18),
+                      _DiaryDetailSection(
+                        title: '믿음',
+                        icon: Icons.psychology_alt_outlined,
+                        items: beliefItems,
+                      ),
+                      const SizedBox(height: 18),
+                      _DiaryDetailSection(
+                        title: '신체 반응',
+                        icon: Icons.favorite_border_rounded,
+                        items: physicalItems,
+                      ),
+                      const SizedBox(height: 18),
+                      _DiaryDetailSection(
+                        title: '감정',
+                        icon: Icons.mood_outlined,
+                        items: emotionItems,
+                      ),
+                      const SizedBox(height: 18),
+                      _DiaryDetailSection(
+                        title: '행동',
+                        icon: Icons.directions_run_rounded,
+                        items: behaviorItems,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1B405C),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF5F6F82),
+                  height: 1.4,
                 ),
               ),
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _SelectionHeaderCard extends StatelessWidget {
+  const _SelectionHeaderCard({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFD7E8F7), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
+      child: _SectionHeader(title: title, subtitle: subtitle),
+    );
+  }
+}
+
+class _SelectedDiaryNoticeCard extends StatelessWidget {
+  const _SelectedDiaryNoticeCard({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF4FF),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFB9D8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5B9FD3).withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            color: Color(0xFF2E7DB2),
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '선택한 일기: $title',
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1B405C),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiaryDetailSection extends StatelessWidget {
+  const _DiaryDetailSection({
+    required this.title,
+    required this.icon,
+    required this.items,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = items.where((item) => item.trim().isNotEmpty).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 22, color: const Color(0xFF5B9FD3)),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0E2C48),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children:
+              visibleItems.isEmpty
+                  ? [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FBFF),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFD6E2FF)),
+                      ),
+                      child: const Text(
+                        '기록 없음',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF91A1B5),
+                        ),
+                      ),
+                    ),
+                  ]
+                  : visibleItems
+                      .map(
+                        (item) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5FAFF),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: const Color(0xFFD6E2FF)),
+                          ),
+                          child: Text(
+                            item,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF496AC6),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+        ),
+      ],
     );
   }
 }
