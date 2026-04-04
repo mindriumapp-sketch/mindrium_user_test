@@ -700,6 +700,213 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     navigator.pushNamedAndRemoveUntil('/home', (_) => false);
   }
 
+  void _showWorryGroupHelpDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        final maxDialogHeight = MediaQuery.of(dialogContext).size.height * 0.78;
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFFAFDFF), Color(0xFFFFFFFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.all(Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x1A5B9FD3),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxDialogHeight),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F4FF),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.help_outline_rounded,
+                            color: Color(0xFF5B9FD3),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            '걱정 그룹이란?',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0E2C48),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF6B7A89),
+                          ),
+                          splashRadius: 20,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FBFF),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFD8EBFA),
+                          width: 1.4,
+                        ),
+                      ),
+                      child: const Text(
+                        '걱정 그룹은 비슷한 걱정들을 한곳에 모아 관리하는 묶음이에요.\n'
+                        '예를 들면 "시험 걱정", "친구 관계 걱정", "건강 걱정"처럼 주제별로 나눌 수 있어요.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.55,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF35546F),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildHelpSection(
+                      icon: Icons.lightbulb_outline_rounded,
+                      title: '이렇게 생각하면 쉬워요',
+                      body:
+                          '비슷한 상황에서 반복되는 걱정이라면 같은 그룹으로 묶어보세요. '
+                          '주제가 다르거나 감정이 다르게 느껴지면 새 그룹으로 나누는 것이 좋아요.',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildHelpSection(
+                      icon: Icons.check_circle_outline_rounded,
+                      title: '이 화면에서 하는 일',
+                      body:
+                          '기존 그룹을 선택해 이어서 기록하거나, 왼쪽의 추가 버튼으로 새로운 걱정 그룹을 만들 수 있어요.',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildHelpSection(
+                      icon: Icons.tips_and_updates_outlined,
+                      title: '그룹 이름 팁',
+                      body:
+                          '나중에 다시 봐도 바로 이해되는 이름이 좋아요. '
+                          '예: "발표 전 긴장", "친구와의 오해", "건강 검사 결과 걱정"',
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF5B9FD3),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          '확인',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHelpSection({
+    required IconData icon,
+    required String title,
+    required String body,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(235),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE3F2FD)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF5FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: const Color(0xFF5B9FD3), size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0E2C48),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF4A6174),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
@@ -716,6 +923,8 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         appBar: CustomAppBar(
           title: '걱정 그룹 - 추가하기',
           onBack: _handleBackNavigation,
+          extraIcon: Icons.help_outline_rounded,
+          onExtraPressed: _showWorryGroupHelpDialog,
         ),
         body: Stack(
           fit: StackFit.expand,

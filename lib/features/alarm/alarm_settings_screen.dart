@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart'
 import 'package:uuid/uuid.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/map_picker.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
@@ -18,22 +17,194 @@ import 'alarm_settings_sync_helper.dart';
 Future<void> _showAlarmGuideDialog(BuildContext context) {
   return showDialog<void>(
     context: context,
-    barrierDismissible: false,
-    builder:
-        (dialogContext) => CustomPopupDesign(
-          title: '알림 설정 도움말',
-          message:
-              '1) 오른쪽 아래 [알림 추가] 버튼으로 새 알림을 만들 수 있어요.\n'
-              '2) 목록 카드를 누르면 알림 이름/시간/반복 요일을 수정할 수 있고, 요일은 최소 1개 이상 선택해야 저장됩니다.\n'
-              '3) 목록의 스위치로 알림을 바로 켜고 끌 수 있어요.\n'
-              '4) 위치 기반 알림을 켜면 지도에서 위치를 선택하고, 설정한 시간에 그 위치에 있으면 알림이 울립니다.\n'
-              '5) 목록 카드에서 왼쪽으로 밀거나 수정 화면의 [알림 삭제]로 삭제할 수 있어요.',
-          positiveText: '확인',
-          negativeText: null,
-          backgroundAsset: null,
-          iconAsset: null,
-          onPositivePressed: () => Navigator.pop(dialogContext),
+    barrierDismissible: true,
+    builder: (dialogContext) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFAFDFF), Color(0xFFFFFFFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.all(Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x1A5B9FD3),
+                blurRadius: 20,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F4FF),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.help_outline_rounded,
+                      color: Color(0xFF5B9FD3),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      '알림 도움말',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0E2C48),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFF6B7A89),
+                    ),
+                    splashRadius: 20,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FBFF),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: const Color(0xFFD8EBFA),
+                    width: 1.2,
+                  ),
+                ),
+                child: const Text(
+                  '알림은 만들기, 수정, 켜기/끄기, 삭제를 한곳에서 관리할 수 있어요.',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF35546F),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildAlarmGuideSection(
+                icon: Icons.add_alert_rounded,
+                title: '추가/수정',
+                body: '오른쪽 아래 버튼으로 추가하고, 목록 카드를 눌러 시간과 이름, 요일을 바꿀 수 있어요.',
+              ),
+              const SizedBox(height: 10),
+              _buildAlarmGuideSection(
+                icon: Icons.toggle_on_outlined,
+                title: '켜기/끄기',
+                body: '목록의 스위치로 알림을 바로 켜고 끌 수 있어요.',
+              ),
+              const SizedBox(height: 10),
+              _buildAlarmGuideSection(
+                icon: Icons.location_on_outlined,
+                title: '위치 기반',
+                body: '위치를 선택해 두면, 설정한 시간에 그 위치에 있을 때 알림이 울려요.',
+              ),
+              const SizedBox(height: 10),
+              _buildAlarmGuideSection(
+                icon: Icons.delete_outline_rounded,
+                title: '삭제',
+                body: '카드를 왼쪽으로 밀거나 수정 화면에서 삭제할 수 있어요.',
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5B9FD3),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    '확인',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+      );
+    },
+  );
+}
+
+Widget _buildAlarmGuideSection({
+  required IconData icon,
+  required String title,
+  required String body,
+}) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white.withAlpha(235),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE3F2FD)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF5FF),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, color: const Color(0xFF5B9FD3), size: 17),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0E2C48),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                body,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  height: 1.42,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A6174),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 
