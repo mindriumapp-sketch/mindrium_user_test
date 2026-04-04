@@ -45,10 +45,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     'mindrium/widget_launch_events',
   );
   static const String _week2LockedMessage = '2주차 교육 완료 후 이용할 수 있어요.';
-  static const String _alarmCardEnabledTitle = '알림 설정';
-  static const String _alarmCardDisabledTitle = '알림 설정 (잠금)';
+  static const String _alarmCardEnabledTitle = '불안 완화 알림';
+  static const String _alarmCardDisabledTitle = '불안 완화 알림 (잠금)';
   static const String _alarmCardEnabledDescription =
-      '규칙적인 루틴을 위해 알림 시간을 설정해 보세요.';
+      '불안을 자주 느끼는 시간/위치에 알림을 설정해 보세요.';
   static const String _alarmCardDisabledDescription = _week2LockedMessage;
   static const Color _alarmCardBaseColor = Color(0xFFE4F3FF);
 
