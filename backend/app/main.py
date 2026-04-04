@@ -1,6 +1,5 @@
 # backend/app/main.py
 import asyncio
-import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,7 +20,6 @@ from routers.schedule_events import router as schedule_events_router
 from routers.edu_sessions import router as edu_sessions_router
 from routers.worry_groups import router as worry_groups_router
 from routers.alarm_settings import router as alarm_settings_router
-from routers.notification_locations import router as notification_locations_router
 
 settings = get_settings()
 
@@ -175,106 +173,6 @@ async def lifespan(app: FastAPI):
         print("✅ notification_settings 인덱스 생성 완료")
     except Exception as e:
         print(f"⚠️ notification_settings 인덱스 생성 중 오류: {e}")
-
-    # ---------- location_label 컬렉션 ----------
-    try:
-        legacy_notification_locations = "notification_locations"
-        location_label_collection = "location_label"
-        existing_collections = await db.list_collection_names()
-        if (
-            legacy_notification_locations in existing_collections
-            and location_label_collection not in existing_collections
-        ):
-            await db[legacy_notification_locations].rename(location_label_collection)
-            print("✅ notification_locations -> location_label 컬렉션 이름 변경 완료")
-
-        notification_locations = db[location_label_collection]
-
-        # 이전 스키마 인덱스 정리
-        for legacy_index_name in (
-            "unique_notification_locations_source_ref",
-            "idx_notification_locations_label_recent",
-            "idx_notification_locations_user_updated_desc",
-            "unique_location_label_user_alarm",
-            "unique_location_label_user_diary",
-            "idx_location_label_label_recent",
-            "unique_location_label_user_label_ci",
-        ):
-            try:
-                await notification_locations.drop_index(legacy_index_name)
-            except Exception:
-                pass
-
-        # 알림/일기 연동으로 저장되던 문서는 정리
-        await notification_locations.delete_many(
-            {
-                "$or": [
-                    {"label": {"$exists": False}},
-                    {"label": None},
-                    {"label": ""},
-                    {"alarm_id": {"$exists": True}},
-                    {"diary_id": {"$exists": True}},
-                ]
-            },
-        )
-
-        # 라벨 포맷 정규화 + 사용자 내 중복 제거
-        seen = set()
-        duplicate_ids = []
-        async for doc in notification_locations.find(
-            {"label": {"$exists": True, "$type": "string"}},
-            {"_id": 1, "user_id": 1, "label": 1},
-        ).sort([("updated_at", -1), ("_id", -1)]):
-            doc_id = doc.get("_id")
-            user_id = str(doc.get("user_id") or "").strip()
-            label = re.sub(r"\s+", " ", str(doc.get("label") or "").strip())
-            if not doc_id or not user_id or not label:
-                if doc_id:
-                    duplicate_ids.append(doc_id)
-                continue
-
-            normalized = label.lower()
-            dedupe_key = f"{user_id}::{normalized}"
-            if dedupe_key in seen:
-                duplicate_ids.append(doc_id)
-                continue
-
-            seen.add(dedupe_key)
-            await notification_locations.update_one(
-                {"_id": doc_id},
-                {
-                    "$set": {"label": label},
-                    "$unset": {
-                        "source": "",
-                        "source_ref_id": "",
-                        "label_key": "",
-                        "address": "",
-                        "alarm_id": "",
-                        "diary_id": "",
-                        "latitude": "",
-                        "longitude": "",
-                    },
-                },
-            )
-
-        if duplicate_ids:
-            await notification_locations.delete_many({"_id": {"$in": duplicate_ids}})
-
-        await notification_locations.create_index(
-            [("user_id", 1), ("label", 1)],
-            unique=True,
-            name="unique_location_label_user_label_ci",
-            collation={"locale": "ko", "strength": 2},
-        )
-
-        await notification_locations.create_index(
-            [("user_id", 1), ("updated_at", -1)],
-            name="idx_location_label_user_updated_desc",
-        )
-
-        print("✅ location_label 인덱스 생성 완료")
-    except Exception as e:
-        print(f"⚠️ location_label 인덱스 생성 중 오류: {e}")
 
     # ---------- sud_scores 컬렉션 ----------
     # 현재 운영에서는 SUD를 diaries.sud_scores(embedded)로만 사용.
@@ -433,4 +331,3 @@ app.include_router(edu_sessions_router)
 app.include_router(custom_tags_router)
 app.include_router(worry_groups_router)
 app.include_router(alarm_settings_router)
-app.include_router(notification_locations_router)

@@ -13,7 +13,6 @@ DraftProgressValue = Literal[0, 20, 25, 40, 50, 60, 75, 80, 100]
 class LocTimeBase(BaseModel):
     time: Optional[str] = None
     location: Optional[str] = None
-    location_label: Optional[str] = None
     location_desc: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -26,7 +25,6 @@ class LocTimeCreate(LocTimeBase):
 class LocTimeUpdate(BaseModel):
     time: Optional[str] = None
     location: Optional[str] = None
-    location_label: Optional[str] = None
     location_desc: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None

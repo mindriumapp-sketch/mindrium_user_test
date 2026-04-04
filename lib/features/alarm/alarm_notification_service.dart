@@ -33,7 +33,7 @@ class AlarmSetting {
   final bool locationEnabled;
   final double? latitude;
   final double? longitude;
-  final String? locationLabel;
+  final String? location;
   final String? locationAddress;
   final int locationRadiusMeters;
   final bool notifyOnEnter;
@@ -50,7 +50,7 @@ class AlarmSetting {
     this.locationEnabled = false,
     this.latitude,
     this.longitude,
-    this.locationLabel,
+    this.location,
     this.locationAddress,
     this.locationRadiusMeters = 100,
     this.notifyOnEnter = true,
@@ -68,7 +68,7 @@ class AlarmSetting {
     bool? locationEnabled,
     double? latitude,
     double? longitude,
-    String? locationLabel,
+    String? location,
     String? locationAddress,
     int? locationRadiusMeters,
     bool? notifyOnEnter,
@@ -85,7 +85,7 @@ class AlarmSetting {
       locationEnabled: locationEnabled ?? this.locationEnabled,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
-      locationLabel: locationLabel ?? this.locationLabel,
+      location: location ?? this.location,
       locationAddress: locationAddress ?? this.locationAddress,
       locationRadiusMeters: locationRadiusMeters ?? this.locationRadiusMeters,
       notifyOnEnter: notifyOnEnter ?? this.notifyOnEnter,
@@ -113,8 +113,8 @@ class AlarmSetting {
       payload['location'] = {
         'latitude': latitude,
         'longitude': longitude,
-        if (locationLabel != null && locationLabel!.trim().isNotEmpty)
-          'label': locationLabel!.trim(),
+        if (location != null && location!.trim().isNotEmpty)
+          'location': location!.trim(),
         if (locationAddress != null && locationAddress!.trim().isNotEmpty)
           'address': locationAddress!.trim(),
         'radius_meters': locationRadiusMeters,
@@ -155,6 +155,8 @@ class AlarmSetting {
     final hasLocationObject = locationRaw is Map;
     final latitude = _readDouble(location['latitude'] ?? json['latitude']);
     final longitude = _readDouble(location['longitude'] ?? json['longitude']);
+    final legacyLocationValue =
+        locationRaw is String ? locationRaw.toString() : null;
     final locationEnabled =
         (hasLocationObject ||
             _readBool(json['location_enabled'], fallback: false)) &&
@@ -185,8 +187,14 @@ class AlarmSetting {
       locationEnabled: locationEnabled,
       latitude: latitude,
       longitude: longitude,
-      locationLabel:
-          location['label']?.toString() ?? json['location_label']?.toString(),
+      location:
+          location['location']?.toString() ??
+          location['label']?.toString() ??
+          legacyLocationValue ??
+          ((json['location'] is String)
+              ? json['location']?.toString()
+              : null) ??
+          json['location_label']?.toString(),
       locationAddress:
           location['address']?.toString() ??
           json['location_address']?.toString(),
@@ -1126,8 +1134,8 @@ class AlarmNotificationService {
 
     final title = alarm.label;
     final locationText =
-        (alarm.locationLabel?.trim().isNotEmpty ?? false)
-            ? alarm.locationLabel!.trim()
+        (alarm.location?.trim().isNotEmpty ?? false)
+            ? alarm.location!.trim()
             : '설정한 위치';
     final body =
         isEnter ? '$locationText 근처에 도착했어요.' : '$locationText 영역을 벗어났어요.';

@@ -192,12 +192,12 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
 
   String _locationDetailText(AlarmSetting alarm) {
     if (!alarm.locationEnabled) return '';
-    final label = alarm.locationLabel?.trim();
+    final location = alarm.location?.trim();
     final address = alarm.locationAddress?.trim();
-    if ((label?.isNotEmpty ?? false) && (address?.isNotEmpty ?? false)) {
-      return '$label, $address';
+    if ((location?.isNotEmpty ?? false) && (address?.isNotEmpty ?? false)) {
+      return '$location, $address';
     }
-    if (label?.isNotEmpty ?? false) return label!;
+    if (location?.isNotEmpty ?? false) return location!;
     if (address?.isNotEmpty ?? false) return address!;
     return '위치 알림 사용';
   }
@@ -468,7 +468,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
   List<int> _weekdays = const [1, 2, 3, 4, 5, 6, 7];
   double? _latitude;
   double? _longitude;
-  String? _locationLabel;
+  String? _location;
   String? _locationAddress;
   DateTime _pickerTime = DateTime(2000, 1, 1, 9, 0);
   final TextEditingController _labelController = TextEditingController();
@@ -493,7 +493,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
     _weekdays = widget.initialAlarm.weekdays.toSet().toList()..sort();
     _latitude = widget.initialAlarm.latitude;
     _longitude = widget.initialAlarm.longitude;
-    _locationLabel = widget.initialAlarm.locationLabel;
+    _location = widget.initialAlarm.location;
     _locationAddress = widget.initialAlarm.locationAddress;
     _pickerTime = DateTime(2000, 1, 1, _hour, _minute);
     _labelController.text = widget.initialAlarm.label;
@@ -546,7 +546,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
               initial: initial,
               initialTime: TimeOfDay(hour: _hour, minute: _minute),
               enableLocationLabel: true,
-              initialLocationLabel: _locationLabel,
+              initialLocationLabel: _location,
               showSavedMarkers: false,
               enableTimeSelection: false,
             ),
@@ -558,7 +558,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
     setState(() {
       _latitude = selected.latitude;
       _longitude = selected.longitude;
-      _locationLabel = selected.location ?? selected.description;
+      _location = selected.location ?? selected.description;
       _locationAddress = selected.description;
       _locationEnabled = true;
       if (!_notifyOnEnter && !_notifyOnExit) {
@@ -599,7 +599,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
           locationEnabled: _locationEnabled,
           latitude: _latitude,
           longitude: _longitude,
-          locationLabel: _locationLabel,
+          location: _location,
           locationAddress: _locationAddress,
           locationRadiusMeters: _locationRadiusMeters,
           notifyOnEnter: _notifyOnEnter,
@@ -657,11 +657,11 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
   Widget build(BuildContext context) {
     const labels = ['월', '화', '수', '목', '금', '토', '일'];
     final hasLocation = _isValidCoordinatePair(_latitude, _longitude);
-    final locationLabelText = _locationLabel?.trim() ?? '';
+    final locationText = _location?.trim() ?? '';
     final locationAddressText = _locationAddress?.trim() ?? '';
     final resolvedLocationLabel =
-        locationLabelText.isNotEmpty
-            ? locationLabelText
+        locationText.isNotEmpty
+            ? locationText
             : (hasLocation ? '선택한 위치' : '위치를 선택해주세요.');
 
     return Scaffold(
@@ -924,7 +924,9 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                           final selected = _weekdays.contains(day);
                           return Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
                               child: FilterChip(
                                 label: Center(child: Text(labels[index])),
                                 selected: selected,

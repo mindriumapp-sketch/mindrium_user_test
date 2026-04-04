@@ -235,8 +235,11 @@ def _serialize_loc_time(doc: dict) -> dict:
     return {
         "id": doc.get("id") or doc.get("alarm_id"),
         "time": doc.get("time", ""),
-        "location": doc.get("location") or doc.get("location_desc"),
-        "location_label": doc.get("location_label"),
+        "location": (
+            doc.get("location")
+            or doc.get("location_label")
+            or doc.get("location_desc")
+        ),
         "location_desc": doc.get("location_desc"),
         "latitude": doc.get("latitude"),
         "longitude": doc.get("longitude"),
@@ -256,11 +259,7 @@ def _normalize_single_loc_time(value: Any, now_utc: datetime) -> Optional[dict]:
     loc_time_id = doc.get("id") or doc.get("alarm_id") or f"loc_time_{uuid.uuid4().hex[:6]}"
     time_value = doc.get("time")
     location_desc = doc.get("location_desc") or doc.get("description")
-    location_value = doc.get("location") or location_desc
-    location_label = doc.get("location_label")
-    if location_label is None and location_value is not None and location_desc is not None:
-        if str(location_value) != str(location_desc):
-            location_label = location_value
+    location_value = doc.get("location") or doc.get("location_label") or location_desc
     latitude = _read_float(doc.get("latitude"))
     longitude = _read_float(doc.get("longitude"))
 
@@ -268,7 +267,6 @@ def _normalize_single_loc_time(value: Any, now_utc: datetime) -> Optional[dict]:
         "id": str(loc_time_id),
         "time": time_value,
         "location": location_value,
-        "location_label": location_label,
         "location_desc": location_desc,
         "latitude": latitude,
         "longitude": longitude,
@@ -786,10 +784,9 @@ async def upsert_loc_time(
     loc_time_doc = {
         "id": (current.get("id") if current else None) or f"loc_time_{uuid.uuid4().hex[:6]}",
         "time": update_data.get("time", current.get("time") if current else None),
-        "location": update_data.get("location", current.get("location") if current else None),
-        "location_label": update_data.get(
-            "location_label",
-            current.get("location_label") if current else None,
+        "location": update_data.get(
+            "location",
+            current.get("location") if current else None,
         ),
         "location_desc": update_data.get(
             "location_desc",

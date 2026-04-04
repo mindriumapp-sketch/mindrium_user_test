@@ -7,11 +7,9 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/kakao_local_api.dart';
-import 'package:gad_app_team/data/api/notification_locations_api.dart';
 import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/location_picker_map.dart';
 import 'package:gad_app_team/widgets/map_picker_design.dart';
 
@@ -66,24 +64,17 @@ class _MapPickerState extends State<MapPicker> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _locationLabelController =
       TextEditingController();
-  final TextEditingController _addLocationLabelController =
-      TextEditingController();
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
   late final ScheduleEventsApi _scheduleEventsApi = ScheduleEventsApi(
     _apiClient,
   );
-  late final NotificationLocationsApi _notificationLocationsApi =
-      NotificationLocationsApi(_apiClient);
   late final KakaoLocalApi _kakaoLocalApi = KakaoLocalApi();
 
   LatLng? _picked;
   LatLng? _current;
   List<LatLng> _savedMarkers = [];
   String? _addr;
-  List<String> _locationLabelChips = const [];
-  bool _isLoadingLocationLabels = false;
-  bool _isAddLabelDialogOpen = false;
   bool _isMapReady = false;
   LatLng? _pendingMapCenter;
   double _pendingMapZoom = _kInitialZoom;
@@ -96,6 +87,7 @@ class _MapPickerState extends State<MapPicker> {
   void initState() {
     super.initState();
     _selectedTime = widget.initialTime ?? TimeOfDay.now();
+    _locationLabelController.addListener(_handleLocationLabelChanged);
     _setLocationLabelText(widget.initialLocationLabel?.trim() ?? '');
     _initializeSelectionState();
     unawaited(_determinePosition());
@@ -105,8 +97,8 @@ class _MapPickerState extends State<MapPicker> {
   @override
   void dispose() {
     _searchController.dispose();
+    _locationLabelController.removeListener(_handleLocationLabelChanged);
     _locationLabelController.dispose();
-    _addLocationLabelController.dispose();
     _kakaoLocalApi.close();
     super.dispose();
   }
@@ -149,6 +141,11 @@ class _MapPickerState extends State<MapPicker> {
     return null;
   }
 
+  bool get _hasRequiredLocationLabel {
+    if (!widget.enableLocationLabel) return true;
+    return _locationLabelController.text.trim().isNotEmpty;
+  }
+
   void _applyState(VoidCallback update) {
     if (mounted) {
       setState(update);
@@ -164,8 +161,9 @@ class _MapPickerState extends State<MapPicker> {
     );
   }
 
-  String _normalizeLocationLabel(String value) {
-    return value.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+  void _handleLocationLabelChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _initializeSelectionState() {
@@ -196,9 +194,6 @@ class _MapPickerState extends State<MapPicker> {
     if (!mounted) return;
     if (widget.showSavedMarkers) {
       unawaited(_loadSavedMarkers());
-    }
-    if (widget.enableLocationLabel) {
-      unawaited(_loadLocationLabelChips());
     }
   }
 
@@ -432,126 +427,6 @@ class _MapPickerState extends State<MapPicker> {
     });
   }
 
-  Future<void> _loadLocationLabelChips() async {
-    if (!widget.enableLocationLabel) return;
-    _applyState(() => _isLoadingLocationLabels = true);
-    try {
-      final rows = await _notificationLocationsApi
-          .listLocationLabels(limit: 24)
-          .timeout(const Duration(seconds: 6));
-      final labels =
-          rows
-              .map((raw) => raw['label']?.toString().trim())
-              .whereType<String>()
-              .where((label) => label.isNotEmpty)
-              .toSet()
-              .toList();
-      if (!mounted) return;
-      _applyState(() => _locationLabelChips = labels);
-    } catch (e) {
-      debugPrint('Failed to load location labels: $e');
-    } finally {
-      if (mounted) {
-        _applyState(() => _isLoadingLocationLabels = false);
-      }
-    }
-  }
-
-  void _selectLocationLabel(String label) {
-    final trimmed = label.trim();
-    if (trimmed.isEmpty) return;
-    _applyState(() => _setLocationLabelText(trimmed));
-  }
-
-  Future<void> _openAddLocationLabelDialog() async {
-    if (!widget.enableLocationLabel || !mounted || _isAddLabelDialogOpen) {
-      return;
-    }
-    _isAddLabelDialogOpen = true;
-
-    FocusScope.of(context).unfocus();
-    _addLocationLabelController
-      ..text = ''
-      ..selection = const TextSelection.collapsed(offset: 0);
-    try {
-      final existingNormalized =
-          _locationLabelChips
-              .map((label) => _normalizeLocationLabel(label.trim()))
-              .where((v) => v.isNotEmpty)
-              .toSet();
-
-      final addedLabel = await showDialog<String>(
-        context: context,
-        barrierDismissible: true,
-        builder: (dialogContext) {
-          return CustomPopupDesign(
-            title: '새 위치 라벨 추가',
-            highlightText: '',
-            message: '',
-            positiveText: '추가',
-            negativeText: '취소',
-            onPositivePressed: () {
-              final text = _addLocationLabelController.text.trim();
-              if (text.isEmpty) return;
-              Navigator.of(dialogContext).pop(text);
-            },
-            onNegativePressed: () {
-              Navigator.of(dialogContext).pop();
-            },
-            enableInput: true,
-            controller: _addLocationLabelController,
-            inputHint: '예: 집, 회사, 카페',
-            inputMaxLength: 15,
-            inputMaxLengthErrorText: '15자 이내로 입력해주세요.',
-            inputValidator: (text) {
-              final trimmed = text.trim();
-              if (trimmed.isEmpty) return '라벨을 입력해주세요.';
-              final normalized = _normalizeLocationLabel(trimmed);
-              if (existingNormalized.contains(normalized)) {
-                return '이미 있는 라벨입니다.';
-              }
-              return null;
-            },
-          );
-        },
-      );
-
-      final trimmed = addedLabel?.trim();
-      if (trimmed == null || trimmed.isEmpty) return;
-
-      final normalizedNew = _normalizeLocationLabel(trimmed);
-      String resolvedLabel = trimmed;
-      for (final existing in _locationLabelChips) {
-        if (_normalizeLocationLabel(existing) == normalizedNew) {
-          resolvedLabel = existing;
-          break;
-        }
-      }
-
-      if (!mounted) return;
-      _applyState(() {
-        final next = <String>[..._locationLabelChips];
-        final hasSame = next.any(
-          (item) =>
-              _normalizeLocationLabel(item) ==
-              _normalizeLocationLabel(resolvedLabel),
-        );
-        if (!hasSame) {
-          next.insert(0, resolvedLabel);
-        }
-        _locationLabelChips = next;
-        _setLocationLabelText(resolvedLabel);
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('라벨 추가에 실패했습니다: $e')));
-    } finally {
-      _isAddLabelDialogOpen = false;
-    }
-  }
-
   Future<void> _confirmSelection() async {
     final latlng = _resolvedSelectionPoint;
     if ((_addr?.trim().isEmpty ?? true)) {
@@ -559,6 +434,12 @@ class _MapPickerState extends State<MapPicker> {
     }
     if (!mounted) return;
     final customLabel = _locationLabelController.text.trim();
+    if (widget.enableLocationLabel && customLabel.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('위치 라벨을 입력해주세요.')));
+      return;
+    }
     final address = _addr?.trim() ?? '';
     final fallbackLocation =
         widget.enableLocationLabel && customLabel.isNotEmpty
@@ -581,20 +462,6 @@ class _MapPickerState extends State<MapPicker> {
         notifyExit: false,
       ),
     );
-
-    if (widget.enableLocationLabel && customLabel.isNotEmpty) {
-      unawaited(_persistLocationLabel(customLabel));
-    }
-  }
-
-  Future<void> _persistLocationLabel(String label) async {
-    try {
-      await _notificationLocationsApi
-          .upsertLocationLabel(label: label)
-          .timeout(const Duration(seconds: 8));
-    } catch (e) {
-      debugPrint('Failed to persist location label: $e');
-    }
   }
 
   @override
@@ -609,7 +476,7 @@ class _MapPickerState extends State<MapPicker> {
       onSearch: _onSearch,
       onTap: _pickLocation,
       onBack: () => Navigator.pop(context),
-      onNext: _confirmSelection,
+      onNext: _hasRequiredLocationLabel ? _confirmSelection : null,
       initialTimeDateTime: DateTime(
         2000,
         1,
@@ -626,10 +493,6 @@ class _MapPickerState extends State<MapPicker> {
       showLocationLabelInput: widget.enableLocationLabel,
       locationLabelController:
           widget.enableLocationLabel ? _locationLabelController : null,
-      locationLabelChips: _locationLabelChips,
-      isLoadingLocationLabels: _isLoadingLocationLabels,
-      onLocationLabelSelected: _selectLocationLabel,
-      onAddLocationLabel: _openAddLocationLabelDialog,
     );
   }
 }

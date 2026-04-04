@@ -55,7 +55,9 @@ class LocTimeSetting {
       final hh = time!.hour.toString().padLeft(2, '0');
       final mm = time!.minute.toString().padLeft(2, '0');
       final repForKey =
-          (repeatOption == RepeatOption.none) ? RepeatOption.daily : repeatOption;
+          (repeatOption == RepeatOption.none)
+              ? RepeatOption.daily
+              : repeatOption;
       final normalizedWeekdays =
           (repForKey == RepeatOption.weekly && weekdays.isNotEmpty)
               ? (weekdays.toSet().toList()..sort())
@@ -77,7 +79,6 @@ class LocTimeSetting {
 
     if (location != null && location!.isNotEmpty) {
       map['location'] = location;
-      map['location_label'] = location;
     }
 
     if (description != null && description!.isNotEmpty) {
@@ -95,15 +96,13 @@ class LocTimeSetting {
   Map<String, dynamic> toMap({bool includeSavedAt = true}) =>
       toJson(includeSavedAt: includeSavedAt);
 
-  factory LocTimeSetting.fromJson(
-    Map<String, dynamic> json, {
-    String? id,
-  }) {
+  factory LocTimeSetting.fromJson(Map<String, dynamic> json, {String? id}) {
     final repeatName = json['repeat_option'] ?? json['repeatOption'];
     final savedAtRaw = json['saved_at'] ?? json['savedAt'];
 
     return LocTimeSetting(
-      id: id ??
+      id:
+          id ??
           json['id']?.toString() ??
           json['_id']?.toString() ??
           json['settingId']?.toString(),
@@ -114,8 +113,7 @@ class LocTimeSetting {
       latitude: _doubleFrom(json['latitude']),
       longitude: _doubleFrom(json['longitude']),
       location:
-          json['location_label']?.toString() ??
-          json['location']?.toString(),
+          json['location']?.toString() ?? json['location_label']?.toString(),
       cause: json['cause']?.toString(),
       description:
           json['location_desc']?.toString() ??

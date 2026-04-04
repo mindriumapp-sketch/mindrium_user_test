@@ -220,7 +220,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         locationEnabled: true,
         latitude: latitude,
         longitude: longitude,
-        locationLabel: null,
+        location: null,
         locationAddress: resolvedAddress,
         locationRadiusMeters: 100,
         notifyOnEnter: true,

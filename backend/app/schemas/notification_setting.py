@@ -14,7 +14,7 @@ class NotificationSchedule(BaseModel):
 class NotificationLocation(BaseModel):
     latitude: float
     longitude: float
-    label: Optional[str] = None
+    location: Optional[str] = None
     address: Optional[str] = None
     radius_meters: int = Field(100, ge=30, le=1000)
     notify_on_enter: bool = True

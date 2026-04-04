@@ -22,10 +22,6 @@ class MindriumPopupDesign extends StatefulWidget {
   final String? locationText;
   final bool showLocationLabelInput;
   final TextEditingController? locationLabelController;
-  final List<String> locationLabelChips;
-  final bool isLoadingLocationLabels;
-  final ValueChanged<String>? onLocationLabelSelected;
-  final Future<void> Function()? onAddLocationLabel;
   final bool showTimePicker;
   final double sheetInitialSize;
 
@@ -46,10 +42,6 @@ class MindriumPopupDesign extends StatefulWidget {
     this.locationText,
     this.showLocationLabelInput = false,
     this.locationLabelController,
-    this.locationLabelChips = const [],
-    this.isLoadingLocationLabels = false,
-    this.onLocationLabelSelected,
-    this.onAddLocationLabel,
     this.showTimePicker = true,
     this.sheetInitialSize = defaultSheetInitialSize,
   });
@@ -73,6 +65,11 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   }
 
   String get _guideText {
+    if (widget.showLocationLabelInput) {
+      return widget.showTimePicker
+          ? '일기에 작성한 상황이 일어난 위치와 시간을 선택하고 위치 라벨을 입력한 뒤 [저장]을 눌러주세요.'
+          : '알림을 받을 위치를 선택하고 위치 라벨을 입력한 뒤 [저장]을 눌러주세요.';
+    }
     return widget.showTimePicker
         ? '일기에 작성한 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
         : '알림을 받을 위치를 선택한 뒤 [저장]을 눌러주세요.';
@@ -89,6 +86,11 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
 
   String get _resolvedLocationText {
     return _hasLocationText ? widget.locationText! : '지도를 탭해 위치를 선택해주세요.';
+  }
+
+  bool get _hasRequiredLocationLabel {
+    if (!widget.showLocationLabelInput) return true;
+    return widget.locationLabelController?.text.trim().isNotEmpty ?? false;
   }
 
   LatLng get _initialCenter {
@@ -403,43 +405,6 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   }
 
   Widget _buildLocationLabelCard() {
-    final selectedLabel = widget.locationLabelController?.text.trim() ?? '';
-    final chips = widget.locationLabelChips.toSet().toList();
-
-    Widget buildLabelChip({
-      required String label,
-      required Future<void> Function() onTapAsync,
-      bool selected = false,
-    }) {
-      return InkWell(
-        onTap: () async {
-          await onTapAsync();
-        },
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE9F3FF) : const Color(0xFFF7F8FA),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color:
-                  selected ? const Color(0xFF7CB3E8) : const Color(0xFFC7CDD7),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color:
-                  selected ? const Color(0xFF275E92) : const Color(0xFF2B2F36),
-            ),
-          ),
-        ),
-      );
-    }
-
     return _buildPanelCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,38 +428,47 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
             ],
           ),
           const SizedBox(height: 8),
-          if (widget.isLoadingLocationLabels) ...[
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
+          TextField(
+            controller: widget.locationLabelController,
+            textInputAction: TextInputAction.done,
+            maxLength: 15,
+            decoration: InputDecoration(
+              hintText: '예: 집, 회사, 학교',
+              counterText: '',
+              filled: true,
+              fillColor: const Color(0xFFF7F8FA),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFC7CDD7)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFC7CDD7)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF7CB3E8),
+                  width: 1.4,
+                ),
               ),
             ),
-          ] else ...[
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                ...chips.map(
-                  (label) => buildLabelChip(
-                    label: label,
-                    selected: selectedLabel == label,
-                    onTapAsync: () async {
-                      widget.onLocationLabelSelected?.call(label);
-                    },
-                  ),
-                ),
-                buildLabelChip(
-                  label: '+ 추가',
-                  onTapAsync: () async {
-                    await widget.onAddLocationLabel?.call();
-                  },
-                ),
-              ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '위치 라벨을 입력해야 저장할 수 있어요.',
+            style: TextStyle(
+              fontSize: 12.5,
+              color:
+                  _hasRequiredLocationLabel
+                      ? const Color(0xFF6F7A88)
+                      : const Color(0xFFD64545),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -575,7 +549,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                       leftLabel: '이전',
                       rightLabel: '저장',
                       onBack: widget.onBack ?? () => Navigator.pop(context),
-                      onNext: widget.onNext ?? () {},
+                      onNext: _hasRequiredLocationLabel ? widget.onNext : null,
                     ),
                   ),
                 ),

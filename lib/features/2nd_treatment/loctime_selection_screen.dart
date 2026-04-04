@@ -109,8 +109,8 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
       tod = TimeOfDay(hour: hour, minute: minute);
     }
     final location =
-        locTime['location_label']?.toString() ??
         locTime['location']?.toString() ??
+        locTime['location_label']?.toString() ??
         locTime['location_desc']?.toString();
     final description =
         locTime['location_desc']?.toString() ?? locTime['location']?.toString();
@@ -146,10 +146,6 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
               ? null
               : '${setting.time!.hour.toString().padLeft(2, '0')}:${setting.time!.minute.toString().padLeft(2, '0')}',
       'location': resolvedLocation,
-      'location_label':
-          (locationLabel != null && locationLabel.isNotEmpty)
-              ? locationLabel
-              : null,
       'location_desc':
           (locationDesc != null && locationDesc.isNotEmpty)
               ? locationDesc

@@ -50,6 +50,10 @@ def _normalize_location(raw: dict) -> Optional[dict]:
     # 신규 포맷: location 객체
     if isinstance(raw.get("location"), dict):
         location = dict(raw["location"])
+        location_name = location.get("location") or location.get("label")
+        if location_name is not None:
+            location["location"] = location_name
+        location.pop("label", None)
         if "radius_meters" not in location:
             location["radius_meters"] = 100
         if "notify_on_enter" not in location:
@@ -65,10 +69,14 @@ def _normalize_location(raw: dict) -> Optional[dict]:
     if not location_enabled or latitude is None or longitude is None:
         return None
 
+    location_value = raw.get("location")
+    if isinstance(location_value, dict):
+        location_value = location_value.get("location") or location_value.get("label")
+
     return {
         "latitude": latitude,
         "longitude": longitude,
-        "label": raw.get("location_label"),
+        "location": location_value or raw.get("location_label"),
         "address": raw.get("location_address")
         or raw.get("address_name")
         or raw.get("location_desc"),
