@@ -223,8 +223,6 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         location: null,
         locationAddress: resolvedAddress,
         locationRadiusMeters: 100,
-        notifyOnEnter: true,
-        notifyOnExit: false,
       );
 
       await AlarmSettingsSyncHelper.upsertAndSync(

@@ -10,7 +10,6 @@ import 'package:geofence_service/geofence_service.dart'
         GeofenceRadiusSortType,
         Geofence,
         GeofenceRadius,
-        GeofenceStatus,
         Location;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -36,8 +35,6 @@ class AlarmSetting {
   final String? location;
   final String? locationAddress;
   final int locationRadiusMeters;
-  final bool notifyOnEnter;
-  final bool notifyOnExit;
 
   const AlarmSetting({
     required this.id,
@@ -53,8 +50,6 @@ class AlarmSetting {
     this.location,
     this.locationAddress,
     this.locationRadiusMeters = 100,
-    this.notifyOnEnter = true,
-    this.notifyOnExit = false,
   });
 
   AlarmSetting copyWith({
@@ -71,8 +66,6 @@ class AlarmSetting {
     String? location,
     String? locationAddress,
     int? locationRadiusMeters,
-    bool? notifyOnEnter,
-    bool? notifyOnExit,
   }) {
     return AlarmSetting(
       id: id ?? this.id,
@@ -88,8 +81,6 @@ class AlarmSetting {
       location: location ?? this.location,
       locationAddress: locationAddress ?? this.locationAddress,
       locationRadiusMeters: locationRadiusMeters ?? this.locationRadiusMeters,
-      notifyOnEnter: notifyOnEnter ?? this.notifyOnEnter,
-      notifyOnExit: notifyOnExit ?? this.notifyOnExit,
     );
   }
 
@@ -118,8 +109,6 @@ class AlarmSetting {
         if (locationAddress != null && locationAddress!.trim().isNotEmpty)
           'address': locationAddress!.trim(),
         'radius_meters': locationRadiusMeters,
-        'notify_on_enter': notifyOnEnter,
-        'notify_on_exit': notifyOnExit,
       };
     }
 
@@ -202,16 +191,6 @@ class AlarmSetting {
         location['radius_meters'] ?? json['location_radius_meters'],
         fallback: 100,
       ).clamp(30, 1000),
-      notifyOnEnter: _readBool(
-        hasLocationObject
-            ? location['notify_on_enter']
-            : json['notify_on_enter'],
-        fallback: true,
-      ),
-      notifyOnExit: _readBool(
-        hasLocationObject ? location['notify_on_exit'] : json['notify_on_exit'],
-        fallback: false,
-      ),
     );
   }
 
@@ -333,11 +312,11 @@ class AlarmNotificationService {
   );
 
   bool _initialized = false;
-  bool _geofenceListenerBound = false;
+  bool _locationListenerBound = false;
   bool? _canScheduleExactAlarms;
   StreamSubscription<dynamic>? _notificationLaunchSubscription;
   final Map<String, AlarmSetting> _locationAlarmMap = {};
-  final Map<String, DateTime> _lastLocationNotifyAt = {};
+  final Map<String, String> _lastLocationNotificationSlotByAlarm = {};
   Map<String, dynamic>? _pendingTapPayload;
   String? _lastHandledPayloadRaw;
   DateTime? _lastHandledPayloadAt;
@@ -1052,13 +1031,14 @@ class AlarmNotificationService {
     _locationAlarmMap
       ..clear()
       ..addEntries(alarms.map((a) => MapEntry(a.id, a)));
+    _lastLocationNotificationSlotByAlarm.removeWhere(
+      (alarmId, _) => !_locationAlarmMap.containsKey(alarmId),
+    );
 
-    if (!_geofenceListenerBound) {
-      _geofenceService.addGeofenceStatusChangeListener(
-        _onGeofenceStatusChanged,
-      );
+    if (!_locationListenerBound) {
+      _geofenceService.addLocationChangeListener(_onLocationChanged);
       _geofenceService.addStreamErrorListener(_onGeofenceError);
-      _geofenceListenerBound = true;
+      _locationListenerBound = true;
     }
 
     if (alarms.isEmpty) {
@@ -1068,6 +1048,7 @@ class AlarmNotificationService {
         } else {
           _geofenceService.clearGeofenceList();
         }
+        _lastLocationNotificationSlotByAlarm.clear();
       } catch (e) {
         debugPrint('geofence stop failed: $e');
       }
@@ -1103,63 +1084,50 @@ class AlarmNotificationService {
     }
   }
 
-  Future<void> _onGeofenceStatusChanged(
-    Geofence geofence,
-    GeofenceRadius geofenceRadius,
-    GeofenceStatus geofenceStatus,
-    Location location,
-  ) async {
-    final alarm = _locationAlarmMap[geofence.id];
-    if (alarm == null || !alarm.enabled) return;
+  void _onLocationChanged(Location location) {
+    unawaited(_notifyForLocationPresence(location));
+  }
 
-    // AND 조건: 위치 이벤트 + 설정한 요일/시간 윈도우를 동시에 만족해야 알림.
-    if (!_isWithinScheduledWindow(alarm, DateTime.now())) {
-      return;
-    }
-
-    final isEnter = geofenceStatus == GeofenceStatus.ENTER;
-    final isExit = geofenceStatus == GeofenceStatus.EXIT;
-    if ((isEnter && !alarm.notifyOnEnter) || (isExit && !alarm.notifyOnExit)) {
-      return;
-    }
-    if (!isEnter && !isExit) return;
-
-    final eventKey = '${alarm.id}_${geofenceStatus.name}';
+  Future<void> _notifyForLocationPresence(Location location) async {
     final now = DateTime.now();
-    final last = _lastLocationNotifyAt[eventKey];
-    if (last != null && now.difference(last) < const Duration(minutes: 2)) {
-      return;
-    }
-    _lastLocationNotifyAt[eventKey] = now;
 
-    final title = alarm.label;
-    final locationText =
-        (alarm.location?.trim().isNotEmpty ?? false)
-            ? alarm.location!.trim()
-            : '설정한 위치';
-    final body =
-        isEnter ? '$locationText 근처에 도착했어요.' : '$locationText 영역을 벗어났어요.';
+    for (final alarm in _locationAlarmMap.values) {
+      if (!alarm.enabled) continue;
+      if (!_isWithinScheduledWindow(alarm, now)) continue;
+      if (!_isWithinLocationRadius(alarm, location)) continue;
 
-    await _plugin.show(
-      _instantNotificationId(alarm.id, geofenceStatus),
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          'Mindrium Alarm',
-          channelDescription: 'Mindrium에서 설정한 일정 알림',
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.alarm,
-          enableVibration: alarm.vibration,
-          playSound: true,
+      final slotKey = _locationNotificationSlotKey(alarm, now);
+      if (_lastLocationNotificationSlotByAlarm[alarm.id] == slotKey) {
+        continue;
+      }
+      _lastLocationNotificationSlotByAlarm[alarm.id] = slotKey;
+
+      final locationText =
+          (alarm.location?.trim().isNotEmpty ?? false)
+              ? alarm.location!.trim()
+              : '설정한 위치';
+
+      await _plugin.show(
+        _instantNotificationId(alarm.id),
+        alarm.label,
+        '$locationText에 계시네요. 지금 시작해볼까요?',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            'Mindrium Alarm',
+            channelDescription: 'Mindrium에서 설정한 일정 알림',
+            importance: Importance.max,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.alarm,
+            enableVibration: alarm.vibration,
+            playSound: true,
+          ),
+          iOS: _darwinNotificationDetails,
+          macOS: _darwinMacNotificationDetails,
         ),
-        iOS: _darwinNotificationDetails,
-        macOS: _darwinMacNotificationDetails,
-      ),
-      payload: _buildTapPayload(alarm.id),
-    );
+        payload: _buildTapPayload(alarm.id),
+      );
+    }
   }
 
   void _onGeofenceError(dynamic error) {
@@ -1249,8 +1217,30 @@ class AlarmNotificationService {
 
     final nowMinutes = now.hour * 60 + now.minute;
     final alarmMinutes = alarm.hour * 60 + alarm.minute;
-    final difference = (nowMinutes - alarmMinutes).abs();
-    return difference <= 5; // ±5분 윈도우
+    return nowMinutes == alarmMinutes;
+  }
+
+  bool _isWithinLocationRadius(AlarmSetting alarm, Location location) {
+    final latitude = alarm.latitude;
+    final longitude = alarm.longitude;
+    if (latitude == null || longitude == null) return false;
+
+    final distance = Geolocator.distanceBetween(
+      location.latitude,
+      location.longitude,
+      latitude,
+      longitude,
+    );
+    return distance <= alarm.locationRadiusMeters;
+  }
+
+  String _locationNotificationSlotKey(AlarmSetting alarm, DateTime now) {
+    final year = now.year.toString().padLeft(4, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    final hour = alarm.hour.toString().padLeft(2, '0');
+    final minute = alarm.minute.toString().padLeft(2, '0');
+    return '$year-$month-$day-$hour:$minute';
   }
 
   tz.TZDateTime _nextInstanceForWeekday({
@@ -1380,14 +1370,13 @@ class AlarmNotificationService {
     return normalized * 10 + weekday;
   }
 
-  int _instantNotificationId(String alarmId, GeofenceStatus status) {
+  int _instantNotificationId(String alarmId) {
     int hash = 17;
     for (final code in alarmId.codeUnits) {
       hash = (hash * 31 + code) & 0x3fffffff;
     }
-    final suffix = status == GeofenceStatus.ENTER ? 1 : 2;
     final timestamp = DateTime.now().millisecondsSinceEpoch % 1000;
-    return (hash % 1000000) * 1000 + suffix * 100 + timestamp;
+    return (hash % 1000000) * 1000 + timestamp;
   }
 
   int _educationNotificationId(int weekday) => 7000000 + weekday;

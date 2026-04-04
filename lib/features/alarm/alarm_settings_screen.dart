@@ -26,7 +26,7 @@ Future<void> _showAlarmGuideDialog(BuildContext context) {
               '1) 오른쪽 아래 [알림 추가] 버튼으로 새 알림을 만들 수 있어요.\n'
               '2) 목록 카드를 누르면 알림 이름/시간/반복 요일을 수정할 수 있고, 요일은 최소 1개 이상 선택해야 저장됩니다.\n'
               '3) 목록의 스위치로 알림을 바로 켜고 끌 수 있어요.\n'
-              '4) 위치 기반 알림을 켜면 지도에서 위치를 선택하고, 진입/이탈 조건을 1개 이상 선택해야 합니다.\n'
+              '4) 위치 기반 알림을 켜면 지도에서 위치를 선택하고, 설정한 시간에 그 위치에 있으면 알림이 울립니다.\n'
               '5) 목록 카드에서 왼쪽으로 밀거나 수정 화면의 [알림 삭제]로 삭제할 수 있어요.',
           positiveText: '확인',
           negativeText: null,
@@ -462,8 +462,6 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
   bool _enabled = true;
   bool _vibration = true;
   bool _locationEnabled = false;
-  bool _notifyOnEnter = true;
-  bool _notifyOnExit = false;
   int _locationRadiusMeters = 100;
   List<int> _weekdays = const [1, 2, 3, 4, 5, 6, 7];
   double? _latitude;
@@ -487,8 +485,6 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
     _enabled = widget.initialAlarm.enabled;
     _vibration = widget.initialAlarm.vibration;
     _locationEnabled = widget.initialAlarm.locationEnabled;
-    _notifyOnEnter = widget.initialAlarm.notifyOnEnter;
-    _notifyOnExit = widget.initialAlarm.notifyOnExit;
     _locationRadiusMeters = widget.initialAlarm.locationRadiusMeters;
     _weekdays = widget.initialAlarm.weekdays.toSet().toList()..sort();
     _latitude = widget.initialAlarm.latitude;
@@ -561,9 +557,6 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
       _location = selected.location ?? selected.description;
       _locationAddress = selected.description;
       _locationEnabled = true;
-      if (!_notifyOnEnter && !_notifyOnExit) {
-        _notifyOnEnter = true;
-      }
     });
   }
 
@@ -576,12 +569,6 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
     if (_locationEnabled && (_latitude == null || _longitude == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('위치 알림을 켜려면 위치를 먼저 선택해주세요.')),
-      );
-      return;
-    }
-    if (_locationEnabled && !_notifyOnEnter && !_notifyOnExit) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('위치 알림 조건(진입/이탈)을 1개 이상 선택해주세요.')),
       );
       return;
     }
@@ -602,8 +589,6 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
           location: _location,
           locationAddress: _locationAddress,
           locationRadiusMeters: _locationRadiusMeters,
-          notifyOnEnter: _notifyOnEnter,
-          notifyOnExit: _notifyOnExit,
         ),
       ),
     );
@@ -754,7 +739,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                           setState(() => _locationEnabled = value);
                         },
                         title: const Text('위치 기반 알림'),
-                        subtitle: const Text('지정 위치 진입/이탈 시 알림'),
+                        subtitle: const Text('설정한 시간에 해당 위치에 있으면 알림'),
                         contentPadding: EdgeInsets.zero,
                       ),
                       if (_locationEnabled) ...[
@@ -864,54 +849,6 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: CheckboxListTile(
-                                dense: true,
-                                value: _notifyOnEnter,
-                                onChanged: (value) {
-                                  setState(
-                                    () => _notifyOnEnter = value == true,
-                                  );
-                                },
-                                contentPadding: EdgeInsets.zero,
-                                visualDensity: const VisualDensity(
-                                  horizontal: -4,
-                                  vertical: -3,
-                                ),
-                                title: const Text(
-                                  '위치 진입 시 알림',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: CheckboxListTile(
-                                dense: true,
-                                value: _notifyOnExit,
-                                onChanged: (value) {
-                                  setState(() => _notifyOnExit = value == true);
-                                },
-                                contentPadding: EdgeInsets.zero,
-                                visualDensity: const VisualDensity(
-                                  horizontal: -4,
-                                  vertical: -3,
-                                ),
-                                title: const Text(
-                                  '위치 이탈 시 알림',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                       const SizedBox(height: 6),

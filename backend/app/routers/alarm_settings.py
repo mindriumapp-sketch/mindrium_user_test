@@ -56,10 +56,8 @@ def _normalize_location(raw: dict) -> Optional[dict]:
         location.pop("label", None)
         if "radius_meters" not in location:
             location["radius_meters"] = 100
-        if "notify_on_enter" not in location:
-            location["notify_on_enter"] = True
-        if "notify_on_exit" not in location:
-            location["notify_on_exit"] = False
+        location.pop("notify_on_enter", None)
+        location.pop("notify_on_exit", None)
         return location
 
     # 레거시 포맷: flat location fields
@@ -81,8 +79,6 @@ def _normalize_location(raw: dict) -> Optional[dict]:
         or raw.get("address_name")
         or raw.get("location_desc"),
         "radius_meters": max(30, min(_read_int(raw.get("location_radius_meters"), 100), 1000)),
-        "notify_on_enter": raw.get("notify_on_enter") is not False,
-        "notify_on_exit": raw.get("notify_on_exit") is True,
     }
 
 

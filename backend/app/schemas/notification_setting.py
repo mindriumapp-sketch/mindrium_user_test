@@ -17,8 +17,6 @@ class NotificationLocation(BaseModel):
     location: Optional[str] = None
     address: Optional[str] = None
     radius_meters: int = Field(100, ge=30, le=1000)
-    notify_on_enter: bool = True
-    notify_on_exit: bool = False
 
 
 class NotificationSettingPayload(BaseModel):
