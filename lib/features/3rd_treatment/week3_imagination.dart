@@ -135,6 +135,9 @@ class _Week3ImaginationScreenState extends State<Week3ImaginationScreen> {
     return ApplyDoubleCard(
       appBarTitle: 'Self Talk',
       topChild: _buildTopPanel(),
+      panelsGap: 0,
+      height: 120,
+      topPadding: 0,
       // 가운데 말풍선 텍스트
       middleBannerText: '아래 입력창에 떠오르는 생각을 자유롭게 적어보세요.',
       bottomChild: _buildBottomPanel(),

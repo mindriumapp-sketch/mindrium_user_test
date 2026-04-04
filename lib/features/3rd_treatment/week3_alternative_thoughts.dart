@@ -152,6 +152,9 @@ class _Week3AlternativeThoughtsScreenState
     return ApplyDoubleCard(
       appBarTitle: 'Self Talk',
       topChild: _buildTopPanel(),
+      panelsGap: 0,
+      height: 120,
+      topPadding: 0,
       middleBannerText: '아래 입력창에 떠오르는 생각을 자유롭게 적어보세요.',
       bottomChild: _buildBottomPanel(),
       onBack: () => Navigator.pop(context),

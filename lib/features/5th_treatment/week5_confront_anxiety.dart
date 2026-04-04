@@ -2,7 +2,7 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 
 // ✅ 공용 레이아웃 & 칩 에디터
-import 'package:gad_app_team/widgets/top_btm_card.dart';   // ApplyDoubleCard
+import 'package:gad_app_team/widgets/top_btm_card.dart'; // ApplyDoubleCard
 
 // 다음 화면 (기존 로직 유지)
 import 'week5_visual_screen.dart';
@@ -38,9 +38,8 @@ class _Week5ConfrontAnxietyScreenState
 
   // ─────────────────── 상단 패널 ───────────────────
   Widget _buildTopPanel() {
-    final String avoidText = widget.previousChips.isNotEmpty
-        ? widget.previousChips.join(', ')
-        : '';
+    final String avoidText =
+        widget.previousChips.isNotEmpty ? widget.previousChips.join(', ') : '';
 
     return SizedBox(
       height: 150,
@@ -137,11 +136,12 @@ class _Week5ConfrontAnxietyScreenState
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => Week5VisualScreen(
-          sessionId: widget.sessionId,
-          previousChips: widget.previousChips,
-          alternativeChips: [value],
-        ),
+        pageBuilder:
+            (_, __, ___) => Week5VisualScreen(
+              sessionId: widget.sessionId,
+              previousChips: widget.previousChips,
+              alternativeChips: [value],
+            ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -167,7 +167,9 @@ class _Week5ConfrontAnxietyScreenState
 
         // 레이아웃 옵션
         pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
-        panelsGap: 16,
+        panelsGap: 14,
+        height: 120,
+        topPadding: 8,
         panelRadius: 20,
         panelPadding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
         maxWidth: 980,
