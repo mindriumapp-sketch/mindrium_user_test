@@ -5,7 +5,6 @@ import 'dart:async';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
-import 'package:gad_app_team/widgets/jellyfish_notice.dart';
 
 class PokemonBattleDeletePage extends StatefulWidget {
   final String groupId;
@@ -497,18 +496,27 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     const bottomBarBottomSpacing = 20.0;
     const bottomBarEstimatedHeight = 220.0;
     const micSpacingAboveBottomBar = 28.0;
+    const contentLift = 50.0;
+    const playerCharacterLift = 70.0;
 
-    final bottomBarBottom = safeBottom + bottomBarBottomSpacing;
+    final bottomBarBottom = safeBottom + bottomBarBottomSpacing + contentLift;
     final micBottom =
-        bottomBarBottom + bottomBarEstimatedHeight + micSpacingAboveBottomBar;
+        safeBottom +
+        bottomBarBottomSpacing +
+        bottomBarEstimatedHeight +
+        micSpacingAboveBottomBar;
 
     return Scaffold(
       body: Stack(
         children: [
           Positioned.fill(child: Image.asset(bgImage, fit: BoxFit.cover)),
           _buildBackButton(topInset),
-          _buildHpPanel(contentTopOffset),
-          _buildCharacters(myChar, contentTopOffset),
+          _buildHpPanel(contentTopOffset - contentLift),
+          _buildCharacters(
+            myChar,
+            contentTopOffset - contentLift,
+            contentLift + playerCharacterLift,
+          ),
           _buildMicButton(micBottom),
           _buildBottomBar(bottomBarBottom),
           if (_isDefeated)
@@ -528,12 +536,12 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
       top: topInset + 6,
       left: 10,
       child: Material(
-        color: Colors.black.withValues(alpha: 0.28),
+        color: Colors.white.withValues(alpha: 0.75),
         shape: const CircleBorder(),
         child: IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          color: Colors.white,
+          color: Colors.black87,
           iconSize: 20,
           tooltip: '뒤로가기',
         ),
@@ -543,13 +551,13 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
 
   Widget _buildHpPanel(double contentTopOffset) {
     return Positioned(
-      top: 190 + contentTopOffset,
-      right: 200,
+      top: 140 + contentTopOffset,
+      right: 220,
       child: Container(
-        width: 150,
+        width: 160,
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E).withValues(alpha: 0.85),
+          color: Colors.white.withValues(alpha: 0.75),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -558,17 +566,12 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
             Text(
               _characterName ?? '불안한 캐릭터',
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black87,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
             ),
-            const SizedBox(height: 2),
-            const Text(
-              '불안 캐릭터',
-              style: TextStyle(color: Colors.white70, fontSize: 10),
-            ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildHpBar(),
           ],
         ),
@@ -648,7 +651,11 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     );
   }
 
-  Widget _buildCharacters(String myChar, double contentTopOffset) {
+  Widget _buildCharacters(
+    String myChar,
+    double contentTopOffset,
+    double playerCharacterLift,
+  ) {
     final dx = _shakeController.value;
 
     return Stack(
@@ -656,7 +663,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
         // 내 캐릭터 + 사용자 말풍선
         Positioned(
           left: 8,
-          bottom: 160,
+          bottom: 140 + playerCharacterLift,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -679,14 +686,14 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
 
         // 타겟 캐릭터 + 감정 말풍선
         Positioned(
-          top: 210 + contentTopOffset,
+          top: 200 + contentTopOffset,
           right: 24 + dx,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               if (_characterEmotions.isNotEmpty)
                 Positioned(
-                  top: -60,
+                  top: -50,
                   right: 0,
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 600),
@@ -823,7 +830,7 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 65, 79, 79).withValues(alpha: 0.4),
+          color:  Colors.white.withValues(alpha: 0.75),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -832,13 +839,14 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
-                padding: const EdgeInsets.only(left: 18),
-                child: Transform.scale(
-                  scale: 0.74,
-                  alignment: Alignment.centerLeft,
-                  child: const JellyfishNotice(
-                    feedback: '도움이 되는 생각을 하나씩 선택 후 말해보세요!',
-                    feedbackColor: Color(0xFF35546C),
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 6),
+                child: Text(
+                  '도움이 되는 생각을 하나씩 선택 후 말해보세요!  (${_shrunkChips.length}/$_maxHp)',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
                   ),
                 ),
               ),
@@ -895,15 +903,6 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
                   ),
                 );
               },
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '전체 생각 ${_skillsList.length}개 · 진행 ${_shrunkChips.length}/${_maxHp} · 남은 생각 ${_targetHp}개',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ],
         ),
