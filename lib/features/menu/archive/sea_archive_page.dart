@@ -918,7 +918,7 @@ class _FishInfoPopup extends StatelessWidget {
                 const Padding(
                   padding: EdgeInsets.only(left: 4),
                   child: Text(
-                    '불안 점수',
+                    '불안 점수 평균',
                     textAlign: TextAlign.left,
                     style: TextStyle(
                       fontSize: 12.5,

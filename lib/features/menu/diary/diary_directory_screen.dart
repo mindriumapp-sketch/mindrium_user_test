@@ -39,6 +39,9 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
   /// 선택된 그룹 ID(uuid). null이면 "전체 그룹" 의미
   String? _selectedGroupId;
 
+  /// 이동 처리 중인 diary_id 집합
+  final Set<String> _movingDiaryIds = {};
+
   bool _loading = true;
   String? _error;
 
@@ -49,7 +52,7 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
     // arguments로 groupId 받아서 초기 필터 설정
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args =
-      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args['groupId'] != null) {
         setState(() {
           _selectedGroupId = args['groupId'].toString();
@@ -63,8 +66,9 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
   /// worry_groups에서 그룹 메타정보(제목, character_id, activeGroupIds) 한 번에 로드
   Future<void> _loadGroupMeta() async {
     try {
-      final groups =
-      await _worryGroupsApi.listWorryGroups(includeArchived: false);
+      final groups = await _worryGroupsApi.listWorryGroups(
+        includeArchived: false,
+      );
 
       final titles = <String, String>{};
       final characters = <String, int?>{};
@@ -121,18 +125,19 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
       final rawEntries = await _diariesApi.listDiaries();
 
       // 응답 정규화
-      final normalized = rawEntries.map((e) {
-        final map = Map<String, dynamic>.from(e);
+      final normalized =
+          rawEntries.map((e) {
+            final map = Map<String, dynamic>.from(e);
 
-        // group_id를 항상 String(uuid)로 통일
-        final g = map['group_id'];
-        if (g != null) {
-          map['group_id'] = g.toString();
-        }
+            // group_id를 항상 String(uuid)로 통일
+            final g = map['group_id'];
+            if (g != null) {
+              map['group_id'] = g.toString();
+            }
 
-        // created_at / updated_at은 카드에서 사용 시 필요하면 그때 parse
-        return map;
-      }).toList();
+            // created_at / updated_at은 카드에서 사용 시 필요하면 그때 parse
+            return map;
+          }).toList();
 
       if (!mounted) return;
 
@@ -143,9 +148,10 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.response?.data is Map
-            ? e.response?.data['detail']?.toString()
-            : e.message ?? '알 수 없는 오류가 발생했습니다.';
+        _error =
+            e.response?.data is Map
+                ? e.response?.data['detail']?.toString()
+                : e.message ?? '알 수 없는 오류가 발생했습니다.';
       });
     } catch (e) {
       if (!mounted) return;
@@ -155,6 +161,319 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
     } finally {
       if (mounted) {
         setState(() => _loading = false);
+      }
+    }
+  }
+
+  String? _resolveDiaryId(Map<String, dynamic> entry) {
+    final diaryId = entry['diary_id'] ?? entry['diaryId'] ?? entry['id'];
+    final resolved = diaryId?.toString().trim();
+    if (resolved == null || resolved.isEmpty) return null;
+    return resolved;
+  }
+
+  List<MapEntry<String, String>> _buildMoveTargets(String currentGroupId) {
+    final entries =
+        _groupTitles.entries
+            .where((entry) => entry.key != currentGroupId)
+            .toList()
+          ..sort((a, b) => a.value.compareTo(b.value));
+    return entries;
+  }
+
+  Future<void> _showMoveDiaryDialog(Map<String, dynamic> entry) async {
+    final diaryId = _resolveDiaryId(entry);
+    final currentGroupId = entry['group_id']?.toString();
+
+    if (diaryId == null || currentGroupId == null || currentGroupId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이동할 일기 정보를 찾지 못했습니다.')));
+      return;
+    }
+
+    final moveTargets = _buildMoveTargets(currentGroupId);
+    if (moveTargets.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이동할 수 있는 다른 그룹이 없습니다.')));
+      return;
+    }
+
+    final currentGroupTitle = _groupTitles[currentGroupId] ?? '현재 그룹';
+
+    final selectedTarget = await showDialog<MapEntry<String, String>>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        MapEntry<String, String>? pendingSelection;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 24,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFFE3F2FD),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F4FF),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.swap_horiz_rounded,
+                            color: Color(0xFF5B9FD3),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            '일기 이동',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0E2C48),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF6B7A89),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FBFF),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFFD8EBFA),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Text(
+                        '현재 그룹: $currentGroupTitle\n옮길 그룹을 선택해주세요.',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          height: 1.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF35546F),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 260),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children:
+                              moveTargets.map((target) {
+                                final isSelected =
+                                    pendingSelection?.key == target.key;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap:
+                                        () => setDialogState(
+                                          () => pendingSelection = target,
+                                        ),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            isSelected
+                                                ? const Color(0xFFE9F5FF)
+                                                : Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color:
+                                              isSelected
+                                                  ? const Color(0xFF5B9FD3)
+                                                  : const Color(0xFFE3F2FD),
+                                          width: isSelected ? 1.8 : 1.1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              target.value,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight:
+                                                    isSelected
+                                                        ? FontWeight.w800
+                                                        : FontWeight.w600,
+                                                color: const Color(0xFF0E2C48),
+                                              ),
+                                            ),
+                                          ),
+                                          Icon(
+                                            isSelected
+                                                ? Icons.radio_button_checked
+                                                : Icons.radio_button_off,
+                                            color: const Color(0xFF5B9FD3),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(color: Color(0xFF5B9FD3)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              '취소',
+                              style: TextStyle(
+                                color: Color(0xFF5B9FD3),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed:
+                                pendingSelection == null
+                                    ? null
+                                    : () => Navigator.pop(
+                                      dialogContext,
+                                      pendingSelection,
+                                    ),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: const Color(0xFF5B9FD3),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              '이동',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (selectedTarget == null) return;
+
+    await _moveDiaryToGroup(
+      diaryId: diaryId,
+      targetGroupId: selectedTarget.key,
+      targetGroupTitle: selectedTarget.value,
+    );
+  }
+
+  Future<void> _moveDiaryToGroup({
+    required String diaryId,
+    required String targetGroupId,
+    required String targetGroupTitle,
+  }) async {
+    if (_movingDiaryIds.contains(diaryId)) return;
+
+    setState(() => _movingDiaryIds.add(diaryId));
+
+    try {
+      await _diariesApi.updateDiary(diaryId, {'group_id': targetGroupId});
+
+      if (!mounted) return;
+
+      setState(() {
+        _diaries =
+            _diaries.map((entry) {
+              if (_resolveDiaryId(entry) != diaryId) return entry;
+              return {...entry, 'group_id': targetGroupId};
+            }).toList();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('일기를 "$targetGroupTitle" 그룹으로 이동했어요.')),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message =
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message ?? '일기를 다른 그룹으로 이동하지 못했습니다.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일기를 다른 그룹으로 이동하지 못했습니다.')));
+    } finally {
+      if (mounted) {
+        setState(() => _movingDiaryIds.remove(diaryId));
       }
     }
   }
@@ -172,9 +491,7 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
         onBack: () {
           Navigator.pop(
             context,
-            MaterialPageRoute(
-              builder: (context) => const ContentScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const ContentScreen()),
           );
         },
       ),
@@ -200,8 +517,7 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
           ),
           SafeArea(
             child: Padding(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: _buildBody(),
             ),
           ),
@@ -213,15 +529,15 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
   /// 자동 생성 일기 여부 (걱정일기 없이 위치만으로 생성된 더미 일기)
   bool _isAutoGeneratedDiary(Map<String, dynamic> entry) {
     final activation = entry['activation'];
-    final label = activation is Map
-        ? activation['label']?.toString() ?? ''
-        : activation?.toString() ?? '';
+    final label =
+        activation is Map
+            ? activation['label']?.toString() ?? ''
+            : activation?.toString() ?? '';
 
     // DiaryYesOrNo._handleNo 에서 생성하는 패턴:
     // '자동 생성 일기 \n주소: ...'
     return label.startsWith('자동 생성 일기');
   }
-
 
   Widget _buildBody() {
     if (_loading) {
@@ -235,10 +551,7 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
         children: [
           Text(_error!, style: const TextStyle(color: Colors.redAccent)),
           const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: _loadDiaries,
-            child: const Text('다시 시도'),
-          ),
+          ElevatedButton(onPressed: _loadDiaries, child: const Text('다시 시도')),
         ],
       );
     }
@@ -251,10 +564,7 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
             Center(
               child: Text(
                 '작성된 일기가 없습니다.',
-                style: TextStyle(
-                  color: Color(0xFF1B405C),
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Color(0xFF1B405C), fontSize: 16),
               ),
             ),
           ],
@@ -265,20 +575,20 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
     // 보관함이 아닌 그룹에 속한 일기만 표시.
     // group_id == null 인 일기는 "없는 것"으로 간주하여 제외.
     // + 자동 생성 일기(위치 기반 더미)는 목록에서 숨김.
-    final activeDiaries = _diaries
-        .where((d) {
-      final gid = d['group_id'];
-      if (gid == null) return false; // group 없는 일기: 제외
-      if (_isAutoGeneratedDiary(d)) return false; // 자동 생성 일기 숨김
-      return _activeGroupIds.contains(gid);
-    })
-        .toList();
+    final activeDiaries =
+        _diaries.where((d) {
+          final gid = d['group_id'];
+          if (gid == null) return false; // group 없는 일기: 제외
+          if (_isAutoGeneratedDiary(d)) return false; // 자동 생성 일기 숨김
+          return _activeGroupIds.contains(gid);
+        }).toList();
 
-    final filtered = _selectedGroupId == null
-        ? activeDiaries
-        : activeDiaries
-        .where((d) => d['group_id'] == _selectedGroupId)
-        .toList();
+    final filtered =
+        _selectedGroupId == null
+            ? activeDiaries
+            : activeDiaries
+                .where((d) => d['group_id'] == _selectedGroupId)
+                .toList();
 
     return RefreshIndicator(
       onRefresh: _loadDiaries,
@@ -296,39 +606,49 @@ class _DiaryDirectoryScreenState extends State<DiaryDirectoryScreen> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: filtered.isEmpty
-                ? ListView(
-              padding:
-              const EdgeInsets.only(bottom: 24, top: 40),
-              children: [
-                Center(
-                  child: Text(
-                    _selectedGroupId == null
-                        ? '작성된 일기가 없습니다.'
-                        : '선택한 그룹에는 작성된 일기가 없습니다.',
-                    style: const TextStyle(
-                      color: Color(0xFF1B405C),
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.only(bottom: 24),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final entry = filtered[index];
-                final gid = entry['group_id']?.toString();
-                final characterId =
-                gid != null ? _groupCharacters[gid] : null;
+            child:
+                filtered.isEmpty
+                    ? ListView(
+                      padding: const EdgeInsets.only(bottom: 24, top: 40),
+                      children: [
+                        Center(
+                          child: Text(
+                            _selectedGroupId == null
+                                ? '작성된 일기가 없습니다.'
+                                : '선택한 그룹에는 작성된 일기가 없습니다.',
+                            style: const TextStyle(
+                              color: Color(0xFF1B405C),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                    : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final entry = filtered[index];
+                        final gid = entry['group_id']?.toString();
+                        final characterId =
+                            gid != null ? _groupCharacters[gid] : null;
 
-                return _DiaryCard(
-                  entry: entry,
-                  characterId: characterId,
-                );
-              },
-            ),
+                        return _DiaryCard(
+                          entry: entry,
+                          characterId: characterId,
+                          groupTitle:
+                              gid != null
+                                  ? _groupTitles[gid] ?? '알 수 없는 그룹'
+                                  : null,
+                          canMove:
+                              gid != null && _buildMoveTargets(gid).isNotEmpty,
+                          isMoving:
+                              _resolveDiaryId(entry) != null &&
+                              _movingDiaryIds.contains(_resolveDiaryId(entry)!),
+                          onMovePressed: () => _showMoveDiaryDialog(entry),
+                        );
+                      },
+                    ),
           ),
         ],
       ),
@@ -399,26 +719,28 @@ class _GroupFilter extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: groupIds.map((id) {
-              final bool selected = id == selectedGroupId;
-              final groupDiaryCount = id == null
-                  ? diaries.length
-                  : diaries.where((d) => d['group_id'] == id).length;
-              final label = id == null
-                  ? '전체 그룹 ($groupDiaryCount)'
-                  : '${groupTitles[id] ?? '그룹 #$id'} ($groupDiaryCount)';
+            children:
+                groupIds.map((id) {
+                  final bool selected = id == selectedGroupId;
+                  final groupDiaryCount =
+                      id == null
+                          ? diaries.length
+                          : diaries.where((d) => d['group_id'] == id).length;
+                  final label =
+                      id == null
+                          ? '전체 그룹 ($groupDiaryCount)'
+                          : '${groupTitles[id] ?? '그룹 #$id'} ($groupDiaryCount)';
 
-              return ChoiceChip(
-                label: Text(label),
-                selected: selected,
-                onSelected: (_) => onSelected(id),
-                selectedColor: const Color(0xFF5B9FD3),
-                labelStyle: TextStyle(
-                  color:
-                  selected ? Colors.white : const Color(0xFF1B405C),
-                ),
-              );
-            }).toList(),
+                  return ChoiceChip(
+                    label: Text(label),
+                    selected: selected,
+                    onSelected: (_) => onSelected(id),
+                    selectedColor: const Color(0xFF5B9FD3),
+                    labelStyle: TextStyle(
+                      color: selected ? Colors.white : const Color(0xFF1B405C),
+                    ),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -432,22 +754,30 @@ class _GroupFilter extends StatelessWidget {
 class _DiaryCard extends StatelessWidget {
   final Map<String, dynamic> entry;
   final int? characterId;
+  final String? groupTitle;
+  final bool canMove;
+  final bool isMoving;
+  final VoidCallback onMovePressed;
 
   const _DiaryCard({
     required this.entry,
     required this.characterId,
+    required this.groupTitle,
+    required this.canMove,
+    required this.isMoving,
+    required this.onMovePressed,
   });
 
   List<String> _chipLabels(dynamic raw) {
     if (raw is List) {
       return raw
           .map((e) {
-        if (e is Map) {
-          final label = e['label'];
-          return label?.toString();
-        }
-        return e?.toString();
-      })
+            if (e is Map) {
+              final label = e['label'];
+              return label?.toString();
+            }
+            return e?.toString();
+          })
           .whereType<String>()
           .where((s) => s.isNotEmpty)
           .toList();
@@ -461,20 +791,21 @@ class _DiaryCard extends StatelessWidget {
 
     // created_at 파싱 (이미 DateTime이면 그대로 사용)
     final createdRaw = entry['created_at'];
-    final DateTime? createdAt = createdRaw is DateTime
-        ? createdRaw
-        : createdRaw is String
-        ? DateTime.parse(createdRaw)
-        : null;
-    final created = createdAt != null
-        ? formatter.format(createdAt.toLocal())
-        : '-';
+    final DateTime? createdAt =
+        createdRaw is DateTime
+            ? createdRaw
+            : createdRaw is String
+            ? DateTime.parse(createdRaw)
+            : null;
+    final created =
+        createdAt != null ? formatter.format(createdAt.toLocal()) : '-';
 
     // activation DiaryChip → label 추출
     final activationRaw = entry['activation'];
-    final activationLabel = activationRaw is Map
-        ? (activationRaw['label']?.toString() ?? '')
-        : activationRaw?.toString() ?? '';
+    final activationLabel =
+        activationRaw is Map
+            ? (activationRaw['label']?.toString() ?? '')
+            : activationRaw?.toString() ?? '';
 
     // 칩 리스트들 label 추출
     final beliefLabels = _chipLabels(entry['belief']);
@@ -491,11 +822,12 @@ class _DiaryCard extends StatelessWidget {
     if (rawLocTime is Map) {
       locTimeEntry = rawLocTime.map((k, v) => MapEntry(k.toString(), v));
     } else if (rawLocTime is List && rawLocTime.isNotEmpty) {
-      final mapped = rawLocTime
-          .whereType<Map>()
-          .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
-          .toList()
-          .cast<Map<String, dynamic>>();
+      final mapped =
+          rawLocTime
+              .whereType<Map>()
+              .map((raw) => raw.map((k, v) => MapEntry(k.toString(), v)))
+              .toList()
+              .cast<Map<String, dynamic>>();
       if (mapped.isNotEmpty) {
         locTimeEntry = mapped.last;
       }
@@ -508,8 +840,7 @@ class _DiaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border:
-        Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
+        border: Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -519,28 +850,21 @@ class _DiaryCard extends StatelessWidget {
         ],
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-        ),
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          childrenPadding:
-          const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           leading: CircleAvatar(
             radius: 26,
             backgroundColor: const Color(0xFFB8DAF5),
-            backgroundImage: characterId != null
-                ? AssetImage(
-              'assets/image/character$characterId.png',
-            )
-                : null,
-            child: characterId == null
-                ? const Icon(
-              Icons.help_outline,
-              color: Color(0xFF0E2C48),
-            )
-                : null,
+            backgroundImage:
+                characterId != null
+                    ? AssetImage('assets/image/character$characterId.png')
+                    : null,
+            child:
+                characterId == null
+                    ? const Icon(Icons.help_outline, color: Color(0xFF0E2C48))
+                    : null,
           ),
           title: Text(
             activationLabel.isNotEmpty ? activationLabel : '(빈 제목)',
@@ -555,23 +879,79 @@ class _DiaryCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               created,
-              style: const TextStyle(
-                color: Color(0xFF1B405C),
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Color(0xFF1B405C), fontSize: 14),
             ),
           ),
           children: [
             _SudScoreBar(latestSud: latestSud),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FBFF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '현재 그룹',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF5B9FD3),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          groupTitle ?? '알 수 없는 그룹',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0E2C48),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: canMove && !isMoving ? onMovePressed : null,
+                    icon:
+                        isMoving
+                            ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Icon(Icons.swap_horiz_rounded),
+                    label: Text(canMove ? '다른 그룹으로 이동' : '이동할 그룹 없음'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF417CAF),
+                      side: const BorderSide(color: Color(0xFF90CAF9)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
             _buildSection(
               context: context,
               icon: Icons.psychology_outlined,
               title: '생각 (Belief)',
               child: Text(
-                beliefLabels.isEmpty
-                    ? '-'
-                    : beliefLabels.join(', '),
+                beliefLabels.isEmpty ? '-' : beliefLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
@@ -581,9 +961,7 @@ class _DiaryCard extends StatelessWidget {
               icon: Icons.local_hospital_outlined,
               title: '신체 반응',
               child: Text(
-                physicalLabels.isEmpty
-                    ? '-'
-                    : physicalLabels.join(', '),
+                physicalLabels.isEmpty ? '-' : physicalLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
@@ -593,9 +971,7 @@ class _DiaryCard extends StatelessWidget {
               icon: Icons.mood_outlined,
               title: '감정 반응',
               child: Text(
-                emotionLabels.isEmpty
-                    ? '-'
-                    : emotionLabels.join(', '),
+                emotionLabels.isEmpty ? '-' : emotionLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
@@ -605,9 +981,7 @@ class _DiaryCard extends StatelessWidget {
               icon: Icons.directions_walk_outlined,
               title: '행동 반응',
               child: Text(
-                actionLabels.isEmpty
-                    ? '-'
-                    : actionLabels.join(', '),
+                actionLabels.isEmpty ? '-' : actionLabels.join(', '),
                 style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
@@ -621,8 +995,7 @@ class _DiaryCard extends StatelessWidget {
                 title: '기록 위치',
                 child: Text(
                   addressName,
-                  style:
-                  const TextStyle(color: Color(0xFF1B405C)),
+                  style: const TextStyle(color: Color(0xFF1B405C)),
                 ),
               ),
             ],
@@ -647,26 +1020,21 @@ class _SudScoreBar extends StatelessWidget {
     if (score > 10) score = 10;
 
     final ratio = score / 10.0;
-    final color = Color.lerp(
-      const Color(0xFF4CAF50),
-      const Color(0xFFF44336),
-      ratio,
-    )!;
+    final color =
+        Color.lerp(const Color(0xFF4CAF50), const Color(0xFFF44336), ratio)!;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FBFF),
         borderRadius: BorderRadius.circular(12),
-        border:
-        Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
+        border: Border.all(color: const Color(0xFFE3F2FD), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-            MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 '주관적 불안점수 (최근 기준)',
@@ -684,9 +1052,7 @@ class _SudScoreBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   '${score.toStringAsFixed(1)} / 10',
@@ -721,9 +1087,7 @@ class _SudScoreBar extends StatelessWidget {
 class _AlarmSection extends StatelessWidget {
   final Map<String, dynamic>? locTimeEntry;
 
-  const _AlarmSection({
-    required this.locTimeEntry,
-  });
+  const _AlarmSection({required this.locTimeEntry});
 
   @override
   Widget build(BuildContext context) {
@@ -754,7 +1118,8 @@ class _AlarmSection extends StatelessWidget {
           Builder(
             builder: (_) {
               final map = locTimeEntry!;
-              final location = map['location'] ??
+              final location =
+                  map['location'] ??
                   map['location_desc'] ??
                   map['address_name'] ??
                   map['addressName'] ??
@@ -766,9 +1131,7 @@ class _AlarmSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FBFF),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFF4A8CCB),
-                  ),
+                  border: Border.all(color: const Color(0xFF4A8CCB)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -779,11 +1142,7 @@ class _AlarmSection extends StatelessWidget {
                       location.toString(),
                     ),
                     const SizedBox(height: 6),
-                    _infoRow(
-                      Icons.access_time_outlined,
-                      '시간',
-                      time.toString(),
-                    ),
+                    _infoRow(Icons.access_time_outlined, '시간', time.toString()),
                   ],
                 ),
               );
@@ -808,23 +1167,14 @@ Widget _buildSection({
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
-      border:
-      Border.all(color: const Color(0xFF90CAF9), width: 1.2),
+      border: Border.all(color: const Color(0xFF90CAF9), width: 1.2),
     ),
     child: Theme(
-      data: Theme.of(context).copyWith(
-        dividerColor: Colors.transparent,
-      ),
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
-        tilePadding:
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        childrenPadding:
-        const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        leading: Icon(
-          icon,
-          color: const Color(0xFF5B9FD3),
-          size: 22,
-        ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        leading: Icon(icon, color: const Color(0xFF5B9FD3), size: 22),
         title: Text(
           title,
           style: const TextStyle(
@@ -855,10 +1205,7 @@ Widget _infoRow(IconData icon, String label, String value) {
       Expanded(
         child: Text(
           value,
-          style: const TextStyle(
-            fontSize: 13,
-            color: Color(0xFF1B405C),
-          ),
+          style: const TextStyle(fontSize: 13, color: Color(0xFF1B405C)),
         ),
       ),
     ],

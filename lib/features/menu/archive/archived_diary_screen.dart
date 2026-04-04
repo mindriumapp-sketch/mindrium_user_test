@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/diaries_api.dart';
+import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -30,11 +32,28 @@ class ArchivedDiaryScreen extends StatefulWidget {
   State<ArchivedDiaryScreen> createState() => _ArchivedDiaryScreenState();
 }
 
+class _MoveGroupTarget {
+  const _MoveGroupTarget({
+    required this.groupId,
+    required this.title,
+    required this.characterId,
+  });
+
+  final String groupId;
+  final String title;
+  final int? characterId;
+}
+
 class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _apiClient = ApiClient(tokens: _tokens);
+  late final DiariesApi _diariesApi = DiariesApi(_apiClient);
+  late final WorryGroupsApi _worryGroupsApi = WorryGroupsApi(_apiClient);
 
   List<Map<String, dynamic>> _diaries = [];
+  Map<String, String> _activeGroupTitles = {};
+  Map<String, int?> _activeGroupCharacters = {};
+  final Set<String> _movingDiaryIds = {};
   bool _loading = true;
   String? _error;
 
@@ -51,6 +70,8 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
     });
 
     try {
+      await _loadActiveGroupTitles();
+
       final response = await _apiClient.dio.get(
         '/diaries',
         queryParameters: {'group_id': widget.groupId, 'include_drafts': true},
@@ -80,6 +101,323 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
         _error = '일기를 불러오지 못했습니다: $e';
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _loadActiveGroupTitles() async {
+    try {
+      final groups = await _worryGroupsApi.listWorryGroups(
+        includeArchived: false,
+      );
+
+      final titles = <String, String>{};
+      final characters = <String, int?>{};
+      for (final group in groups) {
+        final groupId = group['group_id']?.toString();
+        if (groupId == null || groupId.isEmpty) continue;
+        titles[groupId] = group['group_title']?.toString() ?? '제목 없음';
+
+        final characterId = group['character_id'];
+        if (characterId is int) {
+          characters[groupId] = characterId;
+        } else if (characterId is num) {
+          characters[groupId] = characterId.toInt();
+        } else if (characterId != null) {
+          characters[groupId] = int.tryParse(characterId.toString());
+        } else {
+          characters[groupId] = null;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _activeGroupTitles = titles;
+        _activeGroupCharacters = characters;
+      });
+    } catch (e) {
+      debugPrint('❌ 활성 그룹 목록 로드 실패: $e');
+    }
+  }
+
+  String? _resolveDiaryId(Map<String, dynamic> diary) {
+    final diaryId = diary['diary_id'] ?? diary['diaryId'] ?? diary['id'];
+    final resolved = diaryId?.toString().trim();
+    if (resolved == null || resolved.isEmpty) return null;
+    return resolved;
+  }
+
+  List<_MoveGroupTarget> _buildMoveTargets() {
+    final targets =
+        _activeGroupTitles.entries
+            .where((entry) => entry.key != widget.groupId)
+            .map(
+              (entry) => _MoveGroupTarget(
+                groupId: entry.key,
+                title: entry.value,
+                characterId: _activeGroupCharacters[entry.key],
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.title.compareTo(b.title));
+    return targets;
+  }
+
+  Future<void> _showMoveDiaryDialog(Map<String, dynamic> diary) async {
+    final diaryId = _resolveDiaryId(diary);
+    if (diaryId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이동할 일기 정보를 찾지 못했습니다.')));
+      return;
+    }
+
+    final moveTargets = _buildMoveTargets();
+    if (moveTargets.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이동할 수 있는 다른 그룹이 없습니다.')));
+      return;
+    }
+
+    final selectedTarget = await showDialog<_MoveGroupTarget>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        _MoveGroupTarget? pendingSelection;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 20,
+              ),
+              child: SizedBox(
+                width: MediaQuery.of(dialogContext).size.width,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFFE3F2FD),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F4FF),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.swap_horiz_rounded,
+                              color: Color(0xFF5B9FD3),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              '일기 이동',
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0E2C48),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF6B7A89),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FBFF),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFD8EBFA),
+                            width: 1.1,
+                          ),
+                        ),
+                        child: Text(
+                          '현재 그룹: ${widget.groupTitle}\n'
+                          '옮길 물고기 카드를 선택하면 이 보관함 목록에서 빠집니다.',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.45,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF35546F),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 280),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          itemCount: moveTargets.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                mainAxisExtent: 116,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                              ),
+                          itemBuilder: (context, index) {
+                            final target = moveTargets[index];
+                            return _MoveTargetFishCard(
+                              target: target,
+                              isSelected:
+                                  pendingSelection?.groupId == target.groupId,
+                              onTap:
+                                  () => setDialogState(
+                                    () => pendingSelection = target,
+                                  ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(dialogContext),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                side: const BorderSide(
+                                  color: Color(0xFF5B9FD3),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                '취소',
+                                style: TextStyle(
+                                  color: Color(0xFF5B9FD3),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed:
+                                  pendingSelection == null
+                                      ? null
+                                      : () => Navigator.pop(
+                                        dialogContext,
+                                        pendingSelection,
+                                      ),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                backgroundColor: const Color(0xFF5B9FD3),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                '이동',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (selectedTarget == null) return;
+
+    await _moveDiaryToGroup(
+      diaryId: diaryId,
+      targetGroupId: selectedTarget.groupId,
+      targetGroupTitle: selectedTarget.title,
+    );
+  }
+
+  Future<void> _moveDiaryToGroup({
+    required String diaryId,
+    required String targetGroupId,
+    required String targetGroupTitle,
+  }) async {
+    if (_movingDiaryIds.contains(diaryId)) return;
+
+    setState(() => _movingDiaryIds.add(diaryId));
+
+    try {
+      await _diariesApi.updateDiary(diaryId, {'group_id': targetGroupId});
+
+      if (!mounted) return;
+
+      setState(() {
+        _diaries =
+            _diaries
+                .where((diary) => _resolveDiaryId(diary) != diaryId)
+                .toList();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('일기를 "$targetGroupTitle" 그룹으로 이동했어요.')),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message =
+          e.response?.data is Map
+              ? e.response?.data['detail']?.toString()
+              : e.message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message ?? '일기를 다른 그룹으로 이동하지 못했습니다.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일기를 다른 그룹으로 이동하지 못했습니다.')));
+    } finally {
+      if (mounted) {
+        setState(() => _movingDiaryIds.remove(diaryId));
+      }
     }
   }
 
@@ -385,6 +723,11 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
           diary: diary,
           characterId: widget.characterId,
           onStartFlow: () => _startApplyFlowForDiary(diary),
+          canMove: _buildMoveTargets().isNotEmpty,
+          isMoving:
+              _resolveDiaryId(diary) != null &&
+              _movingDiaryIds.contains(_resolveDiaryId(diary)!),
+          onMovePressed: () => _showMoveDiaryDialog(diary),
         );
       },
     );
@@ -395,15 +738,151 @@ class _ExpandableDiaryCard extends StatefulWidget {
   final Map<String, dynamic> diary;
   final int characterId;
   final VoidCallback onStartFlow;
+  final bool canMove;
+  final bool isMoving;
+  final VoidCallback onMovePressed;
 
   const _ExpandableDiaryCard({
     required this.diary,
     required this.characterId,
     required this.onStartFlow,
+    required this.canMove,
+    required this.isMoving,
+    required this.onMovePressed,
   });
 
   @override
   State<_ExpandableDiaryCard> createState() => _ExpandableDiaryCardState();
+}
+
+class _MoveTargetFishCard extends StatelessWidget {
+  const _MoveTargetFishCard({
+    required this.target,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final _MoveGroupTarget target;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          gradient:
+              isSelected
+                  ? const LinearGradient(
+                    colors: [Color(0xFFE8F4FD), Color(0xFFF0F8FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                  : LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.82),
+                      Colors.white.withValues(alpha: 0.68),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+          borderRadius: BorderRadius.circular(18),
+          border:
+              isSelected
+                  ? Border.all(color: const Color(0xFF5B9FD3), width: 2.2)
+                  : Border.all(color: const Color(0xFFE3F2FD), width: 1.1),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  isSelected
+                      ? const Color(0xFF5B9FD3).withValues(alpha: 0.28)
+                      : Colors.black.withValues(alpha: 0.06),
+              blurRadius: isSelected ? 18 : 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Center(
+                child: AnimatedScale(
+                  scale: isSelected ? 1.06 : 1.0,
+                  duration: const Duration(milliseconds: 220),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient:
+                          isSelected
+                              ? const LinearGradient(
+                                colors: [Color(0xFFFFFFFF), Color(0xFFF5FAFF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                              : null,
+                      color:
+                          isSelected
+                              ? null
+                              : Colors.white.withValues(alpha: 0.78),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              isSelected
+                                  ? const Color(
+                                    0xFF5B9FD3,
+                                  ).withValues(alpha: 0.25)
+                                  : Colors.black.withValues(alpha: 0.04),
+                          blurRadius: isSelected ? 14 : 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: Image.asset(
+                      'assets/image/character${target.characterId ?? 1}.png',
+                      height: 42,
+                      fit: BoxFit.contain,
+                      errorBuilder:
+                          (_, __, ___) => Icon(
+                            Icons.catching_pokemon,
+                            size: 34,
+                            color:
+                                isSelected
+                                    ? const Color(0xFF5B9FD3)
+                                    : Colors.grey.shade400,
+                          ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              target.title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: isSelected ? 11.5 : 11,
+                color:
+                    isSelected
+                        ? const Color(0xFF0E2C48)
+                        : const Color(0xFF4A5568),
+                height: 1.2,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
@@ -586,9 +1065,9 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
 
                 // 펼쳐진 내용
                 if (_isExpanded) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   const Divider(color: Color(0xFFE3F2FD)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // 믿음 (Belief)
                   if (belief != null && belief.isNotEmpty)
@@ -626,6 +1105,34 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
                       onPressed: widget.onStartFlow,
                       icon: const Icon(Icons.auto_fix_high_rounded, size: 18),
                       label: const Text('일기에 대해 도움이 되는 생각 해보기'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2F6FA1),
+                        side: const BorderSide(color: Color(0xFF9CC5E8)),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed:
+                          widget.canMove && !widget.isMoving
+                              ? widget.onMovePressed
+                              : null,
+                      icon:
+                          widget.isMoving
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.swap_horiz_rounded, size: 18),
+                      label: Text(widget.canMove ? '다른 그룹으로 이동' : '이동할 그룹 없음'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF2F6FA1),
                         side: const BorderSide(color: Color(0xFF9CC5E8)),
