@@ -17,18 +17,18 @@ class _TutorialScreenState extends State<TutorialScreen> {
   final List<_IntroData> pages = const [
     _IntroData(
       imagePath: 'assets/image/intro1.png',
-      title: '하루의 시작을 함께',
-      description: '오늘의 할 일과 리포트를\n한눈에 확인하세요.',
+      title: '불안을 이해하는 첫걸음',
+      description: '교육과 이완 활동으로\n내 마음을 차근차근 살펴봐요.',
     ),
     _IntroData(
       imagePath: 'assets/image/intro2.png',
       title: '감정과 생각을 기록해요',
-      description: '감정일기, 명상, 노출치료 등\n다양한 도구를 제공합니다.',
+      description: '감정일기와 걱정 그룹으로\n내 생각과 감정을 정리해요.',
     ),
     _IntroData(
       imagePath: 'assets/image/intro3.png',
-      title: '나의 변화 추적',
-      description: '통계를 통해 마음의 흐름을\n시각적으로 확인할 수 있어요.',
+      title: '당신의 일상과 함께',
+      description: '불안 완화 알림,\n오늘의 할 일로 꾸준히 함께해요.',
     ),
   ];
 

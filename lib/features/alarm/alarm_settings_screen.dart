@@ -430,6 +430,7 @@ class _AlarmSettingsScreenState extends State<AlarmSettingsScreen> {
       backgroundColor: Colors.transparent,
       appBar: CustomAppBar(
         title: '알림 목록',
+        centerTitle: true,
         confirmOnBack: false,
         confirmOnHome: false,
         actionIconGap: 6,
@@ -825,6 +826,7 @@ class _AlarmEditScreenState extends State<_AlarmEditScreen> {
       backgroundColor: Colors.transparent,
       appBar: CustomAppBar(
         title: '알림 설정',
+        centerTitle: true,
         confirmOnBack: false,
         confirmOnHome: false,
         actionIconGap: 6,

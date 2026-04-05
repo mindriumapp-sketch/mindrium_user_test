@@ -8,10 +8,10 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
-import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/data/api/alarm_settings_api.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -44,13 +44,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const EventChannel _widgetLaunchEventChannel = EventChannel(
     'mindrium/widget_launch_events',
   );
-  static const String _week2LockedMessage = '2주차 교육 완료 후 이용할 수 있어요.';
+  static const String _week2LockedMessage = '2회차 교육 완료 후 이용할 수 있어요.';
   static const String _alarmCardEnabledTitle = '불안 완화 알림';
   static const String _alarmCardDisabledTitle = '불안 완화 알림 (잠금)';
   static const String _alarmCardEnabledDescription =
       '불안을 자주 느끼는 시간/위치에 알림을 설정해 보세요.';
   static const String _alarmCardDisabledDescription = _week2LockedMessage;
-  static const Color _alarmCardBaseColor = Color(0xFFE4F3FF);
+  static const Color _alarmCardBaseColor = Color(0xFFFCF8E2);
 
   int _selectedIndex = 0;
   final TokenStorage _tokens = TokenStorage();
@@ -600,10 +600,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('권한이 시스템에서 차단되어 있어요. 앱 설정에서 허용해 주세요.'),
-            action: SnackBarAction(
-              label: '설정 열기',
-              onPressed: openAppSettings,
-            ),
+            action: SnackBarAction(label: '설정 열기', onPressed: openAppSettings),
           ),
         );
         return;
@@ -652,7 +649,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 8),
               const Text(
-                '치료 프로토콜 진행을 위해 위치/알림 권한을 모두 허용해 주세요.',
+                '마인드리움 진행을 위해\n위치/알림 권한을 모두 허용해 주세요.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -664,7 +661,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: isChecking ? null : _requestRequiredPermissionsFromBlocker,
+                  onPressed:
+                      isChecking
+                          ? null
+                          : _requestRequiredPermissionsFromBlocker,
                   child:
                       isChecking
                           ? const SizedBox(
@@ -852,75 +852,127 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final dayNo = dayCounter.daysSinceJoin;
 
     return _trainingCard(
-      title: '핵심 가치',
-      description:
-          hasValueGoal ? '$dayNo일째 $valueGoal를 향해 가고 있어요.' : '핵심 가치를 설정해 보세요.',
+      description: hasValueGoal ? '' : '핵심 가치를 설정해 보세요.',
       color: const Color(0xFFFFFFFF),
       trailing: _buildDayCalendar(dayNo),
+      title: '핵심 가치',
+      bodyTopWidget:
+          hasValueGoal
+              ? RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  children: [
+                    TextSpan(text: '$dayNo일째 '),
+                    TextSpan(
+                      text: '"$valueGoal"',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF1E2F3F),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const TextSpan(text: '을(를) 향해 가고 있어요.'),
+                  ],
+                ),
+              )
+              : null,
     );
   }
 
+  String _formatDayCalendarLabel(int dayNo) {
+    if (dayNo < 100) return '$dayNo일차';
+    final weekNo = ((dayNo - 1) ~/ 7) + 1;
+    return '$weekNo주차';
+  }
+
+  String _formatDayCalendarUnit(int dayNo) {
+    return dayNo < 100 ? 'DAY' : 'WEEK';
+  }
+
   Widget _buildDayCalendar(int dayNo) {
-    return Container(
-      width: 78,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFA9CFF5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return SizedBox(
+      width: 64,
+      height: 70,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF74B8F4),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(15),
-                    topRight: Radius.circular(15),
-                  ),
-                ),
-                child: const Center(
-                  child: Text(
-                    'DAY',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
+          // 뒤 종이
+          Positioned(
+            left: 4,
+            right: 4,
+            bottom: 2,
+            child: Container(
+              height: 54,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7FBFF),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFD7E6F5)),
               ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$dayNo일차',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF263C69),
-                  ),
-                ),
-              ],
             ),
           ),
+
+          // 메인 본체
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 6,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFA9CFF5)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF74B8F4),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(6),
+                        topRight: Radius.circular(6),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _formatDayCalendarUnit(dayNo),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: dayNo < 100 ? 0.4 : 0.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                    child: Text(
+                      _formatDayCalendarLabel(dayNo),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF263C69),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 핀 2개
+          const Positioned(top: 0, left: 16, child: _CalendarPin()),
+          const Positioned(top: 0, right: 16, child: _CalendarPin()),
         ],
       ),
     );
@@ -1002,66 +1054,122 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required bool isDone,
   }) {
     return _DailyTask(
-      title: '이번주 이완 복습',
+      title: '$weekNumber회차 이완 복습',
       isDone: isDone,
       onTap: () => _openRelaxationTask(weekNumber),
     );
   }
 
   void _openRelaxationTask(int weekNumber) {
-    final taskId = 'week${weekNumber}_daily';
-    final assets = _resolveRelaxationAssets(weekNumber);
+    final taskId = 'daily_review';
 
-    Navigator.of(context).pushNamed(
-      '/relaxation_education',
-      arguments: {
-        'taskId': taskId,
-        'weekNumber': weekNumber,
-        'mp3Asset': assets['mp3Asset']!,
-        'riveAsset': assets['riveAsset']!,
-        'nextPage': '/home',
-      },
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => CustomPopupDesign(
+            title: '이완 음성 안내 시작',
+            message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다. 주변 소리와 음량을 조절해보세요.',
+            positiveText: '확인',
+            negativeText: null,
+            backgroundAsset: null,
+            iconAsset: null,
+            onPositivePressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pushNamed(
+                '/relaxation_noti',
+                arguments: {
+                  'taskId': taskId,
+                  'weekNumber': weekNumber,
+                  'mp3Asset': 'week$weekNumber.mp3',
+                  'riveAsset': 'week$weekNumber.riv',
+                  'nextPage': '/home',
+                },
+              );
+            },
+          ),
     );
   }
 
   Widget _buildTaskList(List<_DailyTask> tasks) {
+    final sequenceCount = tasks.takeWhile((task) => task.isSequenceTask).length;
+    final sequenceTasks = tasks.take(sequenceCount).toList(growable: false);
+    final remainingTasks = tasks.skip(sequenceCount).toList(growable: false);
+
     return Column(
-      children: List.generate(
-        tasks.length,
-        (index) => Padding(
-          padding: EdgeInsets.only(bottom: tasks[index].connectToNext ? 0 : 10),
-          child: _buildTaskCard(tasks[index]),
-        ),
+      children: [
+        if (sequenceTasks.isNotEmpty) ...[
+          _buildConnectedSequenceList(sequenceTasks),
+          const SizedBox(height: 10),
+        ],
+        ...List.generate(remainingTasks.length, (index) {
+          final isLast = index == remainingTasks.length - 1;
+          return Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+            child: _buildTaskCard(remainingTasks[index], showConnector: false),
+          );
+        }),
+      ],
+    );
+  }
+
+  double _taskHeightFor(_DailyTask task) => task.isSequenceTask ? 60.0 : 54.0;
+
+  double _iconTopFor(_DailyTask task) => task.isSequenceTask ? 8.0 : 4.0;
+
+  Widget _buildConnectedSequenceList(List<_DailyTask> tasks) {
+    const connectorColor = Color(0xFF9BC9EE);
+
+    final totalHeight = tasks.fold<double>(
+      0,
+      (sum, task) => sum + _taskHeightFor(task),
+    );
+
+    double offsetY = 0;
+    final centers = tasks
+        .map((task) {
+          final center = offsetY + _iconTopFor(task) + 24;
+          offsetY += _taskHeightFor(task);
+          return center;
+        })
+        .toList(growable: false);
+
+    return SizedBox(
+      height: totalHeight,
+      child: Stack(
+        children: [
+          Positioned(
+            top: centers.first,
+            bottom: totalHeight - centers.last,
+            left: 25,
+            child: Container(width: 2, color: connectorColor),
+          ),
+          Column(
+            children:
+                tasks
+                    .map((task) => _buildTaskCard(task, showConnector: false))
+                    .toList(),
+          ),
+        ],
       ),
     );
   }
 
-  Map<String, String> _resolveRelaxationAssets(int weekNumber) {
-    // 주차별 에셋 도입 전까지 공통 에셋을 사용한다.
-    switch (weekNumber) {
-      default:
-        return const {'mp3Asset': 'noti.mp3', 'riveAsset': 'noti.riv'};
-    }
-  }
-
-  Widget _buildTaskCard(_DailyTask task) {
+  Widget _buildTaskCard(_DailyTask task, {bool showConnector = true}) {
     final isDone = task.isDone;
     final onTap = isDone ? null : task.onTap;
-    final taskHeight = task.isSequenceTask ? 60.0 : 54.0;
-    final iconTop = task.isSequenceTask ? 8.0 : 4.0;
+    final taskHeight = _taskHeightFor(task);
+    final iconTop = _iconTopFor(task);
     final connectorSplit = taskHeight / 2;
     final imagePath =
-        'assets/image/finish.png';
+        isDone ? 'assets/image/finish.png' : 'assets/image/progressing1.png';
     final bgColor =
         isDone
-            ? const Color(0xFFFFE5E9)
-            : task.isCurrent
             ? const Color(0xFFDFF2FF)
-            : const Color(0xFFD9F3FF);
-    final connectorColor =
-        isDone || task.isCurrent
-            ? const Color(0xFF9BC9EE)
-            : const Color(0xFFD6E3EE);
+            : task.isCurrent
+            ? const Color(0xFFE2E8F0)
+            : const Color(0xFFE2E8F0);
+    final connectorColor = const Color(0xFF9BC9EE);
 
     return InkWell(
       onTap: onTap,
@@ -1076,23 +1184,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  if (task.connectToPrevious)
+                  if (showConnector &&
+                      (task.connectToPrevious || task.connectToNext))
                     Positioned(
-                      top: 0,
-                      bottom: connectorSplit,
-                      left: 25,
-                      child: Container(
-                        width: 2,
-                        decoration: BoxDecoration(
-                          color: connectorColor,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    ),
-                  if (task.connectToNext)
-                    Positioned(
-                      top: connectorSplit,
-                      bottom: 0,
+                      top: task.connectToPrevious ? 0 : connectorSplit,
+                      bottom: task.connectToNext ? 0 : connectorSplit,
                       left: 25,
                       child: Container(
                         width: 2,
@@ -1145,11 +1241,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         canUseAlarmSettings
             ? _alarmCardBaseColor
             : _alarmCardBaseColor.withValues(alpha: .55);
+    final alarmIconColor =
+        canUseAlarmSettings ? Colors.black : const Color(0xFF8898A7);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _trainingCard(
+          titleLeading: Icon(
+            Icons.notifications_none_rounded,
+            size: 22,
+            color: alarmIconColor,
+          ),
           title:
               canUseAlarmSettings
                   ? _alarmCardEnabledTitle
@@ -1159,7 +1262,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ? _alarmCardEnabledDescription
                   : _alarmCardDisabledDescription,
           color: alarmCardColor,
-          imagePath: 'assets/image/pink2.png',
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            size: 40,
+            color: alarmIconColor,
+          ),
           onTap: () {
             if (!canUseAlarmSettings) {
               _showWeek2LockedSnackBar();
@@ -1173,9 +1280,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _trainingCard({
-    required String title,
+    String? title,
     required String description,
     required Color color,
+    Widget? titleLeading,
     String? imagePath,
     Widget? trailing,
     String? chipLabel,
@@ -1184,6 +1292,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     VoidCallback? onTap,
   }) {
     final bool hasChip = chipLabel != null && chipLabel.isNotEmpty;
+    final Widget? accessory =
+        trailing ??
+        (imagePath == null
+            ? null
+            : Image.asset(imagePath, width: 80, fit: BoxFit.contain));
 
     return InkWell(
       onTap: onTap,
@@ -1198,16 +1311,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 children: [
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.black,
+                      if (titleLeading != null) ...[
+                        titleLeading,
+                        const SizedBox(width: 8),
+                      ],
+                      if (title != null)
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
-                      ),
                       if (hasChip)
                         InkWell(
                           onTap: onChipTap,
@@ -1240,23 +1358,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 8),
                     bodyTopWidget,
                   ],
-                  const SizedBox(height: 10),
-                  Text(
-                    protectKoreanWords(description),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: Colors.black87,
-                      height: 1.4,
+                  if (description.trim().isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      protectKoreanWords(description),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.black87,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            trailing ??
-                (imagePath == null
-                    ? const SizedBox.shrink()
-                    : Image.asset(imagePath, width: 80, fit: BoxFit.contain)),
+            if (accessory != null) ...[const SizedBox(width: 12), accessory],
           ],
         ),
       ),
@@ -1317,4 +1433,21 @@ class _DiaryTaskDefinition {
   final bool isDone;
 
   const _DiaryTaskDefinition({required this.title, required this.isDone});
+}
+
+class _CalendarPin extends StatelessWidget {
+  const _CalendarPin();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 6,
+      height: 12,
+      decoration: BoxDecoration(
+        color: const Color(0xFF8A98A8),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE8EEF5), width: 0.8),
+      ),
+    );
+  }
 }

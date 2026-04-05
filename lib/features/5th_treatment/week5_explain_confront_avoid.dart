@@ -46,7 +46,7 @@ class Week5ExplainConfrontAvoidScreen extends StatelessWidget {
     );
 
     return ApplyDesign(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       cardTitle: '불안 직면과 회피 배우기',
 
       child: Column(

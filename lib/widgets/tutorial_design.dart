@@ -16,6 +16,7 @@ class ApplyDesign extends StatelessWidget {
   final VoidCallback? onNext;
   final String leftLabel;
   final String rightLabel;
+  final bool showHomeInAppBar;
 
   const ApplyDesign({
     super.key,
@@ -26,6 +27,7 @@ class ApplyDesign extends StatelessWidget {
     required this.onNext,
     this.leftLabel = '이전',
     this.rightLabel = '다음',
+    this.showHomeInAppBar = true,
   });
 
   @override
@@ -35,7 +37,7 @@ class ApplyDesign extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
-      appBar: CustomAppBar(title: appBarTitle),
+      appBar: CustomAppBar(title: appBarTitle, showHome: showHomeInAppBar),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -87,7 +89,7 @@ class ApplyDesign extends StatelessWidget {
                 // 아래: 항상 바닥에 붙는 네비게이션
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     onBack: onBack,
                     onNext: onNext,
                     leftLabel: leftLabel,

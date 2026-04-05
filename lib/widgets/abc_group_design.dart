@@ -181,7 +181,7 @@ class AddGroupCard extends StatelessWidget {
               ),
               SizedBox(width: 8),
               Text(
-                '그룹 추가',
+                '걱정 그룹 추가',
                 style: TextStyle(
                   fontFamily: 'Noto Sans KR',
                   fontWeight: FontWeight.bold,

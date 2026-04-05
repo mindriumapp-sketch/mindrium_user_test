@@ -42,7 +42,7 @@ class Week6NextRelieveScreen extends StatelessWidget {
             : const Color(0xFFC6544F);
 
     return ApplyDesign(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       cardTitle: '불안 완화 단계',
       onBack: () => Navigator.pop(context),
       onNext: () {

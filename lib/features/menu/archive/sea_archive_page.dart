@@ -1027,14 +1027,10 @@ class _FishInfoPopup extends StatelessWidget {
                                 ),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF5B9FD3),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
                           child: const Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: Colors.white,
+                            color:  Color(0xFF5B9FD3),
                           ),
                         ),
                       ),

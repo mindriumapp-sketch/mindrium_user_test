@@ -67,11 +67,11 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   String get _guideText {
     if (widget.showLocationLabelInput) {
       return widget.showTimePicker
-          ? '일기에 작성한 상황이 일어난 위치와 시간을 선택하고 위치 라벨을 입력한 뒤 [저장]을 눌러주세요.'
-          : '알림을 받을 위치를 선택하고 위치 라벨을 입력한 뒤 [저장]을 눌러주세요.';
+          ? '일기에 상황이 일어난 위치와 시간을 선택하고 [저장]을 눌러주세요.'
+          : '알림을 받을 위치를 선택하고 [저장]을 눌러주세요.';
     }
     return widget.showTimePicker
-        ? '일기에 작성한 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
+        ? '일기에 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
         : '알림을 받을 위치를 선택한 뒤 [저장]을 눌러주세요.';
   }
 

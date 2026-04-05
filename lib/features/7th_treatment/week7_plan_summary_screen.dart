@@ -48,7 +48,7 @@ class _Week7PlanSummaryScreenState extends State<Week7PlanSummaryScreen> {
                       const Text(
                         '이번 주 실천 행동 정리',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF1F3A56),
                         ),

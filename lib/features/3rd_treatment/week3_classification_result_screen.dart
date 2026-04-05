@@ -23,7 +23,7 @@ class Week3ClassificationResultScreen extends StatelessWidget {
       // 💡 배경색은 Stack에서 처리
       extendBodyBehindAppBar: true,
 
-      appBar: const CustomAppBar(title: 'Self Talk'),
+      appBar: const CustomAppBar(title: '생각 구분 연습'),
 
       body: Stack(
         fit: StackFit.expand,

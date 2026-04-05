@@ -15,7 +15,7 @@ class Week6ClassificationResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       cardTitle: '결과를 살펴보기',
       onBack: () => Navigator.pop(context),
       onNext: () {

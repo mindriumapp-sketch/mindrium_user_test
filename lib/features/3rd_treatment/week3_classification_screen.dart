@@ -382,7 +382,7 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
           SafeArea(
             child: Column(
               children: [
-                const CustomAppBar(title: 'Self Talk'),
+                const CustomAppBar(title: '생각 구분 연습'),
 
                 // 위쪽: 콘텐츠 영역
                 Expanded(

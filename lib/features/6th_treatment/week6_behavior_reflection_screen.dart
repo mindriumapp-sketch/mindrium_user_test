@@ -90,7 +90,7 @@ class _Week6BehaviorReflectionScreenState
             : '내 선택과 실제 해석 사이에 차이가 있었어요. 왜 다르게 느껴졌는지 한 번 더 돌아보면 도움이 됩니다.';
 
     return ApplyDesign(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       cardTitle: '행동 돌아보기',
       onBack: () => Navigator.pop(context),
       onNext: () {

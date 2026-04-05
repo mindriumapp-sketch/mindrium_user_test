@@ -19,7 +19,7 @@ class Week6FinalScreen extends StatelessWidget {
       // 💡 배경색은 Stack에서 처리
       extendBodyBehindAppBar: true,
 
-      appBar: const CustomAppBar(title: '불안 직면 VS 회피'),
+      appBar: const CustomAppBar(title: '행동 구분 연습'),
 
       body: Stack(
         fit: StackFit.expand,

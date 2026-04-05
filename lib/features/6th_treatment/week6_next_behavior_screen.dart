@@ -32,7 +32,7 @@ class Week6NextBehaviorScreen extends StatelessWidget {
     final activation = Week6DiaryUtils.extractActivation(diary);
 
     return ApplyDesign(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       cardTitle: '다음 행동 이어가기',
       onBack: () => Navigator.pop(context),
       onNext: () {

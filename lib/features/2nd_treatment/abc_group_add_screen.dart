@@ -188,6 +188,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       builder:
           (dialogCtx) => CustomPopupDesign(
             title: '알림 설정',
+            
             message:
                 '마지막에 기록한 위치/시간으로 알림을 설정할까요?\n'
                 '주소: $resolvedAddress\n'
@@ -921,7 +922,8 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         extendBodyBehindAppBar: true,
         backgroundColor: Colors.transparent,
         appBar: CustomAppBar(
-          title: '걱정 그룹 - 추가하기',
+          title: '걱정 그룹 선택',
+          centerTitle: true,
           onBack: _handleBackNavigation,
           extraIcon: Icons.help_outline_rounded,
           onExtraPressed: _showWorryGroupHelpDialog,
@@ -1055,7 +1057,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          '<${data['group_title']}>',
+                                          '${data['group_title']}',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w900,
                                             fontSize: 18,
@@ -1079,7 +1081,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                                             ),
                                           ),
                                           child: const Icon(
-                                            Icons.more_vert_rounded,
+                                            Icons.edit,
                                             size: 20,
                                             color: Color(0xFF5B9FD3),
                                           ),
@@ -1102,7 +1104,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                                           child: Column(
                                             children: [
                                               const Text(
-                                                '주관적 점수',
+                                                '불안 점수',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Color(0xFF566370),

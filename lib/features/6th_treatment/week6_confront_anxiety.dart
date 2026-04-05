@@ -4,7 +4,7 @@ import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'week6_visual_screen.dart';
 import 'week6_route_utils.dart';
 
-/// 🌊 Mindrium 스타일 6주차 - 불안 직면 VS 회피 (다르게 생각해보기)
+/// 🌊 Mindrium 스타일 6주차 - 행동 구분 연습 (다르게 생각해보기)
 class Week6ConfrontAnxietyScreen extends StatefulWidget {
   final List<String> previousChips;
   const Week6ConfrontAnxietyScreen({super.key, required this.previousChips});
@@ -142,7 +142,7 @@ class _Week6ConfrontAnxietyScreenState
   @override
   Widget build(BuildContext context) {
     return ApplyDesign(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       cardTitle: '다르게 생각해보기',
       onBack: () => Navigator.pop(context),
       onNext: () {

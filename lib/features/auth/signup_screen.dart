@@ -417,7 +417,7 @@ class _SignupScreenState extends State<SignupScreen> {
               title: '마인드리움 코드',
               controller: patientCodeController,
               fillColor: Colors.white,
-              hintText: '병원 또는 플랫폼에서 받은 코드를 입력해주세요.',
+              hintText: '병원에서 받은 코드를 입력해주세요.',
               focusNode: _patientCodeFocusNode,
               errorText: _patientCodeError,
               onChanged: (_) => _clearFormErrorOnTyping(),

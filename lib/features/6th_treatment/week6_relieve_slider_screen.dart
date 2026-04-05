@@ -4,7 +4,7 @@ import 'week6_behavior_classification_screen.dart';
 import 'week6_flow_widgets.dart';
 import 'week6_route_utils.dart';
 
-/// 🌊 6주차 - 불안 직면 VS 회피 (3주차와 동일 디자인 적용)
+/// 🌊 6주차 - 행동 구분 연습 (3주차와 동일 디자인 적용)
 /// - 기능은 그대로 유지
 /// - UI는 ApplyDesign 구조로 변경
 class Week6RelieveSliderScreen extends StatefulWidget {
@@ -63,7 +63,7 @@ class _Week6RelieveSliderScreenState extends State<Week6RelieveSliderScreen> {
         _selectedValue == null ? '가까운 쪽 하나를 골라주세요.' : '선택이 완료되었어요.';
 
     return ApplyDoubleCard(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       rightLabel: '다음',
       onBack: () => Navigator.pop(context),
       onNext:

@@ -1,6 +1,6 @@
 import 'dart:ui';
-import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/common/constants.dart';
+import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 
@@ -10,6 +10,7 @@ class LoginDesign extends StatelessWidget {
   final TextEditingController passwordController;
   final VoidCallback onLogin;
   final VoidCallback onSignup;
+  final VoidCallback onForgotPassword;
 
   const LoginDesign({
     super.key,
@@ -17,6 +18,7 @@ class LoginDesign extends StatelessWidget {
     required this.passwordController,
     required this.onLogin,
     required this.onSignup,
+    required this.onForgotPassword,
   });
 
   @override
@@ -84,19 +86,52 @@ class LoginDesign extends StatelessWidget {
                           obscureText: true,
                           fillColor: Colors.white,
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 16),
                         PrimaryActionButton(text: '로그인', onPressed: onLogin),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: onSignup,
-                          child: const Text(
-                            '회원가입',
-                            style: TextStyle(
-                              fontFamily: 'Noto Sans KR',
-                              color: AppColors.indigo,
-                              fontWeight: FontWeight.w600,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton(
+                              onPressed: onForgotPassword,
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF5B6573),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
+                                textStyle: const TextStyle(
+                                  fontFamily: 'Noto Sans KR',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              child: const Text('비밀번호 찾기'),
                             ),
-                          ),
+                            Container(
+                              width: 1,
+                              height: 16,
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              color: const Color(0xFFD7DDE4),
+                            ),
+                            TextButton(
+                              onPressed: onSignup,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.indigo,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
+                                textStyle: const TextStyle(
+                                  fontFamily: 'Noto Sans KR',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              child: const Text('회원가입'),
+                            ),
+                          ],
                         ),
                       ],
                     ),

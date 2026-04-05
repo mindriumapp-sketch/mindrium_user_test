@@ -15,7 +15,7 @@ class TreatmentDesign extends StatelessWidget {
   final ValueChanged<int>? onToggleWeek;
   final ScrollController? scrollController;
 
-  /// true면 모든 주차를 활성화 (미래 주차 잠금 해제)
+  /// true면 모든 회차를 활성화 (미래 회차 잠금 해제)
   final bool unlockAllWeeks;
 
   const TreatmentDesign({
@@ -163,6 +163,10 @@ class TreatmentDesign extends StatelessWidget {
         (!isCurrentWeek || (appliedDone && cbtDone)) ? '복습하기' : '이어하기';
     final weekGap = weekNo - currentWeek;
     final actionLabel = isFutureWeek ? '$weekGap주 후에 하기' : continueLabel;
+    final isRelaxCompletedWeek = appliedDone;
+    final relaxTaskId = isRelaxCompletedWeek
+        ? (weekNo == currentWeek ? 'daily_review' : 'week${weekNo}_review')
+        : 'week${weekNo}_education';
 
     return GestureDetector(
       onTap: () => onToggleWeek?.call(weekNo),
@@ -251,7 +255,7 @@ class TreatmentDesign extends StatelessWidget {
                       title: session1Name,
                       duration: session1Duration,
                       done: cbtDone,
-                      enabled: isCurrentWeek,
+                      enabled: canOpenWeek,
                       showStatusBadge: canOpenWeek,
                     ),
                   ),
@@ -263,7 +267,7 @@ class TreatmentDesign extends StatelessWidget {
                               context,
                               '/relaxation_education',
                               arguments: {
-                                'taskId': 'week${weekNo}_education',
+                                'taskId': relaxTaskId,
                                 'weekNumber': weekNo,
                                 'mp3Asset': 'week$weekNo.mp3',
                                 'riveAsset': 'week$weekNo.riv',

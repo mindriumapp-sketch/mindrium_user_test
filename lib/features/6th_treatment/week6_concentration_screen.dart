@@ -69,7 +69,7 @@ class _Week6ConcentrationScreenState extends State<Week6ConcentrationScreen> {
     );
 
     return ApplyDesign(
-      appBarTitle: '불안 직면 VS 회피',
+      appBarTitle: '행동 구분 연습',
       cardTitle: '상황에 집중하기',
       onBack: () => Navigator.pop(context),
       rightLabel: '다음',

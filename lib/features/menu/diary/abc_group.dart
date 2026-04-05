@@ -325,7 +325,7 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
               ),
               SizedBox(width: 10),
               Text(
-                '그룹 추가',
+                '걱정 그룹 추가',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,

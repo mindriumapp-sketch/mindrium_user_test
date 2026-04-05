@@ -169,7 +169,7 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
         };
       case 3:
         return {
-          'title': '3회차: Self Talk',
+          'title': '3회차: 생각 구분 연습',
           'description': '도움이 되는 생각과 그렇지 않은 생각 구분하기',
         };
       case 4:
@@ -179,7 +179,7 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
         };
       case 5:
         return {
-          'title': '5회차: 불안 직면 vs 회피',
+          'title': '5회차: 행동 구분 연습',
           'description': '행동이 직면인지 회피인지 구분하기',
         };
       case 6:

@@ -48,7 +48,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
 
     /// ApplyDesign 이 전체 레이아웃(배경/앱바/카드/네비)을 처리
     return ApplyDesign(
-      appBarTitle: 'Self Talk',
+      appBarTitle: '생각 구분 연습',
       cardTitle: '도움이 되는 생각 배우기',
 
       // 카드 내부 실제 콘텐츠

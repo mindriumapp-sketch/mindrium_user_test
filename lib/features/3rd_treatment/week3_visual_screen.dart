@@ -229,7 +229,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
       appBar: const CustomAppBar(
-        title: 'Self Talk',
+        title: '생각 구분 연습',
         confirmOnBack: false,
         showHome: true,
       ),

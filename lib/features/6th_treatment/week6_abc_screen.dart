@@ -187,7 +187,7 @@ class _Week6AbcScreenState extends State<Week6AbcScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(title: '불안 직면 VS 회피'),
+      appBar: const CustomAppBar(title: '행동 구분 연습'),
       body: Stack(
         fit: StackFit.expand,
         children: [

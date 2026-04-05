@@ -1,5 +1,4 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/user_provider.dart';
@@ -64,10 +63,14 @@ class AbcVisualizationScreen extends StatefulWidget {
 class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   bool _isTextView = true;
   bool _didAutoNavigate = false;
+  String? _resolvedAbcId;
+  String? _resolvedSudId;
 
   @override
   void initState() {
     super.initState();
+    _resolvedAbcId = widget.abcId?.trim();
+    _resolvedSudId = widget.sudId?.trim();
     if (widget.autoNavigateToLocTimeOnOpen) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _didAutoNavigate) return;
@@ -89,7 +92,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
       child: Column(
         children: [
           _buildCommonGreeting(context),
-          const SizedBox(height: 12),
+          const SizedBox(height: 25),
           if (_isTextView) _buildFeedbackCard(context),
           if (!_isTextView) _buildAbcFlowDiagram(),
         ],
@@ -144,7 +147,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: selected ? Colors.white : const Color(0xFF4B6B80),
               fontFamily: 'Noto Sans KR',
@@ -162,13 +165,14 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
-          protectKoreanWords('$userName님, \n말씀해주셔서 감사합니다. \n작성해 주신 내용을 정리해 보겠습니다.\n'),
+          '$userName님, 말씀해주셔서 감사합니다.\n작성해 주신 내용을 정리해 보겠습니다.',
           style: const TextStyle(
-            fontSize: 20,
+            fontSize: 17,
             color: Colors.black87,
             fontFamily: 'Noto Sans KR',
           ),
           textAlign: TextAlign.start,
+          softWrap: true,
         ),
       ),
     );
@@ -183,21 +187,20 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
     final emotion = widget.emotionChips.map((c) => c.label).join(', ');
     final physical = widget.physicalChips.map((c) => c.label).join(', ');
     final behavior = widget.behaviorChips.map((c) => c.label).join(', ');
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            protectKoreanWords(
-              '"$situation" 상황에서 \n"$thought" 생각을 하셨고,\n"$emotion" 감정을 느끼셨습니다.\n\n'
-              '그 결과 신체적으로 "$physical" 증상이 나타났고,\n"$behavior" 행동을 하셨습니다.',
-            ),
+          HighlightText(
+            text:
+                '**$situation**(이)라는 상황에서\n**$thought**(이)라는 생각을 하셨고,\n**$emotion**(이)라는 감정을 느끼셨습니다.\n\n'
+                '그 결과 신체적으로 **$physical**(이)라는 증상이 나타났고,\n**$behavior**(이)라는 행동을 하셨습니다.',
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 17,
               color: Colors.black87,
               fontFamily: 'Noto Sans KR',
+              height: 2
             ),
             textAlign: TextAlign.start,
           ),
@@ -231,35 +234,53 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   // ──────────────────────────────────────────────
   // ✅ 위치/시간 설정 화면으로 이동 (아직 저장하지 않음)
   // ──────────────────────────────────────────────
-  void _goNext() {
-    final resolvedLabel = widget.activatingChips.isNotEmpty
-        ? widget.activatingChips.first.label
-        : widget.activatingChips.map((c) => c.label).join(', ');
+  void _goNext() async {
+    final resolvedLabel =
+        widget.activatingChips.isNotEmpty
+            ? widget.activatingChips.first.label
+            : widget.activatingChips.map((c) => c.label).join(', ');
+    final abcId = _resolvedAbcId ?? '';
 
     if (!mounted) return;
-    Navigator.push(
+    final result = await Navigator.push<Map<String, dynamic>?>(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => LocTimeSelectionScreen(
-          abcId: widget.abcId ?? '',
-          label: resolvedLabel.isNotEmpty ? resolvedLabel : null,
-          origin: widget.origin,
-          diaryRoute: widget.diaryRoute,
-          sessionId: widget.sessionId,
-          sudId: widget.sudId,
-          beforeSud: widget.beforeSud,
-          activatingChips: widget.activatingChips,
-          beliefChips: widget.beliefChips,
-          physicalChips: widget.physicalChips,
-          emotionChips: widget.emotionChips,
-          behaviorChips: widget.behaviorChips,
-          autoOpenMapOnEntry: true,
-          autoNavigateGroupOnEntry:
-              widget.autoNavigateGroupOnEntryAfterLocTime,
-        ),
+        pageBuilder:
+            (_, __, ___) => LocTimeSelectionScreen(
+              abcId: abcId,
+              label: resolvedLabel.isNotEmpty ? resolvedLabel : null,
+              origin: widget.origin,
+              diaryRoute: widget.diaryRoute,
+              sessionId: widget.sessionId,
+              sudId: _resolvedSudId,
+              beforeSud: widget.beforeSud,
+              activatingChips: widget.activatingChips,
+              beliefChips: widget.beliefChips,
+              physicalChips: widget.physicalChips,
+              emotionChips: widget.emotionChips,
+              behaviorChips: widget.behaviorChips,
+              autoOpenMapOnEntry: true,
+              autoNavigateGroupOnEntry:
+                  widget.autoNavigateGroupOnEntryAfterLocTime,
+            ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
     );
+    if (!mounted || result == null) return;
+
+    final rawDiaryId = result['diaryId']?.toString().trim();
+    final rawSudId = result['sudId']?.toString().trim();
+    if ((rawDiaryId != null && rawDiaryId.isNotEmpty) ||
+        (rawSudId != null && rawSudId.isNotEmpty)) {
+      setState(() {
+        if (rawDiaryId != null && rawDiaryId.isNotEmpty) {
+          _resolvedAbcId = rawDiaryId;
+        }
+        if (rawSudId != null && rawSudId.isNotEmpty) {
+          _resolvedSudId = rawSudId;
+        }
+      });
+    }
   }
 }

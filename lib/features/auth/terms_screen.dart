@@ -152,7 +152,7 @@ class _TermsScreenState extends State<TermsScreen> {
                       const SizedBox(height: 2),
 
                       _buildCheckTile(
-                        title: '서비스 이용약관 동의',
+                        title: '(필수) 서비스 이용약관 동의',
                         value: agreedServiceTerms,
                         onChanged: (v) {
                           setState(() {
@@ -171,7 +171,7 @@ class _TermsScreenState extends State<TermsScreen> {
                       ),
 
                       _buildCheckTile(
-                        title: '개인정보 처리방침 확인',
+                        title: '(필수) 개인정보 처리방침 확인',
                         value: agreedPrivacyPolicy,
                         onChanged: (v) {
                           setState(() {
@@ -190,7 +190,7 @@ class _TermsScreenState extends State<TermsScreen> {
                       ),
 
                       _buildCheckTile(
-                        title: '개인정보 수집 및 이용 동의',
+                        title: '(필수) 개인정보 수집 및 이용 동의',
                         value: agreedPersonalInfo,
                         onChanged: (v) {
                           setState(() {
@@ -209,7 +209,7 @@ class _TermsScreenState extends State<TermsScreen> {
                       ),
 
                       _buildCheckTile(
-                        title: '민감정보 수집 및 이용 동의',
+                        title: '(필수) 민감정보 수집 및 이용 동의',
                         value: agreedSensitiveInfo,
                         onChanged: (v) {
                           setState(() {
@@ -228,7 +228,7 @@ class _TermsScreenState extends State<TermsScreen> {
                       ),
 
                       _buildCheckTile(
-                        title: '개인정보 및 민감정보 제3자 제공 동의',
+                        title: '(필수) 개인정보 및 민감정보 제3자 제공 동의',
                         value: agreedThirdParty,
                         onChanged: (v) {
                           setState(() {

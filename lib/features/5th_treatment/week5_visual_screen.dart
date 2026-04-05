@@ -278,7 +278,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
       appBar: const CustomAppBar(
-        title: '불안 직면 VS 회피',
+        title: '행동 구분 연습',
         confirmOnBack: false,
         showHome: true,
       ),

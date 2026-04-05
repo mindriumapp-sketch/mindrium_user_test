@@ -353,7 +353,7 @@ class _Week5ClassificationScreenState extends State<Week5ClassificationScreen> {
           SafeArea(
             child: Column(
               children: [
-                const CustomAppBar(title: '불안 직면 VS 회피'),
+                const CustomAppBar(title: '행동 구분 연습'),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(

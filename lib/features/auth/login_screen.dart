@@ -111,6 +111,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showForgotPasswordPlaceholder() {
+    _showError('비밀번호 찾기 기능은 준비 중입니다.');
+  }
+
   @override
   void dispose() {
     emailController.dispose();
@@ -125,6 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
       passwordController: passwordController,
       onLogin: _login,
       onSignup: _goToSignup,
+      onForgotPassword: _showForgotPasswordPlaceholder,
     );
   }
 }

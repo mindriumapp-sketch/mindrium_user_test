@@ -9,6 +9,7 @@ import 'package:gad_app_team/contents/diary_yes_or_no.dart';
 import 'package:gad_app_team/contents/relax_or_alternative.dart';
 import 'package:gad_app_team/contents/relax_yes_or_no.dart';
 import 'package:gad_app_team/contents/solve_entry_choice.dart';
+import 'package:gad_app_team/features/4th_treatment/week4_abc_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_result_screen.dart';
 // import 'package:gad_app_team/features/screen_time/screen_time_page.dart';
 
@@ -67,9 +68,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
-      navigatorObservers: [notificationLaunchRouteObserver, week7RouteObserver],
+      navigatorObservers: [
+        notificationLaunchRouteObserver,
+        week4RouteObserver,
+        week7RouteObserver,
+      ],
       debugShowCheckedModeBanner: false,
-      title: 'Mindrium',
+      title: '마인드리움',
       builder: (context, child) {
         return NotificationLaunchCoordinator(
           child: child ?? const SizedBox.shrink(),

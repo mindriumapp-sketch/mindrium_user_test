@@ -1,20 +1,23 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/common/constants.dart';
+// import 'package:gad_app_team/common/constants.dart';
 import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/survey_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/features/other/before_survey_result_screen.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 
-class _SText {
-  static const intro = TextStyle(
-    fontSize: AppSizes.fontSize,
-    fontWeight: FontWeight.w400,
-    color: Color.fromARGB(255, 72, 71, 71),
-    height: 1.45,
-  );
-}
+// class _SText {
+//   static const intro = TextStyle(
+//     fontSize: AppSizes.fontSize,
+//     fontWeight: FontWeight.w400,
+//     color: Color.fromARGB(255, 72, 71, 71),
+//     height: 1.45,
+//   );
+// }
 
 /// --------- 데이터 ---------
 const List<String> kFrequencyOptions = ["없음", "2, 3일 이상", "7일 이상", "거의 매일"];
@@ -63,7 +66,7 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
     );
   }
 
-  /// 🌊 질문 카드 (8주차 스타일)
+  /// 🌊 질문 카드 (8회차 스타일)
   Widget _buildQuestionCard(int qIndex) {
     final question = _questions[qIndex];
     // 질문 텍스트에서 번호 제거 (이미 번호가 포함되어 있음)
@@ -90,30 +93,6 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
           // 질문 헤더
           Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    '${qIndex + 1}',
-                    style: const TextStyle(
-                      fontFamily: 'NotoSansKR',
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   questionText,
@@ -139,7 +118,7 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
     );
   }
 
-  /// 🔘 선택지 버튼 (8주차 스타일)
+  /// 🔘 선택지 버튼 (8회차 스타일)
   Widget _buildOption(int q, int opt) {
     final selected = _answers[q] == opt;
     return GestureDetector(
@@ -168,15 +147,16 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
             color: selected ? const Color(0xFF74D2FF) : const Color(0xFFE2E8F0),
             width: selected ? 1.8 : 1,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : [],
+          boxShadow:
+              selected
+                  ? [
+                    BoxShadow(
+                      color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                  : [],
         ),
         child: Row(
           children: [
@@ -187,15 +167,17 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
                 shape: BoxShape.circle,
                 color: selected ? const Color(0xFF74D2FF) : Colors.transparent,
                 border: Border.all(
-                  color: selected
-                      ? const Color(0xFF74D2FF)
-                      : const Color(0xFFCBD5E0),
+                  color:
+                      selected
+                          ? const Color(0xFF74D2FF)
+                          : const Color(0xFFCBD5E0),
                   width: 2,
                 ),
               ),
-              child: selected
-                  ? const Icon(Icons.check, color: Colors.white, size: 12)
-                  : null,
+              child:
+                  selected
+                      ? const Icon(Icons.check, color: Colors.white, size: 12)
+                      : null,
             ),
             const SizedBox(width: 14),
             Text(
@@ -203,9 +185,10 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
               style: TextStyle(
                 fontFamily: 'NotoSansKR',
                 fontSize: 15,
-                color: selected
-                    ? const Color(0xFF1B3A57)
-                    : const Color(0xFF4A5568),
+                color:
+                    selected
+                        ? const Color(0xFF1B3A57)
+                        : const Color(0xFF4A5568),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -220,6 +203,7 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
     return ApplyDesign(
       appBarTitle: '사전설문',
       cardTitle: 'Mindrium 시작 전\n현재 상태를 확인해요',
+      showHomeInAppBar: false,
       onBack: () => Navigator.pop(context),
       onNext: _next,
       rightLabel: '다음',
@@ -228,12 +212,6 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
         children: [
           const JellyfishBanner(message: '지난 2주 동안의 우울 증상을\n아래 항목에 따라 평가해주세요.'),
           const SizedBox(height: 18),
-          const Text(
-            "PHQ-9 (우울 관련 질문)\n"
-            "최근 2주간, 얼마나 자주 다음과 같은 문제들로 곤란을 겪으셨습니까?",
-            style: _SText.intro,
-          ),
-          const SizedBox(height: 16),
           ...List.generate(_questions.length, _buildQuestionCard),
         ],
       ),
@@ -302,10 +280,17 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('설문이 제출되었습니다. 감사합니다.')));
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+      context.read<UserProvider>().setProgressManually(surveyCompleted: true);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder:
+              (_) => BeforeSurveyResultScreen(
+                phq9Score: phq9Score,
+                gad7Score: gad7Score,
+              ),
+        ),
+        (_) => false,
+      );
     } on DioException catch (e) {
       final data = e.response?.data;
       var message = '제출할 수 없습니다.';
@@ -328,7 +313,7 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
     }
   }
 
-  /// 🌊 질문 카드 (8주차 스타일)
+  /// 🌊 질문 카드 (8회차 스타일)
   Widget _buildGadQuestionCard(int qIndex) {
     final question = _gadQuestions[qIndex];
     // 질문 텍스트에서 번호 제거 (이미 번호가 포함되어 있음)
@@ -355,30 +340,6 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
           // 질문 헤더
           Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF74D2FF), Color(0xFF99E0FF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    '${qIndex + 1}',
-                    style: const TextStyle(
-                      fontFamily: 'NotoSansKR',
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   questionText,
@@ -404,7 +365,7 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
     );
   }
 
-  /// 🔘 선택지 버튼 (8주차 스타일)
+  /// 🔘 선택지 버튼 (8회차 스타일)
   Widget _buildGadOption(int q, int opt) {
     final selected = _gadAnswers[q] == opt;
     return GestureDetector(
@@ -433,15 +394,16 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
             color: selected ? const Color(0xFF74D2FF) : const Color(0xFFE2E8F0),
             width: selected ? 1.8 : 1,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : [],
+          boxShadow:
+              selected
+                  ? [
+                    BoxShadow(
+                      color: const Color(0xFF74D2FF).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                  : [],
         ),
         child: Row(
           children: [
@@ -452,15 +414,17 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
                 shape: BoxShape.circle,
                 color: selected ? const Color(0xFF74D2FF) : Colors.transparent,
                 border: Border.all(
-                  color: selected
-                      ? const Color(0xFF74D2FF)
-                      : const Color(0xFFCBD5E0),
+                  color:
+                      selected
+                          ? const Color(0xFF74D2FF)
+                          : const Color(0xFFCBD5E0),
                   width: 2,
                 ),
               ),
-              child: selected
-                  ? const Icon(Icons.check, color: Colors.white, size: 12)
-                  : null,
+              child:
+                  selected
+                      ? const Icon(Icons.check, color: Colors.white, size: 12)
+                      : null,
             ),
             const SizedBox(width: 14),
             Text(
@@ -468,9 +432,10 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
               style: TextStyle(
                 fontFamily: 'NotoSansKR',
                 fontSize: 15,
-                color: selected
-                    ? const Color(0xFF1B3A57)
-                    : const Color(0xFF4A5568),
+                color:
+                    selected
+                        ? const Color(0xFF1B3A57)
+                        : const Color(0xFF4A5568),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -485,6 +450,7 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
     return ApplyDesign(
       appBarTitle: '사전설문',
       cardTitle: 'Mindrium 시작 전\n현재 상태를 확인해요',
+      showHomeInAppBar: false,
       onBack: () => Navigator.pop(context),
       onNext: _submit,
       rightLabel: '완료',
@@ -492,12 +458,6 @@ class _Gad7SurveyScreenState extends State<Gad7SurveyScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const JellyfishBanner(message: '지난 2주 동안의 불안 증상을\n아래 항목에 따라 평가해주세요.'),
-          const SizedBox(height: 18),
-          const Text(
-            "GAD-7 (불안 관련 질문)\n"
-            "최근 2주간, 얼마나 자주 다음과 같은 문제들로 곤란을 겪으셨습니까?",
-            style: _SText.intro,
-          ),
           const SizedBox(height: 16),
           ...List.generate(_gadQuestions.length, _buildGadQuestionCard),
         ],

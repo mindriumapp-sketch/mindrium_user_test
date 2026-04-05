@@ -107,7 +107,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     if (currentWeek < 1) currentWeek = 1;
     if (currentWeek > totalWeeks) currentWeek = totalWeeks;
 
-    // 완료된 주차 집합 (1~lastCompleted)
+    // 완료된 회차 집합 (1~lastCompleted)
     final completedWeeks = <int>{for (int w = 1; w <= lastCompleted; w++) w};
     final cbtCompletedWeeks = <int>{
       for (int w = 1; w <= lastCompleted; w++) w,
@@ -148,7 +148,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
 
     if (_expandedInitWeek != currentWeek) {
       _expandedInitWeek = currentWeek;
-      _expandedWeeks.add(currentWeek); // 기본은 현재 주차 펼침, 이후 사용자가 닫기 가능
+      _expandedWeeks.add(currentWeek); // 기본은 현재 회차 펼침, 이후 사용자가 닫기 가능
     }
 
     _tryAutoScrollToCurrentWeek(currentWeek);

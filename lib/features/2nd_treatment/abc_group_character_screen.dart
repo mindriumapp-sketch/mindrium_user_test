@@ -188,7 +188,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
           barrierDismissible: false,
           builder:
               (ctx) => CustomPopupDesign(
-                title: '그룹 추가 완료',
+                title: '걱정 그룹 추가 완료',
                 message: '그룹이 성공적으로 추가되었습니다!',
                 positiveText: '확인',
                 onPositivePressed: () async {
@@ -221,7 +221,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
       appBar: CustomAppBar(
-        title: '그룹 추가',
+        title: '걱정 그룹 추가',
         showHome: false,
         confirmOnBack: false,
         onBack: () async {
@@ -229,7 +229,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
             context: context,
             builder:
                 (_) => CustomPopupDesign(
-                  title: '그룹 추가 취소',
+                  title: '걱정 그룹 추가 취소',
                   message: '작성 중인 내용이 저장되지 않습니다.\n정말 나가시겠습니까?',
                   positiveText: '나가기',
                   negativeText: '취소',
@@ -511,7 +511,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
                               ),
                               onPressed: _addGroupToDB,
                               child: const Text(
-                                '그룹 추가',
+                                '걱정 그룹 추가',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,

@@ -150,7 +150,7 @@ class _Week3AlternativeThoughtsScreenState
   @override
   Widget build(BuildContext context) {
     return ApplyDoubleCard(
-      appBarTitle: 'Self Talk',
+      appBarTitle: '생각 구분 연습',
       topChild: _buildTopPanel(),
       panelsGap: 0,
       height: 120,
