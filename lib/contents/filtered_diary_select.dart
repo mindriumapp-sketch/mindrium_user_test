@@ -633,7 +633,8 @@ class _DiarySelectBody extends StatelessWidget {
               children: [
                 const _SelectionHeaderCard(
                   title: '걱정 일기 선택',
-                  subtitle: '카드를 탭하면 선택되고, 오른쪽 화살표를 누르면 세부 내용을 펼쳐볼 수 있어요.',
+                  subtitle:
+                      '현재 위치와 시간에 가까운 순으로 보여드려요.\n카드를 탭하면 선택되고, 오른쪽 화살표를 누르면 세부 내용을 펼쳐볼 수 있어요.',
                 ),
                 if (selectedDiary != null) ...[
                   const SizedBox(height: 14),

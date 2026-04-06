@@ -193,7 +193,7 @@ class _Week4AbcScreenState extends State<Week4AbcScreen> with RouteAware {
         const _SelectionHeaderCard(
           title: '걱정 일기 선택',
           subtitle:
-              '모든 일기를 최신 작성 순으로 보여드려요. 카드를 탭하면 선택되고, 오른쪽 화살표를 누르면 세부 내용을 펼쳐볼 수 있어요.',
+              '모든 일기를 최신 작성 순으로 보여드려요.\n카드를 탭하면 선택되고, 오른쪽 화살표를 누르면 세부 내용을 펼쳐볼 수 있어요.',
         ),
         if (_selectedDiary != null) ...[
           const SizedBox(height: 14),
