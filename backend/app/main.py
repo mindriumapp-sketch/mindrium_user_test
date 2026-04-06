@@ -60,9 +60,9 @@ async def lifespan(app: FastAPI):
             name="idx_created_at",
         )
 
-        print("✅ users 인덱스 생성/확인 완료")
+        print("[OK] users 인덱스 생성/확인 완료")
     except Exception as e:
-        print(f"⚠️ users 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] users 인덱스 생성 중 오류: {e}")
 
     # ---------- custom_tags 컬렉션 ----------
     try:
@@ -93,9 +93,9 @@ async def lifespan(app: FastAPI):
             name="custom_tags_category_completed_at",
         )
 
-        print("✅ custom_tags 인덱스 생성/확인 완료")
+        print("[OK] custom_tags 인덱스 생성/확인 완료")
     except Exception as e:
-        print(f"⚠️ custom_tags 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] custom_tags 인덱스 생성 중 오류: {e}")
 
     # ---------- diaries 컬렉션 ----------
     try:
@@ -126,9 +126,9 @@ async def lifespan(app: FastAPI):
             name="unique_user_diary",
         )
 
-        print("✅ diaries 인덱스 생성 완료")
+        print("[OK] diaries 인덱스 생성 완료")
     except Exception as e:
-        print(f"⚠️ diaries 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] diaries 인덱스 생성 중 오류: {e}")
 
     # ---------- notification_settings 컬렉션 ----------
     try:
@@ -138,9 +138,9 @@ async def lifespan(app: FastAPI):
             and "notification_settings" not in existing_collections
         ):
             await db["alarm_settings"].rename("notification_settings")
-            print("✅ alarm_settings -> notification_settings 컬렉션 rename 완료")
+            print("[OK] alarm_settings -> notification_settings 컬렉션 rename 완료")
     except Exception as e:
-        print(f"⚠️ notification_settings 컬렉션 rename 중 오류: {e}")
+        print(f"[WARN] notification_settings 컬렉션 rename 중 오류: {e}")
 
     try:
         notification_settings = db["notification_settings"]
@@ -170,9 +170,9 @@ async def lifespan(app: FastAPI):
             name="idx_notification_settings_user_time",
         )
 
-        print("✅ notification_settings 인덱스 생성 완료")
+        print("[OK] notification_settings 인덱스 생성 완료")
     except Exception as e:
-        print(f"⚠️ notification_settings 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] notification_settings 인덱스 생성 중 오류: {e}")
 
     # ---------- sud_scores 컬렉션 ----------
     # 현재 운영에서는 SUD를 diaries.sud_scores(embedded)로만 사용.
@@ -200,9 +200,9 @@ async def lifespan(app: FastAPI):
             name="unique_relax_session_id",
         )
 
-        print("✅ relaxation_tasks 인덱스 생성 완료")
+        print("[OK] relaxation_tasks 인덱스 생성 완료")
     except Exception as e:
-        print(f"⚠️ relaxation_tasks 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] relaxation_tasks 인덱스 생성 중 오류: {e}")
 
     # ---------- screen_time 컬렉션 ----------
     # 유저별 일/주 단위 스크린타임 합계 조회
@@ -217,9 +217,9 @@ async def lifespan(app: FastAPI):
             [("user_id", 1), ("end_time", -1)],
             name="idx_screen_time_user_last_end",
         )
-        print("✅ screen_time 인덱스 생성 완료")
+        print("[OK] screen_time 인덱스 생성 완료")
     except Exception as e:
-        print(f"⚠️ screen_time 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] screen_time 인덱스 생성 중 오류: {e}")
 
     # ---------- schedule_events 컬렉션 ----------
     try:
@@ -231,9 +231,9 @@ async def lifespan(app: FastAPI):
             [("user_id", 1), ("start_date", 1)],
             name="idx_schedule_user_start_date",
         )
-        print("✅ schedule_events 인덱스 생성 완료")
+        print("[OK] schedule_events 인덱스 생성 완료")
     except Exception as e:
-        print(f"⚠️ schedule_events 인덱스 생성 중 오류 (이미 존재할 수 있음): {e}")
+        print(f"[WARN] schedule_events 인덱스 생성 중 오류 (이미 존재할 수 있음): {e}")
 
     # ---------- edu_sessions 컬렉션 ----------
     # 주차별 세션 히스토리/통계 조회용 (여러 세션 허용)
@@ -252,9 +252,9 @@ async def lifespan(app: FastAPI):
             name="idx_edu_user_created_at",
         )
 
-        print("✅ edu_sessions 인덱스 생성 완료")
+        print("[OK] edu_sessions 인덱스 생성 완료")
     except Exception as e:
-        print(f"⚠️ edu_sessions 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] edu_sessions 인덱스 생성 중 오류: {e}")
 
     # ---------- user_data ----------
     # 현재 운영/통합 플로우에서는 user_data 컬렉션을 사용하지 않으므로 제거합니다.
@@ -278,9 +278,9 @@ async def lifespan(app: FastAPI):
             name="unique_user_group",
         )
 
-        print("✅ worry_groups 인덱스 생성 완료")
+        print("[OK] worry_groups 인덱스 생성 완료")
     except Exception as e:
-        print(f"⚠️ worry_groups 인덱스 생성 중 오류: {e}")
+        print(f"[WARN] worry_groups 인덱스 생성 중 오류: {e}")
 
     # startup 끝
     yield
