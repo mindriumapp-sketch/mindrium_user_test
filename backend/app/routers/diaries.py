@@ -404,7 +404,6 @@ async def create_diary(
         "diary_id": f"diary_{uuid.uuid4().hex[:8]}",
         "group_id": group_id,
         "route": payload.route,
-        "draft_progress": payload.draft_progress,
 
         "activation": payload.activation.model_dump(),
         "belief": [chip.model_dump() for chip in payload.belief],
@@ -422,6 +421,8 @@ async def create_diary(
         "updated_at": now_utc,
         "client_timestamp": client_ts_utc,
     }
+    if payload.draft_progress is not None:
+        diary_doc["draft_progress"] = payload.draft_progress
 
     await collection.insert_one(diary_doc)
 
@@ -690,6 +691,9 @@ async def update_diary(
             diary.get("alternative_thoughts"),
             update_data.get("alternative_thoughts"),
         )
+    if "draft_progress" in update_data and update_data["draft_progress"] is None:
+        update_data.pop("draft_progress", None)
+        unset_fields["draft_progress"] = ""
 
     set_fields.update(update_data)
 
