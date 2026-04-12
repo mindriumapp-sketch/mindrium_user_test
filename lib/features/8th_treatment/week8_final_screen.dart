@@ -160,56 +160,6 @@ child: NavigationButtons(
     }
   }
 
-  /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
-  // void _showStartDialog(BuildContext context) {
-  //   final ctx = context;
-  //   final nav = Navigator.of(ctx);
-  //   showDialog(
-  //     context: ctx,
-  //     barrierDismissible: false,
-  //     builder: (_) => CustomPopupDesign(
-  //       title: '이완 음성 안내 시작',
-  //       message:
-  //       '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-  //       positiveText: '확인',
-  //       negativeText: null,
-  //       backgroundAsset: null,
-  //       iconAsset: null,
-  //       onPositivePressed: () async {
-  //         if (_isSavingCompletion) return;
-  //         setState(() => _isSavingCompletion = true);
-          
-  //         try {
-  //           final sessionId = await _ensureSessionId();
-  //           await _week8Api.updateCompletion(
-  //             sessionId: sessionId,
-  //             completed: true,
-  //             endTime: DateTime.now(),
-  //             lastScreenIndex: _totalScreens,
-  //             totalScreens: _totalScreens,
-  //           );
-  //           if (!mounted || !ctx.mounted) return;
-            
-  //           nav.pop();
-  //           nav.pushReplacementNamed(
-  //             '/relaxation_education',
-  //             arguments: {
-  //               'taskId': 'week8_education',
-  //               'weekNumber': 8,
-  //               'mp3Asset': 'week8.mp3',
-  //               'riveAsset': 'week8.riv',
-  //             },
-  //           );
-  //         } catch (e) {
-  //           if (!mounted || !ctx.mounted) return;
-  //           BlueBanner.show(ctx, '8주차 완료 상태 저장에 실패했습니다: $e');
-  //           setState(() => _isSavingCompletion = false);
-  //         }
-  //       },
-  //     ),
-  //   );
-  // }
-
   Future<String> _ensureSessionId() async {
     if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
 

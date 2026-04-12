@@ -1,3 +1,5 @@
+import 'package:gad_app_team/utils/server_datetime.dart';
+
 class ScreenTimeSummary {
   final double totalMinutes;
   final double todayMinutes;
@@ -24,11 +26,7 @@ class ScreenTimeSummary {
   }
 
   static DateTime? _parseDate(Object? raw) {
-    if (raw is DateTime) return raw.toUtc();
-    if (raw is String) {
-      return DateTime.tryParse(raw)?.toUtc();
-    }
-    return null;
+    return parseServerDateTime(raw);
   }
 }
 
@@ -52,17 +50,19 @@ class ScreenTimeEntry {
   factory ScreenTimeEntry.fromJson(Map<String, dynamic> json) {
     return ScreenTimeEntry(
       id: json['screen_id']?.toString() ?? '',
-      startTime: DateTime.parse(json['start_time'] as String).toUtc(),
-      endTime: DateTime.parse(json['end_time'] as String).toUtc(),
+      startTime:
+          parseServerDateTime(json['start_time'], fallback: DateTime.now()) ??
+          DateTime.now(),
+      endTime:
+          parseServerDateTime(json['end_time'], fallback: DateTime.now()) ??
+          DateTime.now(),
       durationSeconds: (json['duration_seconds'] as num?)?.toInt() ?? 0,
-      createdAt: _parseDate(json['created_at']) ?? DateTime.now().toUtc(),
+      createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
       platform: json['platform'] as String?,
     );
   }
 
   static DateTime? _parseDate(Object? raw) {
-    if (raw is DateTime) return raw.toUtc();
-    if (raw is String) return DateTime.tryParse(raw)?.toUtc();
-    return null;
+    return parseServerDateTime(raw);
   }
 }

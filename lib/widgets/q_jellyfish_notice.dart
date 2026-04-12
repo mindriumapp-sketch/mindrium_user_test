@@ -77,7 +77,7 @@ class JellyfishNotice extends StatelessWidget {
                           text,
                           softWrap: true,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             height: 1.5,
                             fontWeight: FontWeight.w500,
                             color: effectiveTextColor,

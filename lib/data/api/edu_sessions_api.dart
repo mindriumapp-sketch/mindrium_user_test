@@ -2,6 +2,45 @@
 import 'package:dio/dio.dart';
 import 'api_client.dart';
 
+Map<String, dynamic> parseEduSessionResponse(
+  dynamic data, {
+  String? fallbackSessionId,
+}) {
+  if (data is! Map) {
+    throw const FormatException('Invalid edu session response');
+  }
+
+  final map = Map<String, dynamic>.from(
+    data.map((key, value) => MapEntry(key.toString(), value)),
+  );
+
+  final rawSessionId = map['session_id'];
+  final sessionId =
+      rawSessionId is String && rawSessionId.isNotEmpty
+          ? rawSessionId
+          : fallbackSessionId;
+  if (sessionId != null && sessionId.isNotEmpty) {
+    map['session_id'] = sessionId;
+    map['sessionId'] = sessionId;
+  }
+
+  final rawIsFirstCompleted = map['is_first_completed'];
+  if (rawIsFirstCompleted is bool || rawIsFirstCompleted == null) {
+    map['is_first_completed'] = rawIsFirstCompleted;
+    map['isFirstCompleted'] = rawIsFirstCompleted;
+  }
+
+  return map;
+}
+
+List<Map<String, dynamic>> parseEduSessionListResponse(dynamic data) {
+  if (data is! List) {
+    throw const FormatException('Invalid edu session list response');
+  }
+
+  return data.map((raw) => parseEduSessionResponse(raw)).toList();
+}
+
 class EduSessionsApi {
   final ApiClient _client;
   EduSessionsApi(this._client);
@@ -24,12 +63,7 @@ class EduSessionsApi {
     );
 
     final data = res.data;
-    if (data is List) {
-      return data
-          .whereType<Map>()
-          .map((raw) => raw.cast<String, dynamic>())
-          .toList();
-    }
+    if (data is List) return parseEduSessionListResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -41,7 +75,9 @@ class EduSessionsApi {
   Future<Map<String, dynamic>> getEduSession(String sessionId) async {
     final res = await _client.dio.get('/edu-sessions/$sessionId');
     final data = res.data;
-    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      return parseEduSessionResponse(data, fallbackSessionId: sessionId);
+    }
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -72,7 +108,7 @@ class EduSessionsApi {
     final res = await _client.dio.post('/edu-sessions', data: payload);
 
     final data = res.data;
-    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -119,7 +155,7 @@ class EduSessionsApi {
     final res = await _client.dio.post('/edu-sessions/week3-5', data: payload);
 
     final data = res.data;
-    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -193,9 +229,7 @@ class EduSessionsApi {
     );
 
     final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(data);
-    }
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,

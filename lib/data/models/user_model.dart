@@ -1,3 +1,5 @@
+import 'package:gad_app_team/utils/server_datetime.dart';
+
 /// 현재 로그인한 사용자 정보를 나타내는 모델.
 /// 백엔드의 UserMe 스키마와 1:1로 매칭되지만,
 /// 이 모델은 "응답 전용(read only)" 용도로만 사용한다.
@@ -62,11 +64,5 @@ class UserMe {
 
 /// null 허용 DateTime 파서
 DateTime? _parseNullableDateTime(dynamic value) {
-  if (value == null) return null;
-  if (value is String && value.isEmpty) return null;
-  try {
-    return DateTime.parse(value as String).toLocal();
-  } catch (_) {
-    return null;
-  }
+  return parseServerDateTime(value);
 }

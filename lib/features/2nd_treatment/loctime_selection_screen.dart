@@ -79,8 +79,22 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
   final Duration _reminderDuration = const Duration(hours: 0, minutes: 0);
   bool _noLocTime = false;
   bool _isSaving = false; // 저장 중 상태
-  bool _openedLocationPickerOnEntry = false;
+  bool _isLoadingInitialLocTime = true;
+  // bool _openedLocationPickerOnEntry = false;
   bool _openedGroupScreenOnEntry = false;
+  bool? _locAutoFilled;
+
+  Map<String, dynamic> _buildPopResult() {
+    return {
+      'diaryId': _abcId?.trim(),
+      'sudId': (_resolvedSudId ?? widget.sudId)?.trim(),
+    };
+  }
+
+  void _popWithResolvedIds() {
+    if (!mounted) return;
+    Navigator.pop(context, _buildPopResult());
+  }
 
   String? _resolveDiaryRoute() {
     final route = widget.diaryRoute?.trim();
@@ -109,8 +123,8 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
       tod = TimeOfDay(hour: hour, minute: minute);
     }
     final location =
-        locTime['location']?.toString() ??
         locTime['location_label']?.toString() ??
+        locTime['location']?.toString() ??
         locTime['location_desc']?.toString();
     final description =
         locTime['location_desc']?.toString() ?? locTime['location']?.toString();
@@ -146,6 +160,10 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
               ? null
               : '${setting.time!.hour.toString().padLeft(2, '0')}:${setting.time!.minute.toString().padLeft(2, '0')}',
       'location': resolvedLocation,
+      'location_label':
+          (locationLabel != null && locationLabel.isNotEmpty)
+              ? locationLabel
+              : null,
       'location_desc':
           (locationDesc != null && locationDesc.isNotEmpty)
               ? locationDesc
@@ -329,29 +347,29 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
     _abcId = widget.abcId;
     _resolvedSudId = widget.sudId;
     unawaited(_loadExisting());
-    _openLocationPickerOnEntryIfNeeded();
     _openGroupScreenOnEntryIfNeeded();
   }
 
   /// 기존 위치/시간 설정을 불러와 초깃값으로 반영
   Future<void> _loadExisting() async {
-    final diaryId = _abcId;
-    if (diaryId == null || diaryId.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _noLocTime = false;
-        });
-        final reason = _lastDiaryResolveMessage;
-        if (reason != null && reason.isNotEmpty) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(reason)));
-        }
-      }
-      return;
-    }
-
     try {
+      final diaryId = _abcId;
+      if (diaryId == null || diaryId.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _noLocTime = false;
+          });
+          final reason = _lastDiaryResolveMessage;
+          if (reason != null && reason.isNotEmpty) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(reason)));
+          }
+        }
+        return;
+      }
+
+      final rawDiary = await _diariesApi.getDiary(diaryId);
       final rawLocTime = await _diariesApi.getLocTime(diaryId);
       LocTimeSetting? timeSetting;
       LocTimeSetting? locationSetting;
@@ -383,6 +401,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
         _selectedWeekdays.clear();
         _repeatOption = RepeatOption.daily;
         _noLocTime = false;
+        _locAutoFilled = _readBool(rawDiary['loc_auto_filled']);
       });
     } on DioException catch (e) {
       final message =
@@ -399,6 +418,14 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('위치/시간 정보를 불러오지 못했습니다: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInitialLocTime = false;
+        });
+      } else {
+        _isLoadingInitialLocTime = false;
       }
     }
   }
@@ -448,19 +475,6 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
     );
   }
 
-  void _openLocationPickerOnEntryIfNeeded() {
-    if (!widget.autoOpenMapOnEntry ||
-        !mounted ||
-        _openedLocationPickerOnEntry) {
-      return;
-    }
-    _openedLocationPickerOnEntry = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _showLocationSheet(saveAfterPick: true);
-    });
-  }
-
   void _openGroupScreenOnEntryIfNeeded() {
     if (!widget.autoNavigateGroupOnEntry ||
         !mounted ||
@@ -489,35 +503,17 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
     });
   }
 
-  Future<void> _showLocationSheet({bool saveAfterPick = false}) async {
-    LatLng? initialLatLng;
+  LatLng? _buildInitialLatLng() {
     if (_draftLocation?.latitude != null && _draftLocation?.longitude != null) {
-      initialLatLng = LatLng(
-        _draftLocation!.latitude!,
-        _draftLocation!.longitude!,
-      );
+      return LatLng(_draftLocation!.latitude!, _draftLocation!.longitude!);
     }
+    return null;
+  }
 
-    final setting = await Navigator.of(context).push<LocTimeSetting>(
-      MaterialPageRoute(
-        builder:
-            (_) => MapPicker(
-              initial: initialLatLng,
-              initialTime: _draftTime?.time ?? _draftLocation?.time,
-              enableLocationLabel: true,
-              initialLocationLabel: _draftLocation?.location,
-              sheetInitialSize: 0.6,
-            ),
-      ),
-    );
-
-    if (setting == null) {
-      if (saveAfterPick && mounted) {
-        Navigator.maybePop(context);
-      }
-      return;
-    }
-
+  Future<void> _applyPickedLocation(
+      LocTimeSetting setting, {
+        bool saveAfterPick = false,
+      }) async {
     if (!mounted) return;
 
     final withRepeat = setting.copyWith(
@@ -545,6 +541,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
 
     setState(() {
       _draftLocation = withDefault;
+      _locAutoFilled = false;
       _draftTime = LocTimeSetting(
         id: _draftTime?.id,
         diaryId: _abcId,
@@ -562,6 +559,30 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
     if (saveAfterPick) {
       await _onSavePressed();
     }
+  }
+
+  Future<void> _showLocationSheet({bool saveAfterPick = false}) async {
+    final setting = await Navigator.of(context).push<LocTimeSetting>(
+      MaterialPageRoute(
+        builder:
+            (_) => MapPicker(
+          initial: _buildInitialLatLng(),
+          initialTime: _draftTime?.time ?? _draftLocation?.time,
+          enableLocationLabel: true,
+          initialLocationLabel: _draftLocation?.location,
+          sheetInitialSize: 0.6,
+        ),
+      ),
+    );
+
+    if (setting == null) {
+      if (saveAfterPick && mounted) {
+        _popWithResolvedIds();
+      }
+      return;
+    }
+
+    await _applyPickedLocation(setting, saveAfterPick: saveAfterPick);
   }
 
   // ====== 도움말 ======
@@ -689,6 +710,10 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
         }
 
         if (!mounted) return;
+        _locAutoFilled = null;
+        await _diariesApi.updateDiary(resolvedDiaryId, {
+          'loc_auto_filled': false,
+        });
         debugPrint('🟢 위치/시간 없음 처리 완료');
         _handlePostSaveNavigation(resolvedDiaryId);
         return;
@@ -703,6 +728,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
         final defaultLocation = await _buildDefaultLocationSetting();
         if (defaultLocation != null) {
           _draftLocation = defaultLocation;
+          _locAutoFilled = true;
         }
       }
 
@@ -713,10 +739,10 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
         merged = _draftLocation!.copyWith(
           time: _draftTime?.time ?? _draftLocation!.time,
           repeatOption:
-              _draftTime?.repeatOption ?? _draftLocation!.repeatOption,
+          _draftTime?.repeatOption ?? _draftLocation!.repeatOption,
           weekdays: _draftTime?.weekdays ?? _draftLocation!.weekdays,
           reminderMinutes:
-              _draftLocation!.reminderMinutes ?? _draftTime?.reminderMinutes,
+          _draftLocation!.reminderMinutes ?? _draftTime?.reminderMinutes,
           notifyEnter: hasLocationTrigger ? _draftLocation!.notifyEnter : true,
           notifyExit: hasLocationTrigger ? _draftLocation!.notifyExit : false,
         );
@@ -758,6 +784,10 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
                 ? updated.copyWith(notifyEnter: true, notifyExit: false)
                 : null;
       }
+
+      await _diariesApi.updateDiary(resolvedDiaryId, {
+        'loc_auto_filled': _locAutoFilled ?? false,
+      });
 
       debugPrint('🟢 위치/시간 설정 완료');
       if (_resolveDiaryRoute() == 'today_task' && mounted) {
@@ -814,8 +844,8 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
     if (!mounted) return;
     final resolvedDiaryRoute = _resolveDiaryRoute();
     final route = MaterialPageRoute(
-      builder:
-          (_) => AbcGroupAddScreen(
+      builder: (_) =>
+          AbcGroupAddScreen(
             origin: widget.origin ?? 'etc',
             diaryRoute: resolvedDiaryRoute,
             diaryId: diaryId,
@@ -835,65 +865,95 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final body =
+    widget.autoOpenMapOnEntry
+        ? (_isLoadingInitialLocTime
+        ? const ColoredBox(
+      color: Color(0xFFF1F3F6),
+      child: Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.4),
+        ),
+      ),
+    )
+        : MapPicker(
+      initial: _buildInitialLatLng(),
+      initialTime: _draftTime?.time ?? _draftLocation?.time,
+      enableLocationLabel: true,
+      initialLocationLabel: _draftLocation?.location,
+      sheetInitialSize: 0.6,
+      embedInParent: true,
+      onConfirmed: (setting) async {
+        await _applyPickedLocation(setting, saveAfterPick: true);
+      },
+      onBackPressed: _popWithResolvedIds,
+    ))
+        : Stack(
+      fit: StackFit.expand,
+      children: [
+        Opacity(
+          opacity: 0.35,
+          child: Image.asset(
+            'assets/image/eduhome.png',
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
+          ),
+        ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              children: [
+                Expanded(
+                  child: LocTimeSelectionUI(
+                    label: widget.label,
+                    draftTime: _draftTime,
+                    draftLocation: _draftLocation,
+                    noLocTime: _noLocTime,
+                    repeatOption: _repeatOption,
+                    selectedWeekdays: _selectedWeekdays,
+                    reminderDuration: _reminderDuration,
+                    onTapTime: () {},
+                    onTapLocation: () {
+                      _showLocationSheet();
+                    },
+                    onTapRepeat: () {},
+                    onTapReminder: () {},
+                    onToggleNone: (value) {
+                      setState(() {
+                        _noLocTime = value;
+                      });
+                    },
+                    showInlineTimePicker: true,
+                    onInlineTimeChanged: _updateDraftTime,
+                    onSave: _onSavePressed,
+                    showReminderOption: false,
+                    showDisableLocTimeOption: false,
+                    showRepeatOption: false,
+                  ),
+                ),
+                if (_isSaving)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(title: '위치/시간 설정'),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Opacity(
-            opacity: 0.35,
-            child: Image.asset(
-              'assets/image/eduhome.png',
-              fit: BoxFit.cover,
-              filterQuality: FilterQuality.high,
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: LocTimeSelectionUI(
-                      label: widget.label,
-                      draftTime: _draftTime,
-                      draftLocation: _draftLocation,
-                      noLocTime: _noLocTime,
-                      repeatOption: _repeatOption,
-                      selectedWeekdays: _selectedWeekdays,
-                      reminderDuration: _reminderDuration,
-                      onTapTime: () {},
-                      onTapLocation: () {
-                        _showLocationSheet();
-                      },
-                      onTapRepeat: () {},
-                      onTapReminder: () {},
-                      onToggleNone: (value) {
-                        setState(() {
-                          _noLocTime = value;
-                        });
-                      },
-                      showInlineTimePicker: true,
-                      onInlineTimeChanged: _updateDraftTime,
-                      onSave: _onSavePressed,
-                      showReminderOption: false,
-                      showDisableLocTimeOption: false,
-                      showRepeatOption: false,
-                    ),
-                  ),
-                  if (_isSaving)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: CircularProgressIndicator(),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      appBar:
+          widget.autoOpenMapOnEntry
+              ? null
+              : CustomAppBar(title: '위치/시간 설정', onBack: _popWithResolvedIds),
+      body: body,
     );
   }
 
@@ -901,6 +961,17 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
   double? _readDouble(dynamic raw) {
     if (raw is num) return raw.toDouble();
     if (raw is String) return double.tryParse(raw);
+    return null;
+  }
+
+  bool? _readBool(dynamic raw) {
+    if (raw is bool) return raw;
+    if (raw is num) return raw != 0;
+    if (raw is String) {
+      final normalized = raw.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1') return true;
+      if (normalized == 'false' || normalized == '0') return false;
+    }
     return null;
   }
 

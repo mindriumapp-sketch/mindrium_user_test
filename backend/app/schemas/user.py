@@ -51,7 +51,7 @@ class UserDataResponse(BaseModel):
     survey_completed: bool = False
     current_week: int = 1
     last_completed_week: int = Field(
-        0, ge=0, le=8, description="마지막으로 완료한 회차 (1~8, 없으면 0)"
+        0, ge=0, le=8, description="마지막으로 완료한 주차 (1~8, 없으면 0)"
     )
     last_completed_at: Optional[datetime] = None
     total_diaries: int = 0

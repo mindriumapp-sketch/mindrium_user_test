@@ -7,6 +7,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 /// ----------------------
 /// DiaryDirectoryScreen
@@ -791,14 +792,10 @@ class _DiaryCard extends StatelessWidget {
 
     // created_at 파싱 (이미 DateTime이면 그대로 사용)
     final createdRaw = entry['created_at'];
-    final DateTime? createdAt =
-        createdRaw is DateTime
-            ? createdRaw
-            : createdRaw is String
-            ? DateTime.parse(createdRaw)
-            : null;
-    final created =
-        createdAt != null ? formatter.format(createdAt.toLocal()) : '-';
+    final DateTime? createdAt = parseServerDateTime(createdRaw);
+    final created = createdAt != null
+        ? formatter.format(createdAt)
+        : '-';
 
     // activation DiaryChip → label 추출
     final activationRaw = entry['activation'];
@@ -832,8 +829,7 @@ class _DiaryCard extends StatelessWidget {
         locTimeEntry = mapped.last;
       }
     }
-
-    final addressName = entry['address_name']?.toString();
+    final bool locAutoFilled = entry['loc_auto_filled'] == true;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -987,18 +983,17 @@ class _DiaryCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _AlarmSection(locTimeEntry: locTimeEntry),
-            if (addressName != null && addressName.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildSection(
-                context: context,
-                icon: Icons.location_on_outlined,
-                title: '기록 위치',
-                child: Text(
-                  addressName,
-                  style: const TextStyle(color: Color(0xFF1B405C)),
-                ),
+            const SizedBox(height: 12),
+            _buildSection(
+              context: context,
+              icon: Icons.location_on_outlined,
+              title: (!locAutoFilled) ? '위치 기록' : '작성 위치',
+              child: Text(
+                entry['loc_time']?.location_label,
+                style:
+                const TextStyle(color: Color(0xFF1B405C)),
               ),
-            ],
+            ),
           ],
         ),
       ),

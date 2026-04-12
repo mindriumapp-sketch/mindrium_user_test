@@ -403,6 +403,14 @@ async def update_relaxation_task(
     now_utc = datetime.now(timezone.utc)
 
     obj_id = to_obj_id(relax_id)
+    existing = await collection.find_one(
+        {"_id": obj_id, "user_id": user_id},
+    )
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Relaxation session not found",
+        )
 
     start_utc = ensure_utc(payload.start_time)
     end_utc = ensure_utc(payload.end_time) if payload.end_time is not None else None
@@ -430,15 +438,9 @@ async def update_relaxation_task(
 
     result = await collection.find_one_and_update(
         {"_id": obj_id, "user_id": user_id},
-        {"$set": update_doc},
+        {"$set": update_doc, "$unset": {"session_id": ""}},
         return_document=ReturnDocument.AFTER,
     )
-
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Relaxation session not found",
-        )
 
     try:
         await _sync_last_completed_week_from_relaxation(

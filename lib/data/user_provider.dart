@@ -9,6 +9,7 @@ import 'package:gad_app_team/data/api/users_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 import 'daycounter.dart';
 
 /// ✅ 앱 전체에서 공통으로 쓰는 "유저 상태 + 진행도 + 핵심 가치 캐시" Provider
@@ -56,7 +57,7 @@ class UserProvider extends ChangeNotifier {
   bool _surveyCompleted = false;
   bool get surveyCompleted => _surveyCompleted;
 
-  /// 서버에서 계산한 "현재 회차"
+  /// 서버에서 계산한 "현재 주차"
   int _currentWeek = 1;
   int get currentWeek => _currentWeek;
 
@@ -133,12 +134,7 @@ class UserProvider extends ChangeNotifier {
 
       // created_at 파싱
       final createdAtRaw = me['created_at'];
-      DateTime? parsedCreatedAt;
-      if (createdAtRaw is String) {
-        parsedCreatedAt = DateTime.tryParse(createdAtRaw);
-      } else if (createdAtRaw is DateTime) {
-        parsedCreatedAt = createdAtRaw;
-      }
+      final parsedCreatedAt = parseServerDateTime(createdAtRaw);
 
       if (parsedCreatedAt != null) {
         _createdAt = parsedCreatedAt;
@@ -170,7 +166,7 @@ class UserProvider extends ChangeNotifier {
   /// 서버의 /users/me/progress 값을 다시 읽어서
   /// 진행도 + 핵심 가치 캐시만 새로 세팅.
   ///
-  /// - 예: "회차 완료 API 호출 후, 서버 기준으로 다시 맞추고 싶을 때".
+  /// - 예: "주차 완료 API 호출 후, 서버 기준으로 다시 맞추고 싶을 때".
   Future<void> refreshProgress() async {
     final myRequest = ++_requestId;
     _hasError = false;
@@ -295,12 +291,7 @@ class UserProvider extends ChangeNotifier {
 
     // 마지막 완료 시각
     final rawAt = progress['last_completed_at'];
-    DateTime? parsed;
-    if (rawAt is String) {
-      parsed = DateTime.tryParse(rawAt);
-    } else if (rawAt is DateTime) {
-      parsed = rawAt;
-    }
+    final parsed = parseServerDateTime(rawAt);
     _lastCompletedAt = parsed;
 
     // 총 다이어리 수

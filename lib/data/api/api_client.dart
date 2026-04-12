@@ -28,7 +28,8 @@ class ApiClient {
     }
     if (Platform.isAndroid) {
       // Android 에뮬레이터에서 호스트 머신(localhost) 접근용
-      return 'http://10.0.2.2:8080';
+      // return 'http://10.0.2.2:8080';
+      return 'http://192.168.50.98:8080';
     }
     // iOS 시뮬레이터에서 호스트 머신(localhost) 접근용
     return 'http://127.0.0.1:8080';

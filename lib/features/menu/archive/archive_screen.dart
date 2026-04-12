@@ -5,6 +5,7 @@ import 'package:gad_app_team/features/menu/menu_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -46,14 +47,10 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       // 보관일 최근순 정렬
       archived.sort((a, b) {
         final aDate =
-            DateTime.tryParse(
-              (a['archived_at'] ?? a['updated_at'])?.toString() ?? '',
-            ) ??
+            parseServerDateTime(a['archived_at'] ?? a['updated_at']) ??
             DateTime(0);
         final bDate =
-            DateTime.tryParse(
-              (b['archived_at'] ?? b['updated_at'])?.toString() ?? '',
-            ) ??
+            parseServerDateTime(b['archived_at'] ?? b['updated_at']) ??
             DateTime(0);
         return bDate.compareTo(aDate);
       });
@@ -472,9 +469,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
     final title = group['group_title']?.toString() ?? '';
     final contents = group['group_contents']?.toString() ?? '';
     final archivedAt =
-        DateTime.tryParse(
-          (group['archived_at'] ?? group['updated_at'])?.toString() ?? '',
-        ) ??
+        parseServerDateTime(group['archived_at'] ?? group['updated_at']) ??
         DateTime.now();
     final archivedStr = DateFormat('yyyy.MM.dd').format(archivedAt);
     final count = group['diary_count'] ?? 0;
@@ -662,9 +657,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                           groupContents: contents,
                           characterId: characterId,
                           createdAt:
-                              DateTime.tryParse(
-                                group['created_at']?.toString() ?? '',
-                              ) ??
+                              parseServerDateTime(group['created_at']) ??
                               DateTime.now(),
                           archivedAt: archivedAt,
                         ),

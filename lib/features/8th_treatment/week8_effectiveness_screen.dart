@@ -12,6 +12,7 @@ import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dar
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week8_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 모델
@@ -40,10 +41,12 @@ class CalendarEvent {
 
   factory CalendarEvent.fromJson(Map<String, dynamic> json) => CalendarEvent(
     id: json['id'],
-    startDate: DateTime.parse(json['startDate']),
-    endDate: DateTime.parse(json['endDate']),
+    startDate: parseServerDateTime(json['startDate']) ?? DateTime.now(),
+    endDate: parseServerDateTime(json['endDate']) ?? DateTime.now(),
     behaviors: List<String>.from(json['behaviors']),
-    createdAt: DateTime.parse(json['createdAt']),
+    createdAt:
+        parseServerDateTime(json['createdAt'], fallback: DateTime.now()) ??
+        DateTime.now(),
   );
 }
 

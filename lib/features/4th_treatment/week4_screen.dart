@@ -21,7 +21,7 @@ class _Week4ScreenState extends State<Week4Screen> {
       weekNumber: 4,
       weekTitle: '걱정일기 속 생각을 점검해보겠습니다.',
       weekDescription:
-          '이번 주차에서는 내 생각을 점검하고 불안에 도움이 되도록 바꿔보겠습니다. 작성하신 걱정일기의 내용을 살펴볼게요.',
+          '이번 주차에서는 내 생각을 점검하고 불안에 도움이 되도록 바꿔보겠습니다. 작성하신\n걱정일기의 내용을 살펴볼게요.',
       nextPageBuilder:
           () => Week4AbcScreen(abcId: abcId, loopCount: widget.loopCount),
     );

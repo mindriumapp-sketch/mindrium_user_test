@@ -5,6 +5,7 @@ import 'package:rive/rive.dart' as rive;
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -236,7 +237,7 @@ class _PracticePlayerState extends State<PracticePlayer>
         builder:
             (_) => CustomPopupDesign(
               title: '이완이 완료되었습니다',
-              message: '잘하셨어요.\n10초 후 홈으로 이동합니다.',
+              message: '잘하셨어요. 10초 후 홈으로 이동합니다.',
               positiveText: '지금 이동',
               autoPositiveAfter: const Duration(seconds: 10),
               negativeText: null,
@@ -249,29 +250,16 @@ class _PracticePlayerState extends State<PracticePlayer>
       return;
     }
 
-    showDialog(
+    showRelaxationToCbtDialog(
       context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => CustomPopupDesign(
-            title: 'CBT 이어서 하기',
-            message: '이완은 완료했어요.\n이제 CBT 세션을 이어서 진행할까요?',
-            positiveText: '이어하기',
-            autoPositiveAfter: const Duration(seconds: 10),
-            negativeText: '나중에',
-            onNegativePressed: () {
-              nav.pop();
-              nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
-            },
-            onPositivePressed: () {
-              nav.pop();
-              nav.pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => _buildCbtFirstScreen(widget.weekNumber),
-                ),
-              );
-            },
+      onMoveNow: () {
+        nav.pop();
+        nav.pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => _buildCbtFirstScreen(widget.weekNumber),
           ),
+        );
+      },
     );
   }
 
@@ -284,7 +272,11 @@ class _PracticePlayerState extends State<PracticePlayer>
       await _saveOnce(reason: 'complete');
       if (!mounted) return;
 
-      if (widget.taskId.contains('_education')) {
+      if (widget.taskId == 'daily_review') {
+        context.read<TodayTaskProvider>().setTodayTaskLocally(
+          relaxationDone: true,
+        );
+      } else if (widget.taskId.contains('_education')) {
         context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
           weekNumber: widget.weekNumber,
           relaxationDone: true,
@@ -293,11 +285,7 @@ class _PracticePlayerState extends State<PracticePlayer>
         );
       }
 
-      if (widget.taskId.contains('menu')) {
-        Navigator.pushNamedAndRemoveUntil(context, '/contents', (_) => false);
-      } else {
-        await _handleAfterEducationRelaxationComplete();
-      }
+      await _handleAfterEducationRelaxationComplete();
     }
   }
 

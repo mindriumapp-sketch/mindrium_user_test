@@ -4,7 +4,7 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'week4_concentration_screen.dart';
 import 'week4_anxiety_screen.dart';
-import 'week4_finish_screen.dart';
+import 'week4_final_screen.dart';
 
 // ✅ UI 위젯
 import 'package:gad_app_team/widgets/jellyfish_notice.dart';
@@ -153,7 +153,7 @@ class Week4SkipChoiceScreen extends StatelessWidget {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const Week4FinishScreen(),
+                                builder: (_) => const Week4FinalScreen(),
                               ),
                             );
                           },

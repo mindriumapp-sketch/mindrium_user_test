@@ -10,6 +10,7 @@ import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 /// 홈 화면 '오늘의 할 일' 전용 Provider.
 ///
@@ -168,11 +169,7 @@ class TodayTaskProvider extends ChangeNotifier {
     final dateRaw = data['date'];
     if (dateRaw is String) {
       // "2025-12-03" -> DateTime(2025,12,3) 정도로만 쓰면 됨 (시간대 의미 없음)
-      try {
-        _date = DateTime.tryParse(dateRaw);
-      } catch (_) {
-        _date = null;
-      }
+      _date = parseServerDateOnly(dateRaw);
     } else {
       _date = null;
     }
@@ -191,12 +188,7 @@ class TodayTaskProvider extends ChangeNotifier {
 
     // 마지막 교육 완료 시각
     final lastEduRaw = data['last_education_at'];
-    DateTime? parsedLastEdu;
-    if (lastEduRaw is String) {
-      parsedLastEdu = DateTime.tryParse(lastEduRaw);
-    } else if (lastEduRaw is DateTime) {
-      parsedLastEdu = lastEduRaw;
-    }
+    final parsedLastEdu = parseServerDateTime(lastEduRaw);
     _lastEducationAt = parsedLastEdu;
 
     await _loadDiaryDraftProgress(requestId: requestId);
@@ -208,21 +200,27 @@ class TodayTaskProvider extends ChangeNotifier {
       _diaryDone ? TodayTaskDraftProgress.groupCompleted : _diaryDraftProgress;
 
   Future<void> _loadDiaryDraftProgress({required int requestId}) async {
-    if (_diaryDone) {
-      _diaryDraftProgress = TodayTaskDraftProgress.groupCompleted;
-      return;
-    }
-
     try {
       final draft = await _diariesApi.getLatestTodayTaskDraft();
       if (requestId != _requestId) return;
-      _diaryDraftProgress =
-          draft == null
-              ? TodayTaskDraftProgress.none
-              : TodayTaskDraftProgress.normalize(draft['draft_progress']);
+      if (draft != null) {
+        // 미완성 초안이 있으면 서버 플래그보다 초안 상태를 우선한다.
+        _diaryDone = false;
+        _diaryDraftProgress = TodayTaskDraftProgress.normalize(
+          draft['draft_progress'],
+        );
+      } else {
+        _diaryDraftProgress =
+            _diaryDone
+                ? TodayTaskDraftProgress.groupCompleted
+                : TodayTaskDraftProgress.none;
+      }
     } catch (e) {
       if (requestId != _requestId) return;
-      _diaryDraftProgress = TodayTaskDraftProgress.none;
+      _diaryDraftProgress =
+          _diaryDone
+              ? TodayTaskDraftProgress.groupCompleted
+              : TodayTaskDraftProgress.none;
       debugPrint('TodayTaskProvider._loadDiaryDraftProgress 실패: $e');
     }
   }

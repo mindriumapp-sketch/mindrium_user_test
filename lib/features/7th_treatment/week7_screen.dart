@@ -89,7 +89,7 @@ class _Week7ScreenState extends State<Week7Screen> {
       weekNumber: 7,
       weekTitle: '생활 습관을 개선해보겠습니다.',
       weekDescription:
-          '이번 주차에서는 일상생활에서\n불안을 관리할 수 있는 생활 습관을 개선해보겠습니다.',
+          '이번 주차에서는 일상생활에서 불안을 관리할 수 있는 생활 습관을 개선해보겠습니다.',
       nextPageBuilder: () => Week7AddDisplayScreen(),
     );
   }

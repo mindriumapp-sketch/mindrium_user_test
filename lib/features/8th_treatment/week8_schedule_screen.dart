@@ -1,3 +1,5 @@
+// Legacy screen: currently no active navigation path found.
+// Kept for reference until schedule_events migration is completed.
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
@@ -9,6 +11,7 @@ import 'package:gad_app_team/features/7th_treatment/week7_add_display_screen.dar
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 /// 캘린더 이벤트 모델
 class CalendarEvent {
@@ -34,15 +37,15 @@ class CalendarEvent {
     
     return CalendarEvent(
       id: json['event_id']?.toString() ?? '',
-      startDate: DateTime.parse(startDateStr),
-      endDate: DateTime.parse(endDateStr),
+      startDate: parseServerDateOnly(startDateStr) ?? DateTime.now(),
+      endDate: parseServerDateOnly(endDateStr) ?? DateTime.now(),
       behaviors: tasks
           .map((task) => task is Map ? task['label']?.toString() : null)
           .whereType<String>()
           .toList(),
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'].toString())
-          : DateTime.now(),
+      createdAt:
+          parseServerDateTime(json['created_at'], fallback: DateTime.now()) ??
+          DateTime.now(),
     );
   }
 }

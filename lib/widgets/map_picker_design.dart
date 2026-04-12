@@ -5,8 +5,8 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/location_picker_map.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 
-class MindriumPopupDesign extends StatefulWidget {
-  static const double defaultSheetInitialSize = 0.45;
+class MindriumMapDesign extends StatefulWidget {
+  static const double defaultSheetInitialSize = 0.35;
   final TextEditingController? searchController;
   final LocationPickerMapController? mapController;
   final VoidCallback? onMapReady;
@@ -24,8 +24,9 @@ class MindriumPopupDesign extends StatefulWidget {
   final TextEditingController? locationLabelController;
   final bool showTimePicker;
   final double sheetInitialSize;
+  final bool showMapPlaceholder;
 
-  const MindriumPopupDesign({
+  const MindriumMapDesign({
     super.key,
     this.searchController,
     this.mapController,
@@ -44,13 +45,14 @@ class MindriumPopupDesign extends StatefulWidget {
     this.locationLabelController,
     this.showTimePicker = true,
     this.sheetInitialSize = defaultSheetInitialSize,
+    this.showMapPlaceholder = false,
   });
 
   @override
-  State<MindriumPopupDesign> createState() => _MindriumPopupDesignState();
+  State<MindriumMapDesign> createState() => _MindriumMapDesignState();
 }
 
-class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
+class _MindriumMapDesignState extends State<MindriumMapDesign> {
   static const LatLng _kDefaultCenter = LatLng(37.5665, 126.9780);
   static const double _sheetMinSize = 0.075;
   static const double _sheetMaxSize = 0.75;
@@ -64,6 +66,20 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
     _pickerTime = widget.initialTimeDateTime ?? DateTime(2000, 1, 1, 9, 0);
   }
 
+  @override
+  void didUpdateWidget(covariant MindriumMapDesign oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final next = widget.initialTimeDateTime;
+    final prev = oldWidget.initialTimeDateTime;
+
+    if (next != prev && next != null) {
+      setState(() {
+        _pickerTime = next;
+      });
+    }
+  }
+
   String get _guideText {
     if (widget.showLocationLabelInput) {
       return widget.showTimePicker
@@ -71,7 +87,7 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
           : '알림을 받을 위치를 선택하고 [저장]을 눌러주세요.';
     }
     return widget.showTimePicker
-        ? '일기에 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
+        ? '일기의 상황이 일어난 위치와 시간을 선택한 뒤 [저장]을 눌러주세요.'
         : '알림을 받을 위치를 선택한 뒤 [저장]을 눌러주세요.';
   }
 
@@ -125,19 +141,40 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
   }
 
   Widget _buildMap() {
-    if (widget.mapController == null) {
-      return const SizedBox.shrink();
-    }
+    final mapChild = widget.mapController == null ?
+      const SizedBox.shrink()
+        : LocationPickerMap(
+            controller: widget.mapController!,
+            initialCenter: _initialCenter,
+            initialZoom: 16,
+            current: widget.current,
+            picked: widget.picked,
+            savedMarkers: widget.savedMarkers ?? const [],
+            onTap: widget.onTap,
+            onMapReady: widget.onMapReady,
+          );
 
-    return LocationPickerMap(
-      controller: widget.mapController!,
-      initialCenter: _initialCenter,
-      initialZoom: 16,
-      current: widget.current,
-      picked: widget.picked,
-      savedMarkers: widget.savedMarkers ?? const [],
-      onTap: widget.onTap,
-      onMapReady: widget.onMapReady,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(color: const Color(0xFFF1F3F6)),
+        if (widget.showMapPlaceholder)
+          const Center(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+          ),
+        IgnorePointer(
+          ignoring: widget.showMapPlaceholder,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 160),
+            opacity: widget.showMapPlaceholder ? 0 : 1,
+            child: mapChild,
+          ),
+        ),
+      ],
     );
   }
 
@@ -374,15 +411,6 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                   color: Color(0xFF1A2233),
                 ),
               ),
-              const Spacer(),
-              Text(
-                timeText,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF4A4F57),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -476,6 +504,10 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
 
   Widget _buildBottomSheet() {
     final timeText = TimeOfDay.fromDateTime(_pickerTime).format(context);
+    final media = MediaQuery.of(context);
+    final systemBottomInset = media.viewPadding.bottom > 0
+        ? media.viewPadding.bottom
+        : media.padding.bottom;
 
     return Positioned.fill(
       child: DraggableScrollableSheet(
@@ -504,7 +536,12 @@ class _MindriumPopupDesignState extends State<MindriumPopupDesign> {
                 Expanded(
                   child: ListView(
                     controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      10,
+                      16,
+                      systemBottomInset + 12,
+                    ),
                     children: [
                       _buildDragHandle(),
                       const SizedBox(height: 10),

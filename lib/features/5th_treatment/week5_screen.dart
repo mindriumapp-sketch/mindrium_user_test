@@ -96,7 +96,7 @@ class _Week5ScreenState extends State<Week5Screen> {
       weekNumber: 5,
       weekTitle: '불안 직면과 회피에 대해 알아보겠습니다.',
       weekDescription:
-          '이번 주차에서는 불안을 직면하는 것과 회피하는 것의 차이점을 구분해보겠습니다.',
+          '이번 주차에서는 불안을 직면하는 것과\n회피하는 것의 차이점을 구분해보겠습니다.',
       nextPageBuilder: () => Week5ClassificationScreen(sessionId: _sessionId),
     );
   }

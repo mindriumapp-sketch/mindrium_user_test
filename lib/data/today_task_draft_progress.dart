@@ -11,10 +11,10 @@ const String todayTaskAutoNavigateAbcArgKey = 'autoNavigateToTodayTaskAbc';
 
 class TodayTaskDraftProgress {
   static const int none = 0;
-  static const int anxietyEvaluated = 20;
-  static const int diaryWritten = 40;
-  static const int locTimeRecorded = 60;
-  static const int groupCompleted = 80;
+  static const int anxietyEvaluated = 25;
+  static const int diaryWritten = 50;
+  static const int locTimeRecorded = 75;
+  static const int groupCompleted = 100;
 
   static const Map<int, int> _normalizedValues = {
     none: none,
@@ -22,10 +22,11 @@ class TodayTaskDraftProgress {
     diaryWritten: diaryWritten,
     locTimeRecorded: locTimeRecorded,
     groupCompleted: groupCompleted,
-    25: anxietyEvaluated,
-    50: diaryWritten,
-    75: locTimeRecorded,
-    100: groupCompleted,
+    // legacy 값(20/40/60/80)은 새 스텝(25/50/75/100)으로 보정
+    20: anxietyEvaluated,
+    40: diaryWritten,
+    60: locTimeRecorded,
+    80: groupCompleted,
   };
 
   static int normalize(dynamic raw, {int fallback = none}) {

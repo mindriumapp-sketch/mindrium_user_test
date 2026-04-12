@@ -61,7 +61,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
     if (!desiredValue) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$label 권한은 치료 프로토콜 진행을 위해 필수예요. 해제할 수 없어요.'),
+          content: Text('$label 권한은 치료 진행을 위해 필수예요. 해제할 수 없어요.'),
         ),
       );
       await _refreshStatuses();
@@ -172,7 +172,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                 children: [
                   _PermissionSection(
                     title: '필수 권한',
-                    description: '치료 프로토콜 진행을 위해 꼭 필요한 권한이에요.',
+                    description: '치료 진행을 위해 꼭 필요한 권한이에요.',
                     children: [
                       _PermissionToggleTile(
                         icon: Icons.notifications_active_outlined,

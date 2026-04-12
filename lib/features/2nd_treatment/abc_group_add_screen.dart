@@ -5,14 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/today_task_progress_sync.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
 
 import '../../widgets/custom_appbar.dart';
 import '../../widgets/navigation_button.dart';
 import '../../data/storage/token_storage.dart';
 import '../../data/api/api_client.dart';
-import '../../data/api/edu_sessions_api.dart';
-import '../../data/api/relaxation_api.dart';
 import '../../data/api/worry_groups_api.dart';
 import '../../data/api/diaries_api.dart';
 import '../../data/api/alarm_settings_api.dart';
@@ -20,6 +17,9 @@ import '../alarm/alarm_notification_service.dart';
 import '../alarm/alarm_settings_sync_helper.dart';
 import 'abc_group_character_screen.dart';
 import '../../data/apply_solve_provider.dart';
+import 'loctime_selection_screen.dart';
+import 'week2_final_screen.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 
 class AbcGroupAddScreen extends StatefulWidget {
   final String? label;
@@ -53,8 +53,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   late final WorryGroupsApi _worryGroupsApi = WorryGroupsApi(_apiClient);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
-  final AlarmNotificationService _alarmService =
-      AlarmNotificationService.instance;
+  final AlarmNotificationService _alarmService = AlarmNotificationService.instance;
 
   String? _selectedGroupId;
   List<Map<String, dynamic>> _groups = [];
@@ -248,7 +247,17 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     if (!mounted) return;
 
     if (!_shouldContinueTherapyFlow) {
-      _showStartDialog();
+      final hasExplicitDiaryRoute = widget.diaryRoute?.trim().isNotEmpty == true;
+      if (!hasExplicitDiaryRoute) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => Week2FinalScreen(sessionId: widget.sessionId),
+          ),
+        );
+        return;
+      }
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
       return;
     }
 
@@ -694,11 +703,51 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
 
   void _handleBackNavigation() {
     final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
+    final resolvedDiaryRoute = (widget.diaryRoute ?? '').trim();
+
+    // today_task는 기존 예외 유지:
+    // LocTimeSelectionScreen -> AbcGroupAddScreen 을 push로 탔을 가능성이 있으니
+    // 여기서는 그냥 pop으로 이전 화면(기존 흐름) 복귀.
+    if (resolvedDiaryRoute == 'today_task') {
+      if (navigator.canPop()) {
+        navigator.pop();
+        return;
+      }
+      navigator.pushNamedAndRemoveUntil('/home', (_) => false);
       return;
     }
-    navigator.pushNamedAndRemoveUntil('/home', (_) => false);
+
+    // 일반 2nd treatment 흐름:
+    // pop으로 돌아가지 말고, 같은 diaryId를 들고
+    // LocTimeSelectionScreen(autoOpenMapOnEntry: true)로 명시 복귀.
+    final diaryId = widget.diaryId;
+    if (diaryId == null || diaryId.isEmpty) {
+      // 여기 오면 안 되는 케이스지만, 방어적으로 처리.
+      if (navigator.canPop()) {
+        navigator.pop();
+        return;
+      }
+      navigator.pushNamedAndRemoveUntil('/home', (_) => false);
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LocTimeSelectionScreen(
+          abcId: diaryId,
+          label: widget.label,
+          origin: widget.origin,
+          diaryRoute: widget.diaryRoute,
+          sessionId: widget.sessionId,
+          sudId: widget.sudId,
+          beforeSud: widget.beforeSud,
+          locationConsent: true,
+          autoOpenMapOnEntry: true,
+          autoNavigateGroupOnEntry: false,
+        ),
+      ),
+    );
   }
 
   void _showWorryGroupHelpDialog() {
@@ -1196,155 +1245,89 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
         ),
         bottomNavigationBar: Container(
           color: Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-            child: NavigationButtons(
-              leftLabel: '이전',
-              rightLabel: '다음',
-              onBack: _isSubmitting ? null : _handleBackNavigation,
-              onNext:
-                  (_selectedGroupId == null ||
-                          widget.diaryId == null ||
-                          _isSubmitting)
-                      ? null
-                      : () async {
-                        setState(() => _isSubmitting = true);
-                        try {
-                          final isTodayTaskDraft =
-                              _resolveDiaryRoute() == 'today_task';
-                          debugPrint(
-                            '🔵 그룹 업데이트 시작: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
-                          );
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: NavigationButtons(
+                leftLabel: '이전',
+                rightLabel: '저장',
+                onBack: _isSubmitting ? null : _handleBackNavigation,
+                onNext:
+                    (_selectedGroupId == null ||
+                            widget.diaryId == null ||
+                            _isSubmitting)
+                        ? null
+                        : () async {
+                          setState(() => _isSubmitting = true);
+                          try {
+                            final isTodayTaskDraft =
+                                _resolveDiaryRoute() == 'today_task';
+                            debugPrint(
+                              '🔵 그룹 업데이트 시작: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
+                            );
 
-                          // ✅ 백엔드 diaries 스키마: group_id(문자열)
-                          await _diariesApi.updateDiary(widget.diaryId!, {
-                            'group_id': _selectedGroupId,
-                            if (isTodayTaskDraft)
-                              'draft_progress':
-                                  TodayTaskDraftProgress.groupCompleted,
-                          });
+                            // ✅ 백엔드 diaries 스키마: group_id(문자열)
+                            await _diariesApi.updateDiary(widget.diaryId!, {
+                              'group_id': _selectedGroupId,
+                              if (isTodayTaskDraft)
+                                'draft_progress':
+                                    TodayTaskDraftProgress.groupCompleted,
+                            });
 
-                          if (isTodayTaskDraft && context.mounted) {
-                            await syncTodayTaskDraftState(
-                              context,
-                              progress: TodayTaskDraftProgress.groupCompleted,
-                              diaryId: widget.diaryId,
+                            if (isTodayTaskDraft && context.mounted) {
+                              await syncTodayTaskDraftState(
+                                context,
+                                progress: TodayTaskDraftProgress.groupCompleted,
+                                diaryId: widget.diaryId,
+                              );
+                              if (!context.mounted) return;
+                            }
+
+                            debugPrint(
+                              '✅ 일기 그룹 할당 완료: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
                             );
                             if (!context.mounted) return;
-                          }
-
-                          debugPrint(
-                            '✅ 일기 그룹 할당 완료: diaryId=${widget.diaryId}, groupId=$_selectedGroupId',
-                          );
-                          if (!context.mounted) return;
-                          await _navigateAfterGroupSelection();
-                        } on DioException catch (e, stackTrace) {
-                          debugPrint(
-                            '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
-                          );
-                          debugPrint('Response data: ${e.response?.data}');
-                          debugPrint('Request: PUT /diaries/${widget.diaryId}');
-                          debugPrint('Body: {group_id: $_selectedGroupId}');
-                          debugPrint('Error message: ${e.message}');
-                          debugPrint('Stack trace: $stackTrace');
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '그룹 할당 실패: ${e.response?.data ?? e.message}',
+                            await _navigateAfterGroupSelection();
+                          } on DioException catch (e, stackTrace) {
+                            debugPrint(
+                              '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
+                            );
+                            debugPrint('Response data: ${e.response?.data}');
+                            debugPrint('Request: PUT /diaries/${widget.diaryId}');
+                            debugPrint('Body: {group_id: $_selectedGroupId}');
+                            debugPrint('Error message: ${e.message}');
+                            debugPrint('Stack trace: $stackTrace');
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '그룹 할당 실패: ${e.response?.data ?? e.message}',
+                                ),
                               ),
-                            ),
-                          );
-                          return;
-                        } catch (e, stackTrace) {
-                          debugPrint('❌ 일기 그룹 할당 실패: $e');
-                          debugPrint('Stack trace: $stackTrace');
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('그룹 할당 실패: $e')),
-                          );
-                          return;
-                        } finally {
-                          if (mounted) {
-                            setState(() => _isSubmitting = false);
-                          } else {
-                            _isSubmitting = false;
+                            );
+                            return;
+                          } catch (e, stackTrace) {
+                            debugPrint('❌ 일기 그룹 할당 실패: $e');
+                            debugPrint('Stack trace: $stackTrace');
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('그룹 할당 실패: $e')),
+                            );
+                            return;
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isSubmitting = false);
+                            } else {
+                              _isSubmitting = false;
+                            }
                           }
-                        }
-                      },
+                        },
+              )
             ),
           ),
         ),
       ),
     );
-  }
-
-  void _showStartDialog() {
-    () async {
-      final client = ApiClient(tokens: TokenStorage());
-      final eduApi = EduSessionsApi(client);
-      final relaxApi = RelaxationApi(client);
-
-      try {
-        await eduApi.completeWeekSession(
-          weekNumber: 2,
-          totalStages: 15,
-          sessionId: widget.sessionId,
-        );
-        if (mounted) {
-          context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-            weekNumber: 2,
-            cbtDone: true,
-            educationDoneWeek: true,
-            lastEducationAt: DateTime.now(),
-          );
-        }
-      } catch (e) {
-        debugPrint('[Week2Final] edu-session 완료 처리 실패: $e');
-      }
-
-      bool isRelaxDone = false;
-      try {
-        isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(2);
-      } catch (e) {
-        debugPrint('[Week2Final] relaxation 완료 조회 실패: $e');
-      }
-
-      if (!mounted) return;
-      final nav = Navigator.of(context);
-
-      if (isRelaxDone) {
-        nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
-        return;
-      }
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (_) => CustomPopupDesign(
-              title: '이완 연습 이어서 하기',
-              message: '오늘 학습을 잘 마쳤어요.\n이완 연습까지 이어서 진행해볼까요?',
-              positiveText: '이어하기',
-              autoPositiveAfter: const Duration(seconds: 10),
-              negativeText: null,
-              backgroundAsset: null,
-              iconAsset: null,
-              onPositivePressed: () {
-                nav.pop();
-                nav.pushReplacementNamed(
-                  '/relaxation_education',
-                  arguments: {
-                    'sessionId': widget.sessionId,
-                    'taskId': 'week2_education',
-                    'weekNumber': 2,
-                    'mp3Asset': 'week2.mp3',
-                    'riveAsset': 'week2.riv',
-                  },
-                );
-              },
-            ),
-      );
-    }();
   }
 }

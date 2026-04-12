@@ -402,11 +402,11 @@ class Week3ClassificationScreenState extends State<Week3ClassificationScreen> {
                           currentIndex: currentIndex + 1,
                           totalCount: shuffledSentences.length,
                         ),
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 6),
 
                         // 🔹 해파리 말풍선
                         const JellyfishNotice(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
                         // 🔹 선택 버튼
                         Column(

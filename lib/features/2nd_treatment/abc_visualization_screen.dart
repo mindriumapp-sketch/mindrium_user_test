@@ -119,7 +119,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
           const SizedBox(width: 6),
           Expanded(
             child: _buildToggleButton(
-              label: '그림으로 보기',
+              label: '표로 보기',
               selected: !_isTextView,
               onTap: () => setState(() => _isTextView = false),
             ),
@@ -187,6 +187,7 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
     final emotion = widget.emotionChips.map((c) => c.label).join(', ');
     final physical = widget.physicalChips.map((c) => c.label).join(', ');
     final behavior = widget.behaviorChips.map((c) => c.label).join(', ');
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 0),
       child: Column(
@@ -235,34 +236,32 @@ class _AbcVisualizationScreenState extends State<AbcVisualizationScreen> {
   // ✅ 위치/시간 설정 화면으로 이동 (아직 저장하지 않음)
   // ──────────────────────────────────────────────
   void _goNext() async {
-    final resolvedLabel =
-        widget.activatingChips.isNotEmpty
-            ? widget.activatingChips.first.label
-            : widget.activatingChips.map((c) => c.label).join(', ');
+    final resolvedLabel = widget.activatingChips.isNotEmpty
+        ? widget.activatingChips.first.label
+        : widget.activatingChips.map((c) => c.label).join(', ');
     final abcId = _resolvedAbcId ?? '';
 
     if (!mounted) return;
     final result = await Navigator.push<Map<String, dynamic>?>(
       context,
       PageRouteBuilder(
-        pageBuilder:
-            (_, __, ___) => LocTimeSelectionScreen(
-              abcId: abcId,
-              label: resolvedLabel.isNotEmpty ? resolvedLabel : null,
-              origin: widget.origin,
-              diaryRoute: widget.diaryRoute,
-              sessionId: widget.sessionId,
-              sudId: _resolvedSudId,
-              beforeSud: widget.beforeSud,
-              activatingChips: widget.activatingChips,
-              beliefChips: widget.beliefChips,
-              physicalChips: widget.physicalChips,
-              emotionChips: widget.emotionChips,
-              behaviorChips: widget.behaviorChips,
-              autoOpenMapOnEntry: true,
-              autoNavigateGroupOnEntry:
-                  widget.autoNavigateGroupOnEntryAfterLocTime,
-            ),
+        pageBuilder: (_, __, ___) => LocTimeSelectionScreen(
+          abcId: abcId,
+          label: resolvedLabel.isNotEmpty ? resolvedLabel : null,
+          origin: widget.origin,
+          diaryRoute: widget.diaryRoute,
+          sessionId: widget.sessionId,
+          sudId: _resolvedSudId,
+          beforeSud: widget.beforeSud,
+          activatingChips: widget.activatingChips,
+          beliefChips: widget.beliefChips,
+          physicalChips: widget.physicalChips,
+          emotionChips: widget.emotionChips,
+          behaviorChips: widget.behaviorChips,
+          autoOpenMapOnEntry: true,
+          autoNavigateGroupOnEntry:
+              widget.autoNavigateGroupOnEntryAfterLocTime,
+        ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),

@@ -179,7 +179,7 @@ async def lifespan(app: FastAPI):
     # 별도 sud_scores 컬렉션 인덱스를 생성하면 빈 컬렉션이 자동 생성되므로 제거.
 
     # ---------- relaxation_tasks 컬렉션 ----------
-    # 이완/명상 세션 로그 (user + start_time / end_time / session_id 기반 조회)
+    # 이완/명상 세션 로그 (user + start_time / end_time 기반 조회)
     try:
         relax = db["relaxation_tasks"]
 
@@ -193,12 +193,11 @@ async def lifespan(app: FastAPI):
             name="idx_relaxation_user_end_time",
         )
 
-        # 세션 단건 조회 / 업데이트용 (예전 session_id 기준 인덱스, 있어도 무해)
-        await relax.create_index(
-            "session_id",
-            unique=True,
-            name="unique_relax_session_id",
-        )
+        # 레거시 session_id 인덱스 제거 (현재는 relax_id 기반 업데이트만 사용)
+        try:
+            await relax.drop_index("unique_relax_session_id")
+        except Exception:
+            pass
 
         print("[OK] relaxation_tasks 인덱스 생성 완료")
     except Exception as e:

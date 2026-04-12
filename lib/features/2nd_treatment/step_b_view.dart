@@ -69,6 +69,7 @@ class _StepBViewState extends State<StepBView> {
             child: AbcChipsDesign(
               chips: widget.chips,
               selectedChipIds: widget.selectedChipIds,
+              chipSectionLabel: '생각',
               singleSelect: false,
               isExampleMode: widget.isExampleMode,
               openAllItemsSignal: widget.openAllItemsSignal,

@@ -9,6 +9,7 @@ import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 
 class Week3VisualScreen extends StatefulWidget {
   final String? sessionId;
@@ -44,27 +45,27 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
       barrierDismissible: false,
       builder:
           (_) => CustomPopupDesign(
-            title: '이완 음성 안내 시작',
-            message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-            positiveText: '확인',
-            negativeText: null,
-            backgroundAsset: null,
-            iconAsset: null,
-            onPositivePressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(
-                context,
-                '/relaxation_education',
-                arguments: {
-                  'sessionId': widget.sessionId,
-                  'taskId': 'week3_education',
-                  'weekNumber': 3,
-                  'mp3Asset': 'week1.mp3',
-                  'riveAsset': 'week1.riv',
-                },
-              );
+        title: '이완 음성 안내 시작',
+        message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+        positiveText: '확인',
+        negativeText: null,
+        backgroundAsset: null,
+        iconAsset: null,
+        onPositivePressed: () {
+          Navigator.pop(context);
+          Navigator.pushReplacementNamed(
+            context,
+            '/relaxation_education',
+            arguments: {
+              'sessionId': widget.sessionId,
+              'taskId': 'week3_education',
+              'weekNumber': 3,
+              'mp3Asset': 'week1.mp3',
+              'riveAsset': 'week1.riv',
             },
-          ),
+          );
+        },
+      ),
     );
   }
 
@@ -134,14 +135,14 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     required ThoughtType thoughtType,
   }) {
     final String displayText =
-        chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
+    chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
     final bool isHelpful = thoughtType == ThoughtType.helpful;
     final Color accentColor =
-        isHelpful ? const Color(0xFF62BFE7) : const Color(0xFFF29B94);
+    isHelpful ? const Color(0xFF62BFE7) : const Color(0xFFF29B94);
     final Color softBgColor =
-        isHelpful ? const Color(0xFFEAF8FF) : const Color(0xFFFFF1EF);
+    isHelpful ? const Color(0xFFEAF8FF) : const Color(0xFFFFF1EF);
     final IconData leadingIcon =
-        isHelpful ? Icons.chat_bubble_rounded : Icons.error_outline_rounded;
+    isHelpful ? Icons.chat_bubble_rounded : Icons.error_outline_rounded;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -202,9 +203,9 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                   height: 1.65,
                   fontWeight: chips.isEmpty ? FontWeight.w500 : FontWeight.w700,
                   color:
-                      chips.isEmpty
-                          ? const Color(0xFF8AA0B4)
-                          : const Color(0xFF243B53),
+                  chips.isEmpty
+                      ? const Color(0xFF8AA0B4)
+                      : const Color(0xFF243B53),
                 ),
               ),
             ],
@@ -321,7 +322,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                         const SizedBox(height: 18),
                         JellyfishBanner(
                           message:
-                              '오늘도 수고하셨습니다!\n내가 적은 생각을 한 번 더 비교해보며,\n어떤 방향이 마음을 더 안정시키는지 살펴보세요.',
+                          '오늘도 수고하셨습니다!\n내가 적은 생각을 한 번 더 비교해보며,\n어떤 방향이 마음을 더 안정시키는지 살펴보세요.',
                         ),
                       ],
                     ),

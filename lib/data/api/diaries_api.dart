@@ -43,9 +43,7 @@ class DiariesApi {
     List<String> alternativeThoughts = const [],
     Map<String, dynamic>? locTime,
     String? route,
-    double? latitude,
-    double? longitude,
-    String? addressName,
+    bool locAutoFilled = false,
     DateTime? clientTimestamp,
   }) async {
     final base = <String, dynamic>{
@@ -59,9 +57,7 @@ class DiariesApi {
       'alternative_thoughts': alternativeThoughts,
       'loc_time': locTime,
       if (route != null) 'route': route,
-      if (latitude != null) 'latitude': latitude,
-      if (longitude != null) 'longitude': longitude,
-      if (addressName != null) 'address_name': addressName,
+      'loc_auto_filled': locAutoFilled,
     };
 
     final payload = _withClientTimestamp(

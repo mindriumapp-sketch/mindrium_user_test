@@ -1,4 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 enum RepeatOption { none, daily, weekly }
 
@@ -173,8 +174,7 @@ double? _doubleFrom(dynamic raw) {
 // }
 
 DateTime? _dateFrom(dynamic raw) {
-  if (raw is DateTime) return raw;
-  if (raw is String) return DateTime.tryParse(raw);
+  if (raw is DateTime || raw is String) return parseServerDateTime(raw);
   if (raw is int) {
     return DateTime.fromMillisecondsSinceEpoch(raw);
   }

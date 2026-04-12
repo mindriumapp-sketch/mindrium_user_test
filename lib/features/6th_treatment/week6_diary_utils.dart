@@ -1,3 +1,5 @@
+import 'package:gad_app_team/utils/server_datetime.dart';
+
 class Week6ChipEntry {
   final String label;
   final String? chipId;
@@ -13,9 +15,7 @@ class Week6DiaryUtils {
   }
 
   static DateTime? parseCreatedAt(dynamic raw) {
-    if (raw is DateTime) return raw;
-    if (raw is String) return DateTime.tryParse(raw);
-    return null;
+    return parseServerDateTime(raw);
   }
 
   static String chipLabel(dynamic raw) {

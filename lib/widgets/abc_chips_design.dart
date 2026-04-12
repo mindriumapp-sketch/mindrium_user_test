@@ -34,6 +34,7 @@ class AbcChipsDesign extends StatefulWidget {
   final bool isExampleMode;
   final bool singleSelect;
   final int openAllItemsSignal;
+  final String? chipSectionLabel;
 
   const AbcChipsDesign({
     super.key,
@@ -45,6 +46,7 @@ class AbcChipsDesign extends StatefulWidget {
     this.isExampleMode = false,
     this.singleSelect = false,
     this.openAllItemsSignal = 0,
+    this.chipSectionLabel,
   });
 
   @override
@@ -191,6 +193,10 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
           final media = MediaQuery.of(context);
           final maxAllowedHeight =
               media.size.height - media.padding.top - 8;
+          final systemBottomInset = media.viewPadding.bottom > 0
+              ? media.viewPadding.bottom
+              : media.padding.bottom;
+          final modalBottomInset = systemBottomInset + 8;
           final initialHeight = _allItemsModalInitialHeight.clamp(
             380.0,
             maxAllowedHeight,
@@ -274,7 +280,10 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '현재 칩 ${widget.chips.length}개',
+                                        widget.chipSectionLabel == null ||
+                                                widget.chipSectionLabel!.trim().isEmpty
+                                            ? '현재 칩 ${widget.chips.length}개'
+                                            : '현재 ${widget.chipSectionLabel!.trim()} 칩 ${widget.chips.length}개',
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
@@ -291,11 +300,11 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
                                   children: [
                                     SingleChildScrollView(
                                       controller: sheetScrollController,
-                                      padding: const EdgeInsets.fromLTRB(
+                                      padding: EdgeInsets.fromLTRB(
                                         18,
                                         0,
                                         18,
-                                        84,
+                                        84 + modalBottomInset,
                                       ),
                                       physics: const BouncingScrollPhysics(),
                                       child: Wrap(
@@ -314,7 +323,7 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
                                     if (!widget.isExampleMode)
                                       Positioned(
                                         right: 18,
-                                        bottom: 14,
+                                        bottom: 14 + modalBottomInset,
                                         child: _FloatingAddButton(
                                           onTap: () {
                                             Navigator.pop(context);
@@ -344,6 +353,10 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final systemBottomInset = media.viewPadding.bottom > 0
+        ? media.viewPadding.bottom
+        : media.padding.bottom;
     final int visibleCount =
         widget.chips.length > _collapsedChipLimit
             ? _collapsedChipLimit
@@ -356,7 +369,7 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
       physics: const BouncingScrollPhysics(),
       child: Padding(
         // 우측 하단 고정 + 버튼/행이 겹치지 않도록 여유를 넉넉히 확보
-        padding: const EdgeInsets.only(bottom: 104),
+        padding: EdgeInsets.only(bottom: 104 + systemBottomInset),
         child: Wrap(
           spacing: 10,
           runSpacing: 12,
@@ -378,7 +391,7 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
         Positioned.fill(child: chipsArea),
         Positioned(
           right: 0,
-          bottom: 8,
+          bottom: 8 + systemBottomInset,
           child: _FloatingAddButton(onTap: widget.onChipAdd),
         ),
       ],

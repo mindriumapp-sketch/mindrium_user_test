@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_screen.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_finish_screen.dart';
+import 'package:gad_app_team/features/4th_treatment/week4_final_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_flow_prompt_widgets.dart';
 
 // ✅ 새 UI 래퍼
@@ -154,7 +154,7 @@ class _Week4ConcentrationScreenState extends State<Week4ConcentrationScreen> {
         nav.pushReplacement(
           MaterialPageRoute(
             builder:
-                (_) => Week4FinishScreen(
+                (_) => Week4FinalScreen(
                   alternativeThoughts: [
                     ...?widget.existingAlternativeThoughts,
                     ...?widget.alternativeThoughts,

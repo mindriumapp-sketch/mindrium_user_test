@@ -89,7 +89,6 @@ async def set_value_goal(
         value_goal=updated_user.get("value_goal"),
     )
 
-# TODO: 핵심 가치 이력 저장할까요 말까요...의사들한테 유용하긴 할 거 같은데..
 
 # ============= surveys =============
 @router.get("/surveys", response_model=List[SurveyResponse], summary="설문 목록 조회")
@@ -315,7 +314,28 @@ async def get_today_task(
 
     today_date = today_start_kst.date()
 
-    # ---- 2) 오늘 일기 작성 여부 (diaries.created_at 기준) ----
+    # ---- 2) todaytask용 current_week 계산 ----
+    raw_last_week = current_user.get("last_completed_week")
+    last_completed_week = raw_last_week if raw_last_week is not None else 0
+    last_completed_at = parse_datetime_value(current_user.get("last_completed_at"))
+
+    MAX_WEEK = 8
+    if last_completed_week <= 0:
+        current_week = 1
+    elif last_completed_week >= MAX_WEEK:
+        current_week = MAX_WEEK
+    elif last_completed_at is None:
+        current_week = min(last_completed_week + 1, MAX_WEEK)
+    else:
+        week_start_kst, week_end_kst = get_week_range_kst(today_date)
+        week_start_utc = week_start_kst.astimezone(timezone.utc)
+        week_end_utc = week_end_kst.astimezone(timezone.utc)
+        if week_start_utc <= last_completed_at < week_end_utc:
+            current_week = last_completed_week
+        else:
+            current_week = min(last_completed_week + 1, MAX_WEEK)
+
+    # ---- 3) 오늘 일기 작성 여부 (diaries.created_at 기준) ----
     diary_count_today = await db[DIARY_COLLECTION].count_documents(
         {
             "user_id": user_id,
@@ -325,27 +345,24 @@ async def get_today_task(
             },
             # 🔹 자동생성 label 포함된 애들 제외
             "activation.label": {"$not": {"$regex": "자동 생성"}},
-            # today_task는 draft_progress가 80일 때 완료로 간주하고,
-            # 기존 100 완료 데이터도 계속 완료로 인정한다.
+            # today_task는 draft_progress=100만 완료로 간주한다.
             "$or": [
                 {"route": {"$ne": TODAY_TASK_ROUTE}},
                 {
                     "route": TODAY_TASK_ROUTE,
-                    "$or": [
-                        {"draft_progress": completed_draft_progress_filter()},
-                        {"draft_progress": {"$exists": False}},
-                    ],
+                    "draft_progress": completed_draft_progress_filter(),
                 },
             ],
         }
     )
     has_diary_today = diary_count_today > 0
 
-    # ---- 3) 오늘 이완 여부 (relaxation_tasks.start_time 기준) ----
+    # ---- 4) 오늘 이완 여부 (relaxation_tasks.start_time 기준) ----
     relax_collection = db[RELAX_COLLECTION]
-    relax_count_today = await relax_collection.count_documents(
+    daily_review_count_today = await relax_collection.count_documents(
         {
             "user_id": user_id,
+            "task_id": "daily_review",
             "duration_seconds": {"$gt": 0},
             "end_time": {"$ne": None},  # 완료된 이완만 '했다'로 간주
             "start_time": {
@@ -354,12 +371,25 @@ async def get_today_task(
             },
         }
     )
-    has_relaxation_today = relax_count_today > 0
+    week_education_task_id = f"week{current_week}_education"
+    week_education_count_today = await relax_collection.count_documents(
+        {
+            "user_id": user_id,
+            "task_id": week_education_task_id,
+            "duration_seconds": {"$gt": 0},
+            "end_time": {"$ne": None},
+            "start_time": {
+                "$gte": today_start_utc,
+                "$lt": today_end_utc,
+            },
+        }
+    )
+    has_relaxation_today = (
+        (daily_review_count_today > 0) or (week_education_count_today > 0)
+    )
 
-    # ---- 4) 이번 주 교육 완료 여부 (users.last_completed_at 기준) ----
+    # ---- 5) 이번 주 교육 완료 여부 (users.last_completed_at 기준) ----
     # 기존 /users/me/progress 에서 쓰는 필드 그대로 사용
-    last_completed_at = parse_datetime_value(current_user.get("last_completed_at"))
-
     week_start_kst, week_end_kst = get_week_range_kst(today_date)
     week_start_utc = week_start_kst.astimezone(timezone.utc)
     week_end_utc = week_end_kst.astimezone(timezone.utc)

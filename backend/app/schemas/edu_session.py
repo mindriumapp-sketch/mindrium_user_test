@@ -118,6 +118,13 @@ class EduSessionCommonOut(EduSessionCommonIn):
     교육 세션 공통 필드 (응답용: session_id, created/updated 추가)
     """
     session_id: str
+    is_first_completed: Optional[bool] = Field(
+        default=None,
+        description=(
+            "완료 전이면 null, 해당 학습 단위의 첫 완료 로그면 true, "
+            "이미 첫 완료 이후의 복습 완료 로그면 false"
+        ),
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -222,5 +229,4 @@ class EduSessionResponse(EduSessionCommonOut):
     # 8주차
     effectiveness_evaluations: Optional[List[EffectivenessEvaluation]] = None
     user_journey_responses: Optional[List[UserJourneyResponse]] = None
-
 

@@ -5,6 +5,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/api/relaxation_api.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -49,13 +50,7 @@ class _ReportScreenState extends State<ReportScreen> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   DateTime? _parseDate(dynamic raw) {
-    if (raw == null) return null;
-    if (raw is DateTime) return raw.toLocal();
-    if (raw is String) {
-      final parsed = DateTime.tryParse(raw);
-      return parsed?.toLocal();
-    }
-    return null;
+    return parseServerDateTime(raw);
   }
 
   Future<void> _loadReportData() async {

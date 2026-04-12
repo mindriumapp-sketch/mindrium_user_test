@@ -5,13 +5,11 @@ import 'package:gad_app_team/contents/alternative_yes_or_no.dart';
 import 'package:gad_app_team/contents/apply_alternative_thought.dart';
 import 'package:gad_app_team/contents/diary_or_relax_or_home.dart';
 import 'package:gad_app_team/contents/filtered_diary_select.dart';
-import 'package:gad_app_team/contents/diary_yes_or_no.dart';
 import 'package:gad_app_team/contents/relax_or_alternative.dart';
 import 'package:gad_app_team/contents/relax_yes_or_no.dart';
 import 'package:gad_app_team/contents/solve_entry_choice.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_abc_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_result_screen.dart';
-// import 'package:gad_app_team/features/screen_time/screen_time_page.dart';
 
 //loctime
 import 'package:gad_app_team/features/menu/diary/diary_directory_screen.dart';
@@ -155,7 +153,6 @@ class MyApp extends StatelessWidget {
         '/education5': (context) => const Education5Page(),
         '/education6': (context) => const Education6Page(),
         '/education7': (context) => const Education7Page(),
-        // '/screen_time': (context) => const ScreenTimePage(),
         '/relaxation_education': (context) {
           final args =
               (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
@@ -175,7 +172,7 @@ class MyApp extends StatelessWidget {
         '/relaxation_noti': (context) {
           final args =
               (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
-          final taskId = args['taskId'] as String? ?? 'week1_daily';
+          final taskId = args['taskId'] as String? ?? 'daily_review';
           final weekNumber = args['weekNumber'] as int?;
           final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
           final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
@@ -192,7 +189,6 @@ class MyApp extends StatelessWidget {
         '/solve_entry_choice': (context) => const SolveEntryChoiceScreen(),
         '/after_sud': (context) => const AfterSudRatingScreen(),
         "/diary_relax_home": (context) => const DiaryOrRelaxOrHome(),
-        '/diary_yes_or_no': (context) => const DiaryYesOrNo(),
         "/diary_select": (context) => const DiarySelectScreen(),
         "/relax_or_alternative": (context) => const RelaxOrAlternativePage(),
         "/relax_yes_or_no": (context) => const RelaxYesOrNo(),

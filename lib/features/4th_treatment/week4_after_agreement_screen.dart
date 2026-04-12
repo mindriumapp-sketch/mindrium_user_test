@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/widgets/top_btm_card.dart'; // ✅ 두 패널 레이아웃
 import 'package:gad_app_team/data/user_provider.dart'; // 사용자 이름
-import 'week4_finish_screen.dart';
+import 'week4_final_screen.dart';
 import 'week4_next_thought_screen.dart';
 import 'week4_belief_rating_widgets.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -170,7 +170,7 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
         context,
         PageRouteBuilder(
           pageBuilder:
-              (_, __, ___) => Week4FinishScreen(
+              (_, __, ___) => Week4FinalScreen(
                 alternativeThoughts: _removeDuplicates([
                   ...?widget.existingAlternativeThoughts,
                   ...widget.alternativeThoughts,

@@ -185,9 +185,11 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
       await _saveOnce(reason: 'complete');
       if (!mounted) return;
 
-      context.read<TodayTaskProvider>().setTodayTaskLocally(
-        relaxationDone: true,
-      );
+      if (widget.taskId == 'daily_review') {
+        context.read<TodayTaskProvider>().setTodayTaskLocally(
+          relaxationDone: true,
+        );
+      }
 
       // 🔹 현재 라우트 args에서 beforeSud / sudId 있으면 같이 넘김
       final currentArgs = ModalRoute.of(context)?.settings.arguments;

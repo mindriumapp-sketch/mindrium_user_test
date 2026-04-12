@@ -8,6 +8,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:gad_app_team/features/menu/archive/character_battle.dart';
 
 class SeaArchivePage extends StatefulWidget {
@@ -577,9 +578,7 @@ class _FishInfoPopup extends StatelessWidget {
   });
 
   DateTime? _asDateTime(dynamic value) {
-    if (value is DateTime) return value;
-    if (value is String) return DateTime.tryParse(value);
-    return null;
+    return parseServerDateTime(value);
   }
 
   int? _asInt(dynamic value) {
@@ -592,10 +591,9 @@ class _FishInfoPopup extends StatelessWidget {
   String _formatDate(DateTime? value) {
     if (value == null) return '정보 없음';
 
-    final local = value.toLocal();
-    final year = local.year.toString().padLeft(4, '0');
-    final month = local.month.toString().padLeft(2, '0');
-    final day = local.day.toString().padLeft(2, '0');
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
     return '$year.$month.$day';
   }
 

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
+import 'edu_sessions_api.dart' show parseEduSessionResponse;
 
 class Week8Api {
   final ApiClient _client;
@@ -58,9 +59,7 @@ class Week8Api {
     );
     final data = res.data;
 
-    if (data is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(data);
-    }
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -81,12 +80,7 @@ class Week8Api {
 
     if (data is List) {
       if (data.isEmpty) return null;
-      final first = data.first;
-      if (first is Map) {
-        return Map<String, dynamic>.from(
-          first.map((key, value) => MapEntry(key.toString(), value)),
-        );
-      }
+      return parseEduSessionResponse(data.first);
     }
 
     throw DioException(
@@ -101,8 +95,8 @@ class Week8Api {
   Future<Map<String, dynamic>> getWeek8Session(String sessionId) async {
     final res = await _client.dio.get('/edu-sessions/$sessionId');
     final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(data);
+    if (data is Map) {
+      return parseEduSessionResponse(data, fallbackSessionId: sessionId);
     }
     throw DioException(
       requestOptions: res.requestOptions,
@@ -135,9 +129,7 @@ class Week8Api {
       data: payload,
     );
     final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(data);
-    }
+    if (data is Map) return parseEduSessionResponse(data, fallbackSessionId: sessionId);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -168,9 +160,7 @@ class Week8Api {
       data: payload,
     );
     final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(data);
-    }
+    if (data is Map) return parseEduSessionResponse(data, fallbackSessionId: sessionId);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -201,9 +191,7 @@ class Week8Api {
       data: payload,
     );
     final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(data);
-    }
+    if (data is Map) return parseEduSessionResponse(data, fallbackSessionId: sessionId);
 
     throw DioException(
       requestOptions: res.requestOptions,

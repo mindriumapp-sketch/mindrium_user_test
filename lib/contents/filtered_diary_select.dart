@@ -10,6 +10,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
@@ -155,9 +156,7 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
 
   DateTime? _resolveCreatedAt(Map<String, dynamic> diary) {
     final raw = diary['created_at'] ?? diary['createdAt'];
-    if (raw is DateTime) return raw;
-    if (raw is String) return DateTime.tryParse(raw);
-    return null;
+    return parseServerDateTime(raw);
   }
 
   String _buildCreatedAtLabel(Map<String, dynamic> diary) {

@@ -59,21 +59,22 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
           Center(
             child: Column(
               children: [
-                Image.asset('assets/image/question_icon.png', width: 36, height: 36),
                 const SizedBox(height: 16),
-                Text(
-                  protectKoreanWords(
-                    chips.isEmpty
-                        ? '도움이 되는 생각이 무엇인지 먼저 배워 볼까요?'
-                        : '추가로 작성하신 불안한 상황을 보면서 대체 생각이 무엇인지 배워 볼까요?',
-                  ),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Noto Sans KR',
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                Image.asset('assets/image/question_icon.png', width: 36, height: 36),
+                // const SizedBox(height: 16),
+                // Text(
+                //   protectKoreanWords(
+                //     chips.isEmpty
+                //         ? '도움이 되는 생각이 무엇인지 먼저 배워 볼까요?'
+                //         : '추가로 작성하신 불안한 상황을 보면서 대체 생각이 무엇인지 배워 볼까요?',
+                //   ),
+                //   style: const TextStyle(
+                //     fontSize: 16,
+                //     fontWeight: FontWeight.bold,
+                //     fontFamily: 'Noto Sans KR',
+                //   ),
+                //   textAlign: TextAlign.center,
+                // ),
               ],
             ),
           ),
@@ -89,6 +90,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
                 TextLine(
                   '아래 예시를 읽어본 후, 불안한 상황을 떠올리고 그에 대한 도움이 되는 생각을 해보는 시간을 가질 거예요.',
                   style: mainTextStyle,
+                  applyWordJoiner: false,
                 )
               else ...[
                 TextLine.rich(
@@ -122,7 +124,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
             TextSpan(
               children: [
                 const TextSpan(
-                  text: "예를 들어, \n이런 불안한 생각이 있을 수 있어요:\n\n",
+                  text: "예를 들어, 이런 불안한 생각이 있을 수 있어요:\n\n",
                   style: TextStyle(
                     fontSize: 15.5,
                     color: Colors.black87,
@@ -133,7 +135,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
                 WidgetSpan(
                   alignment: PlaceholderAlignment.middle,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    padding: const EdgeInsets.symmetric(vertical: 3.0),
                     child: Text.rich(
                       TextSpan(
                         children: [
@@ -146,20 +148,21 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
                   ),
                 ),
                 const TextSpan(
-                  text: "\n\n이 생각에 대해 다양한 '도움이 되는 생각(대체 생각)'이 있습니다.\n\n",
+                  text: "\n\n이 생각에 대해 '도움이 되는 생각\n(대체 생각)'이 다양하게 있습니다.\n\n",
                 ),
+                // TODO: 이걸 환자가 알아야 돼??....반박/리프레임/코핑... 말고 다른 표현 없을까?
                 const TextSpan(
-                  text: "① 반박 (Refutation): ",
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                  text: "1. 반박 (Refutation): ",
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, fontFamily: 'Noto Sans KR'),
                 ),
                 const TextSpan(text: "“말을 버벅거려도 회의를 망치지는 않을 것이다”\n"),
                 const TextSpan(
-                  text: "② 리프레임 (Reframe): ",
+                  text: "2. 리프레임 (Reframe): ",
                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
                 ),
                 const TextSpan(text: "“중요한 발표이기 때문에 긴장되는 것은 당연하다”\n"),
                 const TextSpan(
-                  text: "③ 코핑 (Coping): ",
+                  text: "3. 코핑 (Coping): ",
                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
                 ),
                 const TextSpan(text: "“버벅거려도 다시 이어갈 수 있다”\n"),
@@ -176,7 +179,7 @@ class Week3ExplainAlternativeThoughtsScreen extends StatelessWidget {
           Center(
             child: Text(
               protectKoreanWords(
-                  "\n이제 위의 예시를 참고해서\n당신만의 불안한 생각을 적어볼까요?"),
+                  "이제 위의 예시를 참고해서\n당신만의 불안한 생각을 적어볼까요?"),
               style: const TextStyle(
                 fontSize: 15.5,
                 color: Colors.indigo,

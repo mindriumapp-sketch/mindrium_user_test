@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
+import 'edu_sessions_api.dart' show parseEduSessionResponse;
 
 class Week7Api {
   final ApiClient _client;
@@ -55,9 +56,7 @@ class Week7Api {
     );
     final data = res.data;
 
-    if (data is Map<String, dynamic>) {
-      return data;
-    }
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -89,7 +88,7 @@ class Week7Api {
       data: payload,
     );
     final data = res.data;
-    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -114,10 +113,7 @@ class Week7Api {
 
     if (data is List) {
       if (data.isEmpty) return null;
-      final first = data.first;
-      if (first is Map) {
-        return Map<String, dynamic>.from(first);
-      }
+      return parseEduSessionResponse(data.first);
     }
 
     throw DioException(
@@ -130,9 +126,7 @@ class Week7Api {
   Future<Map<String, dynamic>> getWeek7Session(String sessionId) async {
     final res = await _client.dio.get('/edu-sessions/$sessionId');
     final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return data;
-    }
+    if (data is Map) return parseEduSessionResponse(data, fallbackSessionId: sessionId);
     throw DioException(
       requestOptions: res.requestOptions,
       message: 'Invalid /edu-sessions/{session_id} response',
@@ -162,7 +156,7 @@ class Week7Api {
       data: payload,
     );
     final data = res.data;
-    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,
@@ -203,7 +197,7 @@ class Week7Api {
       data: payload,
     );
     final data = res.data;
-    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return parseEduSessionResponse(data);
 
     throw DioException(
       requestOptions: res.requestOptions,

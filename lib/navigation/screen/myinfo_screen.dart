@@ -13,6 +13,7 @@ import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/education_week_contents.dart';
 import 'package:gad_app_team/data/api/screen_time_api.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 class MyInfoScreen extends StatefulWidget {
   const MyInfoScreen({super.key});
@@ -81,10 +82,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
           (response.data as List?)?.cast<Map<String, dynamic>>() ?? [];
       archived.sort((a, b) {
         final aDate =
-            DateTime.tryParse(a['archived_at']?.toString() ?? '') ??
+            parseServerDateTime(a['archived_at']) ??
             DateTime(0);
         final bDate =
-            DateTime.tryParse(b['archived_at']?.toString() ?? '') ??
+            parseServerDateTime(b['archived_at']) ??
             DateTime(0);
         return bDate.compareTo(aDate);
       });
@@ -469,19 +470,20 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                   icon: Icons.person_outline,
                   enabled: !isLoading,
                 ),
-                const SizedBox(height: 14),
-                _buildTextField(
-                  controller: emailController,
-                  label: '이메일',
-                  icon: Icons.email_outlined,
-                  enabled: false,
-                ),
+                // const SizedBox(height: 14),
+                // _buildTextField(
+                //   controller: emailController,
+                //   label: '이메일',
+                //   icon: Icons.email_outlined,
+                //   enabled: false,
+                // ),
                 const SizedBox(height: 14),
                 _buildTextField(
                   controller: valueGoalController,
                   label: '나의 핵심 가치',
                   icon: Icons.favorite_outline,
                   enabled: !isLoading,
+                  isExpandable: true,
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -943,7 +945,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     final title = group['group_title']?.toString() ?? '';
     final contents = group['group_contents']?.toString() ?? '';
     final archivedAt =
-        DateTime.tryParse(group['archived_at']?.toString() ?? '') ??
+        parseServerDateTime(group['archived_at']) ??
         DateTime.now();
     final archivedStr = DateFormat('yyyy.MM.dd').format(archivedAt);
     final count = group['diary_count'] ?? 0;
@@ -1098,9 +1100,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                           groupContents: contents,
                           characterId: characterId,
                           createdAt:
-                              DateTime.tryParse(
-                                group['created_at']?.toString() ?? '',
-                              ) ??
+                              parseServerDateTime(group['created_at']) ??
                               DateTime.now(),
                           archivedAt: archivedAt,
                         ),
@@ -1229,11 +1229,16 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     required String label,
     required IconData icon,
     bool enabled = true,
+    bool isExpandable = false,
   }) {
     return TextField(
       controller: controller,
       enabled: enabled,
       obscureText: label.contains('비밀번호'),
+      minLines: isExpandable ? 2 : 1,
+      maxLines: isExpandable ? null : 1,
+      keyboardType: isExpandable ? TextInputType.multiline : TextInputType.text,
+      textInputAction: isExpandable ? TextInputAction.newline : TextInputAction.done,
       style: const TextStyle(
         fontFamily: 'Noto Sans KR',
         fontSize: 16,

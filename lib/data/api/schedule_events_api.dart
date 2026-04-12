@@ -1,14 +1,14 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 class ScheduleEventsApi {
   final ApiClient _client;
   ScheduleEventsApi(this._client);
 
   // DateTime → 'YYYY-MM-DD'
-  String _formatDate(DateTime date) =>
-      date.toIso8601String().split('T').first;
+  String _formatDate(DateTime date) => formatServerDateOnly(date);
 
   // DateTime → ISO8601(UTC) (client_timestamp용)
   String _encodeDateTime(DateTime dt) =>

@@ -38,6 +38,7 @@ def _serialize_session(doc: dict) -> dict:
     """
     base: Dict[str, Any] = {
         "session_id": doc.get("session_id"),
+        "is_first_completed": doc.get("is_first_completed"),
         "week_number": doc.get("week_number"),
         "diary_id": doc.get("diary_id"),
         "total_stages": doc.get("total_stages"),
@@ -62,6 +63,68 @@ def _serialize_session(doc: dict) -> dict:
             base[key] = doc.get(key)
 
     return base
+
+
+async def _refresh_is_first_completed_for_unit(
+    db,
+    user_id: str,
+    week_number: int,
+    diary_id: Optional[str],
+) -> None:
+    collection = db[EDU_SESSION_COLLECTION]
+    docs = await collection.find(
+        {
+            "user_id": user_id,
+            "week_number": week_number,
+            "diary_id": diary_id,
+        }
+    ).to_list(length=None)
+    if not docs:
+        return
+
+    def is_completion_eligible(doc: Dict[str, Any]) -> bool:
+        if not bool(doc.get("completed", False)):
+            return False
+
+        raw_total_stages = doc.get("total_stages")
+        raw_last_stage_idx = doc.get("last_stage_idx")
+        if not isinstance(raw_total_stages, int) or raw_total_stages <= 0:
+            return False
+        if not isinstance(raw_last_stage_idx, int):
+            return False
+
+        return raw_last_stage_idx >= raw_total_stages
+
+    def completion_sort_key(doc: Dict[str, Any]) -> datetime:
+        for field in ("end_time", "updated_at", "created_at", "start_time"):
+            value = parse_datetime_value(doc.get(field))
+            if value is not None:
+                return value
+        return datetime.max.replace(tzinfo=timezone.utc)
+
+    eligible_docs: List[Dict[str, Any]] = [
+        doc for doc in docs if is_completion_eligible(doc)
+    ]
+    eligible_docs.sort(key=completion_sort_key)
+    first_session_id: Optional[str] = None
+    if eligible_docs:
+        raw_session_id = eligible_docs[0].get("session_id")
+        if isinstance(raw_session_id, str):
+            first_session_id = raw_session_id
+
+    for doc in docs:
+        if not is_completion_eligible(doc):
+            next_value = None
+        else:
+            next_value = doc.get("session_id") == first_session_id
+
+        if doc.get("is_first_completed") == next_value:
+            continue
+
+        await collection.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"is_first_completed": next_value}},
+        )
 
 
 async def _update_last_completed_week_if_needed(
@@ -252,6 +315,10 @@ async def create_common_session(
     여기서는 week_number 가 1,2,4,6 인 경우만 허용한다.
     """
     doc = await _insert_session_doc(db, user_id, payload)
+    await _refresh_is_first_completed_for_unit(
+        db, user_id, payload.week_number, payload.diary_id
+    )
+    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
     await _update_last_completed_week_if_needed(db, user_id, payload)
 
     return EduSessionResponse(**_serialize_session(doc))
@@ -277,6 +344,10 @@ async def create_week3_5_session(
     - classification_quiz: 분류 퀴즈 결과 (선택)
     """
     doc = await _insert_session_doc(db, user_id, payload)
+    await _refresh_is_first_completed_for_unit(
+        db, user_id, payload.week_number, payload.diary_id
+    )
+    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
     await _update_last_completed_week_if_needed(db, user_id, payload)
 
     return EduSessionResponse(**_serialize_session(doc))
@@ -300,6 +371,10 @@ async def create_week7_session(
     - behavior_items: chip_id / category / reason / analysis 등 포함한 리스트
     """
     doc = await _insert_session_doc(db, user_id, payload)
+    await _refresh_is_first_completed_for_unit(
+        db, user_id, payload.week_number, payload.diary_id
+    )
+    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
     await _update_last_completed_week_if_needed(db, user_id, payload)
 
     return EduSessionResponse(**_serialize_session(doc))
@@ -324,6 +399,10 @@ async def create_week8_session(
     - user_journey_responses: 질문/답변 리스트
     """
     doc = await _insert_session_doc(db, user_id, payload)
+    await _refresh_is_first_completed_for_unit(
+        db, user_id, payload.week_number, payload.diary_id
+    )
+    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
     await _update_last_completed_week_if_needed(db, user_id, payload)
 
     return EduSessionResponse(**_serialize_session(doc))
@@ -351,6 +430,14 @@ async def update_edu_session(
         raise HTTPException(status_code=400, detail="수정할 필드가 없습니다")
 
     now_utc = datetime.now(timezone.utc)
+    if "start_time" in update_data:
+        update_data["start_time"] = ensure_utc(update_data["start_time"])
+    if "end_time" in update_data:
+        update_data["end_time"] = (
+            ensure_utc(update_data["end_time"])
+            if update_data["end_time"] is not None
+            else None
+        )
     update_data["updated_at"] = now_utc
 
     doc = await collection.find_one_and_update(
@@ -361,15 +448,29 @@ async def update_edu_session(
     if not doc:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
+    await _refresh_is_first_completed_for_unit(
+        db,
+        user_id,
+        int(doc["week_number"]),
+        doc.get("diary_id") if isinstance(doc.get("diary_id"), str) else None,
+    )
+    doc = await collection.find_one({"user_id": user_id, "session_id": session_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+
     # last_completed_week 재평가 (에러 나도 전체 요청 막지는 않음)
     try:
+        start_time = parse_datetime_value(doc.get("start_time"))
+        if start_time is None:
+            raise ValueError("edu_session.start_time is missing")
+
         common = EduSessionCommonIn(
-            week_number=doc.get("week_number"),
-            diary_id=doc.get("diary_id"),
-            total_stages=doc.get("total_stages"),
-            last_stage_idx=doc.get("last_stage_idx"),
+            week_number=int(doc["week_number"]),
+            diary_id=doc.get("diary_id") if isinstance(doc.get("diary_id"), str) else None,
+            total_stages=int(doc["total_stages"]),
+            last_stage_idx=int(doc["last_stage_idx"]),
             completed=bool(doc.get("completed", False)),
-            start_time=parse_datetime_value(doc.get("start_time")),
+            start_time=start_time,
             end_time=parse_datetime_value(doc.get("end_time")),
         )
         await _update_last_completed_week_if_needed(db, user_id, common)
@@ -574,7 +675,7 @@ async def update_week8_user_journey(
         {"user_id": user_id, "session_id": session_id, "week_number": 8}
     )
     if not doc:
-        raise HTTPException(status_code=404, detail="8주차 세션을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="8주차차 세션을 찾을 수 없습니다")
 
     now_utc = datetime.now(timezone.utc)
     updated_doc = await collection.find_one_and_update(

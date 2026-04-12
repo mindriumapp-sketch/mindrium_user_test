@@ -339,10 +339,7 @@ def _serialize_diary(doc: dict) -> dict:
             if isinstance(normalized_loc_time, dict)
             else None
         ),
-
-        "latitude": doc.get("latitude"),
-        "longitude": doc.get("longitude"),
-        "address_name": doc.get("address_name"),
+        "loc_auto_filled": doc.get("loc_auto_filled", False),
         "created_at": parse_datetime_value(doc.get("created_at")),
         "updated_at": parse_datetime_value(doc.get("updated_at")),
     }
@@ -414,9 +411,7 @@ async def create_diary(
         "sud_scores": sud_entries,
         "latest_sud": latest_sud,
         "loc_time": loc_time_doc,
-        "latitude": payload.latitude,
-        "longitude": payload.longitude,
-        "address_name": payload.address_name,
+        "loc_auto_filled": payload.loc_auto_filled,
         "created_at": now_utc,
         "updated_at": now_utc,
         "client_timestamp": client_ts_utc,

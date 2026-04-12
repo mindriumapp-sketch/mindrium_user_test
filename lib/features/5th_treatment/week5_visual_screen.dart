@@ -4,7 +4,7 @@ import 'package:gad_app_team/widgets/detail_popup.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -38,32 +38,22 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
   }
 
   void _showStartDialog() {
-    showDialog(
+    showCbtToRelaxationDialog(
       context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => CustomPopupDesign(
-            title: '이완 음성 안내 시작',
-            message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-            positiveText: '확인',
-            negativeText: null,
-            backgroundAsset: null,
-            iconAsset: null,
-            onPositivePressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(
-                context,
-                '/relaxation_education',
-                arguments: {
-                  'sessionId': widget.sessionId,
-                  'taskId': 'week5_education',
-                  'weekNumber': 5,
-                  'mp3Asset': 'week1.mp3',
-                  'riveAsset': 'week1.riv',
-                },
-              );
-            },
-          ),
+      onMoveNow: () {
+        Navigator.pop(context);
+        Navigator.pushReplacementNamed(
+          context,
+          '/relaxation_education',
+          arguments: {
+            'sessionId': widget.sessionId,
+            'taskId': 'week5_education',
+            'weekNumber': 5,
+            'mp3Asset': 'week1.mp3',
+            'riveAsset': 'week1.riv',
+          },
+        );
+      },
     );
   }
 

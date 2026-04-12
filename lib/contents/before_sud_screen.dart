@@ -73,6 +73,7 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
       consequenceB: const [],
       alternativeThoughts: const [],
       route: todayTaskDiaryRoute,
+      locAutoFilled: false,
     );
 
     final diaryId = created['diary_id']?.toString();

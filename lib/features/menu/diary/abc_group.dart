@@ -7,6 +7,7 @@ import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_group_character_screen.dart';
 import 'package:gad_app_team/features/menu/archive/character_battle.dart';
 import 'package:gad_app_team/features/menu/menu_screen.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -688,14 +689,7 @@ class _AbcGroupScreenState extends State<AbcGroupScreen> {
 
     // created_at: 백엔드에서 ISO8601 문자열로 내려옴
     final createdAtRaw = data['created_at'];
-    DateTime? createdAt;
-    if (createdAtRaw is DateTime) {
-      createdAt = createdAtRaw;
-    } else if (createdAtRaw is String) {
-      try {
-        createdAt = DateTime.parse(createdAtRaw);
-      } catch (_) {}
-    }
+    final createdAt = parseServerDateTime(createdAtRaw);
 
     // 캐릭터 ID (1 ~ 20)
     final characterIdRaw = data['character_id'];

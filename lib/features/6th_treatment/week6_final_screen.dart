@@ -1,8 +1,8 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/api/relaxation_api.dart';
@@ -152,31 +152,20 @@ class Week6FinalScreen extends StatelessWidget {
       return;
     }
 
-    showDialog(
+    showCbtToRelaxationDialog(
       context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => CustomPopupDesign(
-            title: '이완 연습 이어서 하기',
-            message: '오늘 학습을 잘 마쳤어요.\n이완 연습까지 이어서 진행해볼까요?',
-            positiveText: '이어하기',
-            autoPositiveAfter: const Duration(seconds: 10),
-            negativeText: null,
-            backgroundAsset: null,
-            iconAsset: null,
-            onPositivePressed: () {
-              nav.pop();
-              nav.pushReplacementNamed(
-                '/relaxation_education',
-                arguments: {
-                  'taskId': 'week6_education',
-                  'weekNumber': 6,
-                  'mp3Asset': 'week6.mp3',
-                  'riveAsset': 'week6.riv',
-                },
-              );
-            },
-          ),
+      onMoveNow: () {
+        nav.pop();
+        nav.pushReplacementNamed(
+          '/relaxation_education',
+          arguments: {
+            'taskId': 'week6_education',
+            'weekNumber': 6,
+            'mp3Asset': 'week6.mp3',
+            'riveAsset': 'week6.riv',
+          },
+        );
+      },
     );
   }
 }

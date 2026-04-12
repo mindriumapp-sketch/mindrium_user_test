@@ -231,8 +231,8 @@ class _GuidePage extends StatelessWidget {
                 if (description.trim().isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(
-                    protectKoreanWords(description),
-                    textAlign: TextAlign.left,
+                    description,
+                    applyWordJoiner: false,
                     style: TextStyle(
                       color: navy.withValues(alpha: 0.9),
                       fontSize: 14,
@@ -240,6 +240,7 @@ class _GuidePage extends StatelessWidget {
                       height: 1.45,
                       decoration: TextDecoration.none,
                     ),
+                    softWrap: true,
                   ),
                 ],
                 const SizedBox(height: 8),

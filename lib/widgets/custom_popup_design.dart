@@ -278,7 +278,9 @@ class _CustomPopupDesignState extends State<CustomPopupDesign>
                     ] else
                       TextLine(
                         widget.message,
+                        applyWordJoiner: false,
                         textAlign: TextAlign.left,
+                        softWrap: true,
                         style: const TextStyle(
                           fontFamily: 'NotoSansKR',
                           fontSize: 15,

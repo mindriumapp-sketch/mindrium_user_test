@@ -210,7 +210,7 @@ class _BeforeSurveyScreenState extends State<BeforeSurveyScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const JellyfishBanner(message: '지난 2주 동안의 우울 증상을\n아래 항목에 따라 평가해주세요.'),
+         const JellyfishBanner(message: '지난 2주 동안의 우울 증상을\n아래 항목에 따라 평가해주세요.'),
           const SizedBox(height: 18),
           ...List.generate(_questions.length, _buildQuestionCard),
         ],

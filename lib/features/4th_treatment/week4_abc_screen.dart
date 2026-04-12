@@ -3,6 +3,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_concentration_screen.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 
@@ -350,9 +351,7 @@ class _DiarySelectionItem {
   }
 
   static DateTime? _parseCreatedAt(dynamic raw) {
-    if (raw is DateTime) return raw;
-    if (raw is String) return DateTime.tryParse(raw);
-    return null;
+    return parseServerDateTime(raw);
   }
 
   static String _chipLabel(dynamic raw) {

@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const EventChannel _widgetLaunchEventChannel = EventChannel(
     'mindrium/widget_launch_events',
   );
-  static const String _week2LockedMessage = '2회차 교육 완료 후 이용할 수 있어요.';
+  static const String _week2LockedMessage = '2주차 교육 완료 후 이용할 수 있어요.';
   static const String _alarmCardEnabledTitle = '불안 완화 알림';
   static const String _alarmCardDisabledTitle = '불안 완화 알림 (잠금)';
   static const String _alarmCardEnabledDescription =
@@ -1054,7 +1054,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required bool isDone,
   }) {
     return _DailyTask(
-      title: '$weekNumber회차 이완 복습',
+      title: '$weekNumber주차 이완 복습',
       isDone: isDone,
       onTap: () => _openRelaxationTask(weekNumber),
     );
@@ -1087,7 +1087,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 },
               );
             },
-          ),
+          ), // TODO: 흰페이지의 이완에서 올려도 되려나 이거
     );
   }
 

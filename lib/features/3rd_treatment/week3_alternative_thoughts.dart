@@ -79,7 +79,7 @@ class _Week3AlternativeThoughtsScreenState
       children: [
         Container(
           constraints: const BoxConstraints(minHeight: 190),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.22),
             borderRadius: BorderRadius.circular(28),
@@ -152,9 +152,9 @@ class _Week3AlternativeThoughtsScreenState
     return ApplyDoubleCard(
       appBarTitle: '생각 구분 연습',
       topChild: _buildTopPanel(),
-      panelsGap: 0,
-      height: 120,
-      topPadding: 0,
+      panelsGap: 10,
+      height: 140,
+      topPadding: 8,
       middleBannerText: '아래 입력창에 떠오르는 생각을 자유롭게 적어보세요.',
       bottomChild: _buildBottomPanel(),
       onBack: () => Navigator.pop(context),

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:intl/intl.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 import 'custom_appbar.dart';
 import '../features/2nd_treatment/abc_group_add_screen.dart';
 
@@ -221,11 +222,8 @@ class GroupCard extends StatelessWidget {
   });
 
   DateTime _parseDate(dynamic raw) {
-    if (raw is DateTime) return raw;
-    if (raw is String) {
-      final parsed = DateTime.tryParse(raw);
-      if (parsed != null) return parsed;
-    }
+    final parsedServerTime = parseServerDateTime(raw);
+    if (parsedServerTime != null) return parsedServerTime;
     if (raw is int) {
       try {
         return DateTime.fromMillisecondsSinceEpoch(raw);

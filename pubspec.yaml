@@ -131,6 +131,7 @@ flutter:
     - assets/image/delete.png
     - assets/image/delete2.png
     - assets/image/done.png
+    - assets/image/progressing1.png
     - assets/image/eduhome.png
     - assets/image/ending.png
     - assets/image/finish.png

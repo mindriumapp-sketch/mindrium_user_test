@@ -49,8 +49,6 @@ class DiaryChip(BaseModel):
     category: Optional[Literal["anxious", "healthy"]] = None
 
 
-# ---------- Diary ----------
-
 class DiaryBase(BaseModel):
     group_id: Optional[str] = None
     route: Optional[Literal["notification", "today_task", "solve"]] = None
@@ -61,9 +59,7 @@ class DiaryBase(BaseModel):
     consequence_emotion: List[DiaryChip] = Field(default_factory=list)
     consequence_action: List[DiaryChip] = Field(default_factory=list)
     alternative_thoughts: List[str] = Field(default_factory=list)
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    address_name: Optional[str] = None
+    loc_auto_filled: bool = False
 
 
 class DiaryCreate(DiaryBase):
@@ -83,9 +79,7 @@ class DiaryUpdate(BaseModel):
     alternative_thoughts: Optional[List[str]] = None
 
     loc_time: Optional[Any] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    address_name: Optional[str] = None
+    loc_auto_filled: Optional[bool] = None
     client_timestamp: datetime
 
 

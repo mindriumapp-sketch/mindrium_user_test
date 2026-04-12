@@ -8,6 +8,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/widgets/memo_sheet_design.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
 import 'package:provider/provider.dart';
 
@@ -228,32 +229,21 @@ class _EducationPageState extends State<EducationPage> {
       return;
     }
 
-    showDialog(
+    showCbtToRelaxationDialog(
       context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => CustomPopupDesign(
-            title: '이완 연습 이어서 하기',
-            message: '오늘 학습을 잘 마쳤어요.\n이완 연습까지 이어서 진행해볼까요?',
-            positiveText: '이어하기',
-            autoPositiveAfter: const Duration(seconds: 10),
-            negativeText: null,
-            backgroundAsset: null,
-            iconAsset: null,
-            onPositivePressed: () {
-              nav.pop();
-              nav.pushReplacementNamed(
-                '/relaxation_education',
-                arguments: {
-                  'sessionId': widget.sessionId,
-                  'taskId': 'week1_education',
-                  'weekNumber': 1,
-                  'mp3Asset': 'week1.mp3',
-                  'riveAsset': 'week1.riv',
-                },
-              );
-            },
-          ),
+      onMoveNow: () {
+        nav.pop();
+        nav.pushReplacementNamed(
+          '/relaxation_education',
+          arguments: {
+            'sessionId': widget.sessionId,
+            'taskId': 'week1_education',
+            'weekNumber': 1,
+            'mp3Asset': 'week1.mp3',
+            'riveAsset': 'week1.riv',
+          },
+        );
+      },
     );
   }
 

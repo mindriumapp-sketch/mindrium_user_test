@@ -16,7 +16,7 @@ const Map<int, String> kRelaxationWeekDescriptions = {
 };
 
 String relaxationDescriptionForWeek(int weekNumber) {
-  return kRelaxationWeekDescriptions[weekNumber] ?? '이번 주 이완 훈련을 시작해요.';
+  return kRelaxationWeekDescriptions[weekNumber] ?? '이번 주차 이완 훈련을 시작해요.';
 }
 
 class RelaxationStartScreen extends StatelessWidget {
@@ -143,7 +143,7 @@ class _RelaxationVolumeGuideScreenState
         builder:
             (_) => CustomPopupDesign(
               title: '이완 음성 안내 시작',
-              message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+              message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다. 주변 소리와 음량을 조절해보세요.',
               positiveText: '확인',
               negativeText: null,
               backgroundAsset: null,

@@ -79,6 +79,7 @@ class _StepCViewState extends State<StepCView> {
   Widget _buildPhysicalStep() {
     return _buildCommonSection(
       title: '불안할 때 몸에\n어떤 증상이 있었나요?',
+      sectionLabel: '신체증상',
       chips: widget.physicalChips,
       selectedChipIds: widget.selectedPhysicalChipIds,
       guideMessage:
@@ -94,6 +95,7 @@ class _StepCViewState extends State<StepCView> {
   Widget _buildEmotionStep() {
     return _buildCommonSection(
       title: '불안한 그 순간, \n어떤 감정을 느꼈나요?',
+      sectionLabel: '감정',
       chips: widget.emotionChips,
       selectedChipIds: widget.selectedEmotionChipIds,
       guideMessage:
@@ -109,6 +111,7 @@ class _StepCViewState extends State<StepCView> {
   Widget _buildBehaviorStep() {
     return _buildCommonSection(
       title: '불안할 때 실제로 어떤 행동을 했나요?',
+      sectionLabel: '행동',
       chips: widget.behaviorChips,
       selectedChipIds: widget.selectedBehaviorChipIds,
       guideMessage:
@@ -123,6 +126,7 @@ class _StepCViewState extends State<StepCView> {
   /// 🎯 공통 구성 (신체/감정/행동 공용 뷰) — chipId 기반
   Widget _buildCommonSection({
     required String title,
+    required String sectionLabel,
     required List<AbcChip> chips,
     required Set<String> selectedChipIds,
     required String guideMessage,
@@ -147,6 +151,7 @@ class _StepCViewState extends State<StepCView> {
             child: AbcChipsDesign(
               chips: chips,
               selectedChipIds: selectedChipIds,
+              chipSectionLabel: sectionLabel,
               singleSelect: false,
               isExampleMode: widget.isExampleMode,
               openAllItemsSignal: widget.openAllItemsSignal,

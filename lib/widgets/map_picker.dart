@@ -21,6 +21,9 @@ class MapPicker extends StatefulWidget {
   final bool showSavedMarkers;
   final bool enableTimeSelection;
   final double sheetInitialSize;
+  final bool embedInParent;
+  final Future<void> Function(LocTimeSetting setting)? onConfirmed;
+  final VoidCallback? onBackPressed;
 
   const MapPicker({
     super.key,
@@ -30,7 +33,10 @@ class MapPicker extends StatefulWidget {
     this.initialLocationLabel,
     this.showSavedMarkers = true,
     this.enableTimeSelection = true,
-    this.sheetInitialSize = MindriumPopupDesign.defaultSheetInitialSize,
+    this.sheetInitialSize = MindriumMapDesign.defaultSheetInitialSize,
+    this.embedInParent = false,
+    this.onConfirmed,
+    this.onBackPressed,
   });
 
   @override
@@ -76,6 +82,7 @@ class _MapPickerState extends State<MapPicker> {
   List<LatLng> _savedMarkers = [];
   String? _addr;
   bool _isMapReady = false;
+  bool _hasRenderedMap = false;
   LatLng? _pendingMapCenter;
   double _pendingMapZoom = _kInitialZoom;
   late TimeOfDay _selectedTime;
@@ -95,6 +102,31 @@ class _MapPickerState extends State<MapPicker> {
   }
 
   @override
+  void didUpdateWidget(covariant MapPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final newInitial = _normalizeInitialPoint(widget.initial);
+    final oldInitial = _normalizeInitialPoint(oldWidget.initial);
+
+    final initialChanged = !_sameLatLng(newInitial, oldInitial);
+    final timeChanged = widget.initialTime != oldWidget.initialTime;
+    final labelChanged =
+        widget.initialLocationLabel != oldWidget.initialLocationLabel;
+
+    if (!initialChanged && !timeChanged && !labelChanged) {
+      return;
+    }
+
+    _applyState(() {
+      _applyIncomingInitialState(
+        initialPoint: newInitial,
+        initialTime: widget.initialTime,
+        initialLocationLabel: widget.initialLocationLabel,
+      );
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _locationLabelController.removeListener(_handleLocationLabelChanged);
@@ -105,6 +137,9 @@ class _MapPickerState extends State<MapPicker> {
 
   void _onMapReady() {
     _isMapReady = true;
+    if (mounted && !_hasRenderedMap) {
+      setState(() => _hasRenderedMap = true);
+    }
     final center = _pendingMapCenter;
     final zoom = _pendingMapZoom;
     _pendingMapCenter = null;
@@ -164,6 +199,40 @@ class _MapPickerState extends State<MapPicker> {
   void _handleLocationLabelChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  LatLng? _normalizeInitialPoint(LatLng? point) {
+    if (point == null || !_isValidLatLng(point)) return null;
+    return point;
+  }
+
+  bool _sameLatLng(LatLng? a, LatLng? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.latitude == b.latitude && a.longitude == b.longitude;
+  }
+
+  void _applyIncomingInitialState({
+    required LatLng? initialPoint,
+    required TimeOfDay? initialTime,
+    required String? initialLocationLabel,
+  }) {
+    final trimmedLabel = initialLocationLabel?.trim() ?? '';
+
+    if (initialTime != null) {
+      _selectedTime = initialTime;
+    }
+
+    _setLocationLabelText(trimmedLabel);
+
+    if (initialPoint != null) {
+      _picked = initialPoint;
+      _current = null;
+      _pendingMapCenter = initialPoint;
+      _pendingMapZoom = _kInitialZoom;
+      _moveMapSafely(initialPoint, zoom: _kInitialZoom);
+      unawaited(_reverseGeocode(initialPoint));
+    }
   }
 
   void _initializeSelectionState() {
@@ -451,22 +520,26 @@ class _MapPickerState extends State<MapPicker> {
             : (address.isNotEmpty ? address : fallbackLocation);
 
     if (!mounted) return;
-    Navigator.of(context).pop(
-      LocTimeSetting(
-        location: resolvedLocation,
-        latitude: latlng.latitude,
-        longitude: latlng.longitude,
-        description: address.isNotEmpty ? address : fallbackLocation,
-        time: _selectedTime,
-        notifyEnter: true,
-        notifyExit: false,
-      ),
+    final setting = LocTimeSetting(
+      location: resolvedLocation,
+      latitude: latlng.latitude,
+      longitude: latlng.longitude,
+      description: address.isNotEmpty ? address : fallbackLocation,
+      time: _selectedTime,
+      notifyEnter: true,
+      notifyExit: false,
     );
+
+    if (widget.embedInParent) {
+      await widget.onConfirmed?.call(setting);
+    } else {
+      Navigator.of(context).pop(setting);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return MindriumPopupDesign(
+    return MindriumMapDesign(
       searchController: _searchController,
       mapController: _mapController,
       onMapReady: _onMapReady,
@@ -475,7 +548,7 @@ class _MapPickerState extends State<MapPicker> {
       savedMarkers: _savedMarkers,
       onSearch: _onSearch,
       onTap: _pickLocation,
-      onBack: () => Navigator.pop(context),
+      onBack: widget.onBackPressed ?? () => Navigator.pop(context),
       onNext: _hasRequiredLocationLabel ? _confirmSelection : null,
       initialTimeDateTime: DateTime(
         2000,
@@ -492,7 +565,8 @@ class _MapPickerState extends State<MapPicker> {
       locationText: _displayLocationText,
       showLocationLabelInput: widget.enableLocationLabel,
       locationLabelController:
-          widget.enableLocationLabel ? _locationLabelController : null,
+        widget.enableLocationLabel ? _locationLabelController : null,
+      showMapPlaceholder: !_hasRenderedMap,
     );
   }
 }

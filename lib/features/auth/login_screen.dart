@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // 3) 오늘의 할 일 로딩 ( /users/me/todaytask )
       await todayTaskProvider.loadTodayTask();
-      // 4) 현재 회차 세션 완료 상태 선동기화(교육 탭 플리커 방지)
+      // 4) 현재 주차 세션 완료 상태 선동기화(교육 탭 플리커 방지)
       await todayTaskProvider.syncEducationWeekStatus(userProvider.currentWeek);
 
       // 5) SharedPreferences (기존 로직 유지)
