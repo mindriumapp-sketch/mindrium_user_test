@@ -48,10 +48,18 @@ def phone_to_digits(phone: str) -> str:
     return "".join(ch for ch in raw if ch.isdigit())
 
 
+def _norm_pid(v) -> str | None:
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s or None
+
+
+# 로컬 네이티브 실행 시 127.0.0.1 권장. Docker 안에서 호스트로 붙을 때는 PLATFORM_SIGNUP_URL=http://host.docker.internal:8061/auth/signup
 PLATFORM_SIGNUP_URL = (
     os.getenv("PLATFORM_SIGNUP_URL")
     or os.getenv("PLATFORM_VERIFY_URL")
-    or "http://host.docker.internal:8061/auth/signup"
+    or "http://127.0.0.1:8061/auth/signup"
 )
 
 
@@ -72,10 +80,14 @@ async def signup_with_platform(payload: SignupRequest) -> str:
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.post(PLATFORM_SIGNUP_URL, json=platform_payload)
-    except httpx.RequestError:
+    except httpx.RequestError as e:
         raise HTTPException(
             status_code=502,
-            detail="Platform signup service unavailable",
+            detail=(
+                "Platform signup service unavailable: "
+                f"cannot reach {PLATFORM_SIGNUP_URL} ({type(e).__name__}). "
+                "Check that the platform server is running and PLATFORM_SIGNUP_URL is correct."
+            ),
         )
 
     try:
@@ -107,37 +119,39 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
     if not patient_code:
         raise HTTPException(status_code=400, detail="patient_code는 필수입니다.")
 
-    # 2) 동일 이메일 선검사 — 플랫폼 호출 전 (MySQL만 CLAIMED 되고 Mongo는 갱신 안 되는 불일치 방지)
+    # 2) 동일 이메일 선검사 — patient_id가 이미 있으면만 차단(이메일만 있는 스텁은 플랫폼으로 이어서 채움)
     existing_by_email = await db["users"].find_one({"email": payload.email})
     if existing_by_email:
-        pid = existing_by_email.get("patient_id")
-        has_patient_link = pid is not None and (not isinstance(pid, str) or pid.strip() != "")
-        if not has_patient_link:
+        pid = _norm_pid(existing_by_email.get("patient_id"))
+        if pid is not None:
             raise HTTPException(
                 status_code=409,
-                detail=(
-                    "이 이메일은 처방 연동 없이 등록된 계정입니다. "
-                    "처방에 등록된 이메일로 새로 가입하거나 고객센터로 문의해 주세요."
-                ),
+                detail="이미 등록된 이메일입니다. (동일 이메일이 Mongo에 이미 있음, 플랫폼 호출 전)",
             )
-        raise HTTPException(
-            status_code=409,
-            detail="이미 등록된 이메일입니다. (동일 이메일이 Mongo에 이미 있음, 플랫폼 호출 전)",
-        )
 
     # 3) 플랫폼 /auth/signup 위임 (플랫폼이 write 수행)
     patient_id = await signup_with_platform(payload)
+    np = _norm_pid(patient_id)
+    if np is not None:
+        patient_id = np
 
-    # 4) 로컬 users 동기화 (upsert) — 동시 가입 등 레이스 시 patient_id 불일치만 차단
+    # 4) 로컬 users 동기화 (upsert) — 둘 다 patient_id가 있을 때만 불일치 시 409
     existing = await db["users"].find_one({"email": payload.email})
-    if existing and existing.get("patient_id") != patient_id:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "가입을 마무리할 수 없습니다: 이 이메일은 Mongo에 다른 patient_id와 이미 연결되어 있습니다. "
-                "(플랫폼은 이미 처리됐을 수 있으니 Mongo users·플랫폼 MySQL을 맞춰 주세요.)"
-            ),
-        )
+    if existing:
+        ex_pid = _norm_pid(existing.get("patient_id"))
+        new_pid = _norm_pid(patient_id)
+        if (
+            ex_pid is not None
+            and new_pid is not None
+            and ex_pid != new_pid
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "가입을 마무리할 수 없습니다: 이 이메일은 Mongo에 다른 patient_id와 이미 연결되어 있습니다. "
+                    "(플랫폼은 이미 처리됐을 수 있으니 Mongo users·플랫폼 MySQL을 맞춰 주세요.)"
+                ),
+            )
 
     existing_patient = await db["users"].find_one({"patient_id": patient_id})
     now = datetime.now(timezone.utc)
@@ -162,6 +176,9 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
 
     if existing_patient:
         obj_id = existing_patient["_id"]
+        await db["users"].update_one({"_id": obj_id}, {"$set": update_doc})
+    elif existing:
+        obj_id = existing["_id"]
         await db["users"].update_one({"_id": obj_id}, {"$set": update_doc})
     else:
         obj_id = ObjectId()
