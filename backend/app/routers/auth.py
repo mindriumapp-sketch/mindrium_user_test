@@ -11,6 +11,7 @@ from core.config import get_settings
 from db.mongo import get_db
 from routers.custom_tags import ensure_default_custom_tags
 from routers.worry_groups import ensure_default_worry_group
+from routers.treatment_progress import ensure_week1_progress
 from schemas.auth import (
     TokenPair,
     SignupRequest,
@@ -201,6 +202,7 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
                 ),
             )
 
+    await ensure_week1_progress(db, user_id)
     await ensure_default_custom_tags(db, user_id)
     await ensure_default_worry_group(db, user_id)
 

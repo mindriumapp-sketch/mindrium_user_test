@@ -10,6 +10,7 @@ from core.security import get_current_user_id
 from core.utils import ensure_utc, parse_datetime_value
 from db.mongo import get_db
 from pymongo import ReturnDocument
+from routers.treatment_progress import _refresh_requirements_met
 from schemas.edu_session import (
     EduSessionCreateCommon,
     EduSessionCreate3And5,
@@ -25,8 +26,7 @@ from schemas.edu_session import (
 router = APIRouter(prefix="/edu-sessions", tags=["edu-sessions"])
 
 EDU_SESSION_COLLECTION = "edu_sessions"
-USER_COLLECTION = "users"
-RELAXATION_COLLECTION = "relaxation_tasks"
+TREATMENT_PROGRESS_COLLECTION = "treatment_progress"
 
 
 # ========= 공통 직렬화 =========
@@ -65,140 +65,6 @@ def _serialize_session(doc: dict) -> dict:
     return base
 
 
-async def _refresh_is_first_completed_for_unit(
-    db,
-    user_id: str,
-    week_number: int,
-    diary_id: Optional[str],
-) -> None:
-    collection = db[EDU_SESSION_COLLECTION]
-    docs = await collection.find(
-        {
-            "user_id": user_id,
-            "week_number": week_number,
-            "diary_id": diary_id,
-        }
-    ).to_list(length=None)
-    if not docs:
-        return
-
-    def is_completion_eligible(doc: Dict[str, Any]) -> bool:
-        if not bool(doc.get("completed", False)):
-            return False
-
-        raw_total_stages = doc.get("total_stages")
-        raw_last_stage_idx = doc.get("last_stage_idx")
-        if not isinstance(raw_total_stages, int) or raw_total_stages <= 0:
-            return False
-        if not isinstance(raw_last_stage_idx, int):
-            return False
-
-        return raw_last_stage_idx >= raw_total_stages
-
-    def completion_sort_key(doc: Dict[str, Any]) -> datetime:
-        for field in ("end_time", "updated_at", "created_at", "start_time"):
-            value = parse_datetime_value(doc.get(field))
-            if value is not None:
-                return value
-        return datetime.max.replace(tzinfo=timezone.utc)
-
-    eligible_docs: List[Dict[str, Any]] = [
-        doc for doc in docs if is_completion_eligible(doc)
-    ]
-    eligible_docs.sort(key=completion_sort_key)
-    first_session_id: Optional[str] = None
-    if eligible_docs:
-        raw_session_id = eligible_docs[0].get("session_id")
-        if isinstance(raw_session_id, str):
-            first_session_id = raw_session_id
-
-    for doc in docs:
-        if not is_completion_eligible(doc):
-            next_value = None
-        else:
-            next_value = doc.get("session_id") == first_session_id
-
-        if doc.get("is_first_completed") == next_value:
-            continue
-
-        await collection.update_one(
-            {"_id": doc["_id"]},
-            {"$set": {"is_first_completed": next_value}},
-        )
-
-
-async def _update_last_completed_week_if_needed(
-    db,
-    user_id: str,
-    common: EduSessionCommonIn,
-) -> None:
-    """
-    last_completed_week / last_completed_at 갱신 규칙:
-
-    - completed == True 이고
-    - last_stage_idx 가 "마지막 화면"까지 간 세션만 인정
-      (1-based 라고 가정해서 last_stage_idx >= total_stages)
-    - 해당 주차 이완(task_id=week{n}_education)이 완료(end_time != null)된 경우만 인정
-    - 기존 last_completed_week 보다 '더 큰' 주차만 갱신
-    """
-    if not common.completed:
-        return
-
-    if common.total_stages is None or common.total_stages <= 0:
-        return
-
-    if common.last_stage_idx is None:
-        return
-
-    # 1-based index (마지막 화면 번호 = total_stages)
-    if common.last_stage_idx < common.total_stages:
-        # 아직 끝까지 안 간 세션
-        return
-
-    users = db[USER_COLLECTION]
-    user_doc = await users.find_one(
-        {"user_id": user_id},
-        {"last_completed_week": 1},
-    )
-    if not user_doc:
-        # 사용자 문서 자체가 없으면 조용히 무시
-        return
-
-    current_last = user_doc.get("last_completed_week")
-    new_week = common.week_number
-
-    # 주차 완료 인정은 "CBT 완료 + 해당 주차 이완 완료"를 모두 만족해야 함
-    relax_task_id = f"week{new_week}_education"
-    relax_doc = await db[RELAXATION_COLLECTION].find_one(
-        {
-            "user_id": user_id,
-            "task_id": relax_task_id,
-            "end_time": {"$ne": None},
-        }
-    )
-    if not relax_doc:
-        return
-
-    # 이미 더 높은(혹은 같은) 주차를 완료했다면 갱신 안 함
-    if current_last is not None and new_week <= current_last:
-        return
-
-    # 완료 시점: end_time 있으면 그거, 없으면 지금
-    completed_at = ensure_utc(common.end_time) if common.end_time else datetime.now(
-        timezone.utc
-    )
-
-    await users.update_one(
-        {"user_id": user_id},
-        {
-            "$set": {
-                "last_completed_week": new_week,
-                "last_completed_at": completed_at,
-            }
-        },
-    )
-
-
 async def _insert_session_doc(
     db,
     user_id: str,
@@ -218,6 +84,7 @@ async def _insert_session_doc(
         {
             "session_id": f"edu_{uuid.uuid4().hex[:8]}",
             "user_id": user_id,
+            "is_first_completed": None,
             "created_at": now_utc,
             "updated_at": now_utc,
             "start_time": ensure_utc(base_doc.get("start_time")),
@@ -229,6 +96,51 @@ async def _insert_session_doc(
 
     await collection.insert_one(base_doc)
     return base_doc
+
+
+async def _sync_treatment_progress_main_edu(
+    *,
+    db,
+    user_id: str,
+    week_number: int,
+    session_id: str,
+    completed_at: datetime,
+) -> None:
+    collection = db[TREATMENT_PROGRESS_COLLECTION]
+    now_utc = datetime.now(timezone.utc)
+
+    progress = await collection.find_one_and_update(
+        {"user_id": user_id, "week_number": week_number},
+        {
+            "$set": {
+                "edu_session_id": session_id,
+                "updated_at": now_utc,
+            },
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if not progress:
+        return
+
+    if progress and progress.get("relaxation_task_id"):
+        progress = await collection.find_one_and_update(
+            {"user_id": user_id, "week_number": week_number},
+            {
+                "$set": {
+                    "main_completed": True,
+                    "main_completed_at": completed_at,
+                    "updated_at": now_utc,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        if progress:
+            await _refresh_requirements_met(
+                db=db,
+                collection=collection,
+                progress_doc=progress,
+                synced_at=completed_at,
+            )
 
 
 # ========= 리스트 / 단일 조회 =========
@@ -247,12 +159,20 @@ async def list_edu_sessions(
         default=None,
         description="특정 diary_id 에 연결된 세션만 보고 싶을 때",
     ),
+    start_at: Optional[datetime] = Query(
+        default=None,
+        description="created_at 기준 시작 시각 필터",
+    ),
+    end_at: Optional[datetime] = Query(
+        default=None,
+        description="created_at 기준 종료 시각 필터",
+    ),
     user_id: str = Depends(get_current_user_id),
     db=Depends(get_db),
 ):
     """
     사용자의 edu_sessions 목록을 조회.
-    - week_number / diary_id 로 필터링 가능
+    - week_number / diary_id / created_at 기간으로 필터링 가능
     - 최신(start_time 기준) 순으로 정렬
     """
     collection = db[EDU_SESSION_COLLECTION]
@@ -262,6 +182,13 @@ async def list_edu_sessions(
         query["week_number"] = week_number
     if diary_id is not None:
         query["diary_id"] = diary_id
+    if start_at is not None or end_at is not None:
+        created_at_query: Dict[str, datetime] = {}
+        if start_at is not None:
+            created_at_query["$gte"] = ensure_utc(start_at) or start_at
+        if end_at is not None:
+            created_at_query["$lte"] = ensure_utc(end_at) or end_at
+        query["created_at"] = created_at_query
 
     cursor = collection.find(query).sort("start_time", -1)
 
@@ -315,11 +242,23 @@ async def create_common_session(
     여기서는 week_number 가 1,2,4,6 인 경우만 허용한다.
     """
     doc = await _insert_session_doc(db, user_id, payload)
-    await _refresh_is_first_completed_for_unit(
-        db, user_id, payload.week_number, payload.diary_id
-    )
-    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
-    await _update_last_completed_week_if_needed(db, user_id, payload)
+    # if not payload.completed or payload.end_time is None or payload.last_stage_idx < payload.total_stages:
+    #     is_first_completed = None
+    # else:
+    #     existing_first = await db[EDU_SESSION_COLLECTION].find_one(
+    #         {
+    #             "user_id": user_id,
+    #             "week_number": payload.week_number,
+    #             "diary_id": payload.diary_id,
+    #             "is_first_completed": True,
+    #         }
+    #     )
+    #     is_first_completed = existing_first is None
+    # await db[EDU_SESSION_COLLECTION].update_one(
+    #     {"session_id": doc["session_id"]},
+    #     {"$set": {"is_first_completed": is_first_completed}},
+    # )
+    # doc["is_first_completed"] = is_first_completed
 
     return EduSessionResponse(**_serialize_session(doc))
 
@@ -344,11 +283,23 @@ async def create_week3_5_session(
     - classification_quiz: 분류 퀴즈 결과 (선택)
     """
     doc = await _insert_session_doc(db, user_id, payload)
-    await _refresh_is_first_completed_for_unit(
-        db, user_id, payload.week_number, payload.diary_id
-    )
-    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
-    await _update_last_completed_week_if_needed(db, user_id, payload)
+    # if not payload.completed or payload.end_time is None or payload.last_stage_idx < payload.total_stages:
+    #     is_first_completed = None
+    # else:
+    #     existing_first = await db[EDU_SESSION_COLLECTION].find_one(
+    #         {
+    #             "user_id": user_id,
+    #             "week_number": payload.week_number,
+    #             "diary_id": payload.diary_id,
+    #             "is_first_completed": True,
+    #         }
+    #     )
+    #     is_first_completed = existing_first is None
+    # await db[EDU_SESSION_COLLECTION].update_one(
+    #     {"session_id": doc["session_id"]},
+    #     {"$set": {"is_first_completed": is_first_completed}},
+    # )
+    # doc["is_first_completed"] = is_first_completed
 
     return EduSessionResponse(**_serialize_session(doc))
 
@@ -371,11 +322,23 @@ async def create_week7_session(
     - behavior_items: chip_id / category / reason / analysis 등 포함한 리스트
     """
     doc = await _insert_session_doc(db, user_id, payload)
-    await _refresh_is_first_completed_for_unit(
-        db, user_id, payload.week_number, payload.diary_id
-    )
-    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
-    await _update_last_completed_week_if_needed(db, user_id, payload)
+    # if not payload.completed or payload.end_time is None or payload.last_stage_idx < payload.total_stages:
+    #     is_first_completed = None
+    # else:
+    #     existing_first = await db[EDU_SESSION_COLLECTION].find_one(
+    #         {
+    #             "user_id": user_id,
+    #             "week_number": payload.week_number,
+    #             "diary_id": payload.diary_id,
+    #             "is_first_completed": True,
+    #         }
+    #     )
+    #     is_first_completed = existing_first is None
+    # await db[EDU_SESSION_COLLECTION].update_one(
+    #     {"session_id": doc["session_id"]},
+    #     {"$set": {"is_first_completed": is_first_completed}},
+    # )
+    # doc["is_first_completed"] = is_first_completed
 
     return EduSessionResponse(**_serialize_session(doc))
 
@@ -399,11 +362,23 @@ async def create_week8_session(
     - user_journey_responses: 질문/답변 리스트
     """
     doc = await _insert_session_doc(db, user_id, payload)
-    await _refresh_is_first_completed_for_unit(
-        db, user_id, payload.week_number, payload.diary_id
-    )
-    doc = await db[EDU_SESSION_COLLECTION].find_one({"session_id": doc["session_id"]})
-    await _update_last_completed_week_if_needed(db, user_id, payload)
+    # if not payload.completed or payload.end_time is None or payload.last_stage_idx < payload.total_stages:
+    #     is_first_completed = None
+    # else:
+    #     existing_first = await db[EDU_SESSION_COLLECTION].find_one(
+    #         {
+    #             "user_id": user_id,
+    #             "week_number": payload.week_number,
+    #             "diary_id": payload.diary_id,
+    #             "is_first_completed": True,
+    #         }
+    #     )
+    #     is_first_completed = existing_first is None
+    # await db[EDU_SESSION_COLLECTION].update_one(
+    #     {"session_id": doc["session_id"]},
+    #     {"$set": {"is_first_completed": is_first_completed}},
+    # )
+    # doc["is_first_completed"] = is_first_completed
 
     return EduSessionResponse(**_serialize_session(doc))
 
@@ -448,34 +423,44 @@ async def update_edu_session(
     if not doc:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
-    await _refresh_is_first_completed_for_unit(
-        db,
-        user_id,
-        int(doc["week_number"]),
-        doc.get("diary_id") if isinstance(doc.get("diary_id"), str) else None,
-    )
-    doc = await collection.find_one({"user_id": user_id, "session_id": session_id})
-    if not doc:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-
-    # last_completed_week 재평가 (에러 나도 전체 요청 막지는 않음)
-    try:
-        start_time = parse_datetime_value(doc.get("start_time"))
-        if start_time is None:
-            raise ValueError("edu_session.start_time is missing")
-
-        common = EduSessionCommonIn(
-            week_number=int(doc["week_number"]),
-            diary_id=doc.get("diary_id") if isinstance(doc.get("diary_id"), str) else None,
-            total_stages=int(doc["total_stages"]),
-            last_stage_idx=int(doc["last_stage_idx"]),
-            completed=bool(doc.get("completed", False)),
-            start_time=start_time,
-            end_time=parse_datetime_value(doc.get("end_time")),
+    completed = bool(doc.get("completed", False))
+    total_stages = doc.get("total_stages")
+    last_stage_idx = doc.get("last_stage_idx")
+    end_time = doc.get("end_time")
+    if (
+        not completed
+        or end_time is None
+        or not isinstance(total_stages, int)
+        or not isinstance(last_stage_idx, int)
+        or last_stage_idx < total_stages
+    ):
+        is_first_completed = None
+    else:
+        existing_first = await collection.find_one(
+            {
+                "user_id": user_id,
+                "week_number": int(doc["week_number"]),
+                "diary_id": doc.get("diary_id") if isinstance(doc.get("diary_id"), str) else None,
+                "is_first_completed": True,
+                "session_id": {"$ne": session_id},
+            }
         )
-        await _update_last_completed_week_if_needed(db, user_id, common)
-    except Exception as e:
-        print(f"[edu-sessions] last_completed_week 갱신 중 오류: {e}")
+        is_first_completed = existing_first is None
+
+    await collection.update_one(
+        {"user_id": user_id, "session_id": session_id},
+        {"$set": {"is_first_completed": is_first_completed}},
+    )
+    doc["is_first_completed"] = is_first_completed
+
+    if is_first_completed:
+        await _sync_treatment_progress_main_edu(
+            db=db,
+            user_id=user_id,
+            week_number=int(doc["week_number"]),
+            session_id=session_id,
+            completed_at=ensure_utc(end_time) or now_utc,
+        )
 
     return EduSessionResponse(**_serialize_session(doc))
 
@@ -485,6 +470,7 @@ async def update_edu_session(
 class Week7ItemUpsert(BaseModel):
     """7주차 행동 한 개 추가/수정용"""
     chip_id: str
+    label: Optional[str] = None
     category: Literal["confront", "avoid"]
     reason: Optional[str] = None
     # 분석 폼은 BehaviorExecutionAnalysis와 동일 구조를 기대
@@ -523,6 +509,7 @@ async def upsert_week7_item(
         if existing.get("chip_id") == payload.chip_id:
             items[idx] = {
                 "chip_id": payload.chip_id,
+                "label": payload.label,
                 "category": payload.category,
                 "reason": payload.reason,
                 "analysis": (
@@ -538,6 +525,7 @@ async def upsert_week7_item(
         items.append(
             {
                 "chip_id": payload.chip_id,
+                "label": payload.label,
                 "category": payload.category,
                 "reason": payload.reason,
                 "analysis": (

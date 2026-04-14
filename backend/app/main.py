@@ -16,8 +16,8 @@ from routers.diaries import router as diaries_router
 from routers.sud_scores import router as sud_scores_router
 from routers.relaxation_tasks import router as relaxation_router
 from routers.screen_time import router as screen_time_router
-from routers.schedule_events import router as schedule_events_router
 from routers.edu_sessions import router as edu_sessions_router
+from routers.treatment_progress import router as treatment_progress_router
 from routers.worry_groups import router as worry_groups_router
 from routers.alarm_settings import router as alarm_settings_router
 
@@ -255,6 +255,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARN] edu_sessions 인덱스 생성 중 오류: {e}")
 
+    # ---------- treatment_progress 컬렉션 ----------
+    try:
+        treatment_progress = db["treatment_progress"]
+
+        await treatment_progress.create_index(
+            [("user_id", 1), ("week_number", 1)],
+            unique=True,
+            name="unique_treatment_progress_user_week",
+        )
+
+        print("[OK] treatment_progress 인덱스 생성 완료")
+    except Exception as e:
+        print(f"[WARN] treatment_progress 인덱스 생성 중 오류: {e}")
+
     # ---------- user_data ----------
     # 현재 운영/통합 플로우에서는 user_data 컬렉션을 사용하지 않으므로 제거합니다.
     # users 컬렉션에 동일 인덱스를 또 만드는 중복/혼동을 방지하기 위함.
@@ -325,8 +339,8 @@ app.include_router(sud_scores_router)       # SUD 점수 기록 라우터
 app.include_router(user_data_router)        # 사용자 데이터(설문 등)  <-- (주의) 이 라우터 자체도 안 쓰면 제거 권장
 app.include_router(relaxation_router)
 app.include_router(screen_time_router)
-app.include_router(schedule_events_router)
 app.include_router(edu_sessions_router)
+app.include_router(treatment_progress_router)
 app.include_router(custom_tags_router)
 app.include_router(worry_groups_router)
 app.include_router(alarm_settings_router)

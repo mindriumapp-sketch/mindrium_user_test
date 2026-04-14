@@ -20,12 +20,12 @@ from schemas.relaxation import (
     RelaxationTimeSummary,
     RelaxationTaskTimeSummary,
 )
+from routers.treatment_progress import _find_active_progress, _refresh_requirements_met
 
 router = APIRouter(prefix="/relaxation_tasks", tags=["relaxation_tasks"])
 
 RELAX_COLLECTION = "relaxation_tasks"
-USER_COLLECTION = "users"
-EDU_SESSION_COLLECTION = "edu_sessions"
+TREATMENT_PROGRESS_COLLECTION = "treatment_progress"
 
 
 # =========================================================
@@ -34,21 +34,25 @@ EDU_SESSION_COLLECTION = "edu_sessions"
 
 def _serialize_task(doc: dict) -> dict:
     """Mongo 도큐먼트를 API 응답 형태로 변환."""
-    start_utc = parse_datetime_value(doc.get("start_time"))
+    start_utc = parse_datetime_value(doc.get("start_time")) or datetime.now(timezone.utc)
     end_utc = parse_datetime_value(doc.get("end_time"))
     logs_data = doc.get("logs") or []
+    task_id = doc.get("task_id")
+    created_at = parse_datetime_value(doc.get("created_at")) or start_utc
+    updated_at = parse_datetime_value(doc.get("updated_at")) or created_at
 
     return {
         # Mongo _id(ObjectId)를 문자열로 노출
         "relax_id": str(doc["_id"]),
-        "task_id": doc.get("task_id"),
+        "is_first_completed": doc.get("is_first_completed"),
+        "task_id": task_id if isinstance(task_id, str) else "",
         "week_number": doc.get("week_number"),
         "start_time": start_utc,
         "end_time": end_utc,
         "logs": [
             RelaxationLogEntry(
-                action=entry.get("action"),
-                timestamp=parse_datetime_value(entry.get("timestamp")),
+                action=str(entry.get("action") or ""),
+                timestamp=parse_datetime_value(entry.get("timestamp")) or start_utc,
                 elapsed_seconds=int(entry.get("elapsed_seconds", 0)),
             )
             for entry in logs_data
@@ -58,8 +62,8 @@ def _serialize_task(doc: dict) -> dict:
         "longitude": doc.get("longitude"),
         "address_name": doc.get("address_name"),
         "duration_seconds": doc.get("duration_seconds"),
-        "created_at": parse_datetime_value(doc.get("created_at")),
-        "updated_at": parse_datetime_value(doc.get("updated_at")),
+        "created_at": created_at,
+        "updated_at": updated_at,
     }
 
 
@@ -143,100 +147,6 @@ def _build_task_match(
     return match
 
 
-def _extract_week_from_education_task_id(task_id: Optional[str]) -> Optional[int]:
-    if not task_id:
-        return None
-    if not task_id.startswith("week") or not task_id.endswith("_education"):
-        return None
-
-    middle = task_id[len("week") : -len("_education")]
-    if not middle.isdigit():
-        return None
-
-    week_no = int(middle)
-    if 1 <= week_no <= 8:
-        return week_no
-    return None
-
-
-async def _sync_last_completed_week_from_relaxation(
-    *,
-    db,
-    user_id: str,
-    task_id: Optional[str],
-    end_time: Optional[datetime],
-) -> None:
-    """
-    이완 완료 시점에 users.last_completed_week를 재평가한다.
-    조건:
-    - task_id = week{n}_education
-    - end_time != None
-    - 해당 주차 edu_session 중 completed=True 이고 last_stage_idx >= total_stages 인 세션 존재
-    - 기존 last_completed_week 보다 더 큰 주차일 때만 업데이트
-    """
-    if end_time is None:
-        return
-
-    week_no = _extract_week_from_education_task_id(task_id)
-    if week_no is None:
-        return
-
-    # 해당 주차에서 CBT 완료(완주)된 세션이 있는지 확인
-    edu_collection = db[EDU_SESSION_COLLECTION]
-    cursor = (
-        edu_collection.find(
-            {
-                "user_id": user_id,
-                "week_number": week_no,
-                "completed": True,
-            },
-            {
-                "total_stages": 1,
-                "last_stage_idx": 1,
-            },
-        )
-        .sort("updated_at", -1)
-    )
-
-    cbt_completed = False
-    async for edu_doc in cursor:
-        total_stages = edu_doc.get("total_stages")
-        last_idx = edu_doc.get("last_stage_idx")
-        if (
-            isinstance(total_stages, int)
-            and total_stages > 0
-            and isinstance(last_idx, int)
-            and last_idx >= total_stages
-        ):
-            cbt_completed = True
-            break
-
-    if not cbt_completed:
-        return
-
-    users = db[USER_COLLECTION]
-    user_doc = await users.find_one(
-        {"user_id": user_id},
-        {"last_completed_week": 1},
-    )
-    if not user_doc:
-        return
-
-    current_last = user_doc.get("last_completed_week") or 0
-    if week_no <= current_last:
-        return
-
-    await users.update_one(
-        {"user_id": user_id},
-        {
-            "$set": {
-                "last_completed_week": week_no,
-                "last_completed_at": ensure_utc(end_time),
-            }
-        },
-    )
-
-
 async def _find_relaxation_tasks(
     *,
     db,
@@ -283,7 +193,7 @@ async def _find_relaxation_tasks(
     return tasks
 
 
-async def _find_completed_week_education_tasks_by_period(
+async def _find_completed_daily_tasks_by_period(
     *,
     db,
     user_id: str,
@@ -292,16 +202,16 @@ async def _find_completed_week_education_tasks_by_period(
     end_at: datetime,
 ) -> List[RelaxationTaskResponse]:
     """
-    task_id=week{N}_education 이고 기간 내(end_time 기준) 완료된(end_time != None) 세션 조회.
+    task_id=daily_review 이고 기간 내(end_time 기준) 완료된(end_time != None) 세션 조회.
     """
     collection = db[RELAX_COLLECTION]
-    task_id = f"week{int(week_number)}_education"
     start_utc = ensure_utc(start_at)
     end_utc = ensure_utc(end_at)
 
     query = {
         "user_id": user_id,
-        "task_id": task_id,
+        "task_id": "daily_review",
+        "week_number": week_number,
         "end_time": {
             "$ne": None,
             "$gte": start_utc,
@@ -314,6 +224,100 @@ async def _find_completed_week_education_tasks_by_period(
     async for doc in cursor:
         tasks.append(RelaxationTaskResponse(**_serialize_task(doc)))
     return tasks
+
+
+async def _sync_treatment_progress_main_relax(
+    *,
+    db,
+    user_id: str,
+    week_number: int,
+    relax_id: str,
+    completed_at: datetime,
+) -> None:
+    collection = db[TREATMENT_PROGRESS_COLLECTION]
+    now_utc = datetime.now(timezone.utc)
+
+    progress = await collection.find_one_and_update(
+        {"user_id": user_id, "week_number": week_number},
+        {
+            "$set": {
+                "relaxation_task_id": relax_id,
+                "updated_at": now_utc,
+            },
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if not progress:
+        return
+
+    if progress and progress.get("edu_session_id"):
+        progress = await collection.find_one_and_update(
+            {"user_id": user_id, "week_number": week_number},
+            {
+                "$set": {
+                    "main_completed": True,
+                    "main_completed_at": completed_at,
+                    "updated_at": now_utc,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        if progress:
+            await _refresh_requirements_met(
+                db=db,
+                collection=collection,
+                progress_doc=progress,
+                synced_at=completed_at,
+            )
+
+
+async def _sync_treatment_progress_daily_relax(
+    *,
+    db,
+    user_id: str,
+    week_number: int,
+    synced_at: datetime,
+) -> None:
+    collection = db[TREATMENT_PROGRESS_COLLECTION]
+    progress = await _find_active_progress(
+        collection=collection,
+        user_id=user_id,
+        week_number=week_number,
+        projection={
+            "user_id": 1,
+            "week_number": 1,
+            "started_at": 1,
+            "completed_at": 1,
+            "daily_relax_count": 1,
+            "main_completed": 1,
+            "daily_diary_count": 1,
+        },
+    )
+    if not progress:
+        return
+
+    started_at = parse_datetime_value(progress.get("started_at"))
+    synced_utc = ensure_utc(synced_at) or synced_at
+    if started_at is None or synced_utc < started_at or progress.get("completed_at") is not None:
+        return
+
+    progress = await collection.find_one_and_update(
+        {"user_id": user_id, "week_number": week_number},
+        {
+            "$set": {
+                "daily_relax_count": int(progress.get("daily_relax_count") or 0) + 1,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if progress:
+        await _refresh_requirements_met(
+            db=db,
+            collection=collection,
+            progress_doc=progress,
+            synced_at=synced_utc,
+        )
 
 
 # =========================================================
@@ -343,9 +347,22 @@ async def create_relaxation_task(
     start_utc = ensure_utc(payload.start_time)
     end_utc = ensure_utc(payload.end_time) if payload.end_time is not None else None
     duration_seconds = _compute_net_duration_seconds(payload.logs)
+    # if end_utc is None or duration_seconds <= 0:
+    #     is_first_completed = None
+    # else:
+    #     existing_first = await collection.find_one(
+    #         {
+    #             "user_id": user_id,
+    #             "task_id": payload.task_id,
+    #             "week_number": payload.week_number,
+    #             "is_first_completed": True,
+    #         }
+    #     )
+    #     is_first_completed = existing_first is None
 
     log_doc = {
         "user_id": user_id,
+        "is_first_completed": None, # is_first_completed
         "task_id": payload.task_id,
         "week_number": payload.week_number,
         "start_time": start_utc,
@@ -368,16 +385,6 @@ async def create_relaxation_task(
 
     result = await collection.insert_one(log_doc)
     log_doc["_id"] = result.inserted_id
-
-    try:
-        await _sync_last_completed_week_from_relaxation(
-            db=db,
-            user_id=user_id,
-            task_id=payload.task_id,
-            end_time=end_utc,
-        )
-    except Exception as e:
-        print(f"[relaxation_tasks] last_completed_week 동기화 실패(create): {e}")
 
     return RelaxationTaskResponse(**_serialize_task(log_doc))
 
@@ -415,10 +422,29 @@ async def update_relaxation_task(
     start_utc = ensure_utc(payload.start_time)
     end_utc = ensure_utc(payload.end_time) if payload.end_time is not None else None
     duration_seconds = _compute_net_duration_seconds(payload.logs)
+    old_completed = (
+        parse_datetime_value(existing.get("end_time")) is not None
+        and isinstance(existing.get("duration_seconds"), int)
+        and int(existing.get("duration_seconds")) > 0
+    )
+    if end_utc is None or duration_seconds <= 0:
+        is_first_completed = None
+    else:
+        existing_first = await collection.find_one(
+            {
+                "user_id": user_id,
+                "task_id": payload.task_id,
+                "week_number": payload.week_number,
+                "is_first_completed": True,
+                "_id": {"$ne": obj_id},
+            }
+        )
+        is_first_completed = existing_first is None
 
     update_doc = {
         "task_id": payload.task_id,
         "week_number": payload.week_number,
+        "is_first_completed": is_first_completed,
         "start_time": start_utc,
         "end_time": end_utc,
         "logs": [
@@ -442,15 +468,31 @@ async def update_relaxation_task(
         return_document=ReturnDocument.AFTER,
     )
 
-    try:
-        await _sync_last_completed_week_from_relaxation(
+    if (
+        payload.week_number is not None
+        and payload.task_id == f"week{payload.week_number}_education"
+        and is_first_completed is True
+    ):
+        await _sync_treatment_progress_main_relax(
             db=db,
             user_id=user_id,
-            task_id=result.get("task_id"),
-            end_time=parse_datetime_value(result.get("end_time")),
+            week_number=payload.week_number,
+            relax_id=relax_id,
+            completed_at=end_utc or now_utc,
         )
-    except Exception as e:
-        print(f"[relaxation_tasks] last_completed_week 동기화 실패(update): {e}")
+    elif (
+        payload.week_number is not None
+        and payload.task_id == "daily_review"
+        and end_utc is not None
+        and duration_seconds > 0
+        and not old_completed
+    ):
+        await _sync_treatment_progress_daily_relax(
+            db=db,
+            user_id=user_id,
+            week_number=payload.week_number,
+            synced_at=end_utc,
+        )
 
     return RelaxationTaskResponse(**_serialize_task(result))
 
@@ -491,7 +533,7 @@ async def list_relaxation_tasks(
 @router.get(
     "/completed/daily-review",
     response_model=List[RelaxationTaskResponse],
-    summary="일일 이완 복습 완료 세션 조회 (task_id=week{N}_education, 기간 내 end_time)",
+    summary="일일 이완 복습 완료 세션 조회 (task_id=daily_review, 기간 내 end_time)",
 )
 async def list_completed_daily_reviews(
     week_number: int = Query(..., ge=1, le=8),
@@ -500,15 +542,15 @@ async def list_completed_daily_reviews(
     user_id: str = Depends(get_current_user_id),
     db=Depends(get_db),
 ):
-    start_utc = ensure_utc(start_at)
-    end_utc = ensure_utc(end_at)
+    start_utc = ensure_utc(start_at) or start_at
+    end_utc = ensure_utc(end_at) or end_at
     if start_utc > end_utc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="start_at must be less than or equal to end_at",
         )
 
-    return await _find_completed_week_education_tasks_by_period(
+    return await _find_completed_daily_tasks_by_period(
         db=db,
         user_id=user_id,
         week_number=week_number,

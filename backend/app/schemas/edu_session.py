@@ -40,6 +40,10 @@ class BehaviorClassificationItem(BaseModel):
     7주차: 건강한 생활 습관 행동 목록의 단일 아이템
     """
     chip_id: str = Field(..., min_length=1)
+    label: Optional[str] = Field(
+        default=None,
+        description="당시 사용자에게 보여준 행동 텍스트",
+    )
     category: Literal["confront", "avoid"]
     # added_at 제거 (세션 단위로만 관리)
     reason: Optional[str] = None
@@ -229,4 +233,3 @@ class EduSessionResponse(EduSessionCommonOut):
     # 8주차
     effectiveness_evaluations: Optional[List[EffectivenessEvaluation]] = None
     user_journey_responses: Optional[List[UserJourneyResponse]] = None
-

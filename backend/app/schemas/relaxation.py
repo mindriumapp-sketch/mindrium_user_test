@@ -40,6 +40,7 @@ class RelaxationTaskResponse(BaseModel):
     클라이언트로 돌려주는 응답
     """
     relax_id: str
+    is_first_completed: Optional[bool] = None
     task_id: str
     week_number: Optional[int] = None
     start_time: datetime

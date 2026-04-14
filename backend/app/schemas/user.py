@@ -69,5 +69,3 @@ class TodayTaskResponse(BaseModel):
     date: date
     has_diary_today: bool
     has_relaxation_today: bool
-    has_education_this_week: bool
-    last_education_at: Optional[datetime] = None

@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from db.mongo import get_db
 from pymongo import ReturnDocument
+from routers.treatment_progress import _find_active_progress, _refresh_requirements_met
 from routers.worry_groups import adjust_group_metrics
 from routers.sud_scores import parse_sud_value, serialize_sud, normalize_sud_scores
 from schemas.sud import SudScoreResponse
@@ -32,6 +33,7 @@ from schemas.diary import (
 router = APIRouter(prefix="/diaries", tags=["diaries"])
 
 DIARY_COLLECTION = "diaries"
+TREATMENT_PROGRESS_COLLECTION = "treatment_progress"
 DEFAULT_GROUP_ID = "group_example"
 
 # ---------- 공통 헬퍼 ----------
@@ -246,7 +248,7 @@ def _serialize_loc_time(doc: dict) -> dict:
     }
 
 
-def _normalize_single_loc_time(value: Any, now_utc: datetime) -> Optional[dict]:
+def _normalize_single_loc_time(value: Any) -> Optional[dict]:
     """
     개별 loc_time 엔트리 하나를 정규화.
     - dict가 아니면 무시
@@ -281,20 +283,18 @@ def _normalize_loc_time(raw) -> Optional[dict]:
     - list면 마지막 유효 엔트리 1개만 선택
     - 이전 alarms(dict/list) 구조도 자동 변환
     """
-    now_utc = datetime.now(timezone.utc)
-
     if isinstance(raw, dict):
         if {"id", "alarm_id", "time", "location", "location_desc"} & set(raw.keys()):
-            return _normalize_single_loc_time(raw, now_utc)
+            return _normalize_single_loc_time(raw)
         for value in reversed(list(raw.values())):
-            doc = _normalize_single_loc_time(value, now_utc)
+            doc = _normalize_single_loc_time(value)
             if doc is not None:
                 return doc
         return None
 
     if isinstance(raw, list):
         for value in reversed(raw):
-            doc = _normalize_single_loc_time(value, now_utc)
+            doc = _normalize_single_loc_time(value)
             if doc is not None:
                 return doc
         return None
@@ -431,6 +431,16 @@ async def create_diary(
             sud_delta=float(latest_sud or 0.0),
         )
 
+    if (
+        payload.route == TODAY_TASK_ROUTE
+        and payload.draft_progress == completed_draft_progress_filter()
+    ):
+        await _sync_treatment_progress_daily_diary(
+            db=db,
+            user_id=user_id,
+            synced_at=now_utc,
+        )
+
     return DiaryResponse(**_serialize_diary(diary_doc))
 
 
@@ -510,7 +520,6 @@ async def get_latest_diary(
     group_id: Optional[str] = None,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
-    summary_flag: bool = True,
     include_auto: bool = False,
 ):
     """
@@ -581,6 +590,107 @@ async def list_today_task_diaries(
     async for doc in cursor:
         diaries.append(DiaryResponse(**_serialize_diary(doc)))
     return diaries
+
+
+async def _find_completed_daily_diaries_by_period(
+    *,
+    db,
+    user_id: str,
+    start_at: datetime,
+    end_at: datetime,
+) -> List[DiaryResponse]:
+    """
+    route=today_task 이고 기간 내(created_at 기준) 완료된(draft_progress=100) 일기 조회.
+    """
+    collection = db[DIARY_COLLECTION]
+    start_utc = ensure_utc(start_at) or start_at
+    end_utc = ensure_utc(end_at) or end_at
+
+    query = {
+        "user_id": user_id,
+        "route": TODAY_TASK_ROUTE,
+        "draft_progress": completed_draft_progress_filter(),
+        "created_at": {
+            "$gte": start_utc,
+            "$lte": end_utc,
+        },
+    }
+
+    cursor = collection.find(query).sort("created_at", -1)
+    diaries: List[DiaryResponse] = []
+    async for doc in cursor:
+        diaries.append(DiaryResponse(**_serialize_diary(doc)))
+    return diaries
+
+
+async def _sync_treatment_progress_daily_diary(
+    *,
+    db,
+    user_id: str,
+    synced_at: datetime,
+) -> None:
+    progress_collection = db[TREATMENT_PROGRESS_COLLECTION]
+    progress = await _find_active_progress(
+        collection=progress_collection,
+        user_id=user_id,
+        projection={
+            "user_id": 1,
+            "week_number": 1,
+            "started_at": 1,
+            "completed_at": 1,
+            "daily_diary_count": 1,
+            "main_completed": 1,
+            "daily_relax_count": 1,
+        },
+    )
+    if not progress:
+        return
+
+    started_at = parse_datetime_value(progress.get("started_at"))
+    synced_utc = ensure_utc(synced_at) or synced_at
+    if started_at is None or synced_utc < started_at or progress.get("completed_at") is not None:
+        return
+
+    progress = await progress_collection.find_one_and_update(
+        {"user_id": user_id, "week_number": int(progress["week_number"])},
+        {
+            "$set": {
+                "daily_diary_count": int(progress.get("daily_diary_count") or 0) + 1,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if progress:
+        await _refresh_requirements_met(
+            db=db,
+            collection=progress_collection,
+            progress_doc=progress,
+            synced_at=synced_utc,
+        )
+
+
+@router.get("/completed/daily-task", response_model=List[DiaryResponse])
+async def list_completed_daily_diaries(
+    start_at: datetime,
+    end_at: datetime,
+    db=Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    start_utc = ensure_utc(start_at) or start_at
+    end_utc = ensure_utc(end_at) or end_at
+    if start_utc > end_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_at must be less than or equal to end_at",
+        )
+
+    return await _find_completed_daily_diaries_by_period(
+        db=db,
+        user_id=user_id,
+        start_at=start_utc,
+        end_at=end_utc,
+    )
 
 
 @router.get("/today-task/latest-draft", response_model=Optional[DiaryResponse])
@@ -658,6 +768,8 @@ async def update_diary(
             "alarms": 1,
             "group_id": 1,
             "latest_sud": 1,
+            "route": 1,
+            "draft_progress": 1,
         },
     )
     if not diary:
@@ -727,6 +839,18 @@ async def update_diary(
                 diary_delta=1,
                 sud_delta=float(latest_sud),
             )
+
+    old_draft_progress = diary.get("draft_progress")
+    if (
+        updated_doc.get("route") == TODAY_TASK_ROUTE
+        and updated_doc.get("draft_progress") == completed_draft_progress_filter()
+        and old_draft_progress != completed_draft_progress_filter()
+    ):
+        await _sync_treatment_progress_daily_diary(
+            db=db,
+            user_id=user_id,
+            synced_at=now_utc,
+        )
 
     return DiaryResponse(**_serialize_diary(updated_doc))
 
