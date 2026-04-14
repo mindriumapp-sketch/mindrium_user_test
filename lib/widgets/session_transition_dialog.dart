@@ -3,6 +3,25 @@ import 'package:gad_app_team/widgets/custom_popup_design.dart';
 
 const Duration kSessionTransitionAutoAdvance = Duration(seconds: 10);
 
+bool shouldShowCbtToRelaxationTransition({
+  required int currentWeek,
+  required bool mainRelaxCompleted,
+  required int weekNumber,
+}) {
+  return weekNumber == currentWeek && !mainRelaxCompleted;
+}
+
+bool shouldShowRelaxationToCbtTransition({
+  required int currentWeek,
+  required bool mainCbtCompleted,
+  required int weekNumber,
+  required String taskId,
+}) {
+  return taskId == 'week${weekNumber}_education' &&
+      weekNumber == currentWeek &&
+      !mainCbtCompleted;
+}
+
 Future<void> showCbtToRelaxationDialog({
   required BuildContext context,
   required VoidCallback onMoveNow,

@@ -7,6 +7,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
+import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:provider/provider.dart';
 
 /// 보관함 일기 목록 화면
@@ -895,9 +896,10 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
 
     final diaryId = diary['diary_id']?.toString() ?? '';
     final createdAt = diary['created_at']?.toString() ?? '';
+    final parsedCreatedAt = parseServerDateTime(createdAt);
     final dateStr =
-        createdAt.isNotEmpty
-            ? DateFormat('yyyy.MM.dd HH:mm').format(DateTime.parse(createdAt))
+        parsedCreatedAt != null
+            ? DateFormat('yyyy.MM.dd HH:mm').format(parsedCreatedAt)
             : '';
 
     final latestSud = diary['latest_sud'];

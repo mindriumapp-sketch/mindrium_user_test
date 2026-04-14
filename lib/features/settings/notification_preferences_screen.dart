@@ -106,7 +106,6 @@ class _NotificationPreferencesScreenState
           todayDate: todayTask.date,
           diaryDone: todayTask.diaryDone,
           relaxationDone: todayTask.relaxationDone,
-          lastEducationAt: todayTask.lastEducationAt,
         );
         if (!mounted) return;
         setState(() {
@@ -125,7 +124,6 @@ class _NotificationPreferencesScreenState
       todayDate: todayTask.date,
       diaryDone: todayTask.diaryDone,
       relaxationDone: todayTask.relaxationDone,
-      lastEducationAt: todayTask.lastEducationAt,
     );
 
     if (!mounted) return;

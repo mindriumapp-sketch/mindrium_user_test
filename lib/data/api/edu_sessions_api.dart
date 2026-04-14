@@ -49,16 +49,20 @@ class EduSessionsApi {
   String _encodeDateTime(DateTime dt) => dt.toUtc().toIso8601String();
 
   /// 교육 세션 목록 조회
-  /// - weekNumber / diaryId로 필터 가능
+  /// - weekNumber / diaryId / createdAt 기간으로 필터 가능
   Future<List<Map<String, dynamic>>> listEduSessions({
     int? weekNumber,
     String? diaryId,
+    DateTime? startAt,
+    DateTime? endAt,
   }) async {
     final res = await _client.dio.get(
       '/edu-sessions',
       queryParameters: {
         if (weekNumber != null) 'week_number': weekNumber,
         if (diaryId != null) 'diary_id': diaryId,
+        if (startAt != null) 'start_at': _encodeDateTime(startAt),
+        if (endAt != null) 'end_at': _encodeDateTime(endAt),
       },
     );
 

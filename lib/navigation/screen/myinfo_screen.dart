@@ -9,7 +9,6 @@ import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/education_week_contents.dart';
 import 'package:gad_app_team/data/api/screen_time_api.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
@@ -50,8 +49,6 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   bool _archiveLoading = true;
   String? _selectedArchiveGroupId;
 
-  bool _didSyncEducation = false;
-
   @override
   void initState() {
     super.initState();
@@ -61,32 +58,14 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     _loadArchivedGroups();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // 교육 탭과 연동: 현재 주차 완료 상태 한 번 동기화
-    if (!_didSyncEducation) {
-      _didSyncEducation = true;
-      final user = context.read<UserProvider>();
-      final todayTask = context.read<TodayTaskProvider>();
-      if (user.isUserLoaded) {
-        todayTask.syncEducationWeekStatus(user.currentWeek);
-      }
-    }
-  }
-
   Future<void> _loadArchivedGroups() async {
     try {
       final response = await _apiClient.dio.get('/worry-groups/archived');
       final archived =
           (response.data as List?)?.cast<Map<String, dynamic>>() ?? [];
       archived.sort((a, b) {
-        final aDate =
-            parseServerDateTime(a['archived_at']) ??
-            DateTime(0);
-        final bDate =
-            parseServerDateTime(b['archived_at']) ??
-            DateTime(0);
+        final aDate = parseServerDateTime(a['archived_at']) ?? DateTime(0);
+        final bDate = parseServerDateTime(b['archived_at']) ?? DateTime(0);
         return bDate.compareTo(aDate);
       });
       if (mounted) {
@@ -302,7 +281,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         iconTheme: const IconThemeData(color: deepNavy),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right:8),
+            padding: const EdgeInsets.only(right: 8),
             child: IconButton(
               onPressed: () => Navigator.pushNamed(context, '/settings'),
               icon: const Icon(
@@ -349,10 +328,9 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                           const SizedBox(height: 14),
                           _buildProgressSnapshotCard(
                             userProvider: userProvider,
-                            todayTask: context.watch<TodayTaskProvider>(),
                             streakText:
                                 createdAt != null
-                                    ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999)+1}일째'
+                                    ? '${daysBetween(DateTime.now(), createdAt!).clamp(0, 999) + 1}일째'
                                     : '기록 준비 중',
                           ),
                           const SizedBox(height: 14),
@@ -579,17 +557,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   Widget _buildProgressSnapshotCard({
     required UserProvider userProvider,
-    required TodayTaskProvider todayTask,
     required String streakText,
   }) {
-    final recentProgram = EducationProgressDisplay.recentProgram(
-      userProvider,
-      todayTask,
-    );
-    final progressStage = EducationProgressDisplay.progressStage(
-      userProvider,
-      todayTask,
-    );
+    final recentProgram = EducationProgressDisplay.recentProgram(userProvider);
+    final progressStage = EducationProgressDisplay.progressStage(userProvider);
 
     return Row(
       children: [
@@ -945,8 +916,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     final title = group['group_title']?.toString() ?? '';
     final contents = group['group_contents']?.toString() ?? '';
     final archivedAt =
-        parseServerDateTime(group['archived_at']) ??
-        DateTime.now();
+        parseServerDateTime(group['archived_at']) ?? DateTime.now();
     final archivedStr = DateFormat('yyyy.MM.dd').format(archivedAt);
     final count = group['diary_count'] ?? 0;
 
@@ -1238,7 +1208,8 @@ class _MyInfoScreenState extends State<MyInfoScreen>
       minLines: isExpandable ? 2 : 1,
       maxLines: isExpandable ? null : 1,
       keyboardType: isExpandable ? TextInputType.multiline : TextInputType.text,
-      textInputAction: isExpandable ? TextInputAction.newline : TextInputAction.done,
+      textInputAction:
+          isExpandable ? TextInputAction.newline : TextInputAction.done,
       style: const TextStyle(
         fontFamily: 'Noto Sans KR',
         fontSize: 16,

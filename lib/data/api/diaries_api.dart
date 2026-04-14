@@ -6,18 +6,6 @@ class DiariesApi {
   final ApiClient _client;
   DiariesApi(this._client);
 
-  /// 공통: body에 client_timestamp 붙이는 헬퍼
-  Map<String, dynamic> _withClientTimestamp(
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) {
-    return {
-      ...body,
-      'client_timestamp':
-          (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
-    };
-  }
-
   /// DiaryChip JSON 헬퍼
   /// label 은 필수, chipId / category 는 선택
   Map<String, dynamic> makeDiaryChip({
@@ -44,7 +32,6 @@ class DiariesApi {
     Map<String, dynamic>? locTime,
     String? route,
     bool locAutoFilled = false,
-    DateTime? clientTimestamp,
   }) async {
     final base = <String, dynamic>{
       if (groupId != null) 'group_id': groupId,
@@ -60,12 +47,7 @@ class DiariesApi {
       'loc_auto_filled': locAutoFilled,
     };
 
-    final payload = _withClientTimestamp(
-      base,
-      clientTimestamp: clientTimestamp,
-    );
-
-    final res = await _client.dio.post('/diaries', data: payload);
+    final res = await _client.dio.post('/diaries', data: base);
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
@@ -158,19 +140,12 @@ class DiariesApi {
     await _client.dio.delete('/diaries/$diaryId/draft');
   }
 
-  /// updateDiary는 body를 그대로 넘기되, client_timestamp만 자동으로 붙여줌.
   /// body는 백엔드 DiaryUpdate(schema)에 맞는 형태여야 함.
   Future<Map<String, dynamic>> updateDiary(
     String diaryId,
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) async {
-    final payload = _withClientTimestamp(
-      body,
-      clientTimestamp: clientTimestamp,
-    );
-
-    final res = await _client.dio.put('/diaries/$diaryId', data: payload);
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _client.dio.put('/diaries/$diaryId', data: body);
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
@@ -202,18 +177,9 @@ class DiariesApi {
 
   Future<Map<String, dynamic>> upsertLocTime(
     String diaryId,
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) async {
-    final payload = _withClientTimestamp(
-      body,
-      clientTimestamp: clientTimestamp,
-    );
-
-    final res = await _client.dio.put(
-      '/diaries/$diaryId/loc_time',
-      data: payload,
-    );
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _client.dio.put('/diaries/$diaryId/loc_time', data: body);
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
     throw DioException(
@@ -222,16 +188,8 @@ class DiariesApi {
     );
   }
 
-  Future<void> deleteLocTime(
-    String diaryId, {
-    DateTime? clientTimestamp,
-  }) async {
-    final payload = _withClientTimestamp(
-      <String, dynamic>{},
-      clientTimestamp: clientTimestamp,
-    );
-
-    await _client.dio.delete('/diaries/$diaryId/loc_time', data: payload);
+  Future<void> deleteLocTime(String diaryId) async {
+    await _client.dio.delete('/diaries/$diaryId/loc_time');
   }
 
   // ---- Backward compatibility wrappers ----
@@ -243,17 +201,14 @@ class DiariesApi {
 
   Future<Map<String, dynamic>> createLocTime(
     String diaryId,
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) => upsertLocTime(diaryId, body, clientTimestamp: clientTimestamp);
+    Map<String, dynamic> body,
+  ) => upsertLocTime(diaryId, body);
 
   Future<Map<String, dynamic>> updateLocTime(
     String diaryId,
     String locTimeId,
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) => upsertLocTime(diaryId, body, clientTimestamp: clientTimestamp);
+    Map<String, dynamic> body,
+  ) => upsertLocTime(diaryId, body);
 
-  Future<void> deleteAllLocTime(String diaryId, {DateTime? clientTimestamp}) =>
-      deleteLocTime(diaryId, clientTimestamp: clientTimestamp);
+  Future<void> deleteAllLocTime(String diaryId) => deleteLocTime(diaryId);
 }

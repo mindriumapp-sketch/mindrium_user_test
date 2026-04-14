@@ -24,7 +24,7 @@ class CustomTagsApi {
       queryParameters: {
         if (chipType != null) 'chip_type': chipType,
         'include_deleted': includeDeleted,
-        'summary_flag': summaryFlag
+        'summary_flag': summaryFlag,
       },
     );
 
@@ -33,10 +33,8 @@ class CustomTagsApi {
       return data
           .whereType<Map>()
           .map(
-            (raw) => raw.map(
-              (key, value) => MapEntry(key.toString(), value),
-        ),
-      )
+            (raw) => raw.map((key, value) => MapEntry(key.toString(), value)),
+          )
           .toList()
           .cast<Map<String, dynamic>>();
     }
@@ -56,9 +54,7 @@ class CustomTagsApi {
   }) async {
     final res = await _client.dio.get(
       '/custom-tags/$chipId',
-      queryParameters: {
-        'include_deleted': includeDeleted,
-      },
+      queryParameters: {'include_deleted': includeDeleted},
     );
 
     final data = res.data;
@@ -78,25 +74,18 @@ class CustomTagsApi {
   /// - label: String
   /// - type: "A" | "B" | "CP" | "CE" | "CA"
   /// - is_preset: bool (optional, default=false)
-  /// - client_timestamp: DateTime (필수)
   Future<Map<String, dynamic>> createCustomTag({
     required String label,
     required String type,
     bool isPreset = false,
-    DateTime? clientTimestamp,
   }) async {
     final payload = <String, dynamic>{
       'label': label,
       'type': type,
       'is_preset': isPreset,
-      'client_timestamp':
-      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
     };
 
-    final res = await _client.dio.post(
-      '/custom-tags',
-      data: payload,
-    );
+    final res = await _client.dio.post('/custom-tags', data: payload);
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -118,20 +107,14 @@ class CustomTagsApi {
     String? label,
     String? type,
     bool? isPreset,
-    DateTime? clientTimestamp,
   }) async {
     final body = <String, dynamic>{
       if (label != null) 'label': label,
       if (type != null) 'type': type,
       if (isPreset != null) 'is_preset': isPreset,
-      'client_timestamp':
-      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
     };
 
-    final res = await _client.dio.put(
-      '/custom-tags/$chipId',
-      data: body,
-    );
+    final res = await _client.dio.put('/custom-tags/$chipId', data: body);
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -146,20 +129,8 @@ class CustomTagsApi {
   ///
   /// DELETE /custom-tags/{chip_id}
   ///
-  /// body: { "client_timestamp": ... }
-  Future<Map<String, dynamic>> deleteCustomTag({
-    required String chipId,
-    DateTime? clientTimestamp,
-  }) async {
-    final body = <String, dynamic>{
-      'client_timestamp':
-      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
-    };
-
-    final res = await _client.dio.delete(
-      '/custom-tags/$chipId',
-      data: body,
-    );
+  Future<Map<String, dynamic>> deleteCustomTag({required String chipId}) async {
+    final res = await _client.dio.delete('/custom-tags/$chipId');
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -199,8 +170,7 @@ class CustomTagsApi {
       'before_odd': beforeOdd,
       if (afterOdd != null) 'after_odd': afterOdd,
       'alternative_thought': alternativeThought,
-      'completed_at':
-      (completedAt ?? DateTime.now().toUtc()).toIso8601String(),
+      'completed_at': (completedAt ?? DateTime.now().toUtc()).toIso8601String(),
     };
 
     final res = await _client.dio.post(
@@ -251,10 +221,8 @@ class CustomTagsApi {
       return data
           .whereType<Map>()
           .map(
-            (raw) => raw.map(
-              (key, value) => MapEntry(key.toString(), value),
-        ),
-      )
+            (raw) => raw.map((key, value) => MapEntry(key.toString(), value)),
+          )
           .toList()
           .cast<Map<String, dynamic>>();
     }
@@ -297,8 +265,7 @@ class CustomTagsApi {
       if (shortTerm != null) 'short_term': shortTerm,
       if (longTerm != null) 'long_term': longTerm,
       'is_changed': isChanged,
-      'completed_at':
-      (completedAt ?? DateTime.now().toUtc()).toIso8601String(),
+      'completed_at': (completedAt ?? DateTime.now().toUtc()).toIso8601String(),
     };
 
     final res = await _client.dio.post(

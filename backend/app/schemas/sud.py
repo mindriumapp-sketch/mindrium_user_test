@@ -6,13 +6,11 @@ from pydantic import BaseModel, Field
 class SudScoreCreate(BaseModel):
     before_sud: int = Field(0, ge=0, le=10)
     after_sud: Optional[int] = Field(None, ge=0, le=10)
-    client_timestamp: datetime
 
 
 class SudScoreUpdate(BaseModel):
     before_sud: Optional[int] = Field(None, ge=0, le=10)
     after_sud: Optional[int] = Field(None, ge=0, le=10)
-    client_timestamp: datetime
 
 
 class SudScoreResponse(BaseModel):

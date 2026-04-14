@@ -3,9 +3,8 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/data/models/education_model.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/widgets/memo_sheet_design.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
@@ -194,37 +193,27 @@ class _EducationPageState extends State<EducationPage> {
   Future<void> _showStartDialog() async {
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
-    final relaxApi = RelaxationApi(client);
-
+    final userProvider = context.read<UserProvider>();
     try {
       await eduApi.completeWeekSession(
         weekNumber: 1,
         totalStages: 6,
         sessionId: widget.sessionId,
       );
-      if (mounted) {
-        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-          weekNumber: 1,
-          cbtDone: true,
-          educationDoneWeek: true,
-          lastEducationAt: DateTime.now(),
-        );
-      }
+      await userProvider.refreshProgress();
     } catch (e) {
       debugPrint('[Week1Final] edu-session 완료 처리 실패: $e');
     }
 
-    bool isRelaxDone = false;
-    try {
-      isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(1);
-    } catch (e) {
-      debugPrint('[Week1Final] relaxation 완료 조회 실패: $e');
-    }
-
     if (!mounted) return;
     final nav = Navigator.of(context);
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 1,
+    );
 
-    if (isRelaxDone) {
+    if (!shouldShowTransition) {
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }

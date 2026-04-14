@@ -4,9 +4,8 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 
@@ -14,11 +13,7 @@ class Week4FinalScreen extends StatelessWidget {
   final List<String>? alternativeThoughts;
   final int? loopCount;
 
-  const Week4FinalScreen({
-    super.key,
-    this.alternativeThoughts,
-    this.loopCount,
-  });
+  const Week4FinalScreen({super.key, this.alternativeThoughts, this.loopCount});
 
   @override
   Widget build(BuildContext context) {
@@ -42,31 +37,21 @@ class Week4FinalScreen extends StatelessWidget {
       onNext: () async {
         final client = ApiClient(tokens: TokenStorage());
         final eduApi = EduSessionsApi(client);
-        final relaxApi = RelaxationApi(client);
-
+        final userProvider = context.read<UserProvider>();
         try {
           await eduApi.completeWeekSession(weekNumber: 4, totalStages: 12);
-          if (context.mounted) {
-            context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-              weekNumber: 4,
-              cbtDone: true,
-              educationDoneWeek: true,
-              lastEducationAt: DateTime.now(),
-            );
-          }
+          await userProvider.refreshProgress();
         } catch (e) {
           debugPrint('[Week4Final] edu-session 완료 처리 실패: $e');
         }
 
-        bool isRelaxDone = false;
-        try {
-          isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(4);
-        } catch (e) {
-          debugPrint('[Week4Final] relaxation 완료 조회 실패: $e');
-        }
-
         if (!context.mounted) return;
-        if (isRelaxDone) {
+        final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+          currentWeek: userProvider.currentWeek,
+          mainRelaxCompleted: userProvider.mainRelaxCompleted,
+          weekNumber: 4,
+        );
+        if (!shouldShowTransition) {
           Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
           return;
         }

@@ -8,6 +8,8 @@ import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class Week5VisualScreen extends StatefulWidget {
   final String? sessionId;
@@ -37,20 +39,44 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
     _eduSessionsApi = EduSessionsApi(_client);
   }
 
-  void _showStartDialog() {
+  Future<void> _showStartDialog() async {
+    final userProvider = context.read<UserProvider>();
+    final nav = Navigator.of(context);
+
+    try {
+      await _eduSessionsApi.completeWeekSession(
+        weekNumber: 5,
+        totalStages: 8,
+        sessionId: widget.sessionId,
+      );
+      await userProvider.refreshProgress();
+    } catch (e) {
+      debugPrint('[Week5Visual] edu-session 완료 처리 실패: $e');
+    }
+
+    if (!mounted) return;
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 5,
+    );
+    if (!shouldShowTransition) {
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
     showCbtToRelaxationDialog(
       context: context,
       onMoveNow: () {
-        Navigator.pop(context);
-        Navigator.pushReplacementNamed(
-          context,
+        nav.pop();
+        nav.pushReplacementNamed(
           '/relaxation_education',
           arguments: {
             'sessionId': widget.sessionId,
             'taskId': 'week5_education',
             'weekNumber': 5,
-            'mp3Asset': 'week1.mp3',
-            'riveAsset': 'week1.riv',
+            'mp3Asset': 'week5.mp3',
+            'riveAsset': 'week5.riv',
           },
         );
       },
@@ -376,7 +402,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
               onNext: () async {
                 await _saveSession();
                 if (!mounted) return;
-                _showStartDialog();
+                await _showStartDialog();
               },
             ),
           ),

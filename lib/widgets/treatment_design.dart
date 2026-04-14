@@ -161,23 +161,27 @@ class TreatmentDesign extends StatelessWidget {
     final canOpenWeek = !isFutureWeek;
     final continueLabel =
         (!isCurrentWeek || (appliedDone && cbtDone)) ? '복습하기' : '이어하기';
-    final weekGap = weekNo - currentWeek;
-    final actionLabel = isFutureWeek ? '$weekGap주 후에 하기' : continueLabel;
+    final requiredWeek = weekNo - 1;
+    final actionLabel =
+        isFutureWeek ? '$requiredWeek주차 완료 후 하기' : continueLabel;
     final isRelaxCompletedWeek = appliedDone;
-    final relaxTaskId = isRelaxCompletedWeek
-        ? (weekNo == currentWeek ? 'daily_review' : 'week${weekNo}_review')
-        : 'week${weekNo}_education';
+    final relaxTaskId =
+        isCurrentWeek && isRelaxCompletedWeek
+            ? 'daily_review'
+            : (isRelaxCompletedWeek
+                ? 'week${weekNo}_review'
+                : 'week${weekNo}_education');
 
     return GestureDetector(
       onTap: () => onToggleWeek?.call(weekNo),
       child: Opacity(
-        opacity: enabled ? 1 : 0.45,
+        opacity: enabled ? 1 : 0.8,
         child: Container(
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
             color:
                 isFutureWeek
-                    ? const Color(0xFFE8ECF1)
+                    ? const Color(0xFFEEEEEE)
                     : Colors.white.withValues(alpha: 0.94),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(

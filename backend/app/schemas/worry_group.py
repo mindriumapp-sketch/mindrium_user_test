@@ -8,16 +8,15 @@ class WorryGroupBase(BaseModel):
     character_id: int = Field(..., ge=1, le=20)
 
 class WorryGroupCreate(WorryGroupBase):
-    client_timestamp: datetime
+    pass
 
 class WorryGroupUpdate(BaseModel):
     group_title: Optional[str] = None
     group_contents: Optional[str] = None
     character_id: Optional[int] = Field(None, ge=1, le=20)
-    client_timestamp: datetime
 
 class WorryGroupDelete(BaseModel):
-    client_timestamp: datetime
+    pass
 
 class WorryGroupResponse(WorryGroupBase):
     group_id: str

@@ -19,7 +19,7 @@ class LocTimeBase(BaseModel):
 
 
 class LocTimeCreate(LocTimeBase):
-    client_timestamp: datetime
+    pass
 
 
 class LocTimeUpdate(BaseModel):
@@ -28,11 +28,10 @@ class LocTimeUpdate(BaseModel):
     location_desc: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    client_timestamp: datetime
 
 
 class LocTimeDelete(BaseModel):
-    client_timestamp: datetime
+    pass
 
 
 class LocTimeResponse(LocTimeBase):
@@ -65,7 +64,6 @@ class DiaryBase(BaseModel):
 class DiaryCreate(DiaryBase):
     sud_scores: List[Any] = Field(default_factory=list)
     loc_time: Optional[Any] = None
-    client_timestamp: datetime
 
 
 class DiaryUpdate(BaseModel):
@@ -80,7 +78,6 @@ class DiaryUpdate(BaseModel):
 
     loc_time: Optional[Any] = None
     loc_auto_filled: Optional[bool] = None
-    client_timestamp: datetime
 
 
 class DiaryResponse(DiaryBase):

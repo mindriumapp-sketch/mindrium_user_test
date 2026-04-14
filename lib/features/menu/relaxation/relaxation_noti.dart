@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:rive/rive.dart' as rive;
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 import 'relaxation_logger.dart'; // 분리한 로거
@@ -186,6 +187,7 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
       if (!mounted) return;
 
       if (widget.taskId == 'daily_review') {
+        await context.read<UserProvider>().refreshProgress();
         context.read<TodayTaskProvider>().setTodayTaskLocally(
           relaxationDone: true,
         );

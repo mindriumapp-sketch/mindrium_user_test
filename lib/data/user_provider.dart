@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/treatment_progress_api.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/api/users_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -22,6 +23,7 @@ class UserProvider extends ChangeNotifier {
   late final ApiClient _client = ApiClient(tokens: _tokens);
   late final UsersApi _usersApi = UsersApi(_client);
   late final UserDataApi _userDataApi = UserDataApi(_client);
+  late final TreatmentProgressApi _treatmentProgressApi = TreatmentProgressApi(_client);
 
   // ───────────────────── 상태 플래그 ─────────────────────
   bool _hasError = false;
@@ -72,6 +74,12 @@ class UserProvider extends ChangeNotifier {
 
   int _totalRelaxations = 0;
   int get totalRelaxations => _totalRelaxations;
+
+  bool _mainCbtCompleted = false;
+  bool get mainCbtCompleted => _mainCbtCompleted;
+
+  bool _mainRelaxCompleted = false;
+  bool get mainRelaxCompleted => _mainRelaxCompleted;
 
   // ───────────────────── 핵심 가치 캐시 (progress에서 같이 내려옴) ─────────────────────
   String? _valueGoal;
@@ -227,6 +235,8 @@ class UserProvider extends ChangeNotifier {
     _lastCompletedAt = null;
     _totalDiaries = 0;
     _totalRelaxations = 0;
+    _mainCbtCompleted = false;
+    _mainRelaxCompleted = false;
     _valueGoal = null;
 
     unawaited(AlarmNotificationService.instance.cancelEducationReminders());
@@ -320,6 +330,31 @@ class UserProvider extends ChangeNotifier {
       _valueGoal = vg;
     } else {
       _valueGoal = null;
+    }
+
+    try {
+      final activeProgress =
+          await _treatmentProgressApi.getActiveTreatmentProgress();
+      if (requestId != _requestId) return;
+      if (activeProgress != null) {
+        final activeWeekRaw = activeProgress['week_number'];
+        if (activeWeekRaw is int) {
+          _currentWeek = activeWeekRaw;
+        } else if (activeWeekRaw is num) {
+          _currentWeek = activeWeekRaw.toInt();
+        }
+
+        final mainEduSessionId = activeProgress['edu_session_id']?.toString();
+        final mainRelaxationTaskId = activeProgress['relaxation_task_id']?.toString();
+        _mainCbtCompleted = mainEduSessionId != null && mainEduSessionId.isNotEmpty;
+        _mainRelaxCompleted = mainRelaxationTaskId != null && mainRelaxationTaskId.isNotEmpty;
+      } else {
+        _mainCbtCompleted = false;
+        _mainRelaxCompleted = false;
+      }
+    } catch (e) {
+      if (requestId != _requestId) return;
+      debugPrint('UserProvider.activeTreatmentProgress 조회 실패: $e');
     }
 
     try {

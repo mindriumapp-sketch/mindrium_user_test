@@ -6,10 +6,8 @@ import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
-import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
 import 'package:gad_app_team/features/3rd_treatment/week3_screen.dart';
@@ -90,7 +88,6 @@ class _PracticePlayerState extends State<PracticePlayer>
 
   // ✅ 현재 활성 상태가 시작된 시점
   DateTime? _lastActivityTime;
-  late final EduSessionsApi _eduSessionsApi;
 
   @override
   void initState() {
@@ -105,7 +102,6 @@ class _PracticePlayerState extends State<PracticePlayer>
 
     // 🔥 세션 시작 시점에 위치 한 번만 캡처해서 logger에 넣음
     _captureStartLocation();
-    _eduSessionsApi = EduSessionsApi(ApiClient(tokens: TokenStorage()));
 
     _startAutosaveTimer();
   }
@@ -218,19 +214,17 @@ class _PracticePlayerState extends State<PracticePlayer>
   }
 
   Future<void> _handleAfterEducationRelaxationComplete() async {
-    bool isCbtCompleted = false;
-    try {
-      isCbtCompleted = await _eduSessionsApi.isWeekSessionCompleted(
-        widget.weekNumber,
-      );
-    } catch (e) {
-      debugPrint('[PracticePlayer] edu_sessions 완료 여부 조회 실패: $e');
-    }
-
     if (!mounted) return;
     final nav = Navigator.of(context);
+    final user = context.read<UserProvider>();
+    final shouldShowTransition = shouldShowRelaxationToCbtTransition(
+      currentWeek: user.currentWeek,
+      mainCbtCompleted: user.mainCbtCompleted,
+      weekNumber: widget.weekNumber,
+      taskId: widget.taskId,
+    );
 
-    if (isCbtCompleted) {
+    if (!shouldShowTransition) {
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -271,18 +265,14 @@ class _PracticePlayerState extends State<PracticePlayer>
 
       await _saveOnce(reason: 'complete');
       if (!mounted) return;
+      final userProvider = context.read<UserProvider>();
+      final todayTaskProvider = context.read<TodayTaskProvider>();
 
       if (widget.taskId == 'daily_review') {
-        context.read<TodayTaskProvider>().setTodayTaskLocally(
-          relaxationDone: true,
-        );
+        await userProvider.refreshProgress();
+        todayTaskProvider.setTodayTaskLocally(relaxationDone: true);
       } else if (widget.taskId.contains('_education')) {
-        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-          weekNumber: widget.weekNumber,
-          relaxationDone: true,
-          educationDoneWeek: true,
-          lastEducationAt: DateTime.now(),
-        );
+        await userProvider.refreshProgress();
       }
 
       await _handleAfterEducationRelaxationComplete();

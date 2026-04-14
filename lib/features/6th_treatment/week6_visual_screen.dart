@@ -7,9 +7,8 @@ import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
 class Week6VisualScreen extends StatefulWidget {
@@ -295,7 +294,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
               leftLabel: '이전',
               rightLabel: '다음',
               onBack: () => Navigator.pop(context),
-              onNext: () => _showStartDialog(context),
+              onNext: _showStartDialog,
             ),
           ),
         ),
@@ -303,36 +302,27 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
     );
   }
 
-  Future<void> _showStartDialog(BuildContext context) async {
+  Future<void> _showStartDialog() async {
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
-    final relaxApi = RelaxationApi(client);
+    final userProvider = context.read<UserProvider>();
+    final nav = Navigator.of(context);
 
     try {
       await eduApi.completeWeekSession(weekNumber: 6, totalStages: 12);
-      if (context.mounted) {
-        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-          weekNumber: 6,
-          cbtDone: true,
-          educationDoneWeek: true,
-          lastEducationAt: DateTime.now(),
-        );
-      }
+      await userProvider.refreshProgress();
     } catch (e) {
       debugPrint('[Week6Visual] edu-session 완료 처리 실패: $e');
     }
 
-    bool isRelaxDone = false;
-    try {
-      isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(6);
-    } catch (e) {
-      debugPrint('[Week6Visual] relaxation 완료 조회 실패: $e');
-    }
+    if (!mounted) return;
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 6,
+    );
 
-    if (!context.mounted) return;
-    final nav = Navigator.of(context);
-
-    if (isRelaxDone) {
+    if (!shouldShowTransition) {
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }

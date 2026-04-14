@@ -3,7 +3,6 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:flutter/rendering.dart' as rendering;
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
 
 import 'package:gad_app_team/features/1st_treatment/week1_screen.dart';
 import 'package:gad_app_team/features/2nd_treatment/week2_screen.dart';
@@ -81,7 +80,6 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>();
-    final todayTask = context.watch<TodayTaskProvider>();
 
     // ✅ Splash/Login에서 userProvider.loadUserData 안 탔거나,
     //    토큰 문제 등으로 아직 유저 정보가 없는 극초기/에러 케이스 방어
@@ -109,23 +107,15 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
 
     // 완료된 회차 집합 (1~lastCompleted)
     final completedWeeks = <int>{for (int w = 1; w <= lastCompleted; w++) w};
-    final cbtCompletedWeeks = <int>{
-      for (int w = 1; w <= lastCompleted; w++) w,
-      if (todayTask.isCbtDoneWeek(currentWeek)) currentWeek,
-    };
-    final relaxationCompletedWeeks = <int>{
-      for (int w = 1; w <= lastCompleted; w++) w,
-      if (todayTask.isRelaxationDoneWeek(currentWeek)) currentWeek,
-    };
 
     // TODO: 나중에 진짜 잠금 로직 쓰고 싶으면 여기서 currentWeek 기준으로 enabled 계산
-    // final enabledList = List<bool>.generate(totalWeeks, (i) {
-    //   final weekNo = i + 1;
-    //   return weekNo <= currentWeek;
-    // });
+    final enabledList = List<bool>.generate(totalWeeks, (i) {
+      final weekNo = i + 1;
+      return weekNo <= currentWeek;
+    });
 
-    // 🔹 지금은 임시로 모두 오픈
-    final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
+    // // 🔹 지금은 임시로 모두 오픈
+    // final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
 
     final weekContents = educationWeekContents;
 
@@ -164,12 +154,18 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
         weekScreens: weekScreens,
         enabledList: enabledList,
         completedWeeks: completedWeeks,
-        cbtCompletedWeeks: cbtCompletedWeeks,
-        relaxationCompletedWeeks: relaxationCompletedWeeks,
+        cbtCompletedWeeks: <int>{
+          ...completedWeeks,
+          if (user.mainCbtCompleted) currentWeek,
+        },
+        relaxationCompletedWeeks: <int>{
+          ...completedWeeks,
+          if (user.mainRelaxCompleted) currentWeek,
+        },
         expandedWeeks: _expandedWeeks,
         onToggleWeek: _toggleWeekExpanded,
         scrollController: _scrollController,
-        unlockAllWeeks: true,
+        unlockAllWeeks: false,
       ),
     );
   }

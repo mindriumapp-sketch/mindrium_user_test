@@ -32,4 +32,3 @@ class NotificationSettingsReplaceRequest(BaseModel):
     notifications: List[NotificationSettingPayload] = Field(default_factory=list)
     # 이전 payload 호환용 (flat alarms 배열)
     alarms: Optional[List[Any]] = None
-    client_timestamp: datetime

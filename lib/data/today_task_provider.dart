@@ -4,8 +4,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
-import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -16,22 +14,12 @@ import 'package:gad_app_team/utils/server_datetime.dart';
 ///
 /// 백엔드: GET /users/me/todaytask
 ///
-/// 예시 응답:
-/// {
-///   "date": "2025-12-03",
-///   "has_diary_today": true,
-///   "has_relaxation_today": false,
-///   "has_education_this_week": true,
-///   "last_education_at": "2025-12-02T10:23:45+09:00"
-/// }
 class TodayTaskProvider extends ChangeNotifier {
   // ───────────────────── 내부 클라이언트 ─────────────────────
   final TokenStorage _tokens = TokenStorage();
   late final ApiClient _client = ApiClient(tokens: _tokens);
   late final UserDataApi _userDataApi = UserDataApi(_client);
   late final DiariesApi _diariesApi = DiariesApi(_client);
-  late final EduSessionsApi _eduSessionsApi = EduSessionsApi(_client);
-  late final RelaxationApi _relaxationApi = RelaxationApi(_client);
 
   // ───────────────────── 상태 필드 ─────────────────────
   DateTime? _date; // 서버가 내려준 "오늘" 날짜 (KST 기준 string 을 parse)
@@ -53,17 +41,6 @@ class TodayTaskProvider extends ChangeNotifier {
 
   bool _relaxationDone = false;
   bool get relaxationDone => _relaxationDone;
-
-  bool _educationDoneWeek = false;
-  bool get educationDoneWeek => _educationDoneWeek;
-  final Set<int> _cbtDoneWeeks = <int>{};
-  final Set<int> _relaxationDoneWeeks = <int>{};
-  bool isCbtDoneWeek(int weekNumber) => _cbtDoneWeeks.contains(weekNumber);
-  bool isRelaxationDoneWeek(int weekNumber) =>
-      _relaxationDoneWeeks.contains(weekNumber);
-
-  DateTime? _lastEducationAt;
-  DateTime? get lastEducationAt => _lastEducationAt;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -144,23 +121,6 @@ class TodayTaskProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> syncEducationWeekStatus(int weekNumber) async {
-    if (weekNumber < 1 || weekNumber > 8) return;
-    try {
-      final cbtDone = await _eduSessionsApi.isWeekSessionCompleted(weekNumber);
-      final relaxDone = await _relaxationApi.isWeekEducationTaskCompleted(
-        weekNumber,
-      );
-      setEducationWeekSessionLocally(
-        weekNumber: weekNumber,
-        cbtDone: cbtDone,
-        relaxationDone: relaxDone,
-      );
-    } catch (e) {
-      debugPrint('TodayTaskProvider.syncEducationWeekStatus 실패: $e');
-    }
-  }
-
   Future<void> _loadFromServer({required int requestId}) async {
     final data = await _userDataApi.getTodayTask();
     if (requestId != _requestId) return;
@@ -181,15 +141,6 @@ class TodayTaskProvider extends ChangeNotifier {
     // 오늘 이완 여부
     final relaxFlag = data['has_relaxation_today'];
     _relaxationDone = relaxFlag == true;
-
-    // 이번 주 교육 1회 이상 여부
-    final eduFlag = data['has_education_this_week'];
-    _educationDoneWeek = eduFlag == true;
-
-    // 마지막 교육 완료 시각
-    final lastEduRaw = data['last_education_at'];
-    final parsedLastEdu = parseServerDateTime(lastEduRaw);
-    _lastEducationAt = parsedLastEdu;
 
     await _loadDiaryDraftProgress(requestId: requestId);
 
@@ -235,8 +186,6 @@ class TodayTaskProvider extends ChangeNotifier {
     bool? diaryDone,
     int? diaryDraftProgress,
     bool? relaxationDone,
-    bool? educationDoneWeek,
-    DateTime? lastEducationAt,
   }) {
     final normalizedDiaryProgress =
         diaryDraftProgress == null
@@ -263,43 +212,6 @@ class TodayTaskProvider extends ChangeNotifier {
     if (relaxationDone != null) {
       _relaxationDone = relaxationDone;
     }
-    if (educationDoneWeek != null) {
-      _educationDoneWeek = educationDoneWeek;
-    }
-    if (lastEducationAt != null) {
-      _lastEducationAt = lastEducationAt;
-    }
-    _notifyListenersSafely();
-    unawaited(_syncTodayTaskReminderState());
-  }
-
-  void setEducationWeekSessionLocally({
-    required int weekNumber,
-    bool? cbtDone,
-    bool? relaxationDone,
-    bool? educationDoneWeek,
-    DateTime? lastEducationAt,
-  }) {
-    if (cbtDone != null) {
-      if (cbtDone) {
-        _cbtDoneWeeks.add(weekNumber);
-      } else {
-        _cbtDoneWeeks.remove(weekNumber);
-      }
-    }
-    if (relaxationDone != null) {
-      if (relaxationDone) {
-        _relaxationDoneWeeks.add(weekNumber);
-      } else {
-        _relaxationDoneWeeks.remove(weekNumber);
-      }
-    }
-    if (educationDoneWeek != null) {
-      _educationDoneWeek = educationDoneWeek;
-    }
-    if (lastEducationAt != null) {
-      _lastEducationAt = lastEducationAt;
-    }
     _notifyListenersSafely();
     unawaited(_syncTodayTaskReminderState());
   }
@@ -311,10 +223,6 @@ class TodayTaskProvider extends ChangeNotifier {
     _diaryDone = false;
     _diaryDraftProgress = TodayTaskDraftProgress.none;
     _relaxationDone = false;
-    _educationDoneWeek = false;
-    _cbtDoneWeeks.clear();
-    _relaxationDoneWeeks.clear();
-    _lastEducationAt = null;
     _isLoading = false;
     _lastError = null;
     _notifyListenersSafely();
@@ -325,7 +233,6 @@ class TodayTaskProvider extends ChangeNotifier {
       todayDate: _date,
       diaryDone: _diaryDone,
       relaxationDone: _relaxationDone,
-      lastEducationAt: _lastEducationAt,
     );
   }
 

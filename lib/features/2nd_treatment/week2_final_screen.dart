@@ -2,9 +2,8 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 
@@ -26,48 +25,44 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
 
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
-    final relaxApi = RelaxationApi(client);
-
+    final userProvider = context.read<UserProvider>();
     try {
       await eduApi.completeWeekSession(
         weekNumber: 2,
         totalStages: 15,
         sessionId: widget.sessionId,
       );
-      if (mounted) {
-        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-          weekNumber: 2,
-          cbtDone: true,
-          educationDoneWeek: true,
-          lastEducationAt: DateTime.now(),
-        );
-      }
+      await userProvider.refreshProgress();
     } catch (e) {
       debugPrint('[Week2Final] edu-session 완료 처리 실패: $e');
     }
 
-    bool isRelaxDone = false;
-    try {
-      isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(2);
-    } catch (e) {
-      debugPrint('[Week2Final] relaxation 완료 조회 실패: $e');
-    }
-
     if (!mounted) return;
-    if (isRelaxDone) {
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 2,
+    );
+    if (!shouldShowTransition) {
       Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
       return;
     }
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/relaxation_education',
-      arguments: {
-        'sessionId': widget.sessionId,
-        'taskId': 'week2_education',
-        'weekNumber': 2,
-        'mp3Asset': 'week2.mp3',
-        'riveAsset': 'week2.riv',
+    showCbtToRelaxationDialog(
+      context: context,
+      onMoveNow: () {
+        Navigator.of(context).pop();
+        Navigator.pushReplacementNamed(
+          context,
+          '/relaxation_education',
+          arguments: {
+            'sessionId': widget.sessionId,
+            'taskId': 'week2_education',
+            'weekNumber': 2,
+            'mp3Asset': 'week2.mp3',
+            'riveAsset': 'week2.riv',
+          },
+        );
       },
     );
   }

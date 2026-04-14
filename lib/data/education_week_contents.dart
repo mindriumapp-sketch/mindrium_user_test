@@ -1,4 +1,3 @@
-import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 
 /// 교육 탭 주차별 콘텐츠 (TreatmentScreen, MyInfoScreen 등에서 공유)
@@ -76,13 +75,13 @@ class EducationProgressDisplay {
   static const int totalWeeks = 8;
 
   /// 최근 프로그램: 완료한 주차의 교육·이완 표시
-  static String recentProgram(
-    UserProvider user,
-    TodayTaskProvider todayTask,
-  ) {
+  static String recentProgram(UserProvider user) {
     final lastCompleted = user.lastCompletedWeek.clamp(0, totalWeeks);
     if (lastCompleted >= 1) {
-      final idx = (lastCompleted - 1).clamp(0, educationWeekContents.length - 1);
+      final idx = (lastCompleted - 1).clamp(
+        0,
+        educationWeekContents.length - 1,
+      );
       final s1 = educationWeekContents[idx]['session1Name'] ?? '교육';
       final s2 = educationWeekContents[idx]['session2Name'] ?? '이완';
       return '$lastCompleted주차\n$s1 · $s2';
@@ -90,20 +89,15 @@ class EducationProgressDisplay {
     return '시작 전';
   }
 
-  /// 진행 단계: 현재 주차 + 교육·이완 완료 여부
-  static String progressStage(
-    UserProvider user,
-    TodayTaskProvider todayTask,
-  ) {
+  /// 진행 단계: 현재 주차 + 완료 여부
+  static String progressStage(UserProvider user) {
     final currentWeek = user.currentWeek.clamp(1, totalWeeks);
     final lastCompleted = user.lastCompletedWeek.clamp(0, totalWeeks);
 
     if (currentWeek < 1 || currentWeek > totalWeeks) return '1주차';
-
     final bothDoneByServer = currentWeek <= lastCompleted;
-    final cbtDone = bothDoneByServer || todayTask.isCbtDoneWeek(currentWeek);
-    final relaxDone =
-        bothDoneByServer || todayTask.isRelaxationDoneWeek(currentWeek);
+    final cbtDone = bothDoneByServer || user.mainCbtCompleted;
+    final relaxDone = bothDoneByServer || user.mainRelaxCompleted;
 
     if (cbtDone && relaxDone) return '$currentWeek주차 완료';
     if (cbtDone || relaxDone) {

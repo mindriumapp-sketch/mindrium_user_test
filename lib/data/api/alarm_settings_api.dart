@@ -6,17 +6,6 @@ class AlarmSettingsApi {
   final ApiClient _client;
   AlarmSettingsApi(this._client);
 
-  Map<String, dynamic> _withClientTimestamp(
-    Map<String, dynamic> body, {
-    DateTime? clientTimestamp,
-  }) {
-    return {
-      ...body,
-      'client_timestamp':
-          (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
-    };
-  }
-
   Future<List<Map<String, dynamic>>> listAlarmSettings() async {
     final res = await _client.dio.get('/alarm-settings');
     final data = res.data;
@@ -34,15 +23,12 @@ class AlarmSettingsApi {
   }
 
   Future<List<Map<String, dynamic>>> replaceAlarmSettings(
-    List<Map<String, dynamic>> alarms, {
-    DateTime? clientTimestamp,
-  }) async {
-    final payload = _withClientTimestamp(
-      {'notifications': alarms},
-      clientTimestamp: clientTimestamp,
+    List<Map<String, dynamic>> alarms,
+  ) async {
+    final res = await _client.dio.put(
+      '/alarm-settings',
+      data: {'notifications': alarms},
     );
-
-    final res = await _client.dio.put('/alarm-settings', data: payload);
     final data = res.data;
     if (data is List) {
       return data

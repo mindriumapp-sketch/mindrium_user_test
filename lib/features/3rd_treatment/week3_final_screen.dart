@@ -5,9 +5,8 @@ import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
 class Week3FinalScreen extends StatelessWidget {
@@ -122,37 +121,27 @@ class Week3FinalScreen extends StatelessWidget {
   Future<void> _showStartDialog(BuildContext context) async {
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
-    final relaxApi = RelaxationApi(client);
-
+    final userProvider = context.read<UserProvider>();
     try {
       await eduApi.completeWeekSession(
         weekNumber: 3,
         totalStages: 12,
         sessionId: sessionId,
       );
-      if (context.mounted) {
-        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-          weekNumber: 3,
-          cbtDone: true,
-          educationDoneWeek: true,
-          lastEducationAt: DateTime.now(),
-        );
-      }
+      await userProvider.refreshProgress();
     } catch (e) {
       debugPrint('[Week3Final] edu-session 완료 처리 실패: $e');
     }
 
-    bool isRelaxDone = false;
-    try {
-      isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(3);
-    } catch (e) {
-      debugPrint('[Week3Final] relaxation 완료 조회 실패: $e');
-    }
-
     if (!context.mounted) return;
     final nav = Navigator.of(context);
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 3,
+    );
 
-    if (isRelaxDone) {
+    if (!shouldShowTransition) {
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }

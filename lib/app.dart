@@ -174,8 +174,8 @@ class MyApp extends StatelessWidget {
               (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
           final taskId = args['taskId'] as String? ?? 'daily_review';
           final weekNumber = args['weekNumber'] as int?;
-          final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
-          final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
+          final mp3Asset = args['mp3Asset'] as String? ?? 'noti.mp3';
+          final riveAsset = args['riveAsset'] as String? ?? 'noti.riv';
           final nextPage = args['nextPage'] as String? ?? '/home';
           return NotiPlayer(
             taskId: taskId,
