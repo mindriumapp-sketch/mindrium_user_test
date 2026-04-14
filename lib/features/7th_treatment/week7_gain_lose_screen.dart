@@ -110,6 +110,7 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
       await _week7Api.upsertClassificationItem(
         sessionId: sessionId,
         chipId: widget.chipId,
+        label: widget.behavior,
         classification: 'avoid',
         reason: widget.reason,
         analysis: analysis.isEmpty ? null : analysis,

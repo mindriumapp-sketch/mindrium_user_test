@@ -5,9 +5,8 @@ import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
 class Week7FinalScreen extends StatefulWidget {
@@ -20,7 +19,6 @@ class Week7FinalScreen extends StatefulWidget {
 class _Week7FinalScreenState extends State<Week7FinalScreen> {
   late final ApiClient _apiClient;
   late final Week7Api _week7Api;
-  late final RelaxationApi _relaxationApi;
   bool _isCompleting = false;
   String? _sessionId;
 
@@ -29,7 +27,6 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
     _week7Api = Week7Api(_apiClient);
-    _relaxationApi = RelaxationApi(_apiClient);
   }
 
   @override
@@ -145,6 +142,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
   void _showStartDialog(BuildContext context) async {
     final ctx = context;
     final nav = Navigator.of(ctx);
+    final userProvider = ctx.read<UserProvider>();
     final sessionId = await _ensureSessionId();
 
     // 완료 상태 저장
@@ -158,14 +156,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
           lastScreenIndex: 1,
           totalScreens: 1,
         );
-        if (ctx.mounted) {
-          ctx.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-            weekNumber: 7,
-            cbtDone: true,
-            educationDoneWeek: true,
-            lastEducationAt: DateTime.now(),
-          );
-        }
+        await userProvider.refreshProgress();
       } catch (e) {
         debugPrint('7주차 완료 상태 저장 실패: $e');
         // 에러가 발생해도 다음 화면으로 진행
@@ -178,15 +169,13 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
 
     if (!mounted || !ctx.mounted) return;
 
-    bool isRelaxDone = false;
-    try {
-      isRelaxDone = await _relaxationApi.isWeekEducationTaskCompleted(7);
-    } catch (e) {
-      debugPrint('[Week7Final] relaxation 완료 조회 실패: $e');
-    }
-
     if (!mounted || !ctx.mounted) return;
-    if (isRelaxDone) {
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 7,
+    );
+    if (!shouldShowTransition) {
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }

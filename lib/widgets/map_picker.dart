@@ -5,11 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 
-import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/kakao_local_api.dart';
-import 'package:gad_app_team/data/api/schedule_events_api.dart';
 import 'package:gad_app_team/data/loctime_provider.dart';
-import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/widgets/location_picker_map.dart';
 import 'package:gad_app_team/widgets/map_picker_design.dart';
 
@@ -70,16 +67,11 @@ class _MapPickerState extends State<MapPicker> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _locationLabelController =
       TextEditingController();
-  final TokenStorage _tokens = TokenStorage();
-  late final ApiClient _apiClient = ApiClient(tokens: _tokens);
-  late final ScheduleEventsApi _scheduleEventsApi = ScheduleEventsApi(
-    _apiClient,
-  );
   late final KakaoLocalApi _kakaoLocalApi = KakaoLocalApi();
 
   LatLng? _picked;
   LatLng? _current;
-  List<LatLng> _savedMarkers = [];
+  final List<LatLng> _savedMarkers = [];
   String? _addr;
   bool _isMapReady = false;
   bool _hasRenderedMap = false;
@@ -98,7 +90,6 @@ class _MapPickerState extends State<MapPicker> {
     _setLocationLabelText(widget.initialLocationLabel?.trim() ?? '');
     _initializeSelectionState();
     unawaited(_determinePosition());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDeferredData());
   }
 
   @override
@@ -259,13 +250,6 @@ class _MapPickerState extends State<MapPicker> {
     }
   }
 
-  void _loadDeferredData() {
-    if (!mounted) return;
-    if (widget.showSavedMarkers) {
-      unawaited(_loadSavedMarkers());
-    }
-  }
-
   void _cacheCurrentLocation(LatLng current) {
     _sessionCurrentCache = current;
     _sessionCurrentCacheAt = DateTime.now();
@@ -289,29 +273,6 @@ class _MapPickerState extends State<MapPicker> {
       if ((_addr?.trim().isEmpty ?? true)) {
         unawaited(_reverseGeocode(current));
       }
-    }
-  }
-
-  Future<void> _loadSavedMarkers() async {
-    try {
-      final now = DateTime.now();
-      final docs = await _scheduleEventsApi
-          .listScheduleEvents(
-            startDate: now.subtract(const Duration(days: 30)),
-            endDate: now.add(const Duration(days: 30)),
-          )
-          .timeout(const Duration(seconds: 6));
-      final markers = <LatLng>[];
-      for (final doc in docs) {
-        final lat = (doc['latitude'] as num?)?.toDouble();
-        final lng = (doc['longitude'] as num?)?.toDouble();
-        if (lat == null || lng == null) continue;
-        markers.add(LatLng(lat, lng));
-        if (markers.length >= 60) break;
-      }
-      if (mounted) setState(() => _savedMarkers = markers);
-    } catch (e) {
-      debugPrint('Failed to load saved markers: $e');
     }
   }
 

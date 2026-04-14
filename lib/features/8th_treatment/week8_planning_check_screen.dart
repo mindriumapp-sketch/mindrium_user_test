@@ -7,47 +7,27 @@ import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/widgets/eduhome_bg.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
-import 'package:gad_app_team/data/api/schedule_events_api.dart';
+import 'package:gad_app_team/data/api/treatment_progress_api.dart';
+import 'package:gad_app_team/data/api/week7_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/utils/server_datetime.dart';
 
 const Color _postItBlue = Color(0xFF3690D9);
 
-// 캘린더 이벤트 모델 (백엔드 ScheduleEvent와 호환)
-class CalendarEvent {
+class Week7BehaviorSession {
   final String id;
   final DateTime startDate;
   final DateTime endDate;
   final List<String> behaviors;
   final DateTime createdAt;
 
-  CalendarEvent({
+  Week7BehaviorSession({
     required this.id,
     required this.startDate,
     required this.endDate,
     required this.behaviors,
     required this.createdAt,
   });
-
-  // 백엔드 ScheduleEventResponse에서 변환
-  factory CalendarEvent.fromApiResponse(Map<String, dynamic> json) {
-    final startDateStr = json['start_date']?.toString() ?? '';
-    final endDateStr = json['end_date']?.toString() ?? '';
-    final tasks = json['actions'] as List<dynamic>? ?? [];
-    
-    return CalendarEvent(
-      id: json['event_id']?.toString() ?? '',
-      startDate: parseServerDateOnly(startDateStr) ?? DateTime.now(),
-      endDate: parseServerDateOnly(endDateStr) ?? DateTime.now(),
-      behaviors: tasks
-          .map((task) => task is Map ? task['label']?.toString() : null)
-          .whereType<String>()
-          .toList(),
-      createdAt:
-          parseServerDateTime(json['created_at'], fallback: DateTime.now()) ??
-          DateTime.now(),
-    );
-  }
 }
 
 class Week8PlanningCheckScreen extends StatefulWidget {
@@ -63,8 +43,8 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
   final List<String> _addedBehaviors = [];
   final List<String> _newBehaviors = [];
 
-  // week7에서 저장한 캘린더 이벤트들
-  final List<CalendarEvent> _savedEvents = [];
+  // week7 회기 구간 안에서 저장된 세션들
+  final List<Week7BehaviorSession> _savedSessions = [];
 
   bool _isLoading = true;
 
@@ -76,13 +56,15 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
 
   // API 클라이언트
   late final ApiClient _apiClient;
-  late final ScheduleEventsApi _scheduleEventsApi;
+  late final Week7Api _week7Api;
+  late final TreatmentProgressApi _treatmentProgressApi;
 
   @override
   void initState() {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
-    _scheduleEventsApi = ScheduleEventsApi(_apiClient);
+    _week7Api = Week7Api(_apiClient);
+    _treatmentProgressApi = TreatmentProgressApi(_apiClient);
     _loadPlannedBehaviors();
   }
 
@@ -106,34 +88,69 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
       _isLoading = false;
     });
 
-    _loadSavedEvents();
+    _loadSavedSessions();
   }
 
-  // 저장된 이벤트 다 불러오기 (백엔드에서 조회)
-  Future<void> _loadSavedEvents() async {
+  Future<void> _loadSavedSessions() async {
     try {
-      final events = await _scheduleEventsApi.listScheduleEvents();
+      final progress = await _treatmentProgressApi.getTreatmentProgress(7);
+      final startAt = parseServerDateTime(progress['started_at']);
+      final completedAt = parseServerDateTime(progress['completed_at']);
+      if (startAt == null || completedAt == null) {
+        return;
+      }
+
+      final sessions = await _week7Api.fetchWeek7SessionsByPeriod(
+        startAt: startAt,
+        endAt: completedAt,
+      );
       if (!mounted) return;
 
-      final List<CalendarEvent> parsed = [];
+      final List<Week7BehaviorSession> parsed = [];
       final Map<String, Map<String, bool>> eventCheckStates = {};
 
-      for (final eventData in events) {
-        try {
-          final event = CalendarEvent.fromApiResponse(eventData);
-          parsed.add(event);
+      for (final session in sessions) {
+        final createdAt =
+            parseServerDateTime(session['created_at'], fallback: DateTime.now()) ??
+                DateTime.now();
+        final rawItems = session['behavior_items'];
+        if (rawItems is! List) continue;
 
-          eventCheckStates[event.id] = {
-            for (final b in event.behaviors) b: false,
-          };
-        } catch (err) {
-          debugPrint('이벤트 파싱 오류: $err');
+        final behaviors = <String>[];
+        for (final raw in rawItems) {
+          if (raw is! Map) continue;
+          final chipId = raw['chip_id']?.toString();
+          final storedLabel = raw['label']?.toString();
+          final reason = raw['reason']?.toString();
+          final label =
+              (storedLabel != null && storedLabel.isNotEmpty ? storedLabel : null) ??
+              (chipId != null ? _findBehaviorLabelByChipId(chipId) : null) ??
+              reason;
+          if (label != null && label.isNotEmpty) {
+            behaviors.add(label);
+          }
         }
+
+        if (behaviors.isEmpty) continue;
+
+        final item = Week7BehaviorSession(
+          id: session['session_id']?.toString() ?? '',
+          startDate: createdAt,
+          endDate: createdAt,
+          behaviors: behaviors,
+          createdAt: createdAt,
+        );
+        parsed.add(item);
+        eventCheckStates[item.id] = {
+          for (final b in item.behaviors) b: false,
+        };
       }
+
+      parsed.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
       if (mounted) {
         setState(() {
-          _savedEvents
+          _savedSessions
             ..clear()
             ..addAll(parsed);
           _eventBehaviorCheckStates
@@ -142,8 +159,17 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
         });
       }
     } catch (e) {
-      debugPrint('캘린더 이벤트 로드 오류: $e');
+      debugPrint('7주차 세션 로드 오류: $e');
     }
+  }
+
+  String? _findBehaviorLabelByChipId(String chipId) {
+    for (final entry in Week7AddDisplayScreen.globalBehaviorToChip.entries) {
+      if (entry.value == chipId) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 
   @override
@@ -182,9 +208,9 @@ class _Week8PlanningCheckScreenState extends State<Week8PlanningCheckScreen> {
                       if (allBehaviors.isNotEmpty)
                         _buildPlannedBehaviorsSection(allBehaviors),
 
-                      if (_savedEvents.isNotEmpty) ...[
+                      if (_savedSessions.isNotEmpty) ...[
                         const SizedBox(height: 20),
-                        _buildCalendarSection(),
+                        _buildSavedSessionSection(),
                       ],
 
                       const SizedBox(height: 40),
@@ -347,8 +373,7 @@ child: NavigationButtons(
     );
   }
 
-  // 아래쪽: 캘린더에 추가된 일정들 (→ “다 보여준다”가 원래 로직)
-  Widget _buildCalendarSection() {
+  Widget _buildSavedSessionSection() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -368,7 +393,7 @@ child: NavigationButtons(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '캘린더에 추가된 일정',
+            '7주차에 저장된 계획',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -388,7 +413,7 @@ child: NavigationButtons(
               ),
             ),
             child: const Text(
-              '캘린더에 등록된 일정의 행동들을 보고\n실천 여부를 체크해주세요.',
+              '7주차 회기 동안 저장된 행동들을 보고\n실천 여부를 체크해주세요.',
               style: TextStyle(
                 fontSize: 14,
                 color: Color.fromARGB(255, 107, 140, 180),
@@ -397,10 +422,8 @@ child: NavigationButtons(
             ),
           ),
           const SizedBox(height: 16),
-          ..._savedEvents.map((event) {
-            final duration =
-                event.endDate.difference(event.startDate).inDays + 1;
-            final behaviorStates = _eventBehaviorCheckStates[event.id] ?? {};
+          ..._savedSessions.map((session) {
+            final behaviorStates = _eventBehaviorCheckStates[session.id] ?? {};
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(20),
@@ -416,8 +439,7 @@ child: NavigationButtons(
                     children: [
                       Expanded(
                         child: Text(
-                          '${event.startDate.month}월 ${event.startDate.day}일 ~ '
-                              '${event.endDate.month}월 ${event.endDate.day}일',
+                          '${session.startDate.month}월 ${session.startDate.day}일',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF2D3748),
@@ -435,7 +457,7 @@ child: NavigationButtons(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '$duration일',
+                          '기록',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Color.fromARGB(255, 107, 140, 180),
@@ -445,12 +467,12 @@ child: NavigationButtons(
                     ],
                   ),
                   const SizedBox(height: 16),
-                  ...event.behaviors.map((b) {
+                  ...session.behaviors.map((b) {
                     final checked = behaviorStates[b] ?? false;
                     return InkWell(
                       onTap: () {
                         setState(() {
-                          _eventBehaviorCheckStates[event.id]![b] = !checked;
+                          _eventBehaviorCheckStates[session.id]![b] = !checked;
                         });
                       },
                       child: Container(

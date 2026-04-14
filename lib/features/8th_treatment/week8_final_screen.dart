@@ -4,9 +4,12 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/round_card.dart';
 import 'package:gad_app_team/widgets/blue_banner.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week8_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class Week8FinalScreen extends StatefulWidget {
   const Week8FinalScreen({super.key});
@@ -108,9 +111,9 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                                     fontFamily: 'Noto Sans KR',
                                   ),
                                 ),
-                              ]
-                            )
-                          )
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -120,7 +123,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                 // ⛵ 네비게이션 버튼 (기존 로직 그대로 유지)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-child: NavigationButtons(
+                  child: NavigationButtons(
                     onBack: () => Navigator.pop(context),
                     // onNext: () => _showStartDialog(context),
                     onNext: _isSavingCompletion ? null : _saveCompletionAndExit,
@@ -147,11 +150,36 @@ child: NavigationButtons(
         lastScreenIndex: _totalScreens,
         totalScreens: _totalScreens,
       );
+      if (mounted) {
+        await context.read<UserProvider>().refreshProgress();
+      }
       if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/home_edu',
-        (_) => false,
+      final user = context.read<UserProvider>();
+      final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+        currentWeek: user.currentWeek,
+        mainRelaxCompleted: user.mainRelaxCompleted,
+        weekNumber: 8,
+      );
+      if (!shouldShowTransition) {
+        Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+        return;
+      }
+
+      showCbtToRelaxationDialog(
+        context: context,
+        onMoveNow: () {
+          Navigator.of(context).pop();
+          Navigator.pushReplacementNamed(
+            context,
+            '/relaxation_education',
+            arguments: {
+              'taskId': 'week8_education',
+              'weekNumber': 8,
+              'mp3Asset': 'week8.mp3',
+              'riveAsset': 'week8.riv',
+            },
+          );
+        },
       );
     } catch (e) {
       if (!mounted) return;
@@ -165,7 +193,8 @@ child: NavigationButtons(
 
     final existing = await _week8Api.fetchWeek8Session();
     _sessionId =
-        existing?['session_id']?.toString() ?? existing?['sessionId']?.toString();
+        existing?['session_id']?.toString() ??
+        existing?['sessionId']?.toString();
     if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
 
     final created = await _week8Api.createWeek8Session(

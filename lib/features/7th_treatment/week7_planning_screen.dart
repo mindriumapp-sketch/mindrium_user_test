@@ -284,6 +284,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
     await _week7Api.upsertClassificationItem(
       sessionId: sessionId,
       chipId: chipId,
+      label: behavior,
       classification: 'confront',
     );
 
