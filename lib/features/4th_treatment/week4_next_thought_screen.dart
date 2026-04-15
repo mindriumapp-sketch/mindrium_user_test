@@ -43,7 +43,6 @@ class Week4NextThoughtScreen extends StatefulWidget {
 class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
   bool _isNextEnabled = false;
   int _secondsLeft = 5;
-  bool _showSituation = true; // 상황 안내 먼저, 이후 보라 안내
   String? _activatingEvent;
   bool _isLoading = true;
   late final ApiClient _client;
@@ -145,19 +144,14 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
         (_activatingEvent != null && _activatingEvent!.isNotEmpty)
             ? _activatingEvent!
             : '이때의 상황을 떠올려보세요.';
-    final refocusText =
+    final focusText =
         situationText.isNotEmpty && nextThought.isNotEmpty
-            ? '$userName님, "$situationText"(이)라는 상황에서\n"$nextThought"(이)라는 또 다른 생각이 들었습니다.\n\n그때의 상황에 집중해보세요.'
+            ? '$userName님, "$situationText"(이)라는 상황에서\n"$nextThought"(이)라는 또 다른 생각이 들었습니다.\n\n이제 그때의 상황과 생각을 함께 떠올려보세요.'
             : situationText.isNotEmpty
             ? '$userName님, "$situationText"(이)라는 상황을\n다시 천천히 떠올려보세요.'
-            : '같은 상황을 다시 천천히 떠올려보세요.';
-    final nextThoughtFocusText =
-        situationText.isNotEmpty && nextThought.isNotEmpty
-            ? '$userName님, "$situationText"(이)라는 상황에서\n"$nextThought"(이)라는 또 다른 생각이 들었습니다.\n\n이번에는 이 생각에 집중해보세요.'
             : nextThought.isNotEmpty
             ? '"$nextThought"(이)라는 생각을 천천히 떠올려보세요.'
             : '다음 생각을 천천히 떠올려보세요.';
-    final focusText = _showSituation ? refocusText : nextThoughtFocusText;
 
     // === 카드 안에 들어갈 본문 위젯 ===
     final Widget body =
@@ -191,7 +185,7 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   lineWidth: kRuleWidth,
                 ),
-                if (_showSituation && !_isNextEnabled) ...[
+                if (!_isNextEnabled) ...[
                   const SizedBox(height: 18),
                   Text(
                     '$_secondsLeft초 후에 다음 버튼이 활성화됩니다',
@@ -209,16 +203,11 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
     // === ApplyDesign 사용: 배경/앱바/중앙 BlueWhiteCard/하단 네비 버튼 ===
     return ApplyDesign(
       appBarTitle: '인지 왜곡 찾기',
-      cardTitle: _showSituation ? '그때 상황 다시 떠올리기' : '다음 생각으로 이어가기',
+      cardTitle: '다음 생각으로 이어가기',
       onBack: () => Navigator.pop(context),
       onNext: () async {
         if (!_isNextEnabled) {
           BlueBanner.show(context, '$_secondsLeft초 후에 다음 버튼이 활성화됩니다');
-          return;
-        }
-
-        if (_showSituation) {
-          setState(() => _showSituation = false);
           return;
         }
 
