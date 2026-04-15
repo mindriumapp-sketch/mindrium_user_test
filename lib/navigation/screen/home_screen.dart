@@ -724,11 +724,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // 3️⃣ 여기까지 왔으면 최소 한 번은 유저 + todayTask가 로딩된 상태
     _syncWidgetStatsIfNeeded(user);
-    _widgetTutorialController.scheduleIfEligible(
-      context: context,
-      completedWeeks: user.lastCompletedWeek,
-      userId: user.userId,
-    );
+    if (_didResolveRequiredPermissionState && _hasRequiredPermissions) {
+      _widgetTutorialController.scheduleIfEligible(
+        context: context,
+        completedWeeks: user.lastCompletedWeek,
+        userId: user.userId,
+      );
+    }
     _tryStartPendingWidgetApplyLaunch();
 
     debugPrint(
