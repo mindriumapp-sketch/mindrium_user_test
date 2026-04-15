@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_screen.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_final_screen.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_flow_prompt_widgets.dart';
 
 // ✅ 새 UI 래퍼
+import 'package:gad_app_team/widgets/ruled_paragraph.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ApplyDesign
 import 'package:gad_app_team/widgets/blue_banner.dart'; // (선택) 카운트다운 안내
 import 'package:gad_app_team/data/api/api_client.dart';
@@ -119,6 +119,24 @@ class _Week4ConcentrationScreenState extends State<Week4ConcentrationScreen> {
     return _chipLabel(raw).trim();
   }
 
+  List<String> _chipList(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => _chipLabel(e).trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    final label = _chipLabel(raw).trim();
+    if (label.isEmpty) return const [];
+
+    return label
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
   String _safe(String text) {
     try {
       return String.fromCharCodes(text.runes);
@@ -168,6 +186,7 @@ class _Week4ConcentrationScreenState extends State<Week4ConcentrationScreen> {
     }
 
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    const double kRuleWidth = 220;
     final situationText =
         _abcModel != null
             ? _safe(
@@ -178,6 +197,22 @@ class _Week4ConcentrationScreenState extends State<Week4ConcentrationScreen> {
               ),
             )
             : '이때의 상황을 떠올려보세요.';
+    final inputThoughts =
+        widget.bListInput
+            .map((e) => _chipLabel(e).trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+    final modelThoughts = _chipList(_abcModel?['belief']);
+    final firstThought =
+        inputThoughts.isNotEmpty
+            ? inputThoughts.first
+            : (modelThoughts.isNotEmpty ? _safe(modelThoughts.first) : '');
+    final focusText =
+        situationText.isNotEmpty && firstThought.isNotEmpty
+            ? '$userName님, "$situationText"(이)라는 상황에서\n"$firstThought"(이)라는 생각이 들었습니다.\n\n그때의 상황에 집중해보세요.'
+            : situationText.isNotEmpty
+            ? '$userName님, "$situationText"(이)라는 상황을\n천천히 다시 떠올려보세요.'
+            : '이때의 상황을 자세히 떠올려보세요.';
 
     return ApplyDesign(
       appBarTitle: '인지 왜곡 찾기',
@@ -212,15 +247,51 @@ class _Week4ConcentrationScreenState extends State<Week4ConcentrationScreen> {
         );
       },
 
-      child: Week4SituationFocusBody(
-        title: '그때 상황을 천천히 떠올려볼게요',
-        helperText: '$userName님이 적어주신 장면에 잠시만 머물러보세요.',
-        situationText: situationText,
-        footerText: '상황이 또렷하지 않아도 괜찮아요. 떠오르는 만큼만 천천히 떠올려보세요.',
-        isLoading: _isLoading,
-        secondsLeft: _isNextEnabled ? null : _secondsLeft,
-        waitingText: '$_secondsLeft초 후에 다음으로 넘어갈 수 있어요',
-      ),
+      child:
+          _isLoading
+              ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 28),
+                child: CircularProgressIndicator(),
+              )
+              : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  Image.asset(
+                    'assets/image/think_blue.png',
+                    height: 160,
+                    filterQuality: FilterQuality.high,
+                  ),
+                  const SizedBox(height: 20),
+                  RuledParagraph(
+                    text: focusText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2C3C55),
+                      height: 1.6,
+                    ),
+                    lineColor: const Color(0xFFE1E8F0),
+                    lineThickness: 1.2,
+                    lineGapBelow: 8,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    lineWidth: kRuleWidth,
+                  ),
+                  if (!_isNextEnabled) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      '$_secondsLeft초 후에 다음 버튼이 활성화됩니다',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF9BA7B4),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
     );
   }
 }

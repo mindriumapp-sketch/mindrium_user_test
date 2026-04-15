@@ -368,16 +368,11 @@ class _Week4AfterAgreementScreenState extends State<Week4AfterAgreementScreen> {
       topChild: _buildTopPanel(),
       bottomChild: _buildBottomPanel(),
 
-      // 패널 사이 말풍선 안내
-      middleBannerText: '도움이 되는 생각을 떠올리며,\n지금 믿는 정도를 다시 골라주세요.',
-
       // 스타일(필요시 조정)
       pagePadding: const EdgeInsets.fromLTRB(28, 18, 28, 18),
       panelsGap: 10,
       panelRadius: 20,
       panelPadding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      height: 112,
-      topPadding: 0,
     );
   }
 }

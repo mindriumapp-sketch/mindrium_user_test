@@ -64,7 +64,7 @@ class _Week4AnxietyScreenState extends State<Week4AnxietyScreen> {
 
         // 레이아웃 옵션
         pagePadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
-        panelsGap: 2,
+        panelsGap: 16,
         panelRadius: 20,
         panelPadding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
 
@@ -102,8 +102,6 @@ class _Week4AnxietyScreenState extends State<Week4AnxietyScreen> {
             ],
           ),
         ),
-
-        middleBannerText: '입력 영역을 탭하면 항목이 추가돼요! \n엔터 또는 바깥 터치로 확정됩니다',
 
         // 하단 패널 (칩 편집 위젯 사용)
         bottomChild: Center(

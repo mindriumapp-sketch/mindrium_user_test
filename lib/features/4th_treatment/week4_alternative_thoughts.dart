@@ -265,10 +265,6 @@ class _Week4AlternativeThoughtsScreenState
   Widget build(BuildContext context) {
     debugPrint('[alt_thought] abcId: ${widget.abcId}');
     final currentThought = _currentBeliefText();
-    final guideText =
-        currentThought.isNotEmpty
-            ? "'$currentThought'를 조금 더 긍정적으로 바라볼 문장을 적어보세요."
-            : '이 생각을 조금 더 긍정적으로 바라볼 문장을 적어보세요.';
     final remainingThoughtCount = widget.remainingBList.length;
 
     return GestureDetector(
@@ -334,52 +330,13 @@ class _Week4AlternativeThoughtsScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFDFF4FF),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.psychology_alt_rounded,
-                          color: Color(0xFF2E6EA5),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          '지금 살펴보는 생각',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF34577A),
-                          ),
-                        ),
-                      ),
-                      if (remainingThoughtCount > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE6F6EA),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '남은 생각 $remainingThoughtCount개',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF2E7D4F),
-                            ),
-                          ),
-                        ),
-                    ],
+                  Text(
+                    '지금 살펴보는 생각',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF34577A),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _PromptInfoRow(
@@ -403,11 +360,6 @@ class _Week4AlternativeThoughtsScreenState
             ),
           ],
         ),
-
-        // 패널 사이 말풍선
-        middleBannerText: '$guideText\n한 문장으로 간단하게 적어도 괜찮아요. 천천히 생각해주세요.',
-        // height: 120,
-        // topPadding: 20,
 
         // ─────────────────── 하단 패널 (텍스트 입력) ───────────────────
         bottomChild: Column(

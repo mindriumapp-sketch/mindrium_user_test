@@ -63,49 +63,16 @@ class Week4BeliefContextPanel extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFDFF4FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.visibility_rounded,
-                      size: 20,
-                      color: Color(0xFF2E6EA5),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
                   const Expanded(
                     child: Text(
                       '지금 떠올릴 장면',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF34577A),
                       ),
                     ),
                   ),
-                  if (badgeText != null && badgeText!.trim().isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE9F5FF),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        badgeText!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF2E6EA5),
-                        ),
-                      ),
-                    ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -123,7 +90,7 @@ class Week4BeliefContextPanel extends StatelessWidget {
         Text(
           footerText,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             height: 1.55,
             color: Color(0xFF6C7F92),
             fontWeight: FontWeight.w500,
