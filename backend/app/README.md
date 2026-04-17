@@ -20,6 +20,54 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8080
 ```
 
+## Docker 배포
+
+### 1. 이미지 빌드
+
+```bash
+cd backend/app
+docker build -t YOUR_REGISTRY/mindrium-backend:latest .
+```
+
+### 2. 레지스트리에 푸시
+
+```bash
+docker push YOUR_REGISTRY/mindrium-backend:latest
+```
+
+예시:
+- Docker Hub: `YOUR_REGISTRY` = `docker.io/<dockerhub-id>`
+- GitHub Container Registry: `YOUR_REGISTRY` = `ghcr.io/<github-id>`
+
+### 3. 백엔드 서버에서 pull 후 실행
+
+```bash
+docker pull YOUR_REGISTRY/mindrium-backend:latest
+
+docker run -d \
+  --name mindrium-backend \
+  --restart unless-stopped \
+  --env-file /opt/mindrium/.env \
+  -p 8080:8080 \
+  YOUR_REGISTRY/mindrium-backend:latest
+```
+
+`/opt/mindrium/.env` 파일은 이 저장소의 `.env.example`을 기준으로 실제 운영 값을 채워서 준비하면 됩니다.
+
+### 4. 이미지 업데이트
+
+```bash
+docker pull YOUR_REGISTRY/mindrium-backend:latest
+docker stop mindrium-backend
+docker rm mindrium-backend
+docker run -d \
+  --name mindrium-backend \
+  --restart unless-stopped \
+  --env-file /opt/mindrium/.env \
+  -p 8080:8080 \
+  YOUR_REGISTRY/mindrium-backend:latest
+```
+
 ## Render 배포
 
 ### 방법 1: render.yaml 사용 (추천)
@@ -52,6 +100,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8080
 선택:
 - `OPENAI_API_KEY`: OpenAI API 키
 - `CORS_ORIGINS`: CORS 허용 도메인 (기본값: *)
+- `PLATFORM_SIGNUP_URL`: 외부 플랫폼 회원가입 API 주소
 - 기타 설정은 `.env.example` 참고
 
 ## API 문서
