@@ -7,11 +7,13 @@ const Color _navy = Color(0xFF263C69);
 class Week7ReasonInputScreen extends StatefulWidget {
   final String behavior;
   final String chipId;
+  final String? sessionId;
 
   const Week7ReasonInputScreen({
     super.key,
     required this.behavior,
     required this.chipId,
+    this.sessionId,
   });
 
   @override
@@ -103,6 +105,7 @@ class _Week7ReasonInputScreenState extends State<Week7ReasonInputScreen> {
                             behavior: widget.behavior,
                             chipId: widget.chipId,
                             reason: reason,
+                            sessionId: widget.sessionId,
                           ),
                       transitionDuration: Duration.zero,
                       reverseTransitionDuration: Duration.zero,

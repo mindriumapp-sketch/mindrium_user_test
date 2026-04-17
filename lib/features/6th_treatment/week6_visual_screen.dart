@@ -8,6 +8,7 @@ import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +27,12 @@ class Week6VisualScreen extends StatefulWidget {
 }
 
 class _Week6VisualScreenState extends State<Week6VisualScreen> {
+  Future<bool> _isReviewMode() async {
+    final user = context.read<UserProvider>();
+    return user.currentWeek > 6 ||
+        (user.currentWeek == 6 && user.mainCbtCompleted);
+  }
+
   Widget _buildSummaryPanel({required Widget child}) {
     return Container(
       decoration: BoxDecoration(
@@ -90,7 +97,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
 
   Widget _buildTopPanel() {
     return _buildThoughtSection(
-      title: '불안을 직면하는 행동',
+      title: '내가 불안을 직면하는 행동',
       chips: widget.alternativeChips,
       thoughtType: ThoughtType.helpful,
     );
@@ -98,7 +105,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
 
   Widget _buildBottomPanel() {
     return _buildThoughtSection(
-      title: '불안을 회피하는 행동',
+      title: '내가 불안을 회피하는 행동',
       chips: widget.previousChips,
       thoughtType: ThoughtType.unhelpful,
     );
@@ -121,14 +128,46 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2C4A7A),
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Icon(leadingIcon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2C4A7A),
+                ),
+              ),
+            ),
+          ],
         ),
+        if (isHelpful) ...[
+          const SizedBox(height: 6),
+          const Padding(
+            padding: EdgeInsets.only(left: 42),
+            child: Text(
+              '이번에 정리한 내용입니다.\n나중에 다시 생각해보며 바꿀 수 있어요.',
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.45,
+                color: Color(0xFF5F748A),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Container(
           width: double.infinity,
@@ -144,32 +183,6 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Icon(leadingIcon, color: accentColor, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      isHelpful ? '내가 적은 불안을 직면하는 행동' : '내가 적은 불안을 회피하는 행동',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: accentColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
               Text(
                 displayText,
                 style: TextStyle(
@@ -218,6 +231,8 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
 
     const horizontalPadding = 24.0;
     const gapBetweenPanels = 20.0;
+    const stickyBannerTop = 20.0;
+    const stickyBannerSpacer = 140.0;
     final maxWidth = size.width - 48 > 980 ? 980.0 : size.width - 48;
 
     return Scaffold(
@@ -254,32 +269,48 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
             ),
             Container(color: Colors.white.withValues(alpha: 0.08)),
             SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    28,
-                    horizontalPadding,
-                    bottomInset + 120,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildSummaryPanel(child: _buildTopPanel()),
-                        const SizedBox(height: gapBetweenPanels),
-                        _buildSummaryPanel(child: _buildBottomPanel()),
-                        const SizedBox(height: 18),
-                        const JellyfishBanner(
-                          message:
-                              '오늘도 수고하셨습니다!\n내가 적은 행동을 한 번 더 비교해보며,\n어떤 방향이 불안을 줄이는 데 도움이 되는지 살펴보세요.',
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      28,
+                      horizontalPadding,
+                      bottomInset + 120,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: maxWidth),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: stickyBannerSpacer),
+                            _buildSummaryPanel(child: _buildTopPanel()),
+                            const SizedBox(height: gapBetweenPanels),
+                            _buildSummaryPanel(child: _buildBottomPanel()),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  Positioned(
+                    top: stickyBannerTop,
+                    left: horizontalPadding,
+                    right: horizontalPadding,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          child: const JellyfishBanner(
+                            message:
+                                '오늘도 수고하셨습니다!\n내가 적은 행동을 한 번 더 비교해보며,\n어떤 방향이 불안을 줄이는 데 도움이 되는지 살펴보세요.',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -292,7 +323,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
             padding: const EdgeInsets.fromLTRB(24, 6, 24, 24),
             child: NavigationButtons(
               leftLabel: '이전',
-              rightLabel: '다음',
+              rightLabel: '완료',
               onBack: () => Navigator.pop(context),
               onNext: _showStartDialog,
             ),
@@ -303,6 +334,49 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
   }
 
   Future<void> _showStartDialog() async {
+    if (await _isReviewMode()) {
+      final todayTask = context.read<TodayTaskProvider>();
+      final user = context.read<UserProvider>();
+      final shouldShowRelaxReview =
+          todayTask.isTreatmentReviewFlowForWeek(6) &&
+          (user.currentWeek > 6 ||
+              (user.currentWeek == 6 &&
+                  user.mainCbtCompleted &&
+                  user.mainRelaxCompleted));
+      if (shouldShowRelaxReview) {
+        showCbtReviewToRelaxationDialog(
+          context: context,
+          weekNumber: 6,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'taskId': 'week6_education',
+                'weekNumber': 6,
+                'mp3Asset': 'week6.mp3',
+                'riveAsset': 'week6.riv',
+                'isReviewMode': true,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      todayTask.clearTreatmentReviewFlow();
+      Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
     final userProvider = context.read<UserProvider>();
@@ -323,21 +397,27 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
     );
 
     if (!shouldShowTransition) {
+      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
 
     showCbtToRelaxationDialog(
       context: context,
+      weekNumber: 6,
       onMoveNow: () {
         nav.pop();
         nav.pushReplacementNamed(
-          '/relaxation_education',
+          '/relaxation_start',
           arguments: {
             'taskId': 'week6_education',
             'weekNumber': 6,
             'mp3Asset': 'week6.mp3',
             'riveAsset': 'week6.riv',
+            'isReviewMode':
+                userProvider.currentWeek > 6 ||
+                (userProvider.currentWeek == 6 &&
+                    userProvider.mainRelaxCompleted),
           },
         );
       },

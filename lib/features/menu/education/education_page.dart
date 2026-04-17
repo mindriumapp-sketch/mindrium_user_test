@@ -4,6 +4,7 @@ import 'package:gad_app_team/data/models/education_model.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/widgets/memo_sheet_design.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
@@ -194,6 +195,7 @@ class _EducationPageState extends State<EducationPage> {
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
     final userProvider = context.read<UserProvider>();
+    final todayTask = context.read<TodayTaskProvider>();
     try {
       await eduApi.completeWeekSession(
         weekNumber: 1,
@@ -207,6 +209,40 @@ class _EducationPageState extends State<EducationPage> {
 
     if (!mounted) return;
     final nav = Navigator.of(context);
+    final shouldShowRelaxReview =
+        todayTask.isTreatmentReviewFlowForWeek(1) &&
+        (userProvider.currentWeek > 1 ||
+            (userProvider.currentWeek == 1 &&
+                userProvider.mainCbtCompleted &&
+                userProvider.mainRelaxCompleted));
+
+    if (shouldShowRelaxReview) {
+      showCbtReviewToRelaxationDialog(
+        context: context,
+        weekNumber: 1,
+        onMoveNow: () {
+          nav.pop();
+          nav.pushReplacementNamed(
+            '/relaxation_start',
+            arguments: {
+              'sessionId': widget.sessionId,
+              'taskId': 'week1_education',
+              'weekNumber': 1,
+              'mp3Asset': 'week1.mp3',
+              'riveAsset': 'week1.riv',
+              'isReviewMode': true,
+            },
+          );
+        },
+        onFinish: () {
+          todayTask.clearTreatmentReviewFlow();
+          nav.pop();
+          nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+        },
+      );
+      return;
+    }
+
     final shouldShowTransition = shouldShowCbtToRelaxationTransition(
       currentWeek: userProvider.currentWeek,
       mainRelaxCompleted: userProvider.mainRelaxCompleted,
@@ -214,22 +250,28 @@ class _EducationPageState extends State<EducationPage> {
     );
 
     if (!shouldShowTransition) {
+      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
 
     showCbtToRelaxationDialog(
       context: context,
+      weekNumber: 1,
       onMoveNow: () {
         nav.pop();
         nav.pushReplacementNamed(
-          '/relaxation_education',
+          '/relaxation_start',
           arguments: {
             'sessionId': widget.sessionId,
             'taskId': 'week1_education',
             'weekNumber': 1,
             'mp3Asset': 'week1.mp3',
             'riveAsset': 'week1.riv',
+            'isReviewMode':
+                userProvider.currentWeek > 1 ||
+                (userProvider.currentWeek == 1 &&
+                    userProvider.mainRelaxCompleted),
           },
         );
       },
@@ -263,7 +305,7 @@ class _EducationPageState extends State<EducationPage> {
 
   @override
   Widget build(BuildContext context) {
-    String titleText = widget.title ?? '불안에 대한 교육';
+    String titleText = widget.title ?? '불안에 대한 이해';
     if (_slides.isNotEmpty) {
       final slide = _slides[currentIndex];
       if (!widget.isRelax) {

@@ -41,6 +41,18 @@ class TodayTaskProvider extends ChangeNotifier {
 
   bool _relaxationDone = false;
   bool get relaxationDone => _relaxationDone;
+  String _relaxationEntryModeToday = 'review';
+  String get relaxationEntryModeToday => _relaxationEntryModeToday;
+  bool get relaxationLearningToday => _relaxationEntryModeToday == 'learning';
+  int? _relaxationWeekNoToday;
+  int? get relaxationWeekNoToday => _relaxationWeekNoToday;
+
+  bool _treatmentReviewFlow = false;
+  int? _treatmentReviewWeekNo;
+  bool get treatmentReviewFlow => _treatmentReviewFlow;
+  int? get treatmentReviewWeekNo => _treatmentReviewWeekNo;
+  bool isTreatmentReviewFlowForWeek(int weekNo) =>
+      _treatmentReviewFlow && _treatmentReviewWeekNo == weekNo;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -141,6 +153,14 @@ class TodayTaskProvider extends ChangeNotifier {
     // 오늘 이완 여부
     final relaxFlag = data['has_relaxation_today'];
     _relaxationDone = relaxFlag == true;
+    final relaxModeRaw = data['relaxation_entry_mode_today'];
+    _relaxationEntryModeToday =
+        relaxModeRaw == 'learning' ? 'learning' : 'review';
+    final relaxWeekNoRaw = data['relaxation_week_no_today'];
+    _relaxationWeekNoToday =
+        relaxWeekNoRaw is int && relaxWeekNoRaw >= 1 && relaxWeekNoRaw <= 8
+            ? relaxWeekNoRaw
+            : null;
 
     await _loadDiaryDraftProgress(requestId: requestId);
 
@@ -216,6 +236,19 @@ class TodayTaskProvider extends ChangeNotifier {
     unawaited(_syncTodayTaskReminderState());
   }
 
+  void setTreatmentReviewFlow({required int weekNo}) {
+    _treatmentReviewFlow = true;
+    _treatmentReviewWeekNo = weekNo;
+    _notifyListenersSafely();
+  }
+
+  void clearTreatmentReviewFlow() {
+    if (!_treatmentReviewFlow && _treatmentReviewWeekNo == null) return;
+    _treatmentReviewFlow = false;
+    _treatmentReviewWeekNo = null;
+    _notifyListenersSafely();
+  }
+
   /// 로그아웃 등에서 상태 싹 초기화.
   void reset() {
     _requestId++;
@@ -223,6 +256,10 @@ class TodayTaskProvider extends ChangeNotifier {
     _diaryDone = false;
     _diaryDraftProgress = TodayTaskDraftProgress.none;
     _relaxationDone = false;
+    _relaxationEntryModeToday = 'review';
+    _relaxationWeekNoToday = null;
+    _treatmentReviewFlow = false;
+    _treatmentReviewWeekNo = null;
     _isLoading = false;
     _lastError = null;
     _notifyListenersSafely();

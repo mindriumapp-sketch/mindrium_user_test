@@ -5,7 +5,7 @@ const List<Map<String, String>> educationWeekContents = [
   {
     'title': '1주차',
     'summary': '불안을 이해하고, 몸을 천천히 편안하게 만드는 연습을 시작해요',
-    'session1Name': '불안에 대한 교육',
+    'session1Name': '불안에 대한 이해',
     'session1Duration': '약 10분',
     'session2Name': '점진적 이완',
     'session2Duration': '약 20분',

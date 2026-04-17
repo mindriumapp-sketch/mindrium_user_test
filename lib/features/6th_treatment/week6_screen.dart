@@ -9,8 +9,9 @@ import 'package:gad_app_team/data/user_provider.dart';
 
 class Week6Screen extends StatefulWidget {
   final String? sessionId;
+  final bool isReviewMode;
 
-  const Week6Screen({super.key, this.sessionId});
+  const Week6Screen({super.key, this.sessionId, this.isReviewMode = false});
 
   @override
   State<Week6Screen> createState() => _Week6ScreenState();
@@ -26,7 +27,9 @@ class _Week6ScreenState extends State<Week6Screen> {
     _sessionId = widget.sessionId;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeCreateEduSession();
+      if (!widget.isReviewMode) {
+        _maybeCreateEduSession();
+      }
     });
   }
 
@@ -34,6 +37,7 @@ class _Week6ScreenState extends State<Week6Screen> {
     if (!mounted) return;
     final user = context.read<UserProvider>();
     if (!user.isUserLoaded) return;
+    if (widget.isReviewMode) return;
 
     if (_sessionId != null && _sessionId!.isNotEmpty) {
       debugPrint('[Week6Screen] 기존 sessionId 그대로 사용: $_sessionId');
@@ -85,12 +89,16 @@ class _Week6ScreenState extends State<Week6Screen> {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
     final String? abcId = args['abcId'] as String?;
+    final weekDescription =
+        widget.isReviewMode
+            ? '6주차에서는 내 행동을 점검하고 불안에 도움이 되도록 바꾸는 연습을 했어요. 작성한 걱정일기의 내용을 바탕으로 복습해보겠습니다.'
+            : '이번 주차에서는 내 행동을 점검하고 불안에 도움이 되도록 바꿔보겠습니다. 작성한\n걱정일기의 내용을 살펴볼게요.';
 
     return SessionStartScreen(
       weekNumber: 6,
-      weekTitle: '불안 직면과 회피를 실습해보겠습니다.',
-      weekDescription:
-          '이번 주차에서는 불안을 직면하는 방법과\n회피하는 방법을 실습해보겠습니다. 작성하신 걱정일기의 내용을 살펴볼게요.',
+      isReviewMode: widget.isReviewMode,
+      weekTitle: '걱정일기 속 행동을 점검해보겠습니다.',
+      weekDescription: weekDescription,
       nextPageBuilder: () => Week6AbcScreen(abcId: abcId),
     );
   }

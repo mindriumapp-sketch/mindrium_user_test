@@ -6,11 +6,14 @@ import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week7_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
 class Week7FinalScreen extends StatefulWidget {
-  const Week7FinalScreen({super.key});
+  final String? sessionId;
+
+  const Week7FinalScreen({super.key, this.sessionId});
 
   @override
   State<Week7FinalScreen> createState() => _Week7FinalScreenState();
@@ -22,11 +25,18 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
   bool _isCompleting = false;
   String? _sessionId;
 
+  bool _isReviewMode(BuildContext context) {
+    final user = context.watch<UserProvider>();
+    return user.currentWeek > 7 ||
+        (user.currentWeek == 7 && user.mainCbtCompleted);
+  }
+
   @override
   void initState() {
     super.initState();
     _apiClient = ApiClient(tokens: TokenStorage());
     _week7Api = Week7Api(_apiClient);
+    _sessionId = widget.sessionId?.trim();
   }
 
   @override
@@ -91,7 +101,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
 
                                 // 🔢 결과 텍스트
                                 Text(
-                                  '계획을 완료하셨습니다!',
+                                  _isReviewMode(context) ? '계획을 다시 점검하셨습니다!' : '계획을 완료하셨습니다!',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 22,
@@ -125,6 +135,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                   child: NavigationButtons(
+                    rightLabel: '완료',
                     onBack: () => Navigator.pop(context),
                     onNext:
                         _isCompleting ? null : () => _showStartDialog(context),
@@ -143,6 +154,47 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
     final ctx = context;
     final nav = Navigator.of(ctx);
     final userProvider = ctx.read<UserProvider>();
+
+    if (_isReviewMode(context)) {
+      final todayTask = context.read<TodayTaskProvider>();
+      final shouldShowRelaxReview =
+          todayTask.isTreatmentReviewFlowForWeek(7) &&
+          (userProvider.currentWeek > 7 ||
+              (userProvider.currentWeek == 7 &&
+                  userProvider.mainCbtCompleted &&
+                  userProvider.mainRelaxCompleted));
+      if (shouldShowRelaxReview) {
+        showCbtReviewToRelaxationDialog(
+          context: ctx,
+          weekNumber: 7,
+          onMoveNow: () {
+            Navigator.of(ctx).pop();
+            nav.pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'taskId': 'week7_education',
+                'weekNumber': 7,
+                'mp3Asset': 'week7.mp3',
+                'riveAsset': 'week7.riv',
+                'isReviewMode': true,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(ctx).pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      todayTask.clearTreatmentReviewFlow();
+      Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
     final sessionId = await _ensureSessionId();
 
     // 완료 상태 저장
@@ -176,21 +228,27 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
       weekNumber: 7,
     );
     if (!shouldShowTransition) {
+      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
 
     showCbtToRelaxationDialog(
       context: ctx,
+      weekNumber: 7,
       onMoveNow: () {
         nav.pop();
         nav.pushReplacementNamed(
-          '/relaxation_education',
+          '/relaxation_start',
           arguments: {
             'taskId': 'week7_education',
             'weekNumber': 7,
             'mp3Asset': 'week7.mp3',
             'riveAsset': 'week7.riv',
+            'isReviewMode':
+                userProvider.currentWeek > 7 ||
+                (userProvider.currentWeek == 7 &&
+                    userProvider.mainRelaxCompleted),
           },
         );
       },
@@ -199,28 +257,6 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
 
   Future<String> _ensureSessionId() async {
     if (_sessionId != null && _sessionId!.isNotEmpty) return _sessionId!;
-
-    final existing = await _week7Api.fetchWeek7Session();
-    final existingId =
-        existing?['session_id']?.toString() ??
-        existing?['sessionId']?.toString();
-    if (existingId != null && existingId.isNotEmpty) {
-      _sessionId = existingId;
-      return existingId;
-    }
-
-    final created = await _week7Api.createWeek7Session(
-      totalScreens: 1,
-      lastScreenIndex: 1,
-      startTime: DateTime.now(),
-      completed: false,
-    );
-    final createdId =
-        created['session_id']?.toString() ?? created['sessionId']?.toString();
-    if (createdId == null || createdId.isEmpty) {
-      throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
-    }
-    _sessionId = createdId;
-    return createdId;
+    throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
   }
 }

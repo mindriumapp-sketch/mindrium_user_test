@@ -12,7 +12,9 @@ import 'package:gad_app_team/data/user_provider.dart';
 /// 🌊 2주차 시작 화면 (핵심 가치 + 활동 안내)
 class Week2Screen extends StatefulWidget {
   final String? sessionId;
-  const Week2Screen({super.key, this.sessionId});
+  final bool isReviewMode;
+
+  const Week2Screen({super.key, this.sessionId, this.isReviewMode = false});
 
   @override
   State<Week2Screen> createState() => _Week2ScreenState();
@@ -26,9 +28,10 @@ class _Week2ScreenState extends State<Week2Screen> {
   void initState() {
     super.initState();
     _sessionId = widget.sessionId;
-    // build 이후에 context.read 사용하려고 post frame으로 미룸
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeCreateEduSession();
+      if (!widget.isReviewMode) {
+        _maybeCreateEduSession();
+      }
     });
   }
 
@@ -40,6 +43,7 @@ class _Week2ScreenState extends State<Week2Screen> {
 
     // 아직 유저 정보 안 들어왔으면 그냥 패스
     if (!user.isUserLoaded) return;
+    if (widget.isReviewMode) return;
 
     // 이미 이 위젯 생명주기에서 한 번 만들었으면 또 안 함
     if (_sessionId != null && _sessionId!.isNotEmpty) {
@@ -86,12 +90,17 @@ class _Week2ScreenState extends State<Week2Screen> {
 
   @override
   Widget build(BuildContext context) {
+    final weekDescription =
+        widget.isReviewMode
+            ? '2주차에서는 불안이 발생하는 상황을 A(사건), B(생각), C(결과)로 나누어 분석하는 ABC 모델을 배웠어요.\n이번에는 그 내용을 복습해보겠습니다.'
+            : '이번 주차에서는 불안이 발생하는 상황을\nA(사건), B(생각), C(결과)로 나누어 분석하는 ABC 모델을 배워보겠습니다.';
+
     return SessionStartScreen(
       weekNumber: 2,
       weekTitle: 'ABC 모델을 통해\n불안을 기록해보겠습니다.',
-      weekDescription:
-          '이번 주차에서는 불안이 발생하는 상황을\nA(사건), B(생각), C(결과)로 나누어 분석하는 ABC 모델을 배워보겠습니다.',
+      weekDescription: weekDescription,
       mergeValueAndGuide: true,
+      isReviewMode: widget.isReviewMode,
       nextPageBuilder: () => AbcGuideScreen(sessionId: _sessionId),
     );
   }

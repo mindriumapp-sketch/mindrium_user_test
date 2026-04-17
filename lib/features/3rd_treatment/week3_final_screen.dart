@@ -6,12 +6,19 @@ import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
 class Week3FinalScreen extends StatelessWidget {
   final String? sessionId;
   const Week3FinalScreen({super.key, required this.sessionId});
+
+  Future<bool> _isReviewMode(BuildContext context) async {
+    final user = context.read<UserProvider>();
+    return user.currentWeek > 3 ||
+        (user.currentWeek == 3 && user.mainCbtCompleted);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +112,7 @@ class Week3FinalScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                   child: NavigationButtons(
+                    rightLabel: '완료',
                     onBack: () => Navigator.pop(context),
                     onNext: () => _showStartDialog(context),
                   ),
@@ -119,6 +127,52 @@ class Week3FinalScreen extends StatelessWidget {
 
   /// 🧘 이완 교육 다이얼로그 — CustomPopupDesign(확인 단일 버튼)
   Future<void> _showStartDialog(BuildContext context) async {
+    if (await _isReviewMode(context)) {
+      final todayTask = context.read<TodayTaskProvider>();
+      final user = context.read<UserProvider>();
+      final shouldShowRelaxReview =
+          todayTask.isTreatmentReviewFlowForWeek(3) &&
+          (user.currentWeek > 3 ||
+              (user.currentWeek == 3 &&
+                  user.mainCbtCompleted &&
+                  user.mainRelaxCompleted));
+      if (shouldShowRelaxReview) {
+        showCbtReviewToRelaxationDialog(
+          context: context,
+          weekNumber: 3,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'sessionId': sessionId,
+                'taskId': 'week3_education',
+                'weekNumber': 3,
+                'mp3Asset': 'week3.mp3',
+                'riveAsset': 'week3.riv',
+                'isReviewMode': true,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home_edu',
+              (_) => false,
+            );
+          },
+        );
+        return;
+      }
+
+      if (!context.mounted) return;
+      todayTask.clearTreatmentReviewFlow();
+      Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+      return;
+    }
+
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
     final userProvider = context.read<UserProvider>();
@@ -142,22 +196,28 @@ class Week3FinalScreen extends StatelessWidget {
     );
 
     if (!shouldShowTransition) {
+      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
 
     showCbtToRelaxationDialog(
       context: context,
+      weekNumber: 3,
       onMoveNow: () {
         nav.pop();
         nav.pushReplacementNamed(
-          '/relaxation_education',
+          '/relaxation_start',
           arguments: {
             'sessionId': sessionId,
             'taskId': 'week3_education',
             'weekNumber': 3,
             'mp3Asset': 'week3.mp3',
             'riveAsset': 'week3.riv',
+            'isReviewMode':
+                userProvider.currentWeek > 3 ||
+                (userProvider.currentWeek == 3 &&
+                    userProvider.mainRelaxCompleted),
           },
         );
       },

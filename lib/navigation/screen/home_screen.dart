@@ -501,7 +501,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onDestinationSelected: _onDestinationSelected,
             ),
           ),
-          if (_didResolveRequiredPermissionState && !_hasRequiredPermissions)
+          if (!_didResolveRequiredPermissionState)
+            const Positioned.fill(child: ColoredBox(color: Color(0xEFFFFFFF)))
+          else if (!_hasRequiredPermissions)
             Positioned.fill(
               child: _buildRequiredPermissionBlocker(
                 isChecking: _isCheckingPermissions,
@@ -537,22 +539,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _requestPermissions() async {
     if (_permissionsChecked) return;
-
-    final perms = <Permission>[
-      Permission.locationWhenInUse,
-      Permission.notification,
-    ];
-
-    for (final perm in perms) {
-      if (!await perm.isGranted) {
-        await perm.request();
-      }
-    }
-
-    // 알림 관련(플러그인/플랫폼) 권한은 홈 화면에서 선요청.
-    await AlarmNotificationService.instance.requestPermissions();
     await _syncAlarmSchedulesBestEffort();
-
     _permissionsChecked = true;
     await _refreshRequiredPermissionState();
   }
@@ -1012,8 +999,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return [
       ..._buildDiarySequenceTasks(todayTask),
       _buildRelaxationTask(
-        weekNumber: user.currentWeek,
+        weekNumber: todayTask.relaxationWeekNoToday ?? user.currentWeek,
         isDone: todayTask.relaxationDone,
+        isLearning: todayTask.relaxationLearningToday,
       ),
     ];
   }
@@ -1054,42 +1042,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   _DailyTask _buildRelaxationTask({
     required int weekNumber,
     required bool isDone,
+    required bool isLearning,
   }) {
     return _DailyTask(
-      title: '$weekNumber주차 이완 복습',
+      title: '$weekNumber주차 이완 ${isLearning ? '학습' : '복습'}',
       isDone: isDone,
       onTap: () => _openRelaxationTask(weekNumber),
     );
   }
 
   void _openRelaxationTask(int weekNumber) {
-    final taskId = 'daily_review';
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => CustomPopupDesign(
-            title: '이완 음성 안내 시작',
-            message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다. 주변 소리와 음량을 조절해보세요.',
-            positiveText: '확인',
-            negativeText: null,
-            backgroundAsset: null,
-            iconAsset: null,
-            onPositivePressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pushNamed(
-                '/relaxation_noti',
-                arguments: {
-                  'taskId': taskId,
-                  'weekNumber': weekNumber,
-                  'mp3Asset': 'week$weekNumber.mp3',
-                  'riveAsset': 'week$weekNumber.riv',
-                  'nextPage': '/home',
-                },
-              );
-            },
-          ), // TODO: 흰페이지의 이완에서 올려도 되려나 이거
+    final user = context.read<UserProvider>();
+    final isCurrentWeek = weekNumber == user.currentWeek;
+    final taskId =
+        isCurrentWeek && !user.mainRelaxCompleted
+            ? 'week${weekNumber}_education'
+            : 'daily_review';
+    Navigator.of(context).pushNamed(
+      '/relaxation_noti',
+      arguments: {
+        'taskId': taskId,
+        'weekNumber': weekNumber,
+        'mp3Asset': 'week$weekNumber.mp3',
+        'riveAsset': 'week$weekNumber.riv',
+        'nextPage': '/home',
+      },
     );
   }
 

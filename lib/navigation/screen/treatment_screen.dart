@@ -109,25 +109,46 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     final completedWeeks = <int>{for (int w = 1; w <= lastCompleted; w++) w};
 
     // TODO: 나중에 진짜 잠금 로직 쓰고 싶으면 여기서 currentWeek 기준으로 enabled 계산
-    final enabledList = List<bool>.generate(totalWeeks, (i) {
-      final weekNo = i + 1;
-      return weekNo <= currentWeek;
-    });
+    // final enabledList = List<bool>.generate(totalWeeks, (i) {
+    //   final weekNo = i + 1;
+    //   return weekNo <= currentWeek;
+    // });
 
-    // // 🔹 지금은 임시로 모두 오픈
-    // final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
+    // 🔹 지금은 임시로 모두 오픈
+    final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
 
     final weekContents = educationWeekContents;
 
-    final List<Widget> weekScreens = const [
-      Week1Screen(),
-      Week2Screen(),
-      Week3Screen(),
-      Week4Screen(),
-      Week5Screen(),
-      Week6Screen(),
-      Week7Screen(),
-      Week8Screen(),
+    final List<Widget> weekScreens = [
+      const Week1Screen(),
+      Week2Screen(
+        isReviewMode:
+            currentWeek > 2 || (currentWeek == 2 && user.mainCbtCompleted),
+      ),
+      Week3Screen(
+        isReviewMode:
+            currentWeek > 3 || (currentWeek == 3 && user.mainCbtCompleted),
+      ),
+      Week4Screen(
+        isReviewMode:
+            currentWeek > 4 || (currentWeek == 4 && user.mainCbtCompleted),
+      ),
+      Week5Screen(
+        isReviewMode:
+            currentWeek > 5 || (currentWeek == 5 && user.mainCbtCompleted),
+      ),
+      Week6Screen(
+        isReviewMode:
+            currentWeek > 6 || (currentWeek == 6 && user.mainCbtCompleted),
+      ),
+      Week7Screen(
+        isReviewMode:
+            currentWeek > 7 || (currentWeek == 7 && user.mainCbtCompleted),
+      ),
+      Week8Screen(
+        isReviewMode:
+            currentWeek > 8 || (currentWeek == 8 && user.mainCbtCompleted),
+      ),
     ];
 
     debugPrint(

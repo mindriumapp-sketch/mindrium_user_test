@@ -196,7 +196,7 @@ async def list_treatment_progress(
 
 @router.get(
     "/active",
-    response_model=Optional[TreatmentProgressResponse],
+    response_model=TreatmentProgressResponse,
     summary="현재 진행 중인 치료 진행 상태 조회",
 )
 async def get_active_treatment_progress(
@@ -211,7 +211,7 @@ async def get_active_treatment_progress(
         week_number=week_number,
     )
     if not progress:
-        return None
+        raise HTTPException(status_code=404, detail="Active treatment progress not found")
 
     return TreatmentProgressResponse(**_serialize_progress(progress))
 

@@ -12,6 +12,7 @@ final RouteObserver<PageRoute<dynamic>> week7RouteObserver =
     RouteObserver<PageRoute<dynamic>>();
 
 class Week7AddDisplayScreen extends StatefulWidget {
+  final String? sessionId;
   final String? initialBehavior;
 
   /// 6→7주차 진입 시 초기 자동 추가를 지연할지 여부 (기본: true)
@@ -19,6 +20,7 @@ class Week7AddDisplayScreen extends StatefulWidget {
 
   const Week7AddDisplayScreen({
     super.key,
+    this.sessionId,
     this.initialBehavior,
     this.deferInitialMarkAsAdded = true,
   });
@@ -374,7 +376,8 @@ class _Week7AddDisplayScreenState extends State<Week7AddDisplayScreen>
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const Week7PlanningScreen(),
+            pageBuilder:
+                (_, __, ___) => Week7PlanningScreen(sessionId: widget.sessionId),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),

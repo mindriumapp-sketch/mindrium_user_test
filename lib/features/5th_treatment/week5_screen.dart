@@ -9,8 +9,9 @@ import 'package:gad_app_team/data/user_provider.dart';
 
 class Week5Screen extends StatefulWidget {
   final String? sessionId;
+  final bool isReviewMode;
 
-  const Week5Screen({super.key, this.sessionId});
+  const Week5Screen({super.key, this.sessionId, this.isReviewMode = false});
 
   @override
   State<Week5Screen> createState() => _Week5ScreenState();
@@ -25,9 +26,10 @@ class _Week5ScreenState extends State<Week5Screen> {
     super.initState();
     _sessionId = widget.sessionId;
 
-    // build 이후에 context.read 쓰려고 post-frame으로 실행
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeCreateEduSession();
+      if (!widget.isReviewMode) {
+        _maybeCreateEduSession();
+      }
     });
   }
 
@@ -39,6 +41,7 @@ class _Week5ScreenState extends State<Week5Screen> {
 
     // 아직 유저 정보 안 들어왔으면 그냥 패스
     if (!user.isUserLoaded) return;
+    if (widget.isReviewMode) return;
 
     // 이미 sessionId 있으면 그대로 사용
     if (_sessionId != null && _sessionId!.isNotEmpty) {
@@ -92,11 +95,16 @@ class _Week5ScreenState extends State<Week5Screen> {
 
   @override
   Widget build(BuildContext context) {
+    final weekDescription =
+        widget.isReviewMode
+            ? '5주차에서는 불안을 직면하는 것과 회피하는 것의 차이를 배웠어요.\n이번에는 그 내용을 복습해보겠습니다.'
+            : '이번 주차에서는 불안을 직면하는 것과\n회피하는 것의 차이점을 구분해보겠습니다.';
+
     return SessionStartScreen(
       weekNumber: 5,
+      isReviewMode: widget.isReviewMode,
       weekTitle: '불안 직면과 회피에 대해 알아보겠습니다.',
-      weekDescription:
-          '이번 주차에서는 불안을 직면하는 것과\n회피하는 것의 차이점을 구분해보겠습니다.',
+      weekDescription: weekDescription,
       nextPageBuilder: () => Week5ClassificationScreen(sessionId: _sessionId),
     );
   }

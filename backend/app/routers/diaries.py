@@ -7,6 +7,7 @@ from core.today_task_draft_progress import (
     COMPLETED_DRAFT_PROGRESS,
     TODAY_TASK_ROUTE,
     completed_draft_progress_filter,
+    is_completed_draft_progress,
     is_incomplete_draft_progress,
 )
 from core.utils import kst_midnight, parse_datetime_value, ensure_utc
@@ -431,7 +432,7 @@ async def create_diary(
 
     if (
         payload.route == TODAY_TASK_ROUTE
-        and payload.draft_progress == completed_draft_progress_filter()
+        and is_completed_draft_progress(payload.draft_progress)
     ):
         await _sync_treatment_progress_daily_diary(
             db=db,
@@ -837,8 +838,8 @@ async def update_diary(
     old_draft_progress = diary.get("draft_progress")
     if (
         updated_doc.get("route") == TODAY_TASK_ROUTE
-        and updated_doc.get("draft_progress") == completed_draft_progress_filter()
-        and old_draft_progress != completed_draft_progress_filter()
+        and is_completed_draft_progress(updated_doc.get("draft_progress"))
+        and not is_completed_draft_progress(old_draft_progress)
     ):
         await _sync_treatment_progress_daily_diary(
             db=db,

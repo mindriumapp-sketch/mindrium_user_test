@@ -9,7 +9,8 @@ import 'package:gad_app_team/data/user_provider.dart';
 
 class Week7Screen extends StatefulWidget {
   final String? sessionId;
-  const Week7Screen({super.key, this.sessionId});
+  final bool isReviewMode;
+  const Week7Screen({super.key, this.sessionId, this.isReviewMode = false});
 
   @override
   State<Week7Screen> createState() => _Week7ScreenState();
@@ -26,7 +27,9 @@ class _Week7ScreenState extends State<Week7Screen> {
     _sessionId = widget.sessionId;
     _week7Api = Week7Api(ApiClient(tokens: TokenStorage()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeEnsureWeek7Session();
+      if (!widget.isReviewMode) {
+        _maybeEnsureWeek7Session();
+      }
     });
   }
 
@@ -34,6 +37,7 @@ class _Week7ScreenState extends State<Week7Screen> {
     if (!mounted) return;
     final user = context.read<UserProvider>();
     if (!user.isUserLoaded) return;
+    if (widget.isReviewMode) return;
 
     if (_sessionId != null && _sessionId!.isNotEmpty) {
       debugPrint('[Week7Screen] 기존 sessionId 그대로 사용: $_sessionId');
@@ -85,12 +89,17 @@ class _Week7ScreenState extends State<Week7Screen> {
 
   @override
   Widget build(BuildContext context) {
+    final weekDescription =
+        widget.isReviewMode
+            ? '7주차에서는 일상생활에서 불안을 관리할 수 있는 생활 습관을 배웠어요.\n이번에는 그 내용을 다시 복습해보겠습니다.'
+            : '이번 주차에서는 일상생활에서 불안을 관리할 수 있는 생활 습관을 개선해보겠습니다.';
+
     return SessionStartScreen(
       weekNumber: 7,
+      isReviewMode: widget.isReviewMode,
       weekTitle: '생활 습관을 개선해보겠습니다.',
-      weekDescription:
-          '이번 주차에서는 일상생활에서 불안을 관리할 수 있는 생활 습관을 개선해보겠습니다.',
-      nextPageBuilder: () => Week7AddDisplayScreen(),
+      weekDescription: weekDescription,
+      nextPageBuilder: () => Week7AddDisplayScreen(sessionId: _sessionId),
     );
   }
 }

@@ -85,6 +85,8 @@ class _PracticePlayerState extends State<PracticePlayer>
   bool _finalSaved = false;
   Timer? _autosaveTimer;
   bool _audioStartedOnce = false;
+  bool _volumeGuideShown = false;
+  bool _canStartPlayback = false;
 
   // ✅ 현재 활성 상태가 시작된 시점
   DateTime? _lastActivityTime;
@@ -104,6 +106,38 @@ class _PracticePlayerState extends State<PracticePlayer>
     _captureStartLocation();
 
     _startAutosaveTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showVolumeGuideIfNeeded();
+    });
+  }
+
+  void _showVolumeGuideIfNeeded() {
+    if (!mounted || _volumeGuideShown) return;
+    _volumeGuideShown = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => PopScope(
+            canPop: false,
+            child: CustomPopupDesign(
+              title: '이완 음성 안내 시작',
+              message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+              positiveText: '확인',
+              negativeText: null,
+              backgroundAsset: null,
+              iconAsset: null,
+              onPositivePressed: () {
+                Navigator.of(context).pop();
+                _canStartPlayback = true;
+                unawaited(_startAudioOnce());
+                if (_riveController != null) {
+                  _riveController!.active = true;
+                }
+              },
+            ),
+          ),
+    );
   }
 
   void _startAutosaveTimer() {
@@ -139,7 +173,7 @@ class _PracticePlayerState extends State<PracticePlayer>
   }
 
   Future<void> _startAudioOnce() async {
-    if (_audioStartedOnce) return;
+    if (_audioStartedOnce || !_canStartPlayback) return;
     _audioStartedOnce = true;
     await _audioPlayer.setSource(AssetSource('relaxation/${widget.mp3Asset}'));
     await _audioPlayer.setVolume(0.8);
@@ -159,6 +193,7 @@ class _PracticePlayerState extends State<PracticePlayer>
   }
 
   void _togglePlay() {
+    if (!_canStartPlayback) return;
     if (_isPlaying) {
       _lastActivityTime = null; // 활성 시간 측정 중지
       _audioPlayer.pause();
@@ -231,7 +266,7 @@ class _PracticePlayerState extends State<PracticePlayer>
         builder:
             (_) => CustomPopupDesign(
               title: '이완이 완료되었습니다',
-              message: '잘하셨어요. 10초 후 홈으로 이동합니다.',
+              message: '잘하셨어요. 10초 후 교육 홈으로 이동합니다.',
               positiveText: '지금 이동',
               autoPositiveAfter: const Duration(seconds: 10),
               negativeText: null,
@@ -246,6 +281,7 @@ class _PracticePlayerState extends State<PracticePlayer>
 
     showRelaxationToCbtDialog(
       context: context,
+      weekNumber: widget.weekNumber,
       onMoveNow: () {
         nav.pop();
         nav.pushReplacement(
@@ -271,8 +307,9 @@ class _PracticePlayerState extends State<PracticePlayer>
       if (widget.taskId == 'daily_review') {
         await userProvider.refreshProgress();
         todayTaskProvider.setTodayTaskLocally(relaxationDone: true);
-      } else if (widget.taskId.contains('_education')) {
+      } else if (widget.taskId.endsWith('_education')) {
         await userProvider.refreshProgress();
+        todayTaskProvider.setTodayTaskLocally(relaxationDone: true);
       }
 
       await _handleAfterEducationRelaxationComplete();
@@ -343,11 +380,13 @@ class _PracticePlayerState extends State<PracticePlayer>
                               _checkIfBothFinished();
                             }
                           });
-                          // 시작
-                          _riveController!.active = true;
+                          // 확인 전에는 애니메이션도 멈춰 둔다.
+                          _riveController!.active = _canStartPlayback;
                         }
 
-                        _startAudioOnce();
+                        if (_canStartPlayback) {
+                          _startAudioOnce();
+                        }
                       }
 
                       return rive.RiveWidget(

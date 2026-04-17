@@ -11,7 +11,8 @@ import 'package:gad_app_team/features/3rd_treatment/week3_classification_screen.
 
 class Week3Screen extends StatefulWidget {
   final String? sessionId;
-  const Week3Screen({super.key, this.sessionId});
+  final bool isReviewMode;
+  const Week3Screen({super.key, this.sessionId, this.isReviewMode = false});
 
   @override
   State<Week3Screen> createState() => _Week3ScreenState();
@@ -26,9 +27,10 @@ class _Week3ScreenState extends State<Week3Screen> {
     super.initState();
     _sessionId = widget.sessionId;
 
-    // build 이후에 context 관련 이슈 없도록 post-frame에서 실행
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeCreateEduSession();
+      if (!widget.isReviewMode) {
+        _maybeCreateEduSession();
+      }
     });
   }
 
@@ -40,6 +42,7 @@ class _Week3ScreenState extends State<Week3Screen> {
 
     // 아직 유저 정보 안 들어왔으면 그냥 패스
     if (!user.isUserLoaded) return;
+    if (widget.isReviewMode) return;
 
     // 이미 이 위젯 생명주기에서 한 번 만들었으면 또 안 함
     if (_sessionId != null && _sessionId!.isNotEmpty) {
@@ -91,12 +94,17 @@ class _Week3ScreenState extends State<Week3Screen> {
 
   @override
   Widget build(BuildContext context) {
+    final weekDescription =
+        widget.isReviewMode
+            ? '3주차에서는 어떤 생각이 불안에 도움이 되는지를 배우고, 내 생각을 도움이 되는 방향으로 바꾸는 연습을 했어요.\n이번에는 그 내용을 복습해보겠습니다.'
+            : '이번 주차에서는 어떤 생각이 불안에 도움 되는지를 배우고, 내 생각을 도움이 되는 방향으로 바꿔보겠습니다.';
+
     // 👉 UI/분기는 기존이랑 동일하게 유지
     return SessionStartScreen(
       weekNumber: 3,
+      isReviewMode: widget.isReviewMode,
       weekTitle: '불안에 도움이 되는 생각을\n알아보겠습니다.',
-      weekDescription:
-          '이번 주차에서는 어떤 생각이 불안에 도움 되는지를 배우고, 내 생각을 도움이 되는 방향으로 바꿔보겠습니다.',
+      weekDescription: weekDescription,
       nextPageBuilder: () => Week3ClassificationScreen(sessionId: _sessionId),
     );
   }

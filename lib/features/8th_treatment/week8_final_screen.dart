@@ -8,6 +8,7 @@ import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/week8_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -24,6 +25,12 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
   bool _isSavingCompletion = false;
   String? _sessionId;
   static const int _totalScreens = 10;
+
+  Future<bool> _isReviewMode() async {
+    final user = context.read<UserProvider>();
+    return user.currentWeek > 8 ||
+        (user.currentWeek == 8 && user.mainCbtCompleted);
+  }
 
   @override
   void initState() {
@@ -124,6 +131,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                   child: NavigationButtons(
+                    rightLabel: '완료',
                     onBack: () => Navigator.pop(context),
                     // onNext: () => _showStartDialog(context),
                     onNext: _isSavingCompletion ? null : _saveCompletionAndExit,
@@ -142,6 +150,51 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
     setState(() => _isSavingCompletion = true);
 
     try {
+      if (await _isReviewMode()) {
+        final todayTask = context.read<TodayTaskProvider>();
+        final shouldShowRelaxReview =
+            todayTask.isTreatmentReviewFlowForWeek(8) &&
+            (context.read<UserProvider>().currentWeek > 8 ||
+                (context.read<UserProvider>().currentWeek == 8 &&
+                    context.read<UserProvider>().mainCbtCompleted &&
+                    context.read<UserProvider>().mainRelaxCompleted));
+        if (shouldShowRelaxReview) {
+          showCbtReviewToRelaxationDialog(
+            context: context,
+            weekNumber: 8,
+            onMoveNow: () {
+              Navigator.of(context).pop();
+              Navigator.pushReplacementNamed(
+                context,
+                '/relaxation_start',
+                arguments: {
+                  'taskId': 'week8_education',
+                  'weekNumber': 8,
+                  'mp3Asset': 'week8.mp3',
+                  'riveAsset': 'week8.riv',
+                  'isReviewMode': true,
+                },
+              );
+            },
+            onFinish: () {
+              todayTask.clearTreatmentReviewFlow();
+              Navigator.of(context).pop();
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/home_edu',
+                (_) => false,
+              );
+            },
+          );
+          return;
+        }
+
+        if (!mounted) return;
+        todayTask.clearTreatmentReviewFlow();
+        Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+        return;
+      }
+
       final sessionId = await _ensureSessionId();
       await _week8Api.updateCompletion(
         sessionId: sessionId,
@@ -161,22 +214,27 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
         weekNumber: 8,
       );
       if (!shouldShowTransition) {
+        context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
         Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
         return;
       }
 
       showCbtToRelaxationDialog(
         context: context,
+        weekNumber: 8,
         onMoveNow: () {
           Navigator.of(context).pop();
           Navigator.pushReplacementNamed(
             context,
-            '/relaxation_education',
+            '/relaxation_start',
             arguments: {
               'taskId': 'week8_education',
               'weekNumber': 8,
               'mp3Asset': 'week8.mp3',
               'riveAsset': 'week8.riv',
+              'isReviewMode':
+                  user.currentWeek > 8 ||
+                  (user.currentWeek == 8 && user.mainRelaxCompleted),
             },
           );
         },

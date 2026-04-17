@@ -10,7 +10,8 @@ import 'package:gad_app_team/data/user_provider.dart';
 
 class Week8Screen extends StatefulWidget {
   final String? sessionId;
-  const Week8Screen({super.key, this.sessionId});
+  final bool isReviewMode;
+  const Week8Screen({super.key, this.sessionId, this.isReviewMode = false});
 
   @override
   State<Week8Screen> createState() => _Week8ScreenState();
@@ -28,7 +29,9 @@ class _Week8ScreenState extends State<Week8Screen> {
     _sessionId = widget.sessionId;
     _week8Api = Week8Api(ApiClient(tokens: TokenStorage()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeEnsureWeek8Session();
+      if (!widget.isReviewMode) {
+        _maybeEnsureWeek8Session();
+      }
     });
   }
 
@@ -36,6 +39,7 @@ class _Week8ScreenState extends State<Week8Screen> {
     if (!mounted) return;
     final user = context.read<UserProvider>();
     if (!user.isUserLoaded) return;
+    if (widget.isReviewMode) return;
     setState(() => _userName = user.userName);
 
     if (_sessionId != null && _sessionId!.isNotEmpty) {
@@ -94,6 +98,7 @@ class _Week8ScreenState extends State<Week8Screen> {
 
     return SessionStartScreen(
       weekNumber: 8,
+      isReviewMode: widget.isReviewMode,
       weekTitle: '마인드리움 교육 프로그램을\n모두 완료하셨습니다!',
       weekDescription: weekDescription,
       nextPageBuilder: () => const Week8RoadmapScreen(),

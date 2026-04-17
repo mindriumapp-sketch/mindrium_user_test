@@ -176,7 +176,7 @@ class _SeaArchivePageState extends State<SeaArchivePage>
               if (groups.isEmpty) {
                 return const Center(
                   child: Text(
-                    '아직 아카이브된 캐릭터가 없어요.',
+                    '아직 걱정 캐릭터가 없어요.',
                     style: TextStyle(color: Colors.white),
                   ),
                 );
@@ -234,7 +234,7 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                             ],
                           ),
                           child: const Text(
-                            '물고기를 클릭하면 내 불안을 확인할 수 있어요.',
+                            '캐릭터를 클릭하면 내 불안을 확인할 수 있어요.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: 'Pretendard',
@@ -318,7 +318,7 @@ class _SmoothFishState extends State<_SmoothFish>
   late Offset _vel;
   bool _facingRight = true;
   Duration? _lastTick;
-  static const double speed = 35.0;
+  static const double speed = 20.0;
   static const double fishSize = 85.0;
 
   double get _maxX => (widget.area.width - fishSize).clamp(0, double.infinity);

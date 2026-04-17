@@ -161,7 +161,7 @@ class _Week8RoadmapScreenState extends State<Week8RoadmapScreen> {
   Map<String, String> _getWeekData(int week) {
     switch (week) {
       case 1:
-        return {'title': '1회차: 불안에 대한 교육', 'description': '가치를 돌아보고 불안을 이해하기'};
+        return {'title': '1회차: 불안에 대한 이해', 'description': '가치를 돌아보고 불안을 이해하기'};
       case 2:
         return {
           'title': '2회차: ABC 모델',

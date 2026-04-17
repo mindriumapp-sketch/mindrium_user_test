@@ -11,9 +11,7 @@ class TreatmentProgressApi {
   }) async {
     final res = await _client.dio.get(
       '/treatment-progress',
-      queryParameters: {
-        if (weekNumber != null) 'week_number': weekNumber,
-      },
+      queryParameters: {if (weekNumber != null) 'week_number': weekNumber},
     );
 
     final data = res.data;
@@ -31,11 +29,10 @@ class TreatmentProgressApi {
     );
   }
 
-  Future<Map<String, dynamic>?> getActiveTreatmentProgress() async {
+  Future<Map<String, dynamic>> getActiveTreatmentProgress() async {
     final res = await _client.dio.get('/treatment-progress/active');
     final data = res.data;
 
-    if (data == null) return null;
     if (data is Map<String, dynamic>) return data;
 
     throw DioException(

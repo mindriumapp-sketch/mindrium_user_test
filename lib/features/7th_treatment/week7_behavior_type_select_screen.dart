@@ -9,11 +9,13 @@ import 'package:gad_app_team/features/7th_treatment/week7_reason_input_screen.da
 class Week7BehaviorTypeSelectScreen extends StatefulWidget {
   final String behavior;
   final String chipId;
+  final String? sessionId;
 
   const Week7BehaviorTypeSelectScreen({
     super.key,
     required this.behavior,
     required this.chipId,
+    this.sessionId,
   });
 
   @override
@@ -40,6 +42,7 @@ class _Week7BehaviorTypeSelectScreenState
             (_, __, ___) => Week7ReasonInputScreen(
               behavior: widget.behavior,
               chipId: widget.chipId,
+              sessionId: widget.sessionId,
             ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
@@ -125,4 +128,3 @@ class _Week7BehaviorTypeSelectScreenState
     );
   }
 }
-

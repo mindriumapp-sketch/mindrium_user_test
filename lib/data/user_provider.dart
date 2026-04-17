@@ -333,25 +333,19 @@ class UserProvider extends ChangeNotifier {
     }
 
     try {
-      final activeProgress =
-          await _treatmentProgressApi.getActiveTreatmentProgress();
+      final activeProgress = await _treatmentProgressApi.getActiveTreatmentProgress();
       if (requestId != _requestId) return;
-      if (activeProgress != null) {
-        final activeWeekRaw = activeProgress['week_number'];
-        if (activeWeekRaw is int) {
-          _currentWeek = activeWeekRaw;
-        } else if (activeWeekRaw is num) {
-          _currentWeek = activeWeekRaw.toInt();
-        }
-
-        final mainEduSessionId = activeProgress['edu_session_id']?.toString();
-        final mainRelaxationTaskId = activeProgress['relaxation_task_id']?.toString();
-        _mainCbtCompleted = mainEduSessionId != null && mainEduSessionId.isNotEmpty;
-        _mainRelaxCompleted = mainRelaxationTaskId != null && mainRelaxationTaskId.isNotEmpty;
-      } else {
-        _mainCbtCompleted = false;
-        _mainRelaxCompleted = false;
+      final activeWeekRaw = activeProgress['week_number'];
+      if (activeWeekRaw is int) {
+        _currentWeek = activeWeekRaw;
+      } else if (activeWeekRaw is num) {
+        _currentWeek = activeWeekRaw.toInt();
       }
+
+      final mainEduSessionId = activeProgress['edu_session_id']?.toString();
+      final mainRelaxationTaskId = activeProgress['relaxation_task_id']?.toString();
+      _mainCbtCompleted = mainEduSessionId != null && mainEduSessionId.isNotEmpty;
+      _mainRelaxCompleted = mainRelaxationTaskId != null && mainRelaxationTaskId.isNotEmpty;
     } catch (e) {
       if (requestId != _requestId) return;
       debugPrint('UserProvider.activeTreatmentProgress 조회 실패: $e');
