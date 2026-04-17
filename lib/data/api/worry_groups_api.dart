@@ -5,18 +5,6 @@ class WorryGroupsApi {
   final ApiClient _client;
   WorryGroupsApi(this._client);
 
-  // 공통: client_timestamp 붙이기
-  Map<String, dynamic> _withClientTimestamp(
-      Map<String, dynamic> body, {
-        DateTime? clientTimestamp,
-      }) {
-    return {
-      ...body,
-      'client_timestamp':
-      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
-    };
-  }
-
   /// 모든 걱정 그룹 조회
   /// - includeArchived = true 이면 archived 포함
   Future<List<Map<String, dynamic>>> listWorryGroups({
@@ -24,9 +12,7 @@ class WorryGroupsApi {
   }) async {
     final res = await _client.dio.get(
       '/worry-groups',
-      queryParameters: {
-        if (includeArchived) 'include_archived': true,
-      },
+      queryParameters: {if (includeArchived) 'include_archived': true},
     );
 
     final data = res.data;
@@ -64,7 +50,6 @@ class WorryGroupsApi {
     required String groupTitle,
     String groupContents = '',
     required int characterId,
-    DateTime? clientTimestamp,
   }) async {
     final base = <String, dynamic>{
       'group_title': groupTitle,
@@ -72,12 +57,7 @@ class WorryGroupsApi {
       'character_id': characterId,
     };
 
-    final payload = _withClientTimestamp(
-      base,
-      clientTimestamp: clientTimestamp,
-    );
-
-    final res = await _client.dio.post('/worry-groups', data: payload);
+    final res = await _client.dio.post('/worry-groups', data: base);
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
 
@@ -90,14 +70,12 @@ class WorryGroupsApi {
   /// 걱정 그룹 업데이트
   ///
   /// 백엔드 WorryGroupUpdate:
-  /// - group_title?, group_contents?, character_id?, client_timestamp (필수)
   Future<Map<String, dynamic>> updateWorryGroup(
-      String groupId, {
-        String? groupTitle,
-        String? groupContents,
-        int? characterId,
-        DateTime? clientTimestamp,
-      }) async {
+    String groupId, {
+    String? groupTitle,
+    String? groupContents,
+    int? characterId,
+  }) async {
     final base = <String, dynamic>{
       if (groupTitle != null) 'group_title': groupTitle,
       if (groupContents != null) 'group_contents': groupContents,
@@ -109,15 +87,7 @@ class WorryGroupsApi {
       throw ArgumentError('updateWorryGroup: 업데이트할 필드가 없습니다.');
     }
 
-    final payload = _withClientTimestamp(
-      base,
-      clientTimestamp: clientTimestamp,
-    );
-
-    final res = await _client.dio.put(
-      '/worry-groups/$groupId',
-      data: payload,
-    );
+    final res = await _client.dio.put('/worry-groups/$groupId', data: base);
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
 
@@ -130,20 +100,8 @@ class WorryGroupsApi {
   /// 걱정 그룹 아카이브 (소프트 삭제)
   ///
   /// POST /worry-groups/{group_id}/archive
-  /// body: { client_timestamp }
-  Future<Map<String, dynamic>> archiveWorryGroup(
-      String groupId, {
-        DateTime? clientTimestamp,
-      }) async {
-    final payload = _withClientTimestamp(
-      <String, dynamic>{},
-      clientTimestamp: clientTimestamp,
-    );
-
-    final res = await _client.dio.post(
-      '/worry-groups/$groupId/archive',
-      data: payload,
-    );
+  Future<Map<String, dynamic>> archiveWorryGroup(String groupId) async {
+    final res = await _client.dio.post('/worry-groups/$groupId/archive');
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -174,20 +132,8 @@ class WorryGroupsApi {
   /// 걱정 그룹 완전 삭제 (하드 삭제)
   ///
   /// DELETE /worry-groups/{group_id}
-  /// body: { client_timestamp }
-  Future<Map<String, dynamic>> deleteWorryGroup(
-      String groupId, {
-        DateTime? clientTimestamp,
-      }) async {
-    final payload = _withClientTimestamp(
-      <String, dynamic>{},
-      clientTimestamp: clientTimestamp,
-    );
-
-    final res = await _client.dio.delete(
-      '/worry-groups/$groupId',
-      data: payload,
-    );
+  Future<Map<String, dynamic>> deleteWorryGroup(String groupId) async {
+    final res = await _client.dio.delete('/worry-groups/$groupId');
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;

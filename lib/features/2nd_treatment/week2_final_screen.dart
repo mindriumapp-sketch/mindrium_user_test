@@ -2,15 +2,14 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
-import 'package:gad_app_team/data/api/relaxation_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 
 class Week2FinalScreen extends StatefulWidget {
   final String? sessionId;
-
   const Week2FinalScreen({super.key, this.sessionId});
 
   @override
@@ -20,54 +19,109 @@ class Week2FinalScreen extends StatefulWidget {
 class _Week2FinalScreenState extends State<Week2FinalScreen> {
   bool _isCompleting = false;
 
+  Future<bool> _isReviewMode() async {
+    final user = context.read<UserProvider>();
+    return user.currentWeek > 2 ||
+        (user.currentWeek == 2 && user.mainCbtCompleted);
+  }
+
   Future<void> _onNextPressed() async {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
 
+    if (await _isReviewMode()) {
+      final todayTask = context.read<TodayTaskProvider>();
+      final user = context.read<UserProvider>();
+      final shouldShowRelaxReview =
+          todayTask.isTreatmentReviewFlowForWeek(2) &&
+          (user.currentWeek > 2 ||
+              (user.currentWeek == 2 &&
+                  user.mainCbtCompleted &&
+                  user.mainRelaxCompleted));
+      if (shouldShowRelaxReview) {
+        showCbtReviewToRelaxationDialog(
+          context: context,
+          weekNumber: 2,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.pushReplacementNamed(
+              context,
+              '/relaxation_start',
+              arguments: {
+                'sessionId': widget.sessionId,
+                'taskId': 'week2_education',
+                'weekNumber': 2,
+                'mp3Asset': 'week2.mp3',
+                'riveAsset': 'week2.riv',
+                'isReviewMode': true,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home_edu',
+              (_) => false,
+            );
+          },
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      todayTask.clearTreatmentReviewFlow();
+      Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+      return;
+    }
+
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
-    final relaxApi = RelaxationApi(client);
-
+    final userProvider = context.read<UserProvider>();
     try {
       await eduApi.completeWeekSession(
         weekNumber: 2,
         totalStages: 15,
         sessionId: widget.sessionId,
       );
-      if (mounted) {
-        context.read<TodayTaskProvider>().setEducationWeekSessionLocally(
-          weekNumber: 2,
-          cbtDone: true,
-          educationDoneWeek: true,
-          lastEducationAt: DateTime.now(),
-        );
-      }
+      await userProvider.refreshProgress();
     } catch (e) {
       debugPrint('[Week2Final] edu-session 완료 처리 실패: $e');
     }
 
-    bool isRelaxDone = false;
-    try {
-      isRelaxDone = await relaxApi.isWeekEducationTaskCompleted(2);
-    } catch (e) {
-      debugPrint('[Week2Final] relaxation 완료 조회 실패: $e');
-    }
-
     if (!mounted) return;
-    if (isRelaxDone) {
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 2,
+    );
+    if (!shouldShowTransition) {
+      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
       Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
       return;
     }
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/relaxation_education',
-      arguments: {
-        'sessionId': widget.sessionId,
-        'taskId': 'week2_education',
-        'weekNumber': 2,
-        'mp3Asset': 'week2.mp3',
-        'riveAsset': 'week2.riv',
+    showCbtToRelaxationDialog(
+      context: context,
+      weekNumber: 2,
+      onMoveNow: () {
+        Navigator.of(context).pop();
+        Navigator.pushReplacementNamed(
+          context,
+          '/relaxation_start',
+          arguments: {
+            'sessionId': widget.sessionId,
+            'taskId': 'week2_education',
+            'weekNumber': 2,
+            'mp3Asset': 'week2.mp3',
+            'riveAsset': 'week2.riv',
+            'isReviewMode':
+                userProvider.currentWeek > 2 ||
+                (userProvider.currentWeek == 2 &&
+                    userProvider.mainRelaxCompleted),
+          },
+        );
       },
     );
   }
@@ -79,6 +133,7 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
       cardTitle: '불안 일기 작성 완료',
       onBack: () => Navigator.pop(context),
       onNext: _isCompleting ? null : _onNextPressed,
+      rightLabel: '완료',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -101,7 +156,7 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
           ),
           const SizedBox(height: 14),
           const Text(
-            '이제부터 불안을 느낄 때면 차분히 일기를 써 보세요.', // TODO:임시
+            '불안을 느낄 때마다 차분히 일기를 쓰며, 내 마음의 흐름을 살펴 보세요.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,

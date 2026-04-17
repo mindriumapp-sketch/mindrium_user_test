@@ -69,10 +69,23 @@ class HomeWidgetTutorialController {
     required String normalizedUserId,
   }) {
     if (_shownThisSession || _checkScheduled) return false;
-    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    if (!_supportsAutoTutorialPlatform) return false;
     if (completedWeeks < unlockWeek) return false;
     if (normalizedUserId.isEmpty) return false;
     return true;
+  }
+
+  bool get _supportsAutoTutorialPlatform {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+        return true;
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+        return false;
+    }
   }
 
   Future<void> _showOnceIfNeeded({

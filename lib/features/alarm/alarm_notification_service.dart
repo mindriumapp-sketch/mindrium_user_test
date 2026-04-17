@@ -754,7 +754,6 @@ class AlarmNotificationService {
     required DateTime? todayDate,
     required bool diaryDone,
     required bool relaxationDone,
-    DateTime? lastEducationAt,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(todayTaskReminderPreferenceKey, enabled);
@@ -768,7 +767,6 @@ class AlarmNotificationService {
       todayDate: todayDate,
       diaryDone: diaryDone,
       relaxationDone: relaxationDone,
-      lastEducationAt: lastEducationAt,
     );
   }
 
@@ -834,7 +832,6 @@ class AlarmNotificationService {
     required DateTime? todayDate,
     required bool diaryDone,
     required bool relaxationDone,
-    DateTime? lastEducationAt,
   }) async {
     await initialize();
     await _cancelTodayTaskInactivitySchedule();
@@ -846,10 +843,7 @@ class AlarmNotificationService {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = _todayTaskLastActiveDateKey(prefs);
     final referenceDate = _normalizeKstDate(todayDate ?? _currentKstDate());
-    final performedToday =
-        diaryDone ||
-        relaxationDone ||
-        _isSameKstDateInSeoul(lastEducationAt, referenceDate);
+    final performedToday = diaryDone || relaxationDone;
 
     final storedLastActive = _decodeStoredDate(prefs.getString(storageKey));
     final lastActiveDate =
@@ -1305,14 +1299,6 @@ class AlarmNotificationService {
 
   DateTime _normalizeKstDate(DateTime value) {
     return DateTime(value.year, value.month, value.day);
-  }
-
-  bool _isSameKstDateInSeoul(DateTime? timestamp, DateTime referenceDate) {
-    if (timestamp == null) return false;
-    final targetKst = timestamp.toUtc().add(const Duration(hours: 9));
-    return targetKst.year == referenceDate.year &&
-        targetKst.month == referenceDate.month &&
-        targetKst.day == referenceDate.day;
   }
 
   String _todayTaskLastActiveDateKey(SharedPreferences prefs) {

@@ -72,12 +72,14 @@ class Week7Api {
   Future<Map<String, dynamic>> upsertClassificationItem({
     required String sessionId,
     required String chipId,
+    String? label,
     required String classification, // "confront" or "avoid"
     String? reason,
     Map<String, dynamic>? analysis,
   }) async {
     final payload = <String, dynamic>{
       'chip_id': chipId,
+      if (label != null && label.isNotEmpty) 'label': label,
       'category': classification,
       if (reason != null) 'reason': reason,
       if (analysis != null) 'analysis': analysis,
@@ -122,6 +124,30 @@ class Week7Api {
     );
   }
 
+  Future<List<Map<String, dynamic>>> fetchWeek7SessionsByPeriod({
+    required DateTime startAt,
+    required DateTime endAt,
+  }) async {
+    final res = await _client.dio.get(
+      '/edu-sessions',
+      queryParameters: {
+        'week_number': 7,
+        'start_at': _encodeDateTime(startAt),
+        'end_at': _encodeDateTime(endAt),
+      },
+    );
+    final data = res.data;
+
+    if (data is List) {
+      return data.map((raw) => parseEduSessionResponse(raw)).toList();
+    }
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid /edu-sessions (week7 period) response',
+    );
+  }
+
   /// 단일 7주차 세션 조회 (session_id 기준)
   Future<Map<String, dynamic>> getWeek7Session(String sessionId) async {
     final res = await _client.dio.get('/edu-sessions/$sessionId');
@@ -140,12 +166,14 @@ class Week7Api {
   Future<Map<String, dynamic>> upsertBehaviorItem({
     required String sessionId,
     required String chipId,
+    String? label,
     required String category,
     String? reason,
     Map<String, dynamic>? analysis,
   }) async {
     final payload = <String, dynamic>{
       'chip_id': chipId,
+      if (label != null && label.isNotEmpty) 'label': label,
       'category': category,
       if (reason != null && reason.isNotEmpty) 'reason': reason,
       if (analysis != null) 'analysis': analysis,

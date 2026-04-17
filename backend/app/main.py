@@ -220,19 +220,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARN] screen_time 인덱스 생성 중 오류: {e}")
 
-    # ---------- schedule_events 컬렉션 ----------
-    try:
-        schedule_events = db["schedule_events"]
-
-        await schedule_events.create_index("user_id")
-
-        await schedule_events.create_index(
-            [("user_id", 1), ("start_date", 1)],
-            name="idx_schedule_user_start_date",
-        )
-        print("[OK] schedule_events 인덱스 생성 완료")
-    except Exception as e:
-        print(f"[WARN] schedule_events 인덱스 생성 중 오류 (이미 존재할 수 있음): {e}")
 
     # ---------- edu_sessions 컬렉션 ----------
     # 주차별 세션 히스토리/통계 조회용 (여러 세션 허용)

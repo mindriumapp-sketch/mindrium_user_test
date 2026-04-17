@@ -47,7 +47,6 @@ async def ensure_default_worry_group(db, user_id: str) -> None:
         "archived": False,
         "diary_count": 0,
         "sud_sum": 0.0,
-        "client_timestamp": now_utc,
     }
 
     await collection.insert_one(doc)
@@ -253,7 +252,6 @@ async def create_worry_group(
         "archived": False,
         "diary_count": 0,
         "sud_sum": 0.0,
-        "client_timestamp": ensure_utc(payload.client_timestamp),
     }
 
     await collection.insert_one(new_group)
@@ -281,14 +279,11 @@ async def update_worry_group(
     update_data = payload.model_dump(
         exclude_unset=True,
         by_alias=True,
-        exclude={"client_timestamp"},
     )
     if not update_data:
         raise HTTPException(status_code=400, detail="수정할 필드가 없습니다")
 
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
-
     update_data["updated_at"] = now_utc
 
     doc = await collection.find_one_and_update(
@@ -296,7 +291,6 @@ async def update_worry_group(
         {
             "$set": {
                 **update_data,
-                "client_timestamp": client_ts_utc,
             }
         },
         return_document=ReturnDocument.AFTER,
@@ -325,15 +319,12 @@ async def archive_worry_group(
     collection = db[WORRY_GROUP_COLLECTION]
 
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
-
     doc = await collection.find_one_and_update(
         {"group_id": group_id, "user_id": user_id},
         {
             "$set": {
                 "archived": True,
                 "updated_at": now_utc,
-                "client_timestamp": client_ts_utc,
             }
         },
         return_document=ReturnDocument.AFTER,
@@ -375,7 +366,6 @@ async def delete_worry_group(
         raise HTTPException(status_code=404, detail="그룹을 찾을 수 없습니다")
 
     return {
-        "client_timestamp": ensure_utc(payload.client_timestamp),
         "deleted_at": datetime.now(timezone.utc),
     }
 
@@ -471,4 +461,3 @@ async def recompute_group_stats(
         "sud_sum": sud_sum,
         "avg_sud": avg_sud,
     }
-

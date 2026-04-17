@@ -338,12 +338,9 @@ class Week4ClassificationScreenState extends State<Week4ClassificationScreen> {
       onNext: _onNext,
       topChild: buildTopPanel(),
       bottomChild: buildBottomPanel(),
-      middleBannerText: '지금 믿는 정도를 숫자로 골라주세요.\n가장 가까운 느낌이면 충분해요.',
       pagePadding: const EdgeInsets.fromLTRB(28, 18, 28, 18),
       panelsGap: 10,
       panelPadding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      height: 112,
-      topPadding: 0,
     );
   }
 }

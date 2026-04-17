@@ -7,7 +7,6 @@ import 'week4_anxiety_screen.dart';
 import 'week4_final_screen.dart';
 
 // ✅ UI 위젯
-import 'package:gad_app_team/widgets/jellyfish_notice.dart';
 import 'package:gad_app_team/widgets/quiz_card.dart'; // 본문 카드
 import 'package:gad_app_team/widgets/choice_card_button.dart'; // 선택 버튼(라벨 고정)
 
@@ -114,17 +113,7 @@ class Week4SkipChoiceScreen extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // =========================
-                      // 2) 해파리 위치/시간 풍선
-                      // =========================
-                      JellyfishNotice(
-                        feedback:
-                            '만약 지금은 부담스러우시다면,\n걱정일기에 가볍게 적어두고 다음에 \n이어가도 좋아요.',
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // =========================
-                      // 3) 선택 버튼들 (라벨은 위젯 고정값)
+                      // 2) 선택 버튼들 (라벨은 위젯 고정값)
                       //    - 파란(healthy): 메인 액션
                       //    - 분홍(anxious): 보조 액션
                       // =========================

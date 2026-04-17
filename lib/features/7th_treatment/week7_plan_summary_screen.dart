@@ -7,8 +7,13 @@ import 'package:gad_app_team/features/7th_treatment/week7_final_screen.dart';
 
 class Week7PlanSummaryScreen extends StatefulWidget {
   final List<String> plannedBehaviors;
+  final String? sessionId;
 
-  const Week7PlanSummaryScreen({super.key, required this.plannedBehaviors});
+  const Week7PlanSummaryScreen({
+    super.key,
+    required this.plannedBehaviors,
+    this.sessionId,
+  });
 
   @override
   State<Week7PlanSummaryScreen> createState() => _Week7PlanSummaryScreenState();
@@ -137,7 +142,8 @@ class _Week7PlanSummaryScreenState extends State<Week7PlanSummaryScreen> {
               Navigator.push(
                 context,
                 PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const Week7FinalScreen(),
+                  pageBuilder:
+                      (_, __, ___) => Week7FinalScreen(sessionId: widget.sessionId),
                   transitionDuration: Duration.zero,
                   reverseTransitionDuration: Duration.zero,
                 ),

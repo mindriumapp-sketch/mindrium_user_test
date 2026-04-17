@@ -7,7 +7,6 @@ import 'week4_alternative_thoughts.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 
 // ✅ 동일 UI 컴포넌트 (SkipChoice와 통일)
-import 'package:gad_app_team/widgets/jellyfish_notice.dart';
 import 'package:gad_app_team/widgets/quiz_card.dart';
 import 'package:gad_app_team/widgets/choice_card_button.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
@@ -99,13 +98,6 @@ class Week4ClassificationResultScreen extends StatelessWidget {
     ]);
     final bool hasMoreThoughts = safeRemainingBList.isNotEmpty;
 
-    // 안내 문구/버튼 라벨
-    final supportText =
-        isFromApply
-            ? '만약 지금은 좀 부담스러우시다면,\n다음번에 해도 괜찮아요.'
-            : hasMoreThoughts
-            ? '선택한 걱정일기에 적어주신 생각을 하나씩 차분하게 살펴보며,\n각 생각마다 도움이 되는 생각을 찾아볼게요.'
-            : '이 생각에 대해 도움이 되는 생각을 정리한 뒤\n오늘 활동을 마무리해볼게요.';
     final primaryButtonLabel =
         isFromApply ? '다른 생각도 이어서 볼게요!' : '도움이 되는 생각을 적어볼게요!';
 
@@ -209,12 +201,7 @@ class Week4ClassificationResultScreen extends StatelessWidget {
 
                       const SizedBox(height: 16),
 
-                      // 2) 해파리 말풍선
-                      JellyfishNotice(feedback: supportText),
-
-                      const SizedBox(height: 20),
-
-                      // 3) 선택 버튼들 (ChoiceCardButton 사용)
+                      // 2) 선택 버튼들 (ChoiceCardButton 사용)
                       ChoiceCardButton(
                         // 메인 액션(파란)
                         type: ChoiceType.other,

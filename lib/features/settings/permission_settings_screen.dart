@@ -3,7 +3,14 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class PermissionSettingsScreen extends StatefulWidget {
-  const PermissionSettingsScreen({super.key});
+  final bool onboardingMode;
+  final String nextRoute;
+
+  const PermissionSettingsScreen({
+    super.key,
+    this.onboardingMode = false,
+    this.nextRoute = '/home',
+  });
 
   @override
   State<PermissionSettingsScreen> createState() =>
@@ -53,6 +60,9 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
 
   bool _isGranted(PermissionStatus status) => status.isGranted;
 
+  bool get _hasRequiredPermissions =>
+      _isGranted(_notificationStatus) && _isGranted(_locationStatus);
+
   Future<void> _requestRequiredPermission({
     required String label,
     required Permission permission,
@@ -60,9 +70,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
   }) async {
     if (!desiredValue) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$label 권한은 치료 진행을 위해 필수예요. 해제할 수 없어요.'),
-        ),
+        SnackBar(content: Text('$label 권한은 치료 진행을 위해 필수예요. 해제할 수 없어요.')),
       );
       await _refreshStatuses();
       return;
@@ -89,6 +97,30 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
       ),
     );
     await _refreshStatuses();
+  }
+
+  Future<void> _continueFromOnboarding() async {
+    if (_isLoading) return;
+
+    if (!_isGranted(_notificationStatus)) {
+      await _requestRequiredPermission(
+        label: '알림',
+        permission: Permission.notification,
+        desiredValue: true,
+      );
+    }
+    if (!_isGranted(_locationStatus)) {
+      await _requestRequiredPermission(
+        label: '위치',
+        permission: Permission.locationWhenInUse,
+        desiredValue: true,
+      );
+    }
+
+    if (!mounted) return;
+    if (!_hasRequiredPermissions) return;
+
+    Navigator.pushNamedAndRemoveUntil(context, widget.nextRoute, (_) => false);
   }
 
   Future<void> _requestOptionalPermission({
@@ -134,9 +166,10 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: '권한 설정',
-        showHome: true,
+        showBack: !widget.onboardingMode,
+        showHome: !widget.onboardingMode,
         confirmOnBack: false,
         confirmOnHome: false,
         centerTitle: true,
@@ -232,6 +265,13 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                     icon: const Icon(Icons.open_in_new_rounded),
                     label: const Text('시스템 권한 설정 열기'),
                   ),
+                  if (widget.onboardingMode) ...[
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      onPressed: _continueFromOnboarding,
+                      child: const Text('권한 설정 완료'),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -346,6 +346,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
     _noLocTime = false;
     _abcId = widget.abcId;
     _resolvedSudId = widget.sudId;
+    _draftTime = _buildDefaultTimeSetting();
     unawaited(_loadExisting());
     _openGroupScreenOnEntryIfNeeded();
   }
@@ -511,9 +512,9 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
   }
 
   Future<void> _applyPickedLocation(
-      LocTimeSetting setting, {
-        bool saveAfterPick = false,
-      }) async {
+    LocTimeSetting setting, {
+    bool saveAfterPick = false,
+  }) async {
     if (!mounted) return;
 
     final withRepeat = setting.copyWith(
@@ -566,12 +567,12 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
       MaterialPageRoute(
         builder:
             (_) => MapPicker(
-          initial: _buildInitialLatLng(),
-          initialTime: _draftTime?.time ?? _draftLocation?.time,
-          enableLocationLabel: true,
-          initialLocationLabel: _draftLocation?.location,
-          sheetInitialSize: 0.6,
-        ),
+              initial: _buildInitialLatLng(),
+              initialTime: _draftTime?.time ?? _draftLocation?.time,
+              enableLocationLabel: true,
+              initialLocationLabel: _draftLocation?.location,
+              sheetInitialSize: 0.6,
+            ),
       ),
     );
 
@@ -671,9 +672,12 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
 
     try {
       await _diariesApi.updateDiary(diaryId, {
-        'latitude': pos.latitude,
-        'longitude': pos.longitude,
-        if (addressKo != null) 'address_name': addressKo,
+        'loc_time': {
+          'latitude': pos.latitude,
+          'longitude': pos.longitude,
+          if (addressKo != null) 'location': addressKo,
+          if (addressKo != null) 'location_desc': addressKo,
+        },
       });
       debugPrint(
         '🟢 일기 위치 백그라운드 업데이트 완료: $diaryId '
@@ -739,10 +743,10 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
         merged = _draftLocation!.copyWith(
           time: _draftTime?.time ?? _draftLocation!.time,
           repeatOption:
-          _draftTime?.repeatOption ?? _draftLocation!.repeatOption,
+              _draftTime?.repeatOption ?? _draftLocation!.repeatOption,
           weekdays: _draftTime?.weekdays ?? _draftLocation!.weekdays,
           reminderMinutes:
-          _draftLocation!.reminderMinutes ?? _draftTime?.reminderMinutes,
+              _draftLocation!.reminderMinutes ?? _draftTime?.reminderMinutes,
           notifyEnter: hasLocationTrigger ? _draftLocation!.notifyEnter : true,
           notifyExit: hasLocationTrigger ? _draftLocation!.notifyExit : false,
         );
@@ -844,8 +848,8 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
     if (!mounted) return;
     final resolvedDiaryRoute = _resolveDiaryRoute();
     final route = MaterialPageRoute(
-      builder: (_) =>
-          AbcGroupAddScreen(
+      builder:
+          (_) => AbcGroupAddScreen(
             origin: widget.origin ?? 'etc',
             diaryRoute: resolvedDiaryRoute,
             diaryId: diaryId,
@@ -866,85 +870,85 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final body =
-    widget.autoOpenMapOnEntry
-        ? (_isLoadingInitialLocTime
-        ? const ColoredBox(
-      color: Color(0xFFF1F3F6),
-      child: Center(
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2.4),
-        ),
-      ),
-    )
-        : MapPicker(
-      initial: _buildInitialLatLng(),
-      initialTime: _draftTime?.time ?? _draftLocation?.time,
-      enableLocationLabel: true,
-      initialLocationLabel: _draftLocation?.location,
-      sheetInitialSize: 0.6,
-      embedInParent: true,
-      onConfirmed: (setting) async {
-        await _applyPickedLocation(setting, saveAfterPick: true);
-      },
-      onBackPressed: _popWithResolvedIds,
-    ))
-        : Stack(
-      fit: StackFit.expand,
-      children: [
-        Opacity(
-          opacity: 0.35,
-          child: Image.asset(
-            'assets/image/eduhome.png',
-            fit: BoxFit.cover,
-            filterQuality: FilterQuality.high,
-          ),
-        ),
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
+        widget.autoOpenMapOnEntry
+            ? (_isLoadingInitialLocTime
+                ? const ColoredBox(
+                  color: Color(0xFFF1F3F6),
+                  child: Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    ),
+                  ),
+                )
+                : MapPicker(
+                  initial: _buildInitialLatLng(),
+                  initialTime: _draftTime?.time ?? _draftLocation?.time,
+                  enableLocationLabel: true,
+                  initialLocationLabel: _draftLocation?.location,
+                  sheetInitialSize: 0.6,
+                  embedInParent: true,
+                  onConfirmed: (setting) async {
+                    await _applyPickedLocation(setting, saveAfterPick: true);
+                  },
+                  onBackPressed: _popWithResolvedIds,
+                ))
+            : Stack(
+              fit: StackFit.expand,
               children: [
-                Expanded(
-                  child: LocTimeSelectionUI(
-                    label: widget.label,
-                    draftTime: _draftTime,
-                    draftLocation: _draftLocation,
-                    noLocTime: _noLocTime,
-                    repeatOption: _repeatOption,
-                    selectedWeekdays: _selectedWeekdays,
-                    reminderDuration: _reminderDuration,
-                    onTapTime: () {},
-                    onTapLocation: () {
-                      _showLocationSheet();
-                    },
-                    onTapRepeat: () {},
-                    onTapReminder: () {},
-                    onToggleNone: (value) {
-                      setState(() {
-                        _noLocTime = value;
-                      });
-                    },
-                    showInlineTimePicker: true,
-                    onInlineTimeChanged: _updateDraftTime,
-                    onSave: _onSavePressed,
-                    showReminderOption: false,
-                    showDisableLocTimeOption: false,
-                    showRepeatOption: false,
+                Opacity(
+                  opacity: 0.35,
+                  child: Image.asset(
+                    'assets/image/eduhome.png',
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.high,
                   ),
                 ),
-                if (_isSaving)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: CircularProgressIndicator(),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: LocTimeSelectionUI(
+                            label: widget.label,
+                            draftTime: _draftTime,
+                            draftLocation: _draftLocation,
+                            noLocTime: _noLocTime,
+                            repeatOption: _repeatOption,
+                            selectedWeekdays: _selectedWeekdays,
+                            reminderDuration: _reminderDuration,
+                            onTapTime: () {},
+                            onTapLocation: () {
+                              _showLocationSheet();
+                            },
+                            onTapRepeat: () {},
+                            onTapReminder: () {},
+                            onToggleNone: (value) {
+                              setState(() {
+                                _noLocTime = value;
+                              });
+                            },
+                            showInlineTimePicker: true,
+                            onInlineTimeChanged: _updateDraftTime,
+                            onSave: _onSavePressed,
+                            showReminderOption: false,
+                            showDisableLocTimeOption: false,
+                            showRepeatOption: false,
+                          ),
+                        ),
+                        if (_isSaving)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: CircularProgressIndicator(),
+                          ),
+                      ],
+                    ),
                   ),
+                ),
               ],
-            ),
-          ),
-        ),
-      ],
-    );
+            );
 
     return Scaffold(
       extendBodyBehindAppBar: true,

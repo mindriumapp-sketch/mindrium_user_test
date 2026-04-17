@@ -6,38 +6,20 @@ class SudApi {
   final ApiClient _client;
   SudApi(this._client);
 
-  // 공통: body에 client_timestamp 붙이는 헬퍼
-  Map<String, dynamic> _withClientTimestamp(
-      Map<String, dynamic> body, {
-        DateTime? clientTimestamp,
-      }) {
-    return {
-      ...body,
-      'client_timestamp':
-      (clientTimestamp ?? DateTime.now().toUtc()).toIso8601String(),
-    };
-  }
-
   Future<Map<String, dynamic>> createSudScore({
     required String diaryId,
     required int beforeScore,
     int? afterScore,
-    DateTime? clientTimestamp,
   }) async {
     final base = <String, dynamic>{
       'before_sud': beforeScore,
       if (afterScore != null) 'after_sud': afterScore,
     };
 
-    final payload = _withClientTimestamp(
-      base,
-      clientTimestamp: clientTimestamp,
-    );
-
     final res = await _client.dio.post(
       '/sud-scores',
       queryParameters: {'diary_id': diaryId},
-      data: payload,
+      data: base,
     );
 
     final data = res.data;
@@ -69,21 +51,15 @@ class SudApi {
     required String sudId,
     int? beforeScore,
     int? afterScore,
-    DateTime? clientTimestamp,
   }) async {
     final base = <String, dynamic>{
       if (beforeScore != null) 'before_sud': beforeScore,
       if (afterScore != null) 'after_sud': afterScore,
     };
 
-    final payload = _withClientTimestamp(
-      base,
-      clientTimestamp: clientTimestamp,
-    );
-
     final res = await _client.dio.put(
       '/sud-scores/$diaryId/$sudId',
-      data: payload,
+      data: base,
     );
 
     final data = res.data;
@@ -98,9 +74,7 @@ class SudApi {
     required String diaryId,
     required String sudId,
   }) async {
-    final res = await _client.dio.delete(
-      '/sud-scores/$diaryId/$sudId',
-    );
+    final res = await _client.dio.delete('/sud-scores/$diaryId/$sudId');
 
     // 백엔드가 204 No Content 돌려줄 예정
     if (res.statusCode == 204 || res.statusCode == 200) {
@@ -110,15 +84,15 @@ class SudApi {
     throw DioException(
       requestOptions: res.requestOptions,
       message:
-      'Invalid /sud-scores delete response (status: ${res.statusCode})',
+          'Invalid /sud-scores delete response (status: ${res.statusCode})',
     );
   }
-// ---------------------------------------------------------------------------
-// (추후 사용용) SUD 주차별 / 일별 통계 API
-// 주석만 풀면 바로 사용 가능
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // (추후 사용용) SUD 주차별 / 일별 통계 API
+  // 주석만 풀면 바로 사용 가능
+  // ---------------------------------------------------------------------------
 
-/*
+  /*
   /// 주차별 평균 SUD 통계 조회
   ///
   /// GET /sud-scores/stats/weekly

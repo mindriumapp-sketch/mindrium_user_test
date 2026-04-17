@@ -8,16 +8,15 @@ class CustomTagBase(BaseModel):
     type: Literal["A", "B", "CP", "CE", "CA"]
 
 class CustomTagCreate(CustomTagBase):
-    client_timestamp: datetime
+    pass
 
 class CustomTagUpdate(BaseModel):
     label: Optional[str] = None
     type: Optional[Literal["A", "B", "CP", "CE", "CA"]] = None
     is_preset: Optional[bool] = None
-    client_timestamp: datetime
 
 class CustomTagDelete(BaseModel):
-    client_timestamp: datetime
+    pass
 
 class CustomTagResponse(BaseModel):
     chip_id: str

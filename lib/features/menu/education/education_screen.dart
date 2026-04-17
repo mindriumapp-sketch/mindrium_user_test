@@ -176,7 +176,7 @@ class _EducationScreenState extends State<EducationScreen> {
                 child: Column(
                   children: [
                     CustomAppBar(
-                      title: '불안에 대한 교육',
+                      title: '불안에 대한 이해',
                       maxTitleLines: 2,
                       titleAlign: TextAlign.start,
                       showHome: true,
@@ -321,7 +321,7 @@ class _EducationScreenState extends State<EducationScreen> {
                       MaterialPageRoute(
                         builder:
                             (_) => EducationPage(
-                              title: '불안에 대한 교육',
+                              title: '불안에 대한 이해',
                               jsonPrefixes: [
                                 'week1_part1_',
                                 'week1_part2_',
@@ -377,7 +377,7 @@ class _EducationScreenState extends State<EducationScreen> {
                   MaterialPageRoute(
                     builder:
                         (_) => EducationPage(
-                          title: '불안에 대한 교육',
+                          title: '불안에 대한 이해',
                           jsonPrefixes: [
                             'week1_part1_',
                             'week1_part2_',

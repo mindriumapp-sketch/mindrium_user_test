@@ -26,6 +26,7 @@ import 'package:gad_app_team/features/other/before_survey.dart';
 import 'package:gad_app_team/features/other/splash_screen.dart';
 import 'package:gad_app_team/features/other/tutorial_screen.dart';
 import 'package:gad_app_team/features/settings/setting_screen.dart';
+import 'package:gad_app_team/features/settings/permission_settings_screen.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
 import 'package:gad_app_team/features/alarm/alarm_settings_screen.dart';
 import 'package:gad_app_team/features/alarm/notification_launch_coordinator.dart';
@@ -44,6 +45,7 @@ import 'package:gad_app_team/features/menu/education/education5.dart';
 import 'package:gad_app_team/features/menu/education/education6.dart';
 import 'package:gad_app_team/features/menu/education/education7.dart';
 
+import 'package:gad_app_team/features/menu/relaxation/relaxation_education.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_start.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_noti.dart';
 import 'package:gad_app_team/contents/before_sud_screen.dart';
@@ -145,6 +147,8 @@ class MyApp extends StatelessWidget {
         '/settings': (context) => const SettingsScreen(),
         '/account_management': (context) => const AccountManagementScreen(),
         '/alarm_settings': (context) => const AlarmSettingsScreen(),
+        '/permission_onboarding':
+            (context) => const PermissionSettingsScreen(onboardingMode: true),
         '/education': (context) => const EducationScreen(),
         '/education1': (context) => const Education1Page(),
         '/education2': (context) => const Education2Page(),
@@ -161,7 +165,7 @@ class MyApp extends StatelessWidget {
           final weekNumber = args['weekNumber'] as int? ?? 1;
           final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
           final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
-          return RelaxationStartScreen(
+          return PracticePlayer(
             sessionId: sessionId,
             taskId: taskId,
             weekNumber: weekNumber,
@@ -169,13 +173,31 @@ class MyApp extends StatelessWidget {
             riveAsset: riveAsset,
           );
         },
+        '/relaxation_start': (context) {
+          final args =
+              (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
+          final sessionId = args['sessionId'] as String?;
+          final taskId = args['taskId'] as String? ?? 'week1_education';
+          final weekNumber = args['weekNumber'] as int? ?? 1;
+          final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
+          final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
+          final isReviewMode = args['isReviewMode'] as bool?;
+          return RelaxationStartScreen(
+            sessionId: sessionId,
+            taskId: taskId,
+            weekNumber: weekNumber,
+            mp3Asset: mp3Asset,
+            riveAsset: riveAsset,
+            isReviewMode: isReviewMode,
+          );
+        },
         '/relaxation_noti': (context) {
           final args =
               (ModalRoute.of(context)!.settings.arguments as Map?) ?? {};
           final taskId = args['taskId'] as String? ?? 'daily_review';
           final weekNumber = args['weekNumber'] as int?;
-          final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
-          final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
+          final mp3Asset = args['mp3Asset'] as String? ?? 'noti.mp3';
+          final riveAsset = args['riveAsset'] as String? ?? 'noti.riv';
           final nextPage = args['nextPage'] as String? ?? '/home';
           return NotiPlayer(
             taskId: taskId,

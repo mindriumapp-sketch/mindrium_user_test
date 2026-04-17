@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:provider/provider.dart';
 
 Future<int> syncTodayTaskDraftState(
@@ -24,8 +25,14 @@ Future<int> syncTodayTaskDraftState(
     return effective;
   }
 
+  final resolvedDiaryDone =
+      diaryDone ?? TodayTaskDraftProgress.isCompleted(effective);
+  if (resolvedDiaryDone) {
+    await context.read<UserProvider>().refreshProgress();
+  }
+
   context.read<TodayTaskProvider>().setTodayTaskLocally(
-    diaryDone: diaryDone ?? TodayTaskDraftProgress.isCompleted(effective),
+    diaryDone: resolvedDiaryDone,
     diaryDraftProgress: effective,
   );
   return effective;

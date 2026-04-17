@@ -1,15 +1,18 @@
 // lib/features/3rd_treatment/week3_visual_screen.dart
 
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:gad_app_team/widgets/thought_card.dart'; // ThoughtCard / ThoughtType
+import 'package:gad_app_team/widgets/thought_card.dart';
+import 'package:gad_app_team/widgets/detail_popup.dart';
 import 'package:gad_app_team/widgets/navigation_button.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
-import 'package:gad_app_team/widgets/blue_banner.dart'; // JellyfishBanner
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:gad_app_team/widgets/blue_banner.dart';
+import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/widgets/session_transition_dialog.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class Week3VisualScreen extends StatefulWidget {
   final String? sessionId;
@@ -32,6 +35,12 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
   late final EduSessionsApi _eduSessionsApi;
   bool _isSaving = false;
 
+  Future<bool> _isReviewMode() async {
+    final user = context.read<UserProvider>();
+    return user.currentWeek > 3 ||
+        (user.currentWeek == 3 && user.mainCbtCompleted);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -39,33 +48,97 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     _eduSessionsApi = EduSessionsApi(_client);
   }
 
-  void _showStartDialog() {
-    showDialog(
+  Future<void> _showStartDialog() async {
+    if (await _isReviewMode()) {
+      final todayTask = context.read<TodayTaskProvider>();
+      final user = context.read<UserProvider>();
+      final shouldShowRelaxReview =
+          todayTask.isTreatmentReviewFlowForWeek(3) &&
+          (user.currentWeek > 3 ||
+              (user.currentWeek == 3 &&
+                  user.mainCbtCompleted &&
+                  user.mainRelaxCompleted));
+      if (shouldShowRelaxReview) {
+        showCbtReviewToRelaxationDialog(
+          context: context,
+          weekNumber: 3,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'sessionId': widget.sessionId,
+                'taskId': 'week3_education',
+                'weekNumber': 3,
+                'mp3Asset': 'week3.mp3',
+                'riveAsset': 'week3.riv',
+                'isReviewMode': true,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      todayTask.clearTreatmentReviewFlow();
+      Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
+    final userProvider = context.read<UserProvider>();
+    final nav = Navigator.of(context);
+
+    try {
+      await _eduSessionsApi.completeWeekSession(
+        weekNumber: 3,
+        totalStages: 12,
+        sessionId: widget.sessionId,
+      );
+      await userProvider.refreshProgress();
+    } catch (e) {
+      debugPrint('[Week3Visual] edu-session 완료 처리 실패: $e');
+    }
+
+    if (!mounted) return;
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 3,
+    );
+    if (!shouldShowTransition) {
+      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
+    showCbtToRelaxationDialog(
       context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => CustomPopupDesign(
-        title: '이완 음성 안내 시작',
-        message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
-        positiveText: '확인',
-        negativeText: null,
-        backgroundAsset: null,
-        iconAsset: null,
-        onPositivePressed: () {
-          Navigator.pop(context);
-          Navigator.pushReplacementNamed(
-            context,
-            '/relaxation_education',
-            arguments: {
-              'sessionId': widget.sessionId,
-              'taskId': 'week3_education',
-              'weekNumber': 3,
-              'mp3Asset': 'week1.mp3',
-              'riveAsset': 'week1.riv',
-            },
-          );
-        },
-      ),
+      weekNumber: 3,
+      onMoveNow: () {
+        nav.pop();
+        nav.pushReplacementNamed(
+          '/relaxation_start',
+          arguments: {
+            'sessionId': widget.sessionId,
+            'taskId': 'week3_education',
+            'weekNumber': 3,
+            'mp3Asset': 'week3.mp3',
+            'riveAsset': 'week3.riv',
+            'isReviewMode':
+                userProvider.currentWeek > 3 ||
+                (userProvider.currentWeek == 3 &&
+                    userProvider.mainRelaxCompleted),
+          },
+        );
+      },
     );
   }
 
@@ -110,51 +183,120 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     }
   }
 
-  // 상단 패널: 도움이 되는 생각
+  void _showChipsPopup({
+    required String title,
+    required List<String> chips,
+    required ThoughtType thoughtType,
+  }) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => DetailPopup(
+            title: title,
+            positiveText: '돌아가기',
+            negativeText: null,
+            onPositivePressed: () => Navigator.pop(context),
+            child:
+                chips.isEmpty
+                    ? const Text(
+                      '입력된 항목이 없어요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        color: Color(0xFF356D91),
+                      ),
+                    )
+                    : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children:
+                          chips.map((text) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ThoughtBubble(
+                                text: text,
+                                type: thoughtType,
+                              ),
+                            );
+                          }).toList(),
+                    ),
+          ),
+    );
+  }
+
   Widget _buildTopPanel() {
     return _buildThoughtSection(
-      title: '도움이 되는 생각',
+      title: '내게 도움이 되는 생각',
       chips: widget.alternativeChips,
       thoughtType: ThoughtType.helpful,
     );
   }
 
-  // 하단 패널: 도움이 되지 않는 생각
   Widget _buildBottomPanel() {
     return _buildThoughtSection(
-      title: '도움이 되지 않는 생각',
+      title: '내게 도움이 되지 않는 생각',
       chips: widget.previousChips,
       thoughtType: ThoughtType.unhelpful,
     );
   }
 
-  /// chips가 3개 초과일 때는 3개만 보여주고 '자세히 보기'
   Widget _buildThoughtSection({
     required String title,
     required List<String> chips,
     required ThoughtType thoughtType,
   }) {
     final String displayText =
-    chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
+        chips.isEmpty ? '아직 입력한 내용이 없어요.' : chips.join('\n\n');
     final bool isHelpful = thoughtType == ThoughtType.helpful;
     final Color accentColor =
-    isHelpful ? const Color(0xFF62BFE7) : const Color(0xFFF29B94);
+        isHelpful ? const Color(0xFF62BFE7) : const Color(0xFFF29B94);
     final Color softBgColor =
-    isHelpful ? const Color(0xFFEAF8FF) : const Color(0xFFFFF1EF);
+        isHelpful ? const Color(0xFFEAF8FF) : const Color(0xFFFFF1EF);
     final IconData leadingIcon =
-    isHelpful ? Icons.chat_bubble_rounded : Icons.error_outline_rounded;
+        isHelpful ? Icons.chat_bubble_rounded : Icons.error_outline_rounded;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2C4A7A),
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Icon(leadingIcon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2C4A7A),
+                ),
+              ),
+            ),
+          ],
         ),
+        if (isHelpful) ...[
+          const SizedBox(height: 6),
+          const Padding(
+            padding: EdgeInsets.only(left: 42),
+            child: Text(
+              '이번에 정리한 내용입니다.\n나중에 다시 생각해보며 바꿀 수 있어요.',
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.45,
+                color: Color(0xFF5F748A),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Container(
           width: double.infinity,
@@ -170,32 +312,6 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Icon(leadingIcon, color: accentColor, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      isHelpful ? '내가 적은 도움이 되는 생각' : '내가 적은 도움이 되지 않는 생각',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: accentColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
               Text(
                 displayText,
                 style: TextStyle(
@@ -203,11 +319,33 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                   height: 1.65,
                   fontWeight: chips.isEmpty ? FontWeight.w500 : FontWeight.w700,
                   color:
-                  chips.isEmpty
-                      ? const Color(0xFF8AA0B4)
-                      : const Color(0xFF243B53),
+                      chips.isEmpty
+                          ? const Color(0xFF8AA0B4)
+                          : const Color(0xFF243B53),
                 ),
               ),
+              if (chips.length > 3) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed:
+                        () => _showChipsPopup(
+                          title: title,
+                          chips: chips,
+                          thoughtType: thoughtType,
+                        ),
+                    child: const Text(
+                      '자세히 보기',
+                      style: TextStyle(
+                        color: Color(0xFF626262),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -223,6 +361,8 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
     const double horizontalPadding = 24.0;
     const double panelRadius = 28.0;
     const double gapBetweenPanels = 20.0;
+    const double stickyBannerTop = 20.0;
+    const double stickyBannerSpacer = 140.0;
     final double maxWidth = size.width - 48 > 980 ? 980 : size.width - 48;
 
     return Scaffold(
@@ -259,75 +399,99 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
             ),
             Container(color: Colors.white.withValues(alpha: 0.08)),
 
-            // 🧩 내용 영역
             SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    28,
-                    horizontalPadding,
-                    bottomInset + 120, // 아래 버튼 자리 확보
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // 상단 카드 (도움이 되는 생각)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.84),
-                            borderRadius: BorderRadius.circular(panelRadius),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.82),
-                              width: 1.2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      28,
+                      horizontalPadding,
+                      bottomInset + 120,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: maxWidth),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: stickyBannerSpacer),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.84),
+                                borderRadius: BorderRadius.circular(
+                                  panelRadius,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-                          child: _buildTopPanel(),
-                        ),
-
-                        const SizedBox(height: gapBetweenPanels),
-
-                        // 하단 카드 (도움이 되지 않는 생각)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.84),
-                            borderRadius: BorderRadius.circular(panelRadius),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.82),
-                              width: 1.2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
+                              padding: const EdgeInsets.fromLTRB(
+                                22,
+                                22,
+                                22,
+                                22,
                               ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-                          child: _buildBottomPanel(),
+                              child: _buildTopPanel(),
+                            ),
+                            const SizedBox(height: gapBetweenPanels),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.84),
+                                borderRadius: BorderRadius.circular(
+                                  panelRadius,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.fromLTRB(
+                                22,
+                                22,
+                                22,
+                                22,
+                              ),
+                              child: _buildBottomPanel(),
+                            ),
+                          ],
                         ),
-
-                        const SizedBox(height: 18),
-                        JellyfishBanner(
-                          message:
-                          '오늘도 수고하셨습니다!\n내가 적은 생각을 한 번 더 비교해보며,\n어떤 방향이 마음을 더 안정시키는지 살펴보세요.',
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  Positioned(
+                    top: stickyBannerTop,
+                    left: horizontalPadding,
+                    right: horizontalPadding,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          child: const JellyfishBanner(
+                            message:
+                                '오늘도 수고하셨습니다!\n내가 적은 생각을 한 번 더 비교해보며,\n어떤 방향이 마음을 더 안정시키는지 살펴보세요.',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -342,12 +506,12 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
             padding: const EdgeInsets.fromLTRB(24, 6, 24, 24),
             child: NavigationButtons(
               leftLabel: '이전',
-              rightLabel: '다음',
+              rightLabel: '완료',
               onBack: () => Navigator.pop(context),
               onNext: () async {
                 await _saveSession();
                 if (!mounted) return;
-                _showStartDialog();
+                await _showStartDialog();
               },
             ),
           ),

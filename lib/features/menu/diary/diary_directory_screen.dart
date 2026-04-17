@@ -793,9 +793,7 @@ class _DiaryCard extends StatelessWidget {
     // created_at 파싱 (이미 DateTime이면 그대로 사용)
     final createdRaw = entry['created_at'];
     final DateTime? createdAt = parseServerDateTime(createdRaw);
-    final created = createdAt != null
-        ? formatter.format(createdAt)
-        : '-';
+    final created = createdAt != null ? formatter.format(createdAt) : '-';
 
     // activation DiaryChip → label 추출
     final activationRaw = entry['activation'];
@@ -990,8 +988,7 @@ class _DiaryCard extends StatelessWidget {
               title: (!locAutoFilled) ? '위치 기록' : '작성 위치',
               child: Text(
                 entry['loc_time']?.location_label,
-                style:
-                const TextStyle(color: Color(0xFF1B405C)),
+                style: const TextStyle(color: Color(0xFF1B405C)),
               ),
             ),
           ],
@@ -1113,12 +1110,7 @@ class _AlarmSection extends StatelessWidget {
           Builder(
             builder: (_) {
               final map = locTimeEntry!;
-              final location =
-                  map['location'] ??
-                  map['location_desc'] ??
-                  map['address_name'] ??
-                  map['addressName'] ??
-                  '-';
+              final location = map['location'] ?? map['location_desc'] ?? '-';
               final time = map['time'] ?? map['scheduledTime'] ?? '-';
 
               return Container(

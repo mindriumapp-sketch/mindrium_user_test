@@ -10,7 +10,7 @@ class ContentScreen extends StatelessWidget {
     /// 📚 메뉴 항목 데이터 (기능 그대로 유지)
     final List<Map<String, dynamic>> menuItems = [
       {
-        'title': '불안에 대한 교육',
+        'title': '불안에 대한 이해',
         'subtitle': '불안을 이해하고 관리하기',
         'route': '/education',
       },

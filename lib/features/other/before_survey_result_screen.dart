@@ -101,13 +101,13 @@ class BeforeSurveyResultScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: PrimaryActionButton(
-                      onPressed:
-                          () => Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            '/home',
-                            (_) => false,
-                          ),
-                      text: '홈으로 가기',
+                    onPressed:
+                        () => Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/permission_onboarding',
+                          (_) => false,
+                        ),
+                    text: '홈으로 가기',
                   ),
                 ),
               ],

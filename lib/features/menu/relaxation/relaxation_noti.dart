@@ -5,7 +5,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:rive/rive.dart' as rive;
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/widgets/custom_popup_design.dart';
 
 import 'relaxation_logger.dart'; // 분리한 로거
 import 'relaxation_education.dart' show relaxationTitleForWeek;
@@ -71,6 +73,8 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
   bool _finalSaved = false;
   Timer? _autosaveTimer;
   bool _audioStartedOnce = false;
+  bool _volumeGuideShown = false;
+  bool _canStartPlayback = false;
 
   // ✅ 현재 활성 상태가 시작된 시점
   DateTime? _lastActivityTime;
@@ -90,6 +94,38 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
     _captureStartLocation();
 
     _startAutosaveTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showVolumeGuideIfNeeded();
+    });
+  }
+
+  void _showVolumeGuideIfNeeded() {
+    if (!mounted || _volumeGuideShown) return;
+    _volumeGuideShown = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => PopScope(
+            canPop: false,
+            child: CustomPopupDesign(
+              title: '이완 음성 안내 시작',
+              message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다.\n주변 소리와 음량을 조절해보세요.',
+              positiveText: '확인',
+              negativeText: null,
+              backgroundAsset: null,
+              iconAsset: null,
+              onPositivePressed: () {
+                Navigator.of(context).pop();
+                _canStartPlayback = true;
+                unawaited(_startAudioOnce());
+                if (_riveController != null) {
+                  _riveController!.active = true;
+                }
+              },
+            ),
+          ),
+    );
   }
 
   void _startAutosaveTimer() {
@@ -125,7 +161,7 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
   }
 
   Future<void> _startAudioOnce() async {
-    if (_audioStartedOnce) return;
+    if (_audioStartedOnce || !_canStartPlayback) return;
     _audioStartedOnce = true;
     await _audioPlayer.setSource(AssetSource('relaxation/${widget.mp3Asset}'));
     await _audioPlayer.setVolume(0.8);
@@ -145,6 +181,7 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
   }
 
   void _togglePlay() {
+    if (!_canStartPlayback) return;
     if (_isPlaying) {
       _lastActivityTime = null; // 활성 시간 측정 중지
       _audioPlayer.pause();
@@ -178,6 +215,11 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
 
   void _checkIfBothFinished() async {
     if (_isAudioFinished && _isRiveFinished) {
+      final userProvider = context.read<UserProvider>();
+      final todayTaskProvider = context.read<TodayTaskProvider>();
+      final navigator = Navigator.of(context);
+      final currentArgs = ModalRoute.of(context)?.settings.arguments;
+
       // ✅ 완주 플래그 먼저 세움
       _logger.setFullyCompleted();
       _logger.logEvent("session_complete");
@@ -186,13 +228,12 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
       if (!mounted) return;
 
       if (widget.taskId == 'daily_review') {
-        context.read<TodayTaskProvider>().setTodayTaskLocally(
-          relaxationDone: true,
-        );
+        await userProvider.refreshProgress();
+        todayTaskProvider.setTodayTaskLocally(relaxationDone: true);
+      } else if (widget.taskId.endsWith('_education')) {
+        await userProvider.refreshProgress();
+        todayTaskProvider.setTodayTaskLocally(relaxationDone: true);
       }
-
-      // 🔹 현재 라우트 args에서 beforeSud / sudId 있으면 같이 넘김
-      final currentArgs = ModalRoute.of(context)?.settings.arguments;
 
       final Map<String, dynamic> nextArgs = {
         'taskId': widget.taskId,
@@ -213,8 +254,7 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
         }
       }
 
-      Navigator.pushNamedAndRemoveUntil(
-        context,
+      navigator.pushNamedAndRemoveUntil(
         widget.nextPage,
         (_) => false,
         arguments: nextArgs,
@@ -286,11 +326,13 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
                               _checkIfBothFinished();
                             }
                           });
-                          // 시작
-                          _riveController!.active = true;
+                          // 확인 전에는 애니메이션도 멈춰 둔다.
+                          _riveController!.active = _canStartPlayback;
                         }
 
-                        _startAudioOnce();
+                        if (_canStartPlayback) {
+                          _startAudioOnce();
+                        }
                       }
 
                       return rive.RiveWidget(

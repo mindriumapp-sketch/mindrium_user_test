@@ -8,6 +8,9 @@ import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class Week5VisualScreen extends StatefulWidget {
   final String? sessionId;
@@ -30,6 +33,12 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
   late final EduSessionsApi _eduSessionsApi;
   bool _isSaving = false;
 
+  Future<bool> _isReviewMode() async {
+    final user = context.read<UserProvider>();
+    return user.currentWeek > 5 ||
+        (user.currentWeek == 5 && user.mainCbtCompleted);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -37,20 +46,94 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
     _eduSessionsApi = EduSessionsApi(_client);
   }
 
-  void _showStartDialog() {
+  Future<void> _showStartDialog() async {
+    if (await _isReviewMode()) {
+      final todayTask = context.read<TodayTaskProvider>();
+      final user = context.read<UserProvider>();
+      final shouldShowRelaxReview =
+          todayTask.isTreatmentReviewFlowForWeek(5) &&
+          (user.currentWeek > 5 ||
+              (user.currentWeek == 5 &&
+                  user.mainCbtCompleted &&
+                  user.mainRelaxCompleted));
+      if (shouldShowRelaxReview) {
+        showCbtReviewToRelaxationDialog(
+          context: context,
+          weekNumber: 5,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'sessionId': widget.sessionId,
+                'taskId': 'week5_education',
+                'weekNumber': 5,
+                'mp3Asset': 'week5.mp3',
+                'riveAsset': 'week5.riv',
+                'isReviewMode': true,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      todayTask.clearTreatmentReviewFlow();
+      Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
+    final userProvider = context.read<UserProvider>();
+    final nav = Navigator.of(context);
+
+    try {
+      await _eduSessionsApi.completeWeekSession(
+        weekNumber: 5,
+        totalStages: 8,
+        sessionId: widget.sessionId,
+      );
+      await userProvider.refreshProgress();
+    } catch (e) {
+      debugPrint('[Week5Visual] edu-session 완료 처리 실패: $e');
+    }
+
+    if (!mounted) return;
+    final shouldShowTransition = shouldShowCbtToRelaxationTransition(
+      currentWeek: userProvider.currentWeek,
+      mainRelaxCompleted: userProvider.mainRelaxCompleted,
+      weekNumber: 5,
+    );
+    if (!shouldShowTransition) {
+      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      return;
+    }
+
     showCbtToRelaxationDialog(
       context: context,
+      weekNumber: 5,
       onMoveNow: () {
-        Navigator.pop(context);
-        Navigator.pushReplacementNamed(
-          context,
-          '/relaxation_education',
+        nav.pop();
+        nav.pushReplacementNamed(
+          '/relaxation_start',
           arguments: {
             'sessionId': widget.sessionId,
             'taskId': 'week5_education',
             'weekNumber': 5,
-            'mp3Asset': 'week1.mp3',
-            'riveAsset': 'week1.riv',
+            'mp3Asset': 'week5.mp3',
+            'riveAsset': 'week5.riv',
+            'isReviewMode':
+                userProvider.currentWeek > 5 ||
+                (userProvider.currentWeek == 5 &&
+                    userProvider.mainRelaxCompleted),
           },
         );
       },
@@ -131,7 +214,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
 
   Widget _buildTopPanel() {
     return _buildThoughtSection(
-      title: '불안을 직면하는 행동',
+      title: '내가 불안을 직면하는 행동',
       chips: widget.alternativeChips,
       thoughtType: ThoughtType.helpful,
     );
@@ -139,7 +222,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
 
   Widget _buildBottomPanel() {
     return _buildThoughtSection(
-      title: '불안을 회피하는 행동',
+      title: '내가 불안을 회피하는 행동',
       chips: widget.previousChips,
       thoughtType: ThoughtType.unhelpful,
     );
@@ -163,14 +246,46 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2C4A7A),
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Icon(leadingIcon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2C4A7A),
+                ),
+              ),
+            ),
+          ],
         ),
+        if (isHelpful) ...[
+          const SizedBox(height: 6),
+          const Padding(
+            padding: EdgeInsets.only(left: 42),
+            child: Text(
+              '이번에 정리한 내용입니다.\n나중에 다시 생각해보며 바꿀 수 있어요.',
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.45,
+                color: Color(0xFF5F748A),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Container(
           width: double.infinity,
@@ -186,32 +301,6 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Icon(leadingIcon, color: accentColor, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      isHelpful ? '내가 적은 불안을 직면하는 행동' : '내가 적은 불안을 회피하는 행동',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: accentColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
               Text(
                 displayText,
                 style: TextStyle(
@@ -261,6 +350,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
     const double horizontalPadding = 24.0;
     const double panelRadius = 28.0;
     const double gapBetweenPanels = 20.0;
+    const double stickyBannerTop = 20.0;
+    const double stickyBannerSpacer = 140.0;
     final double maxWidth = size.width - 48 > 980 ? 980 : size.width - 48;
 
     return Scaffold(
@@ -297,68 +388,98 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
             ),
             Container(color: Colors.white.withValues(alpha: 0.08)),
             SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    28,
-                    horizontalPadding,
-                    bottomInset + 120,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.84),
-                            borderRadius: BorderRadius.circular(panelRadius),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.82),
-                              width: 1.2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      28,
+                      horizontalPadding,
+                      bottomInset + 120,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: maxWidth),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: stickyBannerSpacer),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.84),
+                                borderRadius: BorderRadius.circular(
+                                  panelRadius,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-                          child: _buildTopPanel(),
-                        ),
-                        const SizedBox(height: gapBetweenPanels),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.84),
-                            borderRadius: BorderRadius.circular(panelRadius),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.82),
-                              width: 1.2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
+                              padding: const EdgeInsets.fromLTRB(
+                                22,
+                                22,
+                                22,
+                                22,
                               ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-                          child: _buildBottomPanel(),
+                              child: _buildTopPanel(),
+                            ),
+                            const SizedBox(height: gapBetweenPanels),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.84),
+                                borderRadius: BorderRadius.circular(
+                                  panelRadius,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.fromLTRB(
+                                22,
+                                22,
+                                22,
+                                22,
+                              ),
+                              child: _buildBottomPanel(),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 18),
-                        JellyfishBanner(
-                          message:
-                              '오늘도 수고하셨습니다!\n내가 적은 행동을 한 번 더 비교해보며,\n어떤 방향이 불안을 줄이는 데 도움이 되는지 살펴보세요.',
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  Positioned(
+                    top: stickyBannerTop,
+                    left: horizontalPadding,
+                    right: horizontalPadding,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          child: const JellyfishBanner(
+                            message:
+                                '오늘도 수고하셨습니다!\n내가 적은 행동을 한 번 더 비교해보며,\n어떤 방향이 불안을 줄이는 데 도움이 되는지 살펴보세요.',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -371,12 +492,12 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
             padding: const EdgeInsets.fromLTRB(24, 6, 24, 24),
             child: NavigationButtons(
               leftLabel: '이전',
-              rightLabel: '다음',
+              rightLabel: '완료',
               onBack: () => Navigator.pop(context),
               onNext: () async {
                 await _saveSession();
                 if (!mounted) return;
-                _showStartDialog();
+                await _showStartDialog();
               },
             ),
           ),

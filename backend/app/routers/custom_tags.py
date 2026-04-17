@@ -71,7 +71,6 @@ async def ensure_default_custom_tags(db, user_id: str):
       "deleted": False,
       "created_at": now_utc,
       "updated_at": now_utc,
-      "client_timestamp": now_utc,
     }
     await collection.insert_one(doc)
 
@@ -146,7 +145,6 @@ async def create_custom_tag(
 ):
     collection = db[CUSTOM_TAG_COLLECTION]
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
 
     doc = {
         "user_id": user_id,
@@ -157,7 +155,6 @@ async def create_custom_tag(
         "deleted": False,
         "created_at": now_utc,
         "updated_at": now_utc,
-        "client_timestamp": client_ts_utc,
     }
 
     await collection.insert_one(doc)
@@ -255,18 +252,14 @@ async def update_custom_tag(
 
     update_data = payload.model_dump(
         exclude_unset=True,
-        exclude={"client_timestamp"},
     )
     if not update_data:
         raise HTTPException(status_code=400, detail="업데이트할 필드가 없습니다")
 
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
-
     set_fields: Dict[str, Any] = {
         **update_data,
         "updated_at": now_utc,
-        "client_timestamp": client_ts_utc,
     }
 
     updated_doc = await collection.find_one_and_update(
@@ -295,15 +288,12 @@ async def delete_custom_tag(
     collection = db[CUSTOM_TAG_COLLECTION]
 
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
-
     result = await collection.update_one(
         {"user_id": user_id, "chip_id": chip_id},
         {
             "$set": {
                 "deleted": True,
                 "updated_at": now_utc,
-                "client_timestamp": client_ts_utc,
             },
         },
     )
@@ -314,7 +304,6 @@ async def delete_custom_tag(
     return {
         "chip_id": chip_id,
         "deleted": True,
-        "client_timestamp": client_ts_utc,
         "updated_at": now_utc,
     }
 
@@ -571,4 +560,3 @@ async def list_category_logs(
 
     out.sort(key=lambda x: x.completed_at)
     return out
-

@@ -7,6 +7,7 @@ from core.today_task_draft_progress import (
     COMPLETED_DRAFT_PROGRESS,
     TODAY_TASK_ROUTE,
     completed_draft_progress_filter,
+    is_completed_draft_progress,
     is_incomplete_draft_progress,
 )
 from core.utils import kst_midnight, parse_datetime_value, ensure_utc
@@ -372,7 +373,6 @@ async def create_diary(
 ):
     collection = db[DIARY_COLLECTION]
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
     is_incomplete_draft = is_incomplete_draft_progress(payload.draft_progress)
     group_id = (
         payload.group_id
@@ -414,7 +414,6 @@ async def create_diary(
         "loc_auto_filled": payload.loc_auto_filled,
         "created_at": now_utc,
         "updated_at": now_utc,
-        "client_timestamp": client_ts_utc,
     }
     if payload.draft_progress is not None:
         diary_doc["draft_progress"] = payload.draft_progress
@@ -433,7 +432,7 @@ async def create_diary(
 
     if (
         payload.route == TODAY_TASK_ROUTE
-        and payload.draft_progress == completed_draft_progress_filter()
+        and is_completed_draft_progress(payload.draft_progress)
     ):
         await _sync_treatment_progress_daily_diary(
             db=db,
@@ -753,7 +752,6 @@ async def update_diary(
     update_data = payload.model_dump(
         exclude_unset=True,
         by_alias=True,
-        exclude={"client_timestamp"},
     )
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -776,8 +774,6 @@ async def update_diary(
         raise HTTPException(status_code=404, detail="Diary not found")
 
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
-
     old_group_id = diary.get("group_id")
     latest_sud = parse_sud_value(diary.get("latest_sud")) or 0
 
@@ -807,7 +803,6 @@ async def update_diary(
     # group_id 고정
     set_fields["group_id"] = new_group_id
     set_fields["updated_at"] = now_utc
-    set_fields["client_timestamp"] = client_ts_utc
 
     update_query: Dict[str, Any] = {"$set": set_fields}
     if unset_fields:
@@ -843,8 +838,8 @@ async def update_diary(
     old_draft_progress = diary.get("draft_progress")
     if (
         updated_doc.get("route") == TODAY_TASK_ROUTE
-        and updated_doc.get("draft_progress") == completed_draft_progress_filter()
-        and old_draft_progress != completed_draft_progress_filter()
+        and is_completed_draft_progress(updated_doc.get("draft_progress"))
+        and not is_completed_draft_progress(old_draft_progress)
     ):
         await _sync_treatment_progress_daily_diary(
             db=db,
@@ -888,14 +883,12 @@ async def upsert_loc_time(
     update_data = payload.model_dump(
         exclude_unset=True,
         by_alias=True,
-        exclude={"client_timestamp"},
     )
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
     collection = db[DIARY_COLLECTION]
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
     existing = await collection.find_one(
         {"diary_id": diary_id, "user_id": user_id},
         {"loc_time": 1, "alarms": 1},
@@ -936,7 +929,6 @@ async def upsert_loc_time(
             "$set": {
                 "loc_time": loc_time_doc,
                 "updated_at": now_utc,
-                "client_timestamp": client_ts_utc,
             },
             "$unset": {
                 "alarms": "",
@@ -956,7 +948,6 @@ async def delete_loc_time(
 ):
     collection = db[DIARY_COLLECTION]
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
 
     result = await collection.update_one(
         {"diary_id": diary_id, "user_id": user_id},
@@ -964,7 +955,6 @@ async def delete_loc_time(
             "$set": {
                 "loc_time": None,
                 "updated_at": now_utc,
-                "client_timestamp": client_ts_utc,
             },
             "$unset": {
                 "alarms": "",
@@ -976,6 +966,5 @@ async def delete_loc_time(
         raise HTTPException(status_code=404, detail="Diary not found")
 
     return {
-        "client_timestamp": client_ts_utc,
         "deleted_at": now_utc,
     }

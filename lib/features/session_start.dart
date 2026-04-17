@@ -9,6 +9,7 @@ class SessionStartScreen extends StatefulWidget {
   final String weekTitle;
   final String weekDescription;
   final bool mergeValueAndGuide;
+  final bool isReviewMode;
   final VoidCallback? onPrevious;
   final Widget Function() nextPageBuilder;
 
@@ -18,6 +19,7 @@ class SessionStartScreen extends StatefulWidget {
     required this.weekTitle,
     required this.weekDescription,
     this.mergeValueAndGuide = false,
+    this.isReviewMode = false,
     this.onPrevious,
     required this.nextPageBuilder,
   });
@@ -45,7 +47,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: '${widget.weekNumber}주차 - 시작하기',
+        title: (!widget.isReviewMode) ? '${widget.weekNumber}주차 - 시작하기' : '${widget.weekNumber}주차 - 복습하기',
         onBack: widget.onPrevious,
       ),
       body: Stack(
@@ -71,6 +73,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                     subtitle: widget.weekTitle,
                     description: widget.weekDescription,
                     weekNumber: widget.weekNumber,
+                    isReviewMode: widget.isReviewMode,
                   ),
                 ),
                 Padding(
@@ -172,6 +175,7 @@ class _GuidePage extends StatelessWidget {
   final String subtitle;
   final String description;
   final int weekNumber;
+  final bool isReviewMode;
 
   const _GuidePage({
     required this.maxWidth,
@@ -180,6 +184,7 @@ class _GuidePage extends StatelessWidget {
     required this.subtitle,
     required this.description,
     required this.weekNumber,
+    required this.isReviewMode,
   });
 
   @override

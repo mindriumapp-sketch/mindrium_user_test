@@ -122,7 +122,6 @@ async def create_sud_score(
     collection = db[DIARY_COLLECTION]
 
     now_utc = datetime.now(timezone.utc)
-    client_ts_utc = ensure_utc(payload.client_timestamp)
 
     entry = {
         "sud_id": f"sud_{uuid.uuid4().hex[:8]}",
@@ -137,7 +136,7 @@ async def create_sud_score(
         after=payload.after_sud,
     )
 
-    # sud_scores에 push + latest_sud / updated_at / client_timestamp 한 번에 갱신
+    # sud_scores에 push + latest_sud / updated_at 한 번에 갱신
     doc_before = await collection.find_one_and_update(
         {"user_id": user_id, "diary_id": diary_id},
         {
@@ -145,7 +144,6 @@ async def create_sud_score(
             "$set": {
                 "latest_sud": new_value,
                 "updated_at": now_utc,
-                "client_timestamp": client_ts_utc,
             },
         },
         projection={"group_id": 1, "latest_sud": 1},
@@ -216,7 +214,6 @@ async def update_sud_score(
     update_data = payload.model_dump(
         exclude_unset=True,
         by_alias=True,
-        exclude={"client_timestamp"},
     )
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -244,8 +241,6 @@ async def update_sud_score(
         )
 
     now_utc = datetime.now(timezone.utc)
-    timestamp_utc = ensure_utc(payload.client_timestamp)
-
     old_value = parse_sud_value(diary.get("latest_sud")) or 0
     new_value = _compute_new_sud_value(
         before=update_data.get("before_sud", last_entries[0].get("before_sud")),
@@ -260,7 +255,6 @@ async def update_sud_score(
     set_fields["sud_scores.$.updated_at"] = now_utc
     set_fields["latest_sud"] = new_value
     set_fields["updated_at"] = now_utc
-    set_fields["client_timestamp"] = timestamp_utc
 
     updated_doc = await collection.find_one_and_update(
         {
@@ -368,7 +362,6 @@ async def delete_sud_score(
             "$set": {
                 "latest_sud": new_latest,
                 "updated_at": now_utc,
-                # client_timestamp는 굳이 건드리지 않고 둔다
             },
         },
         projection={"group_id": 1},

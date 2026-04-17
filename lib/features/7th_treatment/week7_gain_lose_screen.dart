@@ -11,12 +11,14 @@ class Week7GainLoseScreen extends StatefulWidget {
   final String behavior;
   final String chipId;
   final String reason;
+  final String? sessionId;
 
   const Week7GainLoseScreen({
     super.key,
     required this.behavior,
     required this.chipId,
     required this.reason,
+    this.sessionId,
   });
 
   @override
@@ -159,24 +161,11 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
   }
 
   Future<String> _ensureWeek7Session() async {
-    final existing = await _week7Api.fetchWeek7Session();
-    final existingId =
-        existing?['session_id']?.toString() ??
-        existing?['sessionId']?.toString();
-    if (existingId != null && existingId.isNotEmpty) return existingId;
-
-    final created = await _week7Api.createWeek7Session(
-      totalScreens: 1,
-      lastScreenIndex: 1,
-      startTime: DateTime.now(),
-      completed: false,
-    );
-    final createdId =
-        created['session_id']?.toString() ?? created['sessionId']?.toString();
-    if (createdId == null || createdId.isEmpty) {
+    final sessionId = widget.sessionId?.trim();
+    if (sessionId == null || sessionId.isEmpty) {
       throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
     }
-    return createdId;
+    return sessionId;
   }
 
   String _getStepTitle() {
@@ -500,7 +489,8 @@ class _Week7GainLoseScreenState extends State<Week7GainLoseScreen> {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const Week7AddDisplayScreen(),
+              pageBuilder:
+                  (_, __, ___) => Week7AddDisplayScreen(sessionId: widget.sessionId),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
             ),

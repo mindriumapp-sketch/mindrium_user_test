@@ -257,6 +257,7 @@ async def get_user_progress(
 # ============= today task =============
 DIARY_COLLECTION = "diaries"
 RELAX_COLLECTION = "relaxation_tasks"
+TREATMENT_PROGRESS_COLLECTION = "treatment_progress"
 
 @router.get(
     "/todaytask",
@@ -273,8 +274,8 @@ async def get_today_task(
     - has_diary_today:
         오늘(KST 기준) 작성된 일기가 1개 이상이면 True
     - has_relaxation_today:
-        오늘(KST 기준) 시작한 이완 세션 중 duration_seconds > 0
-        이면서 end_time != None 인 세션이 1개 이상이면 True
+        오늘(KST 기준) 시작한 이완 세션 중 task_id=daily_review 이고
+        duration_seconds > 0 이면서 end_time != None 인 세션이 1개 이상이면 True
     """
     user_id = current_user.get("user_id")
     if not user_id:
@@ -312,11 +313,33 @@ async def get_today_task(
     )
     has_diary_today = diary_count_today > 0
 
+    raw_last_week = current_user.get("last_completed_week")
+    last_completed_week = (
+        int(raw_last_week) if isinstance(raw_last_week, (int, float)) else 0
+    )
+    if last_completed_week <= 0:
+        current_week = 1
+    elif last_completed_week >= 8:
+        current_week = 8
+    else:
+        current_week = last_completed_week + 1
+
+    current_progress = await db[TREATMENT_PROGRESS_COLLECTION].find_one(
+        {
+            "user_id": user_id,
+            "week_number": current_week,
+        }
+    )
+    main_relax_completed = bool(
+        current_progress and current_progress.get("relaxation_task_id")
+    )
+
     # ---- 3) 오늘 이완 여부 (relaxation_tasks.start_time 기준) ----
     relax_collection = db[RELAX_COLLECTION]
     relaxation_count_today = await relax_collection.count_documents(
         {
             "user_id": user_id,
+            "task_id": "daily_review",
             "duration_seconds": {"$gt": 0},
             "end_time": {"$ne": None},  # 완료된 이완만 '했다'로 간주
             "start_time": {
@@ -326,9 +349,39 @@ async def get_today_task(
         }
     )
     has_relaxation_today = relaxation_count_today > 0
+    relaxation_week_no_today = current_week
+
+    today_main_relax_doc = await relax_collection.find_one(
+        {
+            "user_id": user_id,
+            "task_id": f"week{current_week}_education",
+            "week_number": current_week,
+            "duration_seconds": {"$gt": 0},
+            "end_time": {"$ne": None},
+            "start_time": {
+                "$gte": today_start_utc,
+                "$lt": today_end_utc,
+            },
+        },
+        sort=[("end_time", -1)],
+    )
+
+    # 배운 당일에는 메인 이완(week{n}_education)도 홈의 오늘의 할 일 완료로 인정한다.
+    if not has_relaxation_today and today_main_relax_doc is not None:
+        has_relaxation_today = True
+
+    if today_main_relax_doc is not None and today_main_relax_doc.get("is_first_completed") is True:
+        relaxation_entry_mode_today = "learning"
+        learned_week_number = today_main_relax_doc.get("week_number")
+        if isinstance(learned_week_number, int) and 1 <= learned_week_number <= 8:
+            relaxation_week_no_today = learned_week_number
+    else:
+        relaxation_entry_mode_today = "learning" if not main_relax_completed else "review"
 
     return TodayTaskResponse(
         date=today_date,
         has_diary_today=has_diary_today,
         has_relaxation_today=has_relaxation_today,
+        relaxation_entry_mode_today=relaxation_entry_mode_today,
+        relaxation_week_no_today=relaxation_week_no_today,
     )

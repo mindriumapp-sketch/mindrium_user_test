@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:gad_app_team/features/menu/education/education_page.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_education.dart';
 import 'package:gad_app_team/features/session_start.dart';
-import 'package:gad_app_team/widgets/custom_popup_design.dart';
 
 const Map<int, String> kRelaxationWeekDescriptions = {
   1: '점진적 이완으로 몸의 긴장을 천천히 풀어보겠습니다.',
@@ -19,12 +18,63 @@ String relaxationDescriptionForWeek(int weekNumber) {
   return kRelaxationWeekDescriptions[weekNumber] ?? '이번 주차 이완 훈련을 시작해요.';
 }
 
+bool _isRelaxationReviewTask(String taskId) {
+  return taskId == 'daily_review' || taskId.endsWith('_review');
+}
+
+String _relaxationStartTitle({
+  required int weekNumber,
+  required String taskId,
+  required bool isReviewMode,
+}) {
+  final baseTitle = relaxationTitleForWeek(weekNumber);
+  // baseTitle에서 ' - '를 기준으로 나누고 마지막 요소를 가져옵니다.
+  final contentTitle = baseTitle.split(' - ').last;
+
+  if (isReviewMode) {
+    return '$contentTitle을 복습해보겠습니다.';
+  }
+  return '$contentTitle을 배워보겠습니다.';
+}
+
+String _relaxationStartDescription({
+  required int weekNumber,
+  required String taskId,
+  required bool isReviewMode,
+}) {
+  if (!isReviewMode) {
+    return relaxationDescriptionForWeek(weekNumber);
+  }
+
+  switch (weekNumber) {
+    case 1:
+      return '1주차에서는 점진적 이완으로 몸의 긴장을 천천히 푸는 연습을 했어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    case 2:
+      return '2주차에서는 점진적 이완을 반복하며 이완 감각을 안정적으로 익히는 연습을 했어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    case 3:
+      return '3주차에서는 긴장 유도 없이 이완만 하는 연습을 했어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    case 4:
+      return '4주차에서는 신호를 통해 이완 전환하는 법을 익혔어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    case 5:
+      return '5주차에서는 차등 이완으로 움직임 속에서도 이완을 유지하는 연습을 했어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    case 6:
+      return '6주차에서는 차등 이완을 반복하며 일상 속 이완을 연습했어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    case 7:
+      return '7주차에서는 신속 이완으로 짧은 시간 안에 몸과 호흡을 안정시키는 연습을 했어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    case 8:
+      return '8주차에서는 신속 이완을 반복하며 전체 이완 루틴을 정리했어요.\n이번에는 그 내용을 복습해보겠습니다.';
+    default:
+      return '이전에 진행한 이완 훈련을 복습해보겠습니다.';
+  }
+}
+
 class RelaxationStartScreen extends StatelessWidget {
   final String? sessionId;
   final String taskId;
   final int weekNumber;
   final String mp3Asset;
   final String riveAsset;
+  final bool? isReviewMode;
 
   const RelaxationStartScreen({
     super.key,
@@ -33,17 +83,29 @@ class RelaxationStartScreen extends StatelessWidget {
     required this.weekNumber,
     required this.mp3Asset,
     required this.riveAsset,
+    this.isReviewMode,
   });
 
   @override
   Widget build(BuildContext context) {
     final useEducationBridge = weekNumber == 1 || weekNumber == 2;
     final jsonPrefix = 'week${weekNumber}_relaxation_';
+    final resolvedIsReviewMode =
+        isReviewMode ?? _isRelaxationReviewTask(taskId);
 
     return SessionStartScreen(
       weekNumber: weekNumber,
-      weekTitle: relaxationTitleForWeek(weekNumber),
-      weekDescription: relaxationDescriptionForWeek(weekNumber),
+      isReviewMode: resolvedIsReviewMode,
+      weekTitle: _relaxationStartTitle(
+        weekNumber: weekNumber,
+        taskId: taskId,
+        isReviewMode: resolvedIsReviewMode,
+      ),
+      weekDescription: _relaxationStartDescription(
+        weekNumber: weekNumber,
+        taskId: taskId,
+        isReviewMode: resolvedIsReviewMode,
+      ),
       onPrevious: () {
         Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
       },
@@ -94,85 +156,13 @@ class _RelaxationEducationBridge extends StatelessWidget {
       isRelax: true,
       sessionId: sessionId,
       nextPageBuilder:
-          () => _RelaxationVolumeGuideScreen(
+          () => PracticePlayer(
             sessionId: sessionId,
             taskId: taskId,
             weekNumber: weekNumber,
             mp3Asset: mp3Asset,
             riveAsset: riveAsset,
           ),
-    );
-  }
-}
-
-class _RelaxationVolumeGuideScreen extends StatefulWidget {
-  final String? sessionId;
-  final String taskId;
-  final int weekNumber;
-  final String mp3Asset;
-  final String riveAsset;
-
-  const _RelaxationVolumeGuideScreen({
-    required this.sessionId,
-    required this.taskId,
-    required this.weekNumber,
-    required this.mp3Asset,
-    required this.riveAsset,
-  });
-
-  @override
-  State<_RelaxationVolumeGuideScreen> createState() =>
-      _RelaxationVolumeGuideScreenState();
-}
-
-class _RelaxationVolumeGuideScreenState
-    extends State<_RelaxationVolumeGuideScreen> {
-  bool _dialogShown = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_dialogShown) return;
-    _dialogShown = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final nav = Navigator.of(context);
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (_) => CustomPopupDesign(
-              title: '이완 음성 안내 시작',
-              message: '잠시 후, 이완을 위한 음성 안내가 시작됩니다. 주변 소리와 음량을 조절해보세요.',
-              positiveText: '확인',
-              negativeText: null,
-              backgroundAsset: null,
-              iconAsset: null,
-              onPositivePressed: () {
-                nav.pop();
-                nav.pushReplacement(
-                  MaterialPageRoute(
-                    builder:
-                        (_) => PracticePlayer(
-                          sessionId: widget.sessionId,
-                          taskId: widget.taskId,
-                          weekNumber: widget.weekNumber,
-                          mp3Asset: widget.mp3Asset,
-                          riveAsset: widget.riveAsset,
-                        ),
-                  ),
-                );
-              },
-            ),
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

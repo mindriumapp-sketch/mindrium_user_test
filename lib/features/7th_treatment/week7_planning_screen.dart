@@ -18,7 +18,9 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 
 // ─────────────────────────────────────────────
 class Week7PlanningScreen extends StatefulWidget {
-  const Week7PlanningScreen({super.key});
+  final String? sessionId;
+
+  const Week7PlanningScreen({super.key, this.sessionId});
 
   @override
   State<Week7PlanningScreen> createState() => _Week7PlanningScreenState();
@@ -57,6 +59,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
     _apiClient = ApiClient(tokens: TokenStorage());
     _week7Api = Week7Api(_apiClient);
     _customTagsApi = CustomTagsApi(_apiClient);
+    _week7SessionId = widget.sessionId?.trim();
     _loadAddedBehaviors();
     _loadUserData();
   }
@@ -168,8 +171,11 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
         context,
         PageRouteBuilder(
           pageBuilder:
-              (_, __, ___) =>
-                  Week7BehaviorTypeSelectScreen(behavior: behavior, chipId: chipId),
+              (_, __, ___) => Week7BehaviorTypeSelectScreen(
+                behavior: behavior,
+                chipId: chipId,
+                sessionId: _week7SessionId,
+              ),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -306,31 +312,7 @@ class _Week7PlanningScreenState extends State<Week7PlanningScreen> {
     if (_week7SessionId != null && _week7SessionId!.isNotEmpty) {
       return _week7SessionId!;
     }
-
-    try {
-      final existing = await _week7Api.fetchWeek7Session();
-      _week7SessionId = existing?['session_id']?.toString() ??
-          existing?['sessionId']?.toString();
-      if (_week7SessionId != null && _week7SessionId!.isNotEmpty) {
-        return _week7SessionId!;
-      }
-    } catch (e) {
-      debugPrint('[Week7Planning] 기존 week7 세션 조회 실패, 신규 생성 시도: $e');
-    }
-
-    final created = await _week7Api.createWeek7Session(
-      totalScreens: 1,
-      lastScreenIndex: 1,
-      startTime: DateTime.now(),
-      completed: false,
-    );
-    _week7SessionId = created['session_id']?.toString() ??
-        created['sessionId']?.toString();
-
-    if (_week7SessionId == null || _week7SessionId!.isEmpty) {
-      throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
-    }
-    return _week7SessionId!;
+    throw Exception('7주차 세션 ID를 확인할 수 없습니다.');
   }
 
   // ───────────────── UI ─────────────────
@@ -373,8 +355,10 @@ child: NavigationButtons(
                 context,
                 PageRouteBuilder(
                   pageBuilder:
-                      (_, __, ___) =>
-                          Week7PlanSummaryScreen(plannedBehaviors: planned),
+                      (_, __, ___) => Week7PlanSummaryScreen(
+                        plannedBehaviors: planned,
+                        sessionId: _week7SessionId,
+                      ),
                   transitionDuration: Duration.zero,
                   reverseTransitionDuration: Duration.zero,
                 ),

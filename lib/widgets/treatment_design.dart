@@ -1,4 +1,7 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:provider/provider.dart';
 
 /// 🌊 Mindrium 메뉴 디자인 (의미적 색상 시스템 적용)
 class TreatmentDesign extends StatelessWidget {
@@ -110,7 +113,7 @@ class TreatmentDesign extends StatelessWidget {
               final isCurrent = weekNo == currentWeek;
               final isFuture = weekNo > currentWeek;
               final summary = week['summary'] ?? week['subtitle'] ?? '';
-              final session1Name = week['session1Name'] ?? '불안에 대한 교육';
+              final session1Name = week['session1Name'] ?? '불안에 대한 이해';
               final session1Duration = week['session1Duration'] ?? '약 10분';
               final session2Name = week['session2Name'] ?? '점진적 이완';
               final session2Duration = week['session2Duration'] ?? '약 20분';
@@ -158,26 +161,31 @@ class TreatmentDesign extends StatelessWidget {
     required bool appliedDone,
     required bool cbtDone,
   }) {
+    final todayTask = context.read<TodayTaskProvider>();
     final canOpenWeek = !isFutureWeek;
     final continueLabel =
         (!isCurrentWeek || (appliedDone && cbtDone)) ? '복습하기' : '이어하기';
-    final weekGap = weekNo - currentWeek;
-    final actionLabel = isFutureWeek ? '$weekGap주 후에 하기' : continueLabel;
+    final requiredWeek = weekNo - 1;
+    final actionLabel =
+        isFutureWeek ? '$requiredWeek주차 완료 후 하기' : continueLabel;
     final isRelaxCompletedWeek = appliedDone;
-    final relaxTaskId = isRelaxCompletedWeek
-        ? (weekNo == currentWeek ? 'daily_review' : 'week${weekNo}_review')
-        : 'week${weekNo}_education';
+    final relaxTaskId =
+        isCurrentWeek && isRelaxCompletedWeek
+            ? 'daily_review'
+            : (isRelaxCompletedWeek
+                ? 'week${weekNo}_review'
+                : 'week${weekNo}_education');
 
     return GestureDetector(
       onTap: () => onToggleWeek?.call(weekNo),
       child: Opacity(
-        opacity: enabled ? 1 : 0.45,
+        opacity: enabled ? 1 : 0.8,
         child: Container(
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
             color:
                 isFutureWeek
-                    ? const Color(0xFFE8ECF1)
+                    ? const Color(0xFFEEEEEE)
                     : Colors.white.withValues(alpha: 0.94),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -245,10 +253,13 @@ class TreatmentDesign extends StatelessWidget {
                   GestureDetector(
                     onTap:
                         canOpenWeek
-                            ? () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => screen),
-                            )
+                            ? () {
+                              todayTask.clearTreatmentReviewFlow();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => screen),
+                              );
+                            }
                             : null,
                     child: _buildSessionRow(
                       c: c,
@@ -263,16 +274,20 @@ class TreatmentDesign extends StatelessWidget {
                   GestureDetector(
                     onTap:
                         canOpenWeek
-                            ? () => Navigator.pushNamed(
-                              context,
-                              '/relaxation_education',
-                              arguments: {
-                                'taskId': relaxTaskId,
-                                'weekNumber': weekNo,
-                                'mp3Asset': 'week$weekNo.mp3',
-                                'riveAsset': 'week$weekNo.riv',
-                              },
-                            )
+                            ? () {
+                              todayTask.clearTreatmentReviewFlow();
+                              Navigator.pushNamed(
+                                context,
+                                '/relaxation_start',
+                                arguments: {
+                                  'taskId': relaxTaskId,
+                                  'weekNumber': weekNo,
+                                  'mp3Asset': 'week$weekNo.mp3',
+                                  'riveAsset': 'week$weekNo.riv',
+                                  'isReviewMode': appliedDone,
+                                },
+                              );
+                            }
                             : null,
                     child: _buildSessionRow(
                       c: c,
@@ -289,10 +304,31 @@ class TreatmentDesign extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed:
                           canOpenWeek
-                              ? () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => screen),
-                              )
+                              ? () {
+                                if (isCurrentWeek && actionLabel == '이어하기') {
+                                  todayTask.clearTreatmentReviewFlow();
+                                  _showCurrentWeekEntryDialog(
+                                    context,
+                                    screen: screen,
+                                    weekNo: weekNo,
+                                    cbtDone: cbtDone,
+                                    appliedDone: appliedDone,
+                                  );
+                                  return;
+                                }
+
+                                if (actionLabel == '복습하기') {
+                                  todayTask.setTreatmentReviewFlow(
+                                    weekNo: weekNo,
+                                  );
+                                } else {
+                                  todayTask.clearTreatmentReviewFlow();
+                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => screen),
+                                );
+                              }
                               : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
@@ -447,6 +483,92 @@ class TreatmentDesign extends StatelessWidget {
           color: fg,
         ),
       ),
+    );
+  }
+
+  Future<void> _showCurrentWeekEntryDialog(
+    BuildContext context, {
+    required Widget screen,
+    required int weekNo,
+    required bool cbtDone,
+    required bool appliedDone,
+  }) {
+    final nav = Navigator.of(context);
+    final String title;
+    final String message;
+    final String positiveText;
+    final String negativeText;
+    final bool positiveIsCbt;
+
+    final week = weekContents[weekNo-1];
+    final session1Name = week['session1Name'];
+    final session2Name = week['session2Name'];
+
+    if (cbtDone && !appliedDone) {
+      title = '다음으로 이어할까요?';
+      message = '$session1Name은(는) 이미 마쳤어요.\n이어서 $session2Name을(를) 시작할까요?';
+      negativeText = '복습하기';
+      positiveText = '시작하기';
+      positiveIsCbt = false;
+    } else {
+      title = '다음으로 이어할까요?';
+      message = '$session2Name은(는) 이미 마쳤어요.\n이어서 $session1Name을(를) 진행할까요?';
+      negativeText = '복습하기';
+      positiveText = '시작하기';
+      positiveIsCbt = true;
+    }
+
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => CustomPopupDesign(
+            title: title,
+            message: message,
+            positiveText: positiveText,
+            negativeText: negativeText,
+            backgroundAsset: null,
+            iconAsset: null,
+            onPositivePressed: () {
+              nav.pop();
+              if (positiveIsCbt) {
+                nav.push(MaterialPageRoute(builder: (_) => screen));
+                return;
+              }
+
+              nav.pushNamed(
+                '/relaxation_start',
+                arguments: {
+                  'taskId': 'week${weekNo}_education',
+                  'weekNumber': weekNo,
+                  'mp3Asset': 'week$weekNo.mp3',
+                  'riveAsset': 'week$weekNo.riv',
+                  'isReviewMode': appliedDone,
+                },
+              );
+            },
+            onNegativePressed: () {
+              nav.pop();
+              if (positiveIsCbt) {
+                nav.pushNamed(
+                  '/relaxation_start',
+                  arguments: {
+                    'taskId':
+                        appliedDone
+                            ? 'week${weekNo}_review'
+                            : 'week${weekNo}_education',
+                    'weekNumber': weekNo,
+                    'mp3Asset': 'week$weekNo.mp3',
+                    'riveAsset': 'week$weekNo.riv',
+                    'isReviewMode': appliedDone,
+                  },
+                );
+                return;
+              }
+
+              nav.push(MaterialPageRoute(builder: (_) => screen));
+            },
+          ),
     );
   }
 }

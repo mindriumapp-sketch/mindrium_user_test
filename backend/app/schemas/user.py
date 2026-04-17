@@ -69,3 +69,5 @@ class TodayTaskResponse(BaseModel):
     date: date
     has_diary_today: bool
     has_relaxation_today: bool
+    relaxation_entry_mode_today: str = "review"
+    relaxation_week_no_today: int = 1

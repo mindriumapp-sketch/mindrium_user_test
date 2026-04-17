@@ -4,10 +4,11 @@ import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/4th_treatment/week4_classfication_screen.dart';
-import 'package:gad_app_team/features/4th_treatment/week4_flow_prompt_widgets.dart';
 
 // ✅ ApplyDesign (배경 + AppBar + BlueWhiteCard + 하단 네비 버튼)
+import 'package:gad_app_team/widgets/ruled_paragraph.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart';
+import 'package:gad_app_team/widgets/blue_banner.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
@@ -42,7 +43,6 @@ class Week4NextThoughtScreen extends StatefulWidget {
 class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
   bool _isNextEnabled = false;
   int _secondsLeft = 5;
-  bool _showSituation = true; // 상황 안내 먼저, 이후 보라 안내
   String? _activatingEvent;
   bool _isLoading = true;
   late final ApiClient _client;
@@ -89,9 +89,13 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _activatingEvent =
-            (diary?['activating_events'] ?? diary?['activatingEvent'])
-                ?.toString();
+        _activatingEvent = _safe(
+          _chipText(
+            diary?['activation'] ??
+                diary?['activating_events'] ??
+                diary?['activatingEvent'],
+          ),
+        );
         _isLoading = false;
       });
     } catch (_) {
@@ -100,121 +104,173 @@ class _Week4NextThoughtScreenState extends State<Week4NextThoughtScreen> {
     }
   }
 
+  String _chipLabel(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      return (raw['label'] ?? '').toString();
+    }
+    if (raw is String) {
+      final match = RegExp(r'label\s*[:=]\s*([^,}]+)').firstMatch(raw);
+      if (match != null) return match.group(1)?.trim() ?? '';
+    }
+    return raw.toString();
+  }
+
+  String _chipText(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => _chipLabel(e).trim())
+          .where((e) => e.isNotEmpty)
+          .join(', ');
+    }
+    return _chipLabel(raw).trim();
+  }
+
+  String _safe(String text) {
+    try {
+      return String.fromCharCodes(text.runes);
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userName = Provider.of<UserProvider>(context, listen: false).userName;
+    const double kRuleWidth = 220;
     final nextThought =
         widget.remainingBList.isNotEmpty ? widget.remainingBList.first : '';
     final situationText =
         (_activatingEvent != null && _activatingEvent!.isNotEmpty)
-            ? '$_activatingEvent 상황'
+            ? _activatingEvent!
             : '이때의 상황을 떠올려보세요.';
-    final remainingCount = widget.remainingBList.length;
+    final focusText =
+        situationText.isNotEmpty && nextThought.isNotEmpty
+            ? '$userName님, "$situationText"(이)라는 상황에서\n"$nextThought"(이)라는 또 다른 생각이 들었습니다.\n\n이제 그때의 상황과 생각을 함께 떠올려보세요.'
+            : situationText.isNotEmpty
+            ? '$userName님, "$situationText"(이)라는 상황을\n다시 천천히 떠올려보세요.'
+            : nextThought.isNotEmpty
+            ? '"$nextThought"(이)라는 생각을 천천히 떠올려보세요.'
+            : '다음 생각을 천천히 떠올려보세요.';
 
     // === 카드 안에 들어갈 본문 위젯 ===
-    final Widget body = Week4FlowPromptBody(
-      title: _showSituation ? '같은 상황을 한 번 더 떠올려볼게요' : '다음 생각으로 이어가볼게요',
-      subtitle:
-          _showSituation
-              ? '$userName님이 적어주신 같은 상황 안에서, 이어지는 다른 생각도 차례대로 살펴볼 거예요.'
-              : '같은 상황에서 떠오른 또 다른 생각을 살펴보고 도움이 되는 생각을 계속 찾아볼게요.',
-      situationText: situationText,
-      thoughtText: _showSituation ? null : nextThought,
-      footerText:
-          _showSituation
-              ? '상황이 선명하지 않아도 괜찮아요. 떠오르는 만큼만 천천히 머물러보세요.'
-              : '준비가 되면 다음 버튼을 눌러 이 생각도 차근차근 살펴보세요.',
-      badgeText: remainingCount > 0 ? '남은 생각 $remainingCount개' : null,
-      isLoading: _isLoading,
-      secondsLeft: _isNextEnabled ? null : _secondsLeft,
-      waitingText: '$_secondsLeft초 후에 다음으로 넘어갈 수 있어요',
-    );
+    final Widget body =
+        _isLoading
+            ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: CircularProgressIndicator(),
+            )
+            : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Image.asset(
+                  'assets/image/think_blue.png',
+                  height: 160,
+                  filterQuality: FilterQuality.high,
+                ),
+                const SizedBox(height: 20),
+                RuledParagraph(
+                  text: focusText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2C3C55),
+                    height: 1.6,
+                  ),
+                  lineColor: const Color(0xFFE1E8F0),
+                  lineThickness: 1.2,
+                  lineGapBelow: 8,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  lineWidth: kRuleWidth,
+                ),
+                if (!_isNextEnabled) ...[
+                  const SizedBox(height: 18),
+                  Text(
+                    '$_secondsLeft초 후에 다음 버튼이 활성화됩니다',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF9BA7B4),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            );
 
     // === ApplyDesign 사용: 배경/앱바/중앙 BlueWhiteCard/하단 네비 버튼 ===
     return ApplyDesign(
       appBarTitle: '인지 왜곡 찾기',
-      cardTitle: '그때 상황 다시 떠올리기',
+      cardTitle: '다음 생각으로 이어가기',
       onBack: () => Navigator.pop(context),
-      onNext:
-          _isNextEnabled
-              ? () async {
-                if (_showSituation) {
-                  setState(() => _showSituation = false);
-                  return;
-                }
-                final navigator = Navigator.of(context);
-                // 1) 새로 입력한 불안 생각을 일기 belief에 누적 + 커스텀 태그 저장
-                try {
-                  final newThoughts =
+      onNext: () async {
+        if (!_isNextEnabled) {
+          BlueBanner.show(context, '$_secondsLeft초 후에 다음 버튼이 활성화됩니다');
+          return;
+        }
+
+        final navigator = Navigator.of(context);
+        // 1) 새로 입력한 불안 생각을 일기 belief에 누적 + 커스텀 태그 저장
+        try {
+          final newThoughts =
+              widget.isFromAnxietyScreen
+                  ? widget.addedAnxietyThoughts
+                  : <String>[];
+          if (newThoughts.isNotEmpty) {
+            final id = widget.abcId;
+            // diaryId가 없으면 최신으로 보정
+            final diary =
+                (id != null && id.isNotEmpty)
+                    ? await _diariesApi.getDiary(id)
+                    : await _diariesApi.getLatestDiary();
+            final diaryId = diary['diaryId']?.toString();
+            if (diaryId != null && diaryId.isNotEmpty) {
+              final List<String> existingBelief =
+                  [
+                    ...((diary['belief'] is List)
+                        ? (diary['belief'] as List).map((e) => e.toString())
+                        : diary['belief']?.toString().split(',') ?? <String>[]),
+                  ].map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+              final toAdd =
+                  newThoughts
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList();
+              final merged = <String>{...existingBelief, ...toAdd}.toList();
+              await _diariesApi.updateDiary(diaryId, {'belief': merged});
+              // 커스텀 태그(B)로도 저장
+              for (final t in toAdd) {
+                await _customTagsApi.createCustomTag(label: t, type: 'B');
+              }
+            }
+          }
+        } catch (_) {}
+
+        // 2) 다음 화면 이동
+        if (!mounted) return;
+        navigator.push(
+          PageRouteBuilder(
+            pageBuilder:
+                (_, __, ___) => Week4ClassificationScreen(
+                  bListInput:
                       widget.isFromAnxietyScreen
                           ? widget.addedAnxietyThoughts
-                          : <String>[];
-                  if (newThoughts.isNotEmpty) {
-                    final id = widget.abcId;
-                    // diaryId가 없으면 최신으로 보정
-                    final diary =
-                        (id != null && id.isNotEmpty)
-                            ? await _diariesApi.getDiary(id)
-                            : await _diariesApi.getLatestDiary();
-                    final diaryId = diary['diaryId']?.toString();
-                    if (diaryId != null && diaryId.isNotEmpty) {
-                      final List<String> existingBelief =
-                          [
-                                ...((diary['belief'] is List)
-                                    ? (diary['belief'] as List).map(
-                                      (e) => e.toString(),
-                                    )
-                                    : diary['belief']?.toString().split(',') ??
-                                        <String>[]),
-                              ]
-                              .map((e) => e.trim())
-                              .where((e) => e.isNotEmpty)
-                              .toList();
-                      final toAdd =
-                          newThoughts
-                              .map((e) => e.trim())
-                              .where((e) => e.isNotEmpty)
-                              .toList();
-                      final merged =
-                          <String>{...existingBelief, ...toAdd}.toList();
-                      await _diariesApi.updateDiary(diaryId, {
-                        'belief': merged,
-                      });
-                      // 커스텀 태그(B)로도 저장
-                      for (final t in toAdd) {
-                        await _customTagsApi.createCustomTag(
-                          label: t,
-                          type: 'B',
-                        );
-                      }
-                    }
-                  }
-                } catch (_) {}
-
-                // 2) 다음 화면 이동
-                if (!mounted) return;
-                navigator.push(
-                  PageRouteBuilder(
-                    pageBuilder:
-                        (_, __, ___) => Week4ClassificationScreen(
-                          bListInput:
-                              widget.isFromAnxietyScreen
-                                  ? widget.addedAnxietyThoughts
-                                  : widget.remainingBList,
-                          allBList: widget.allBList,
-                          alternativeThoughts: widget.alternativeThoughts,
-                          isFromAnxietyScreen: widget.isFromAnxietyScreen,
-                          existingAlternativeThoughts:
-                              widget.existingAlternativeThoughts,
-                          abcId: widget.abcId,
-                          loopCount: widget.loopCount,
-                        ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                );
-              }
-              : null,
+                          : widget.remainingBList,
+                  allBList: widget.allBList,
+                  alternativeThoughts: widget.alternativeThoughts,
+                  isFromAnxietyScreen: widget.isFromAnxietyScreen,
+                  existingAlternativeThoughts:
+                      widget.existingAlternativeThoughts,
+                  abcId: widget.abcId,
+                  loopCount: widget.loopCount,
+                ),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+      },
       child: body, // 비활성화 상태면 null 전달 → NavigationButtons에서 비활성 처리
     );
   }
