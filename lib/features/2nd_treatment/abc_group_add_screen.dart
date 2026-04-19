@@ -19,7 +19,6 @@ import 'abc_group_character_screen.dart';
 import '../../data/apply_solve_provider.dart';
 import 'loctime_selection_screen.dart';
 import 'week2_final_screen.dart';
-import 'package:gad_app_team/widgets/session_transition_dialog.dart';
 
 class AbcGroupAddScreen extends StatefulWidget {
   final String? label;

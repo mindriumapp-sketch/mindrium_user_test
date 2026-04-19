@@ -62,10 +62,8 @@ flutter:
 
   assets:
     - dart_defines/
-    - assets/image/Background_wave.png
     - assets/image/activating event.png
     - assets/image/alternative thoughts.png
-    - assets/image/attack.png
     - assets/image/belief.png
     - assets/image/character1.png
     - assets/image/character2.png
@@ -123,37 +121,19 @@ flutter:
     - assets/image/character20_last.png
     - assets/image/congrats.png
     - assets/image/consequence.png
-    - assets/image/coral_green.png
-    - assets/image/coral_pink.png
-    - assets/image/coral_yellow.png
-    - assets/image/correct.png
-    - assets/image/daily_diary.png
-    - assets/image/delete.png
-    - assets/image/delete2.png
-    - assets/image/done.png
     - assets/image/progressing1.png
     - assets/image/eduhome.png
-    - assets/image/ending.png
     - assets/image/finish.png
-    - assets/image/home.png
-    - assets/image/imagination.png
     - assets/image/intro1.png
     - assets/image/intro2.png
     - assets/image/intro3.png
     - assets/image/jellyfish.png
-    - assets/image/jellyfish_good_aquarium.png
     - assets/image/jellyfish_smart.png
     - assets/image/jellyfish_8th.png
-    - assets/image/jellyfish_pink.png
-    - assets/image/jellyfish_blue.png
-    - assets/image/jellyfish_blue_congrats.png
     - assets/image/logo.png
     - assets/image/memo.png
     - assets/image/men.png
     - assets/image/battle_scene_bg.png
-    - assets/image/nice.png
-    - assets/image/pink1.png
-    - assets/image/pink2.png
     - assets/image/pink3.png
     - assets/image/popup1.png
     - assets/image/popup2.png
@@ -161,16 +141,7 @@ flutter:
     - assets/image/scenario_1.png
     - assets/image/scenario_2.png
     - assets/image/scenario_3.png
-    - assets/image/spring.png
-    - assets/image/undone.png
-    - assets/image/wrong.png
     - assets/image/think_blue.png
-    - assets/image/aquarium_background.png
-    - assets/image/coral1.png
-    - assets/image/coral2.png
-    - assets/image/coral3.png
-    - assets/image/coral4.png
-    - assets/image/coral5.png
     - assets/image/sea_archive_bg.png
     - assets/image/edu_book1.jpg
     - assets/image/edu_book2.jpg
@@ -181,9 +152,6 @@ flutter:
     - assets/image/edu_relaxation.png
     - assets/image/progressing1.png
 
-    - assets/image/week5_scenario1.jpg
-    - assets/image/week5_scenario2.jpg
-    - assets/image/week5_scenario3.jpg
     - assets/image/widget_tutorial_1.png
     - assets/image/widget_tutorial_2.png
     - assets/image/widget_tutorial_3.png
@@ -271,7 +239,6 @@ flutter:
     - assets/relaxation/noti.mp3
 
     - assets/image/alternative thoughts.png
-    - assets/image/imagination.png
 
 flutter_native_splash:
   color: "#F9F5F9"
