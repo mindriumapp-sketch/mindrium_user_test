@@ -17,7 +17,7 @@ class Week4FinalScreen extends StatelessWidget {
   const Week4FinalScreen({super.key, this.alternativeThoughts, this.loopCount});
 
   bool _isReviewMode(BuildContext context) {
-    final user = context.watch<UserProvider>();
+    final user = context.read<UserProvider>();
     return user.currentWeek > 4 ||
         (user.currentWeek == 4 && user.mainCbtCompleted);
   }
@@ -48,6 +48,39 @@ class Week4FinalScreen extends StatelessWidget {
         final userProvider = context.read<UserProvider>();
         if (_isReviewMode(context)) {
           final todayTask = context.read<TodayTaskProvider>();
+          final shouldShowRelaxLearning =
+              todayTask.isTreatmentReviewFlowForWeek(4) &&
+              shouldShowCbtToRelaxationTransition(
+                currentWeek: userProvider.currentWeek,
+                mainRelaxCompleted: userProvider.mainRelaxCompleted,
+                weekNumber: 4,
+              );
+          if (shouldShowRelaxLearning) {
+            showCbtToRelaxationDialog(
+              context: context,
+              weekNumber: 4,
+              onMoveNow: () {
+                Navigator.of(context).pop();
+                Navigator.pushReplacementNamed(
+                  context,
+                  '/relaxation_start',
+                  arguments: {
+                    'taskId': 'week4_education',
+                    'weekNumber': 4,
+                    'mp3Asset': 'week4.mp3',
+                    'riveAsset': 'week4.riv',
+                    'isReviewMode': false,
+                  },
+                );
+              },
+              onFinish: () {
+                todayTask.clearTreatmentReviewFlow();
+                Navigator.of(context).pop();
+                Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+              },
+            );
+            return;
+          }
           final shouldShowRelaxReview =
               todayTask.isTreatmentReviewFlowForWeek(4) &&
               (userProvider.currentWeek > 4 ||

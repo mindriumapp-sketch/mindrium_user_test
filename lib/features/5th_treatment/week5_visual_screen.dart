@@ -50,6 +50,39 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
     if (await _isReviewMode()) {
       final todayTask = context.read<TodayTaskProvider>();
       final user = context.read<UserProvider>();
+      final shouldShowRelaxLearning =
+          todayTask.isTreatmentReviewFlowForWeek(5) &&
+          shouldShowCbtToRelaxationTransition(
+            currentWeek: user.currentWeek,
+            mainRelaxCompleted: user.mainRelaxCompleted,
+            weekNumber: 5,
+          );
+      if (shouldShowRelaxLearning) {
+        showCbtToRelaxationDialog(
+          context: context,
+          weekNumber: 5,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'sessionId': widget.sessionId,
+                'taskId': 'week5_education',
+                'weekNumber': 5,
+                'mp3Asset': 'week5.mp3',
+                'riveAsset': 'week5.riv',
+                'isReviewMode': false,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(5) &&
           (user.currentWeek > 5 ||

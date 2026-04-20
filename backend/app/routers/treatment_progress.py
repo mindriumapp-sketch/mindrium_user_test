@@ -89,6 +89,51 @@ async def _find_active_progress(
     )
 
 
+async def _find_latest_completed_progress(
+    *,
+    collection,
+    user_id: str,
+    week_number: int | None = None,
+    projection: Dict[str, Any] | None = None,
+) -> Dict[str, Any] | None:
+    query: Dict[str, Any] = {
+        "user_id": user_id,
+        "completed_at": {"$ne": None},
+    }
+    if week_number is not None:
+        query["week_number"] = week_number
+
+    return await collection.find_one(
+        query,
+        projection,
+        sort=[("week_number", -1)],
+    )
+
+
+async def _find_effective_progress(
+    *,
+    collection,
+    user_id: str,
+    week_number: int | None = None,
+    projection: Dict[str, Any] | None = None,
+) -> Dict[str, Any] | None:
+    progress = await _find_active_progress(
+        collection=collection,
+        user_id=user_id,
+        week_number=week_number,
+        projection=projection,
+    )
+    if progress is not None:
+        return progress
+
+    return await _find_latest_completed_progress(
+        collection=collection,
+        user_id=user_id,
+        week_number=week_number,
+        projection=projection,
+    )
+
+
 async def _refresh_requirements_met(
     *,
     db,
@@ -205,7 +250,7 @@ async def get_active_treatment_progress(
     db=Depends(get_db),
 ):
     collection = db[TREATMENT_PROGRESS_COLLECTION]
-    progress = await _find_active_progress(
+    progress = await _find_effective_progress(
         collection=collection,
         user_id=user_id,
         week_number=week_number,

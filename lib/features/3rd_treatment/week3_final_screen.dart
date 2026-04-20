@@ -130,6 +130,39 @@ class Week3FinalScreen extends StatelessWidget {
     if (await _isReviewMode(context)) {
       final todayTask = context.read<TodayTaskProvider>();
       final user = context.read<UserProvider>();
+      final shouldShowRelaxLearning =
+          todayTask.isTreatmentReviewFlowForWeek(3) &&
+          shouldShowCbtToRelaxationTransition(
+            currentWeek: user.currentWeek,
+            mainRelaxCompleted: user.mainRelaxCompleted,
+            weekNumber: 3,
+          );
+      if (shouldShowRelaxLearning) {
+        showCbtToRelaxationDialog(
+          context: context,
+          weekNumber: 3,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'sessionId': sessionId,
+                'taskId': 'week3_education',
+                'weekNumber': 3,
+                'mp3Asset': 'week3.mp3',
+                'riveAsset': 'week3.riv',
+                'isReviewMode': false,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(3) &&
           (user.currentWeek > 3 ||

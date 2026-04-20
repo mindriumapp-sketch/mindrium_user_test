@@ -16,7 +16,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from db.mongo import get_db
 from pymongo import ReturnDocument
-from routers.treatment_progress import _find_active_progress, _refresh_requirements_met
+from routers.treatment_progress import (
+    _find_effective_progress,
+    _refresh_requirements_met,
+)
 from routers.worry_groups import adjust_group_metrics
 from routers.sud_scores import parse_sud_value, serialize_sud, normalize_sud_scores
 from schemas.sud import SudScoreResponse
@@ -629,7 +632,7 @@ async def _sync_treatment_progress_daily_diary(
     synced_at: datetime,
 ) -> None:
     progress_collection = db[TREATMENT_PROGRESS_COLLECTION]
-    progress = await _find_active_progress(
+    progress = await _find_effective_progress(
         collection=progress_collection,
         user_id=user_id,
         projection={
@@ -647,7 +650,7 @@ async def _sync_treatment_progress_daily_diary(
 
     started_at = parse_datetime_value(progress.get("started_at"))
     synced_utc = ensure_utc(synced_at) or synced_at
-    if started_at is None or synced_utc < started_at or progress.get("completed_at") is not None:
+    if started_at is None or synced_utc < started_at:
         return
 
     progress = await progress_collection.find_one_and_update(

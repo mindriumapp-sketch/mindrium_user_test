@@ -337,6 +337,38 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
     if (await _isReviewMode()) {
       final todayTask = context.read<TodayTaskProvider>();
       final user = context.read<UserProvider>();
+      final shouldShowRelaxLearning =
+          todayTask.isTreatmentReviewFlowForWeek(6) &&
+          shouldShowCbtToRelaxationTransition(
+            currentWeek: user.currentWeek,
+            mainRelaxCompleted: user.mainRelaxCompleted,
+            weekNumber: 6,
+          );
+      if (shouldShowRelaxLearning) {
+        showCbtToRelaxationDialog(
+          context: context,
+          weekNumber: 6,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'taskId': 'week6_education',
+                'weekNumber': 6,
+                'mp3Asset': 'week6.mp3',
+                'riveAsset': 'week6.riv',
+                'isReviewMode': false,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(6) &&
           (user.currentWeek > 6 ||

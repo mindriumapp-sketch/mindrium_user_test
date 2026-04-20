@@ -20,7 +20,10 @@ from schemas.relaxation import (
     RelaxationTimeSummary,
     RelaxationTaskTimeSummary,
 )
-from routers.treatment_progress import _find_active_progress, _refresh_requirements_met
+from routers.treatment_progress import (
+    _find_effective_progress,
+    _refresh_requirements_met,
+)
 
 router = APIRouter(prefix="/relaxation_tasks", tags=["relaxation_tasks"])
 
@@ -279,7 +282,7 @@ async def _sync_treatment_progress_daily_relax(
     synced_at: datetime,
 ) -> None:
     collection = db[TREATMENT_PROGRESS_COLLECTION]
-    progress = await _find_active_progress(
+    progress = await _find_effective_progress(
         collection=collection,
         user_id=user_id,
         week_number=week_number,
@@ -298,7 +301,7 @@ async def _sync_treatment_progress_daily_relax(
 
     started_at = parse_datetime_value(progress.get("started_at"))
     synced_utc = ensure_utc(synced_at) or synced_at
-    if started_at is None or synced_utc < started_at or progress.get("completed_at") is not None:
+    if started_at is None or synced_utc < started_at:
         return
 
     progress = await collection.find_one_and_update(

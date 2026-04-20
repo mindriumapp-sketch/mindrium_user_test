@@ -23,7 +23,9 @@ class UserProvider extends ChangeNotifier {
   late final ApiClient _client = ApiClient(tokens: _tokens);
   late final UsersApi _usersApi = UsersApi(_client);
   late final UserDataApi _userDataApi = UserDataApi(_client);
-  late final TreatmentProgressApi _treatmentProgressApi = TreatmentProgressApi(_client);
+  late final TreatmentProgressApi _treatmentProgressApi = TreatmentProgressApi(
+    _client,
+  );
 
   // ───────────────────── 상태 플래그 ─────────────────────
   bool _hasError = false;
@@ -80,6 +82,17 @@ class UserProvider extends ChangeNotifier {
 
   bool _mainRelaxCompleted = false;
   bool get mainRelaxCompleted => _mainRelaxCompleted;
+
+  int _dailyDiaryCount = 0;
+  int get dailyDiaryCount => _dailyDiaryCount;
+
+  int _dailyRelaxCount = 0;
+  int get dailyRelaxCount => _dailyRelaxCount;
+
+  bool _requirementsMet = false;
+  bool get requirementsMet => _requirementsMet;
+
+  bool get mainCompleted => _mainCbtCompleted && _mainRelaxCompleted;
 
   // ───────────────────── 핵심 가치 캐시 (progress에서 같이 내려옴) ─────────────────────
   String? _valueGoal;
@@ -237,6 +250,9 @@ class UserProvider extends ChangeNotifier {
     _totalRelaxations = 0;
     _mainCbtCompleted = false;
     _mainRelaxCompleted = false;
+    _dailyDiaryCount = 0;
+    _dailyRelaxCount = 0;
+    _requirementsMet = false;
     _valueGoal = null;
 
     unawaited(AlarmNotificationService.instance.cancelEducationReminders());
@@ -333,7 +349,8 @@ class UserProvider extends ChangeNotifier {
     }
 
     try {
-      final activeProgress = await _treatmentProgressApi.getActiveTreatmentProgress();
+      final activeProgress =
+          await _treatmentProgressApi.getActiveTreatmentProgress();
       if (requestId != _requestId) return;
       final activeWeekRaw = activeProgress['week_number'];
       if (activeWeekRaw is int) {
@@ -343,9 +360,33 @@ class UserProvider extends ChangeNotifier {
       }
 
       final mainEduSessionId = activeProgress['edu_session_id']?.toString();
-      final mainRelaxationTaskId = activeProgress['relaxation_task_id']?.toString();
-      _mainCbtCompleted = mainEduSessionId != null && mainEduSessionId.isNotEmpty;
-      _mainRelaxCompleted = mainRelaxationTaskId != null && mainRelaxationTaskId.isNotEmpty;
+      final mainRelaxationTaskId =
+          activeProgress['relaxation_task_id']?.toString();
+      _mainCbtCompleted =
+          mainEduSessionId != null && mainEduSessionId.isNotEmpty;
+      _mainRelaxCompleted =
+          mainRelaxationTaskId != null && mainRelaxationTaskId.isNotEmpty;
+
+      final dailyDiaryRaw = activeProgress['daily_diary_count'];
+      if (dailyDiaryRaw is int) {
+        _dailyDiaryCount = dailyDiaryRaw;
+      } else if (dailyDiaryRaw is num) {
+        _dailyDiaryCount = dailyDiaryRaw.toInt();
+      } else {
+        _dailyDiaryCount = 0;
+      }
+
+      final dailyRelaxRaw = activeProgress['daily_relax_count'];
+      if (dailyRelaxRaw is int) {
+        _dailyRelaxCount = dailyRelaxRaw;
+      } else if (dailyRelaxRaw is num) {
+        _dailyRelaxCount = dailyRelaxRaw.toInt();
+      } else {
+        _dailyRelaxCount = 0;
+      }
+
+      final requirementsRaw = activeProgress['requirements_met'];
+      _requirementsMet = requirementsRaw is bool ? requirementsRaw : false;
     } catch (e) {
       if (requestId != _requestId) return;
       debugPrint('UserProvider.activeTreatmentProgress 조회 실패: $e');
@@ -355,7 +396,7 @@ class UserProvider extends ChangeNotifier {
       await AlarmNotificationService.instance.syncEducationReminders(
         currentWeek: _currentWeek,
         lastCompletedWeek: _lastCompletedWeek,
-        lastCompletedAt: _lastCompletedAt,
+        mainCompleted: _mainCbtCompleted && _mainRelaxCompleted,
       );
     } catch (e) {
       debugPrint('교육 알림 동기화 실패: $e');
@@ -398,7 +439,7 @@ class UserProvider extends ChangeNotifier {
       AlarmNotificationService.instance.syncEducationReminders(
         currentWeek: _currentWeek,
         lastCompletedWeek: _lastCompletedWeek,
-        lastCompletedAt: _lastCompletedAt,
+        mainCompleted: _mainCbtCompleted && _mainRelaxCompleted,
       ),
     );
     _notifyListenersSafely();

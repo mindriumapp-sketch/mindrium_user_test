@@ -1,7 +1,7 @@
 """
 사용자 데이터 관리 API
 - 핵심 가치 (core value)
-- 설문 데이터
+- 설문 데이터정
 - 주차별 진행도
 - 사용자 정보 업데이트
 """
@@ -19,6 +19,7 @@ from core.utils import parse_datetime_value, ensure_utc, kst_midnight
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from db.mongo import get_db
+from routers.treatment_progress import _find_effective_progress
 from schemas.user import (
     ValueGoalUpdate,
     ValueGoalResponse,
@@ -43,6 +44,9 @@ def _safe_completed_at(survey: dict) -> datetime:
         return dt
     # completed_at이 없다면 과거로 밀기
     return datetime.min.replace(tzinfo=timezone.utc)
+
+
+TREATMENT_PROGRESS_COLLECTION = "treatment_progress"
 
 
 # ============= value-goal =============
@@ -215,21 +219,24 @@ async def get_user_progress(
     - total_diaries: 작성한 다이어리 수
     - total_relaxations: 완료한 이완 훈련 수
     """
+    user_id = current_user.get("user_id")
+    if not isinstance(user_id, str) or not user_id:
+        raise RuntimeError("current_user에 user_id가 없습니다.")
+
     raw_last_week = current_user.get("last_completed_week")
     last_completed_week = int(raw_last_week) if isinstance(raw_last_week, (int, float)) else 0
     last_completed_at = parse_datetime_value(current_user.get("last_completed_at"))
-    if last_completed_week <= 0:
-        current_week = 1
-    elif last_completed_week >= 8:
-        current_week = 8
-    else:
-        current_week = last_completed_week + 1
+    current_progress = await _find_effective_progress(
+        collection=db[TREATMENT_PROGRESS_COLLECTION],
+        user_id=user_id,
+    )
+    current_week = int(current_progress.get("week_number", 1)) if current_progress else 1
 
     # ---- 다이어리 및 이완 카운트 ----
     diary_collection = db["diaries"]
     total_diaries = await diary_collection.count_documents(
         {
-            "user_id": current_user.get("user_id"),
+            "user_id": user_id,
             "activation.label": {"$not": {"$regex": "자동 생성"}},
         }
     )
@@ -254,10 +261,9 @@ async def get_user_progress(
         total_relaxations=total_relaxations,
     )
 
-# ============= today task =============
 DIARY_COLLECTION = "diaries"
 RELAX_COLLECTION = "relaxation_tasks"
-TREATMENT_PROGRESS_COLLECTION = "treatment_progress"
+# ============= today task =============
 
 @router.get(
     "/todaytask",
@@ -278,7 +284,7 @@ async def get_today_task(
         duration_seconds > 0 이면서 end_time != None 인 세션이 1개 이상이면 True
     """
     user_id = current_user.get("user_id")
-    if not user_id:
+    if not isinstance(user_id, str) or not user_id:
         raise RuntimeError("current_user에 user_id가 없습니다.")
 
     # ---- 1) 오늘(KST) 날짜 계산 ----
@@ -313,22 +319,14 @@ async def get_today_task(
     )
     has_diary_today = diary_count_today > 0
 
-    raw_last_week = current_user.get("last_completed_week")
-    last_completed_week = (
-        int(raw_last_week) if isinstance(raw_last_week, (int, float)) else 0
+    current_progress = await _find_effective_progress(
+        collection=db[TREATMENT_PROGRESS_COLLECTION],
+        user_id=user_id,
     )
-    if last_completed_week <= 0:
-        current_week = 1
-    elif last_completed_week >= 8:
-        current_week = 8
-    else:
-        current_week = last_completed_week + 1
-
-    current_progress = await db[TREATMENT_PROGRESS_COLLECTION].find_one(
-        {
-            "user_id": user_id,
-            "week_number": current_week,
-        }
+    current_week = (
+        int(current_progress.get("week_number", 1))
+        if current_progress is not None
+        else 1
     )
     main_relax_completed = bool(
         current_progress and current_progress.get("relaxation_task_id")

@@ -32,6 +32,40 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
     if (await _isReviewMode()) {
       final todayTask = context.read<TodayTaskProvider>();
       final user = context.read<UserProvider>();
+      final shouldShowRelaxLearning =
+          todayTask.isTreatmentReviewFlowForWeek(2) &&
+          shouldShowCbtToRelaxationTransition(
+            currentWeek: user.currentWeek,
+            mainRelaxCompleted: user.mainRelaxCompleted,
+            weekNumber: 2,
+          );
+      if (shouldShowRelaxLearning) {
+        showCbtToRelaxationDialog(
+          context: context,
+          weekNumber: 2,
+          onMoveNow: () {
+            Navigator.of(context).pop();
+            Navigator.pushReplacementNamed(
+              context,
+              '/relaxation_start',
+              arguments: {
+                'sessionId': widget.sessionId,
+                'taskId': 'week2_education',
+                'weekNumber': 2,
+                'mp3Asset': 'week2.mp3',
+                'riveAsset': 'week2.riv',
+                'isReviewMode': false,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(context).pop();
+            Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(2) &&
           (user.currentWeek > 2 ||

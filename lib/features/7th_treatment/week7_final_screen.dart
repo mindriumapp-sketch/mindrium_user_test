@@ -26,7 +26,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
   String? _sessionId;
 
   bool _isReviewMode(BuildContext context) {
-    final user = context.watch<UserProvider>();
+    final user = context.read<UserProvider>();
     return user.currentWeek > 7 ||
         (user.currentWeek == 7 && user.mainCbtCompleted);
   }
@@ -157,6 +157,38 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
 
     if (_isReviewMode(context)) {
       final todayTask = context.read<TodayTaskProvider>();
+      final shouldShowRelaxLearning =
+          todayTask.isTreatmentReviewFlowForWeek(7) &&
+          shouldShowCbtToRelaxationTransition(
+            currentWeek: userProvider.currentWeek,
+            mainRelaxCompleted: userProvider.mainRelaxCompleted,
+            weekNumber: 7,
+          );
+      if (shouldShowRelaxLearning) {
+        showCbtToRelaxationDialog(
+          context: ctx,
+          weekNumber: 7,
+          onMoveNow: () {
+            Navigator.of(ctx).pop();
+            nav.pushReplacementNamed(
+              '/relaxation_start',
+              arguments: {
+                'taskId': 'week7_education',
+                'weekNumber': 7,
+                'mp3Asset': 'week7.mp3',
+                'riveAsset': 'week7.riv',
+                'isReviewMode': false,
+              },
+            );
+          },
+          onFinish: () {
+            todayTask.clearTreatmentReviewFlow();
+            Navigator.of(ctx).pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+          },
+        );
+        return;
+      }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(7) &&
           (userProvider.currentWeek > 7 ||

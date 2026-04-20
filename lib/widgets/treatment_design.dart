@@ -1,5 +1,6 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:provider/provider.dart';
 
@@ -135,6 +136,7 @@ class TreatmentDesign extends StatelessWidget {
                 isFutureWeek: unlockAllWeeks ? false : isFuture,
                 appliedDone: relaxationCompletedWeeks.contains(weekNo),
                 cbtDone: cbtCompletedWeeks.contains(weekNo),
+                lastCompletedWeek: lastCompleted ?? completedWeeks.length,
               );
             },
           ),
@@ -160,12 +162,23 @@ class TreatmentDesign extends StatelessWidget {
     required bool isFutureWeek,
     required bool appliedDone,
     required bool cbtDone,
+    required int lastCompletedWeek,
   }) {
     final todayTask = context.read<TodayTaskProvider>();
+    final user = context.watch<UserProvider>();
     final canOpenWeek = !isFutureWeek;
+    final canExplainLockedReason = isFutureWeek && weekNo == currentWeek + 1;
+    final requiredWeek = weekNo - 1;
+    final requiredWeekContent =
+        requiredWeek >= 1 && requiredWeek <= weekContents.length
+            ? weekContents[requiredWeek - 1]
+            : null;
+    final requiredCbtLabel =
+        requiredWeekContent?['session1Name'] ?? '불안에 대한 이해';
+    final requiredRelaxLabel =
+        requiredWeekContent?['session2Name'] ?? '점진적 이완';
     final continueLabel =
         (!isCurrentWeek || (appliedDone && cbtDone)) ? '복습하기' : '이어하기';
-    final requiredWeek = weekNo - 1;
     final actionLabel =
         isFutureWeek ? '$requiredWeek주차 완료 후 하기' : continueLabel;
     final isRelaxCompletedWeek = appliedDone;
@@ -251,16 +264,24 @@ class TreatmentDesign extends StatelessWidget {
                 if (isExpanded) ...[
                   const SizedBox(height: 14),
                   GestureDetector(
-                    onTap:
-                        canOpenWeek
-                            ? () {
-                              todayTask.clearTreatmentReviewFlow();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => screen),
-                              );
-                            }
-                            : null,
+                    onTap: () {
+                      if (!canOpenWeek) {
+                        if (canExplainLockedReason) {
+                          _showLockedWeekReason(
+                            context,
+                            user: user,
+                            cbtLabel: requiredCbtLabel,
+                            relaxLabel: requiredRelaxLabel,
+                          );
+                        }
+                        return;
+                      }
+                      todayTask.clearTreatmentReviewFlow();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => screen),
+                      );
+                    },
                     child: _buildSessionRow(
                       c: c,
                       title: session1Name,
@@ -272,23 +293,31 @@ class TreatmentDesign extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   GestureDetector(
-                    onTap:
-                        canOpenWeek
-                            ? () {
-                              todayTask.clearTreatmentReviewFlow();
-                              Navigator.pushNamed(
-                                context,
-                                '/relaxation_start',
-                                arguments: {
-                                  'taskId': relaxTaskId,
-                                  'weekNumber': weekNo,
-                                  'mp3Asset': 'week$weekNo.mp3',
-                                  'riveAsset': 'week$weekNo.riv',
-                                  'isReviewMode': appliedDone,
-                                },
-                              );
-                            }
-                            : null,
+                    onTap: () {
+                      if (!canOpenWeek) {
+                        if (canExplainLockedReason) {
+                          _showLockedWeekReason(
+                            context,
+                            user: user,
+                            cbtLabel: requiredCbtLabel,
+                            relaxLabel: requiredRelaxLabel,
+                          );
+                        }
+                        return;
+                      }
+                      todayTask.clearTreatmentReviewFlow();
+                      Navigator.pushNamed(
+                        context,
+                        '/relaxation_start',
+                        arguments: {
+                          'taskId': relaxTaskId,
+                          'weekNumber': weekNo,
+                          'mp3Asset': 'week$weekNo.mp3',
+                          'riveAsset': 'week$weekNo.riv',
+                          'isReviewMode': appliedDone,
+                        },
+                      );
+                    },
                     child: _buildSessionRow(
                       c: c,
                       title: session2Name,
@@ -302,34 +331,48 @@ class TreatmentDesign extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed:
-                          canOpenWeek
-                              ? () {
-                                if (isCurrentWeek && actionLabel == '이어하기') {
-                                  todayTask.clearTreatmentReviewFlow();
-                                  _showCurrentWeekEntryDialog(
-                                    context,
-                                    screen: screen,
-                                    weekNo: weekNo,
-                                    cbtDone: cbtDone,
-                                    appliedDone: appliedDone,
-                                  );
-                                  return;
-                                }
+                      onPressed: () {
+                        if (!canOpenWeek) {
+                          if (canExplainLockedReason) {
+                            _showLockedWeekReason(
+                              context,
+                              user: user,
+                              cbtLabel: requiredCbtLabel,
+                              relaxLabel: requiredRelaxLabel,
+                            );
+                          }
+                          return;
+                        }
 
-                                if (actionLabel == '복습하기') {
-                                  todayTask.setTreatmentReviewFlow(
-                                    weekNo: weekNo,
-                                  );
-                                } else {
-                                  todayTask.clearTreatmentReviewFlow();
-                                }
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => screen),
-                                );
-                              }
-                              : null,
+                        if (isCurrentWeek && actionLabel == '이어하기') {
+                          todayTask.clearTreatmentReviewFlow();
+                          if (!cbtDone && !appliedDone) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => screen),
+                            );
+                            return;
+                          }
+                          _showCurrentWeekEntryDialog(
+                            context,
+                            screen: screen,
+                            weekNo: weekNo,
+                            cbtDone: cbtDone,
+                            appliedDone: appliedDone,
+                          );
+                          return;
+                        }
+
+                        if (actionLabel == '복습하기') {
+                          todayTask.setTreatmentReviewFlow(weekNo: weekNo);
+                        } else {
+                          todayTask.clearTreatmentReviewFlow();
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => screen),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
                             isFutureWeek
@@ -500,7 +543,7 @@ class TreatmentDesign extends StatelessWidget {
     final String negativeText;
     final bool positiveIsCbt;
 
-    final week = weekContents[weekNo-1];
+    final week = weekContents[weekNo - 1];
     final session1Name = week['session1Name'];
     final session2Name = week['session2Name'];
 
@@ -566,9 +609,238 @@ class TreatmentDesign extends StatelessWidget {
                 return;
               }
 
+              context.read<TodayTaskProvider>().setTreatmentReviewFlow(
+                weekNo: weekNo,
+              );
               nav.push(MaterialPageRoute(builder: (_) => screen));
             },
           ),
+    );
+  }
+
+  Future<void> _showLockedWeekReason(
+    BuildContext context, {
+    required UserProvider user,
+    required String cbtLabel,
+    required String relaxLabel,
+  }) {
+    final isTomorrowUnlockCase = user.requirementsMet;
+    return showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder:
+          (_) => _LockedWeekReasonDialog(
+            user: user,
+            isTomorrowUnlockCase: isTomorrowUnlockCase,
+            cbtLabel: cbtLabel,
+            relaxLabel: relaxLabel,
+          ),
+    );
+  }
+}
+
+class _LockedWeekReasonDialog extends StatelessWidget {
+  final UserProvider user;
+  final bool isTomorrowUnlockCase;
+  final String cbtLabel;
+  final String relaxLabel;
+
+  const _LockedWeekReasonDialog({
+    required this.user,
+    required this.isTomorrowUnlockCase,
+    required this.cbtLabel,
+    required this.relaxLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final nav = Navigator.of(context);
+    final items = <_RequirementItem>[
+      _RequirementItem(label: cbtLabel, done: user.mainCbtCompleted),
+      _RequirementItem(label: relaxLabel, done: user.mainRelaxCompleted),
+      _RequirementItem(
+        label: '오늘의 일기 3회',
+        done: user.dailyDiaryCount >= 3,
+        detail: '총 ${user.dailyDiaryCount}회',
+      ),
+      _RequirementItem(
+        label: '오늘의 이완 3회',
+        done: user.dailyRelaxCount >= 3,
+        detail: '총 ${user.dailyRelaxCount}회',
+      ),
+    ];
+
+    final title =
+        isTomorrowUnlockCase ? '다음 주차는 내일부터 열려요' : '아직 다음으로 넘어갈 수 없어요';
+    final subtitle =
+        isTomorrowUnlockCase
+            ? '이번 주차 조건을 모두 완료했어요.\n다음 주차는 내일부터 시작할 수 있어요.'
+            : '아래 조건을 모두 완료해야 다음 주차로 넘어갈 수 있어요.';
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF74D2FF).withValues(alpha: 0.18),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'NotoSansKR',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1B3A57),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'NotoSansKR',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                  color: Color(0xFF4D6880),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7FBFF),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFDCEBFA)),
+                ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      _RequirementRow(item: items[i]),
+                      if (i != items.length - 1)
+                        const Divider(height: 1, color: Color(0xFFE5EEF7)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => nav.pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5B9FD3),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    '확인',
+                    style: TextStyle(
+                      fontFamily: 'NotoSansKR',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RequirementItem {
+  final String label;
+  final bool done;
+  final String? detail;
+
+  const _RequirementItem({
+    required this.label,
+    required this.done,
+    this.detail,
+  });
+}
+
+class _RequirementRow extends StatelessWidget {
+  final _RequirementItem item;
+
+  const _RequirementRow({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final badgeBg =
+        item.done
+            ? Colors.green.withValues(alpha: 0.14)
+            : const Color(0xFFFFF2E8);
+    final badgeFg = item.done ? Colors.green.shade800 : const Color(0xFFC96A28);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.label,
+              style: const TextStyle(
+                fontFamily: 'NotoSansKR',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF29445E),
+              ),
+            ),
+          ),
+          if (item.detail != null) ...[
+            const SizedBox(width: 12),
+            Text(
+              item.detail!,
+              style: const TextStyle(
+                fontFamily: 'NotoSansKR',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6A8197),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ] else
+            const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeBg,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              item.done ? '완료' : '미완료',
+              style: TextStyle(
+                fontFamily: 'NotoSansKR',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: badgeFg,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

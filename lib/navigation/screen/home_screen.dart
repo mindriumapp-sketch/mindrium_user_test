@@ -302,8 +302,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await _ensureCorePermissions();
       if (mounted) {
         final user = context.read<UserProvider>();
+        final todayTask = context.read<TodayTaskProvider>();
         final dayCounter = context.read<UserDayCounter>();
         await user.loadUserData(dayCounter: dayCounter);
+        await todayTask.refresh();
         _tryStartPendingWidgetApplyLaunch();
       }
     });
@@ -324,6 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshRequiredPermissionState();
+      unawaited(context.read<TodayTaskProvider>().refresh());
     }
   }
 

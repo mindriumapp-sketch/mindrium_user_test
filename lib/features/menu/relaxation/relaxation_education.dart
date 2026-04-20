@@ -252,12 +252,8 @@ class _PracticePlayerState extends State<PracticePlayer>
     if (!mounted) return;
     final nav = Navigator.of(context);
     final user = context.read<UserProvider>();
-    final shouldShowTransition = shouldShowRelaxationToCbtTransition(
-      currentWeek: user.currentWeek,
-      mainCbtCompleted: user.mainCbtCompleted,
-      weekNumber: widget.weekNumber,
-      taskId: widget.taskId,
-    );
+    final shouldShowTransition =
+        widget.weekNumber == user.currentWeek && !user.mainCbtCompleted;
 
     if (!shouldShowTransition) {
       showDialog(
