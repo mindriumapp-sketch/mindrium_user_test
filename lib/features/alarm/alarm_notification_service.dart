@@ -732,7 +732,7 @@ class AlarmNotificationService {
     bool enabled, {
     required int currentWeek,
     required int lastCompletedWeek,
-    DateTime? lastCompletedAt,
+    required bool mainCompleted,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(educationPreferenceKey, enabled);
@@ -745,7 +745,7 @@ class AlarmNotificationService {
     await syncEducationReminders(
       currentWeek: currentWeek,
       lastCompletedWeek: lastCompletedWeek,
-      lastCompletedAt: lastCompletedAt,
+      mainCompleted: mainCompleted,
     );
   }
 
@@ -773,7 +773,7 @@ class AlarmNotificationService {
   Future<void> syncEducationReminders({
     required int currentWeek,
     required int lastCompletedWeek,
-    DateTime? lastCompletedAt,
+    required bool mainCompleted,
   }) async {
     await initialize();
     await _cancelEducationReminderSchedules();
@@ -785,7 +785,7 @@ class AlarmNotificationService {
     if (!_shouldScheduleEducationReminders(
       currentWeek: currentWeek,
       lastCompletedWeek: lastCompletedWeek,
-      lastCompletedAt: lastCompletedAt,
+      mainCompleted: mainCompleted,
     )) {
       return;
     }
@@ -931,31 +931,12 @@ class AlarmNotificationService {
   bool _shouldScheduleEducationReminders({
     required int currentWeek,
     required int lastCompletedWeek,
-    DateTime? lastCompletedAt,
+    required bool mainCompleted,
   }) {
     if (currentWeek < 1 || currentWeek > 8) return false;
     if (currentWeek <= lastCompletedWeek) return false;
-    if (_isInCurrentKstWeek(lastCompletedAt)) return false;
+    if (mainCompleted) return false;
     return true;
-  }
-
-  bool _isInCurrentKstWeek(DateTime? timestamp) {
-    if (timestamp == null) return false;
-
-    final targetUtc = timestamp.toUtc();
-    final nowUtc = DateTime.now().toUtc();
-    final nowKst = nowUtc.add(const Duration(hours: 9));
-    final todayStartKstUtc = DateTime.utc(
-      nowKst.year,
-      nowKst.month,
-      nowKst.day,
-    ).subtract(const Duration(hours: 9));
-    final weekStartUtc = todayStartKstUtc.subtract(
-      Duration(days: nowKst.weekday - 1),
-    );
-    final weekEndUtc = weekStartUtc.add(const Duration(days: 7));
-
-    return !targetUtc.isBefore(weekStartUtc) && targetUtc.isBefore(weekEndUtc);
   }
 
   Future<void> _scheduleAlarm(AlarmSetting alarm) async {

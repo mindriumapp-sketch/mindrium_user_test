@@ -55,7 +55,7 @@ class _NotificationPreferencesScreenState
           false,
           currentWeek: user.currentWeek,
           lastCompletedWeek: user.lastCompletedWeek,
-          lastCompletedAt: user.lastCompletedAt,
+          mainCompleted: user.mainCbtCompleted && user.mainRelaxCompleted,
         );
         if (!mounted) return;
         setState(() {
@@ -73,7 +73,7 @@ class _NotificationPreferencesScreenState
       value,
       currentWeek: user.currentWeek,
       lastCompletedWeek: user.lastCompletedWeek,
-      lastCompletedAt: user.lastCompletedAt,
+      mainCompleted: user.mainCbtCompleted && user.mainRelaxCompleted,
     );
 
     if (!mounted) return;
