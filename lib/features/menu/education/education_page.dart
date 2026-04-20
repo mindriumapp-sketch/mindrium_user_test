@@ -209,6 +209,39 @@ class _EducationPageState extends State<EducationPage> {
 
     if (!mounted) return;
     final nav = Navigator.of(context);
+    final shouldShowRelaxLearning =
+        todayTask.isTreatmentReviewFlowForWeek(1) &&
+        shouldShowCbtToRelaxationTransition(
+          currentWeek: userProvider.currentWeek,
+          mainRelaxCompleted: userProvider.mainRelaxCompleted,
+          weekNumber: 1,
+        );
+    if (shouldShowRelaxLearning) {
+      showCbtToRelaxationDialog(
+        context: context,
+        weekNumber: 1,
+        onMoveNow: () {
+          nav.pop();
+          nav.pushReplacementNamed(
+            '/relaxation_start',
+            arguments: {
+              'sessionId': widget.sessionId,
+              'taskId': 'week1_education',
+              'weekNumber': 1,
+              'mp3Asset': 'week1.mp3',
+              'riveAsset': 'week1.riv',
+              'isReviewMode': false,
+            },
+          );
+        },
+        onFinish: () {
+          todayTask.clearTreatmentReviewFlow();
+          nav.pop();
+          nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
+        },
+      );
+      return;
+    }
     final shouldShowRelaxReview =
         todayTask.isTreatmentReviewFlowForWeek(1) &&
         (userProvider.currentWeek > 1 ||

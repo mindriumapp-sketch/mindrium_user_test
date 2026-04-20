@@ -207,6 +207,8 @@ flutter:
     - assets/education_data/week1_part6_2.json
     - assets/education_data/week1_part6_3.json
     - assets/education_data/week1_part6_4.json
+    - assets/education_data/week1_part6_5.json
+    - assets/education_data/week1_part6_6.json
 
     - assets/education_data/week1_relaxation_1.json
     - assets/education_data/week1_relaxation_2.json

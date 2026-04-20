@@ -81,8 +81,8 @@ class _EducationScreenState extends State<EducationScreen> {
           ? {
             '/education1': 'week1_part1',
             '/education2': 'week1_part2',
-            '/education3': 'week1_part3',
             '/education4': 'week1_part4',
+            '/education6': 'week1_part6',
           }
           : {
             '/education1': 'week1_part1',
