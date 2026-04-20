@@ -107,7 +107,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Widget _buildSplashUI() {
     return Scaffold(
-      backgroundColor: AppColors.grey100,
+      backgroundColor: Colors.white,
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

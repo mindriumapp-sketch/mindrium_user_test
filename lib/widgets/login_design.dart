@@ -40,7 +40,7 @@ class LoginDesign extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
                   child: Container(
                     width: MediaQuery.of(context).size.width * 0.85,
                     constraints: const BoxConstraints(
@@ -49,7 +49,7 @@ class LoginDesign extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.all(28),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.95),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
                         color: const Color(0xFFB2E8FA), // 하늘색 윤곽선
