@@ -117,7 +117,10 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
   }
 
   String get _battleInstructionText =>
-      '도움이 되는 생각을 하나씩 선택 후 말해보세요!  (${_shrunkChips.length}/$_maxHp)';
+      '도움이 되는 생각을 하나씩 선택 후 말하거나 확인을 눌러보세요!  (${_shrunkChips.length}/$_maxHp)';
+
+  bool get _canConfirmSelectedSkill =>
+      !_isBattleLocked && !_listening && _selectedSkillIndex != null;
 
   String get _currentEmotionText {
     if (_characterEmotions.isEmpty) return '';
@@ -867,46 +870,74 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     return Positioned(
       bottom: bottom,
       right: 24,
-      child: GestureDetector(
-        onTap: _handleMicTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: 112,
-          height: 112,
-          decoration: BoxDecoration(
-            color:
-                _listening
-                    ? const Color(0xFF56E0C6).withValues(alpha: 0.9)
-                    : const Color.fromARGB(
-                      255,
-                      65,
-                      79,
-                      79,
-                    ).withValues(alpha: 0.8),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white30),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _listening ? Icons.hearing : Icons.mic,
-                color: Colors.white,
-                size: 54,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: _handleMicTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                color:
+                    _listening
+                        ? const Color(0xFF56E0C6).withValues(alpha: 0.9)
+                        : const Color.fromARGB(
+                          255,
+                          65,
+                          79,
+                          79,
+                        ).withValues(alpha: 0.8),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white30),
               ),
-              const SizedBox(height: 2),
-              Text(
-                _listening ? '듣는 중...' : '터치하여\n마이크 켜기',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.bold,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _listening ? Icons.hearing : Icons.mic,
+                    color: Colors.white,
+                    size: 54,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _listening ? '듣는 중...' : '터치하여\n마이크 켜기',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: 112,
+            child: ElevatedButton(
+              onPressed:
+                  _canConfirmSelectedSkill ? _handleConfirmPressed : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF56E0C6),
+                foregroundColor: const Color(0xFF102B2B),
+                disabledBackgroundColor: Colors.white.withValues(alpha: 0.38),
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.55),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
                 ),
               ),
-            ],
+              child: const Text(
+                '확인',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -972,6 +1003,16 @@ class _PokemonBattleDeletePageState extends State<PokemonBattleDeletePage>
     }
 
     await _onMicPressed();
+  }
+
+  Future<void> _handleConfirmPressed() async {
+    if (_isBattleLocked) return;
+    if (_selectedSkillIndex == null) {
+      _showToast('먼저 아래 대체 생각을 선택해주세요');
+      return;
+    }
+
+    await _handleAttack();
   }
 
   Widget _buildSkillChip(String skill, int index, double chipWidth) {

@@ -101,7 +101,10 @@ class WorryGroupsApi {
   ///
   /// POST /worry-groups/{group_id}/archive
   Future<Map<String, dynamic>> archiveWorryGroup(String groupId) async {
-    final res = await _client.dio.post('/worry-groups/$groupId/archive');
+    final res = await _client.dio.post(
+      '/worry-groups/$groupId/archive',
+      data: const <String, dynamic>{},
+    );
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
@@ -133,7 +136,10 @@ class WorryGroupsApi {
   ///
   /// DELETE /worry-groups/{group_id}
   Future<Map<String, dynamic>> deleteWorryGroup(String groupId) async {
-    final res = await _client.dio.delete('/worry-groups/$groupId');
+    final res = await _client.dio.delete(
+      '/worry-groups/$groupId',
+      data: const <String, dynamic>{},
+    );
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;

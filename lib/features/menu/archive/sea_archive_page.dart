@@ -83,16 +83,9 @@ class _SeaArchivePageState extends State<SeaArchivePage>
               }
             }
 
-            final avgSud =
-                diaries.isEmpty
-                    ? null
-                    : sudSum / diaries.length;
+            final avgSud = diaries.isEmpty ? null : sudSum / diaries.length;
 
-            return {
-              ...group,
-              'avg_sud': avgSud,
-              'diary_count': diaries.length,
-            };
+            return {...group, 'avg_sud': avgSud, 'diary_count': diaries.length};
           } catch (_) {
             return group;
           }
@@ -203,9 +196,9 @@ class _SeaArchivePageState extends State<SeaArchivePage>
                                   image: img,
                                   data: data,
                                   onResolveCompleted:
-                                      () => setState(
-                                        () => _groupsFuture = _loadGroups(),
-                                      ),
+                                      () => setState(() {
+                                        _groupsFuture = _loadGroups();
+                                      }),
                                 ),
                           );
                         },
@@ -413,7 +406,8 @@ class _SmoothFishState extends State<_SmoothFish>
     final data = widget.data;
     final title = (data['group_title'] ?? '그룹').toString();
     final sudAverage = _resolveSudAverage(data);
-    final sudRatio = sudAverage == null ? 0.0 : (sudAverage / 10).clamp(0.0, 1.0);
+    final sudRatio =
+        sudAverage == null ? 0.0 : (sudAverage / 10).clamp(0.0, 1.0);
     final barColor = _sudColor(sudAverage);
     final sudTextColor = _sudTextColor(sudAverage);
     final img = AssetImage(
@@ -704,15 +698,16 @@ class _FishInfoPopup extends StatelessWidget {
     required String characterDescription,
   }) async {
     final navigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
     navigator.pop(); // 팝업 닫기
 
     final status = await _resolveAlternativeThoughtStatus(groupId);
     if (!status.hasAlternativeThoughts) {
       final targetDiaryId = status.targetDiaryId;
       if (targetDiaryId == null || targetDiaryId.isEmpty) {
-        ScaffoldMessenger.of(
-          navigator.context,
-        ).showSnackBar(const SnackBar(content: Text('대체 생각을 작성할 일기가 없어요.')));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('대체 생각을 작성할 일기가 없어요.')),
+        );
         return;
       }
       final result = await navigator.pushNamed(
@@ -748,7 +743,8 @@ class _FishInfoPopup extends StatelessWidget {
         '/diaries',
         queryParameters: {'group_id': groupId},
       );
-      final diaries = (response.data as List?)?.cast<Map<String, dynamic>>() ?? const [];
+      final diaries =
+          (response.data as List?)?.cast<Map<String, dynamic>>() ?? const [];
       if (diaries.isEmpty) {
         return (hasAlternativeThoughts: false, targetDiaryId: null);
       }
@@ -774,10 +770,7 @@ class _FishInfoPopup extends StatelessWidget {
     try {
       final response = await client.dio.get(
         '/diaries',
-        queryParameters: {
-          'group_id': groupId,
-          'include_drafts': true,
-        },
+        queryParameters: {'group_id': groupId, 'include_drafts': true},
       );
       final diaries =
           (response.data as List?)?.cast<Map<String, dynamic>>() ?? const [];
@@ -803,7 +796,8 @@ class _FishInfoPopup extends StatelessWidget {
     final title = (data['group_title'] ?? '이름 없는 캐릭터').toString();
     final desc = (data['group_contents'] ?? '').toString();
     final sudAverage = _resolveSudAverage(data);
-    final sudRatio = sudAverage == null ? 0.0 : (sudAverage / 10).clamp(0.0, 1.0);
+    final sudRatio =
+        sudAverage == null ? 0.0 : (sudAverage / 10).clamp(0.0, 1.0);
     final sudBarColor = _sudColor(sudAverage);
     final sudTextColor = _sudTextColor(sudAverage);
     final archivedAt =
@@ -826,7 +820,10 @@ class _FishInfoPopup extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
-          constraints: BoxConstraints(maxWidth: 360, maxHeight: dialogMaxHeight),
+          constraints: BoxConstraints(
+            maxWidth: 360,
+            maxHeight: dialogMaxHeight,
+          ),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -882,7 +879,9 @@ class _FishInfoPopup extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: const Color(0xFFEAF1FF),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFD6E2FF)),
+                              border: Border.all(
+                                color: const Color(0xFFD6E2FF),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -927,7 +926,10 @@ class _FishInfoPopup extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xCCFFFFFF),
                     borderRadius: BorderRadius.circular(10),
@@ -942,7 +944,9 @@ class _FishInfoPopup extends StatelessWidget {
                             minHeight: 5,
                             value: sudRatio,
                             backgroundColor: const Color(0xFFD7E2EB),
-                            valueColor: AlwaysStoppedAnimation<Color>(sudBarColor),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              sudBarColor,
+                            ),
                           ),
                         ),
                       ),
@@ -1028,7 +1032,7 @@ class _FishInfoPopup extends StatelessWidget {
                           child: const Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color:  Color(0xFF5B9FD3),
+                            color: Color(0xFF5B9FD3),
                           ),
                         ),
                       ),

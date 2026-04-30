@@ -309,7 +309,7 @@ async def update_worry_group(
 )
 async def archive_worry_group(
     group_id: str,
-    payload: WorryGroupDelete,
+    payload: Optional[WorryGroupDelete] = None,
     user_id: str = Depends(get_current_user_id),
     db=Depends(get_db),
 ):
@@ -343,7 +343,7 @@ async def archive_worry_group(
 )
 async def delete_worry_group(
     group_id: str,
-    payload: WorryGroupDelete,
+    payload: Optional[WorryGroupDelete] = None,
     user_id: str = Depends(get_current_user_id),
     db=Depends(get_db),
 ):
