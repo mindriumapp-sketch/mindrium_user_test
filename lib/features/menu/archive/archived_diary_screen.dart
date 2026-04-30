@@ -7,6 +7,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:provider/provider.dart';
 
@@ -423,6 +424,13 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
   }
 
   Future<void> _startApplyFlowForDiary(Map<String, dynamic> diary) async {
+    if (!_isHelpfulThoughtUnlocked(context.read<UserProvider>())) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('4주차를 완료한 뒤 사용할 수 있어요.')));
+      return;
+    }
+
     final diaryId = diary['diary_id']?.toString().trim() ?? '';
     if (diaryId.isEmpty) {
       if (!mounted) return;
@@ -449,6 +457,12 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
         'isHomeTodayDiary': false,
       },
     );
+  }
+
+  bool _isHelpfulThoughtUnlocked(UserProvider user) {
+    return user.lastCompletedWeek >= 4 ||
+        user.currentWeek > 4 ||
+        (user.currentWeek == 4 && user.mainCompleted);
   }
 
   @override
@@ -720,10 +734,14 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
       itemCount: _diaries.length,
       itemBuilder: (context, index) {
         final diary = _diaries[index];
+        final helpfulThoughtUnlocked = _isHelpfulThoughtUnlocked(
+          context.watch<UserProvider>(),
+        );
         return _ExpandableDiaryCard(
           diary: diary,
           characterId: widget.characterId,
           onStartFlow: () => _startApplyFlowForDiary(diary),
+          helpfulThoughtUnlocked: helpfulThoughtUnlocked,
           canMove: _buildMoveTargets().isNotEmpty,
           isMoving:
               _resolveDiaryId(diary) != null &&
@@ -739,6 +757,7 @@ class _ExpandableDiaryCard extends StatefulWidget {
   final Map<String, dynamic> diary;
   final int characterId;
   final VoidCallback onStartFlow;
+  final bool helpfulThoughtUnlocked;
   final bool canMove;
   final bool isMoving;
   final VoidCallback onMovePressed;
@@ -747,6 +766,7 @@ class _ExpandableDiaryCard extends StatefulWidget {
     required this.diary,
     required this.characterId,
     required this.onStartFlow,
+    required this.helpfulThoughtUnlocked,
     required this.canMove,
     required this.isMoving,
     required this.onMovePressed,
@@ -1104,12 +1124,33 @@ class _ExpandableDiaryCardState extends State<_ExpandableDiaryCard> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: widget.onStartFlow,
-                      icon: const Icon(Icons.auto_fix_high_rounded, size: 18),
-                      label: const Text('일기에 대해 도움이 되는 생각 해보기'),
+                      onPressed:
+                          widget.helpfulThoughtUnlocked
+                              ? widget.onStartFlow
+                              : null,
+                      icon: Icon(
+                        widget.helpfulThoughtUnlocked
+                            ? Icons.auto_fix_high_rounded
+                            : Icons.lock_outline_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        widget.helpfulThoughtUnlocked
+                            ? '일기에 대해 도움이 되는 생각 해보기'
+                            : '4주차 완료 후 열려요',
+                      ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2F6FA1),
-                        side: const BorderSide(color: Color(0xFF9CC5E8)),
+                        foregroundColor:
+                            widget.helpfulThoughtUnlocked
+                                ? const Color(0xFF2F6FA1)
+                                : const Color(0xFF8B9BA8),
+                        disabledForegroundColor: const Color(0xFF8B9BA8),
+                        side: BorderSide(
+                          color:
+                              widget.helpfulThoughtUnlocked
+                                  ? const Color(0xFF9CC5E8)
+                                  : const Color(0xFFD5DEE6),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 11),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
