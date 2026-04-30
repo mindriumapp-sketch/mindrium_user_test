@@ -887,7 +887,7 @@ class _LocTimeSelectionScreenState extends State<LocTimeSelectionScreen> {
                   initialTime: _draftTime?.time ?? _draftLocation?.time,
                   enableLocationLabel: true,
                   initialLocationLabel: _draftLocation?.location,
-                  sheetInitialSize: 0.6,
+                  sheetInitialSize: 0.4,
                   embedInParent: true,
                   onConfirmed: (setting) async {
                     await _applyPickedLocation(setting, saveAfterPick: true);

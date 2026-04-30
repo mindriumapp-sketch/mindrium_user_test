@@ -56,7 +56,11 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
   static const LatLng _kDefaultCenter = LatLng(37.5665, 126.9780);
   static const double _sheetMinSize = 0.25;
   static const double _sheetMaxSize = 0.75;
+  static const double _fullFormSheetMaxSize = 0.75;
+  static const double _fullFormSheetExpandedSize = 0.75;
 
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   late DateTime _pickerTime;
   bool _showJellyfishMessage = true;
 
@@ -64,6 +68,12 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
   void initState() {
     super.initState();
     _pickerTime = widget.initialTimeDateTime ?? DateTime(2000, 1, 1, 9, 0);
+  }
+
+  @override
+  void dispose() {
+    _sheetController.dispose();
+    super.dispose();
   }
 
   @override
@@ -78,6 +88,53 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
         _pickerTime = next;
       });
     }
+
+    if (widget.showTimePicker &&
+        !_isSameLatLng(oldWidget.picked, widget.picked) &&
+        widget.picked != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _expandSheetForTimeSelection();
+      });
+    }
+  }
+
+  bool _isSameLatLng(LatLng? a, LatLng? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.latitude == b.latitude && a.longitude == b.longitude;
+  }
+
+  bool get _usesFullLocationTimeForm {
+    return widget.showTimePicker && widget.showLocationLabelInput;
+  }
+
+  double get _effectiveSheetMaxSize {
+    return _usesFullLocationTimeForm ? _fullFormSheetMaxSize : _sheetMaxSize;
+  }
+
+  double get _effectiveSheetInitialSize {
+    final initial = widget.sheetInitialSize.clamp(
+      _sheetMinSize,
+      _effectiveSheetMaxSize,
+    );
+    if (!_usesFullLocationTimeForm) return initial;
+    return initial < 0.4 ? 0.4 : initial;
+  }
+
+  Future<void> _expandSheetForTimeSelection() async {
+    if (!mounted || !_sheetController.isAttached) return;
+
+    final target = _fullFormSheetExpandedSize.clamp(
+      _sheetMinSize,
+      _effectiveSheetMaxSize,
+    );
+    if (_sheetController.size >= target - 0.02) return;
+
+    await _sheetController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   String get _guideText {
@@ -514,10 +571,11 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
 
     return Positioned.fill(
       child: DraggableScrollableSheet(
+        controller: _sheetController,
         expand: false,
-        initialChildSize: widget.sheetInitialSize,
+        initialChildSize: _effectiveSheetInitialSize,
         minChildSize: _sheetMinSize,
-        maxChildSize: _sheetMaxSize,
+        maxChildSize: _effectiveSheetMaxSize,
         snap: false,
         builder: (context, scrollController) {
           return Container(
