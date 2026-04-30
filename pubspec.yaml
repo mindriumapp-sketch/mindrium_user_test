@@ -49,6 +49,7 @@ dependencies:
   # [추가/확인] STT (Speech-to-Text) 패키지
   speech_to_text: ^7.3.0
   webview_flutter: ^4.13.1
+  wakelock_plus: ^1.3.3
 
 dev_dependencies:
   flutter_test:

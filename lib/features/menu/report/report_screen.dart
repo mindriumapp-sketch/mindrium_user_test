@@ -5,6 +5,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/api/edu_sessions_api.dart';
 import 'package:gad_app_team/data/api/relaxation_api.dart';
+import 'package:gad_app_team/data/education_week_contents.dart';
 import 'package:gad_app_team/utils/server_datetime.dart';
 
 class ReportScreen extends StatefulWidget {
@@ -126,15 +127,17 @@ class _ReportScreenState extends State<ReportScreen> {
       return const ['이번 주 0/1 (미완료)'];
     }
 
-    final completedSessions = sessions.where((s) => s['completed'] == true).toList()
-      ..sort((a, b) {
-        final aDate = _parseDate(a['start_time']) ?? _parseDate(a['created_at']);
-        final bDate = _parseDate(b['start_time']) ?? _parseDate(b['created_at']);
-        if (aDate == null && bDate == null) return 0;
-        if (aDate == null) return 1;
-        if (bDate == null) return -1;
-        return aDate.compareTo(bDate);
-      });
+    final completedSessions =
+        sessions.where((s) => s['completed'] == true).toList()..sort((a, b) {
+          final aDate =
+              _parseDate(a['start_time']) ?? _parseDate(a['created_at']);
+          final bDate =
+              _parseDate(b['start_time']) ?? _parseDate(b['created_at']);
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+          return aDate.compareTo(bDate);
+        });
     if (completedSessions.isEmpty) {
       return const ['이번 주 0/1 (미완료)'];
     }
@@ -158,17 +161,62 @@ class _ReportScreenState extends State<ReportScreen> {
     return 100;
   }
 
+  String _relaxationTaskLabel(Map<String, dynamic> task) {
+    final taskId = task['task_id']?.toString() ?? '';
+    final weekNumber = _relaxationWeekNumber(task, taskId);
+    final relaxationName = _relaxationNameForWeek(weekNumber);
+
+    if (taskId == 'daily_review' || taskId.endsWith('_review')) {
+      if (weekNumber != null) {
+        return '$weekNumber주차 - $relaxationName 복습';
+      }
+      return '이완 복습';
+    }
+
+    if (taskId.endsWith('_education')) {
+      if (weekNumber != null) {
+        return '$weekNumber주차 - $relaxationName 학습';
+      }
+      return '이완 학습';
+    }
+
+    if (weekNumber != null) {
+      return '$weekNumber주차 - $relaxationName';
+    }
+    return '이완 활동';
+  }
+
+  int? _relaxationWeekNumber(Map<String, dynamic> task, String taskId) {
+    final rawWeek = task['week_number'];
+    if (rawWeek is int && rawWeek >= 1) return rawWeek;
+    if (rawWeek is num && rawWeek >= 1) return rawWeek.toInt();
+
+    final match = RegExp(r'^week(\d+)_').firstMatch(taskId);
+    if (match == null) return null;
+    return int.tryParse(match.group(1) ?? '');
+  }
+
+  String _relaxationNameForWeek(int? weekNumber) {
+    if (weekNumber == null ||
+        weekNumber < 1 ||
+        weekNumber > educationWeekContents.length) {
+      return '이완';
+    }
+    return educationWeekContents[weekNumber - 1]['session2Name'] ?? '이완';
+  }
+
   List<double> _sudWeeklySeries(DateTime centerDate) {
     final days = List.generate(
       7,
       (i) => _startOfDay(centerDate.subtract(Duration(days: 6 - i))),
     );
     return days.map((day) {
-      final entries = _diariesFor(day)
-          .map((d) => d['latest_sud'])
-          .whereType<num>()
-          .map((v) => v.toDouble())
-          .toList();
+      final entries =
+          _diariesFor(day)
+              .map((d) => d['latest_sud'])
+              .whereType<num>()
+              .map((v) => v.toDouble())
+              .toList();
       if (entries.isEmpty) return 0.0;
       final avg = entries.reduce((a, b) => a + b) / entries.length;
       return avg.clamp(0, 10).toDouble();
@@ -238,25 +286,26 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
           ),
           SafeArea(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
                     ? Center(child: Text(_error!))
                     : RefreshIndicator(
-                        onRefresh: _loadReportData,
-                        child: ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                          children: [
-                            _buildCalendarCard(),
-                            const SizedBox(height: 10),
-                            _buildSelectedDateHeader(),
-                            const SizedBox(height: 14),
-                            _buildSudCard(),
-                            const SizedBox(height: 14),
-                            _buildCompletionCard(),
-                          ],
-                        ),
+                      onRefresh: _loadReportData,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                        children: [
+                          _buildCalendarCard(),
+                          const SizedBox(height: 10),
+                          _buildSelectedDateHeader(),
+                          const SizedBox(height: 14),
+                          _buildSudCard(),
+                          const SizedBox(height: 14),
+                          _buildCompletionCard(),
+                        ],
                       ),
+                    ),
           ),
         ],
       ),
@@ -268,8 +317,10 @@ class _ReportScreenState extends State<ReportScreen> {
     final weekEnd = weekStart.add(const Duration(days: 6));
     final weekLabel =
         '${weekStart.month}.${weekStart.day} - ${weekEnd.month}.${weekEnd.day}';
-    final weekDates =
-        List.generate(7, (i) => _startOfDay(weekStart.add(Duration(days: i))));
+    final weekDates = List.generate(
+      7,
+      (i) => _startOfDay(weekStart.add(Duration(days: i))),
+    );
     final activeDateKeys = _activityDateKeysInWeek(weekStart);
     const weekLabels = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -332,22 +383,23 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
           const SizedBox(height: 8),
           Row(
-            children: weekLabels
-                .map(
-                  (w) => Expanded(
-                    child: Center(
-                      child: Text(
-                        w,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF7B8A98),
+            children:
+                weekLabels
+                    .map(
+                      (w) => Expanded(
+                        child: Center(
+                          child: Text(
+                            w,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF7B8A98),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                )
-                .toList(),
+                    )
+                    .toList(),
           ),
           const SizedBox(height: 8),
           Row(
@@ -495,29 +547,27 @@ class _ReportScreenState extends State<ReportScreen> {
             label: '이완',
             icon: Icons.self_improvement_rounded,
             value: relaxRate,
-            logs: relax
-                .map((r) {
-                  final task = (r['task_id']?.toString() ?? '이완');
+            logs:
+                relax.map((r) {
+                  final task = _relaxationTaskLabel(r);
                   final done = r['end_time'] != null ? '완료' : '진행';
                   return '$task $done';
-                })
-                .toList(),
+                }).toList(),
           ),
           const SizedBox(height: 12),
           _CompletionRow(
             label: '일기',
             icon: Icons.edit_note_rounded,
             value: diaryRate,
-            logs: diaries
-                .map((d) {
+            logs:
+                diaries.map((d) {
                   final activation = d['activation'];
                   if (activation is Map) {
                     final label = activation['label']?.toString();
                     if (label != null && label.isNotEmpty) return label;
                   }
                   return '일기 기록';
-                })
-                .toList(),
+                }).toList(),
           ),
         ],
       ),
@@ -589,9 +639,10 @@ class _SudMiniBarChart extends StatelessWidget {
           final value = values[index];
           final normalized = (value / 10).clamp(0.0, 1.0);
           final height = 24 + (normalized * 92);
-          final color = value >= 7
-              ? const Color(0xFFE4686C)
-              : value >= 4
+          final color =
+              value >= 7
+                  ? const Color(0xFFE4686C)
+                  : value >= 4
                   ? const Color(0xFFF4C159)
                   : const Color(0xFF6FB8E6);
 
@@ -723,7 +774,10 @@ class _CompletionRow extends StatelessWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF6F9FC),
                     borderRadius: BorderRadius.circular(999),

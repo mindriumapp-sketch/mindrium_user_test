@@ -15,6 +15,7 @@ import 'relaxation_education.dart' show relaxationTitleForWeek;
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// 위치/시간 재생 화면 상단 타이틀
 /// - weekNumber가 있으면: 그 주차 이완 타이틀 그대로 사용 (숙제 위치/시간)
@@ -83,6 +84,7 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(WakelockPlus.enable());
 
     _logger = RelaxationLogger(
       taskId: widget.taskId,
@@ -152,6 +154,7 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
       }
       _saveOnce(reason: 'app_paused');
     } else if (state == AppLifecycleState.resumed) {
+      unawaited(WakelockPlus.enable());
       _startAutosaveTimer();
       // ✅ Resume 시 재생 중이었다면 활성 시간 측정 재개
       if (_isPlaying) {
@@ -267,6 +270,7 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _autosaveTimer?.cancel();
     _audioPlayer.dispose();
+    unawaited(WakelockPlus.disable());
     _saveOnce(reason: 'dispose');
     super.dispose();
   }

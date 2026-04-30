@@ -54,7 +54,7 @@ class MindriumMapDesign extends StatefulWidget {
 
 class _MindriumMapDesignState extends State<MindriumMapDesign> {
   static const LatLng _kDefaultCenter = LatLng(37.5665, 126.9780);
-  static const double _sheetMinSize = 0.075;
+  static const double _sheetMinSize = 0.25;
   static const double _sheetMaxSize = 0.75;
 
   late DateTime _pickerTime;
@@ -141,18 +141,19 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
   }
 
   Widget _buildMap() {
-    final mapChild = widget.mapController == null ?
-      const SizedBox.shrink()
-        : LocationPickerMap(
-            controller: widget.mapController!,
-            initialCenter: _initialCenter,
-            initialZoom: 16,
-            current: widget.current,
-            picked: widget.picked,
-            savedMarkers: widget.savedMarkers ?? const [],
-            onTap: widget.onTap,
-            onMapReady: widget.onMapReady,
-          );
+    final mapChild =
+        widget.mapController == null
+            ? const SizedBox.shrink()
+            : LocationPickerMap(
+              controller: widget.mapController!,
+              initialCenter: _initialCenter,
+              initialZoom: 16,
+              current: widget.current,
+              picked: widget.picked,
+              savedMarkers: widget.savedMarkers ?? const [],
+              onTap: widget.onTap,
+              onMapReady: widget.onMapReady,
+            );
 
     return Stack(
       fit: StackFit.expand,
@@ -462,6 +463,7 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
             maxLength: 15,
             decoration: InputDecoration(
               hintText: '예: 집, 회사, 학교',
+              hintStyle: const TextStyle(color: Colors.grey),
               counterText: '',
               filled: true,
               fillColor: const Color(0xFFF7F8FA),
@@ -505,9 +507,10 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
   Widget _buildBottomSheet() {
     final timeText = TimeOfDay.fromDateTime(_pickerTime).format(context);
     final media = MediaQuery.of(context);
-    final systemBottomInset = media.viewPadding.bottom > 0
-        ? media.viewPadding.bottom
-        : media.padding.bottom;
+    final systemBottomInset =
+        media.viewPadding.bottom > 0
+            ? media.viewPadding.bottom
+            : media.padding.bottom;
 
     return Positioned.fill(
       child: DraggableScrollableSheet(

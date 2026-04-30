@@ -26,6 +26,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final double actionIconGap; // extraIcon 과 home 아이콘 사이 간격
   final Color? leadingIconColor;
   final Color? actionIconColor;
+  final bool scaleTitleToFit;
 
   const CustomAppBar({
     super.key,
@@ -48,6 +49,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.actionIconGap = 0,
     this.leadingIconColor,
     this.actionIconColor,
+    this.scaleTitleToFit = true,
   }) : assert(
          extraRoute == null || onExtraPressed == null,
          'extraRoute와 onExtraPressed는 둘 중 하나만 지정하세요.',
@@ -92,7 +94,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       scrolledUnderElevation: 0,
 
       centerTitle: centerTitle, // ← 추가
-      toolbarHeight: toolbarHeight, // ← 추가
+      toolbarHeight: _effectiveToolbarHeight, // ← 추가
       bottom: bottom, // ← 추가
 
       titleSpacing: 4,
@@ -130,25 +132,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               )
               : null,
-      title: Text(
-        title,
-        maxLines: maxTitleLines,
-        softWrap: maxTitleLines > 1,
-        overflow:
-            maxTitleLines > 1 ? TextOverflow.visible : TextOverflow.ellipsis,
-        textAlign: titleAlign,
-        textWidthBasis: TextWidthBasis.parent,
-        style:
-            titleTextStyle ??
-            const TextStyle(
-              // ← 추가: 커스터마이즈 가능
-              fontFamily: 'Noto Sans KR',
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-              color: _black,
-              letterSpacing: -0.3,
-            ),
-      ),
+      title: _buildTitle(),
 
       actions: [
         if (extraIcon != null)
@@ -196,5 +180,68 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(toolbarHeight ?? kToolbarHeight); // ← 높이 반영
+  Size get preferredSize => Size.fromHeight(_effectiveToolbarHeight); // ← 높이 반영
+
+  double get _effectiveToolbarHeight {
+    final requestedHeight = toolbarHeight ?? kToolbarHeight;
+    if (maxTitleLines <= 1) return requestedHeight;
+
+    final style =
+        titleTextStyle ??
+        const TextStyle(
+          fontFamily: 'Noto Sans KR',
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: _black,
+          letterSpacing: 0,
+        );
+    final fontSize = style.fontSize ?? 18;
+    final lineHeight = fontSize * (style.height ?? 1.2);
+    final minimumHeight = (lineHeight * maxTitleLines) + 16;
+    return requestedHeight < minimumHeight ? minimumHeight : requestedHeight;
+  }
+
+  Widget _buildTitle() {
+    final effectiveStyle =
+        titleTextStyle ??
+        const TextStyle(
+          // ← 추가: 커스터마이즈 가능
+          fontFamily: 'Noto Sans KR',
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: _black,
+          letterSpacing: 0,
+        );
+    final text = Text(
+      title,
+      maxLines: maxTitleLines,
+      softWrap: maxTitleLines > 1,
+      overflow:
+          maxTitleLines > 1 ? TextOverflow.visible : TextOverflow.ellipsis,
+      textAlign: titleAlign,
+      textWidthBasis: TextWidthBasis.parent,
+      style: effectiveStyle,
+    );
+
+    if (!scaleTitleToFit || maxTitleLines > 1) return text;
+
+    return Align(
+      alignment:
+          titleAlign == TextAlign.center
+              ? Alignment.center
+              : titleAlign == TextAlign.end || titleAlign == TextAlign.right
+              ? Alignment.centerRight
+              : Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment:
+            titleAlign == TextAlign.center
+                ? Alignment.center
+                : titleAlign == TextAlign.end || titleAlign == TextAlign.right
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+        child: Padding(padding: const EdgeInsets.only(right: 2), child: text),
+      ),
+    );
+  }
 }

@@ -20,6 +20,7 @@ import 'relaxation_logger.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 // --- 주차 타이틀 ---
 const Map<int, String> kRelaxationWeekTitles = {
@@ -95,6 +96,7 @@ class _PracticePlayerState extends State<PracticePlayer>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(WakelockPlus.enable());
 
     _logger = RelaxationLogger(
       taskId: widget.taskId,
@@ -164,6 +166,7 @@ class _PracticePlayerState extends State<PracticePlayer>
       }
       _saveOnce(reason: 'app_paused');
     } else if (state == AppLifecycleState.resumed) {
+      unawaited(WakelockPlus.enable());
       _startAutosaveTimer();
       // ✅ Resume 시 재생 중이었다면 활성 시간 측정 재개
       if (_isPlaying) {
@@ -317,6 +320,7 @@ class _PracticePlayerState extends State<PracticePlayer>
     WidgetsBinding.instance.removeObserver(this);
     _autosaveTimer?.cancel();
     _audioPlayer.dispose();
+    unawaited(WakelockPlus.disable());
     _saveOnce(reason: 'dispose');
     super.dispose();
   }
