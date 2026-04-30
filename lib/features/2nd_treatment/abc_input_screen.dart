@@ -391,12 +391,25 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
     _cachedBehaviorChips?.removeWhere((c) => c.chipId == chipId);
   }
 
+  void _restoreToCache(AbcChip chip) {
+    _updateCacheForChip(chip);
+  }
+
   void _requestOpenAllItemsModalIfNeeded(int chipCount) {
     if (chipCount <= _chipModalAutoOpenThreshold) return;
     _openAllItemsSignal++;
   }
 
   void _deleteTagLocallyAndRemote(String chipId) {
+    final removedChips = <AbcChip>[
+      ..._aChips.where((c) => c.chipId == chipId),
+      ..._bChips.where((c) => c.chipId == chipId),
+      ..._physicalChips.where((c) => c.chipId == chipId),
+      ..._emotionChips.where((c) => c.chipId == chipId),
+      ..._behaviorChips.where((c) => c.chipId == chipId),
+    ];
+    if (removedChips.isEmpty) return;
+
     // 1) 로컬 + 캐시에서 먼저 제거
     setState(() {
       _aChips.removeWhere((c) => c.chipId == chipId);
@@ -424,16 +437,53 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
                 ? e.response?.data['detail']?.toString()
                 : e.message;
         if (!mounted) return;
+        _restoreDeletedChips(removedChips);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('삭제에 실패했습니다: ${message ?? '오류'}')),
         );
       } catch (e) {
         if (!mounted) return;
+        _restoreDeletedChips(removedChips);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('삭제에 실패했습니다: $e')));
       }
     }();
+  }
+
+  void _restoreDeletedChips(List<AbcChip> chips) {
+    setState(() {
+      for (final chip in chips) {
+        switch (chip.type) {
+          case 'A':
+            if (!_aChips.any((c) => c.chipId == chip.chipId)) {
+              _aChips.add(chip);
+            }
+            break;
+          case 'B':
+            if (!_bChips.any((c) => c.chipId == chip.chipId)) {
+              _bChips.add(chip);
+            }
+            break;
+          case 'CP':
+            if (!_physicalChips.any((c) => c.chipId == chip.chipId)) {
+              _physicalChips.add(chip);
+            }
+            break;
+          case 'CE':
+            if (!_emotionChips.any((c) => c.chipId == chip.chipId)) {
+              _emotionChips.add(chip);
+            }
+            break;
+          case 'CA':
+            if (!_behaviorChips.any((c) => c.chipId == chip.chipId)) {
+              _behaviorChips.add(chip);
+            }
+            break;
+        }
+        _restoreToCache(chip);
+      }
+    });
   }
 
   // ---------------------- 다음 버튼 활성화 ----------------------
@@ -776,11 +826,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               widget.isExampleMode
                   ? null
                   : (chipId) {
-                    setState(() {
-                      _aChips.removeWhere((c) => c.chipId == chipId);
-                      _selectedAChipIds.remove(chipId);
-                      _deleteTagLocallyAndRemote(chipId);
-                    });
+                    _deleteTagLocallyAndRemote(chipId);
                   },
         );
 
@@ -823,11 +869,7 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               widget.isExampleMode
                   ? null
                   : (chipId) {
-                    setState(() {
-                      _bChips.removeWhere((c) => c.chipId == chipId);
-                      _selectedBChipIds.remove(chipId);
-                      _deleteTagLocallyAndRemote(chipId);
-                    });
+                    _deleteTagLocallyAndRemote(chipId);
                   },
         );
 
@@ -919,31 +961,19 @@ class _AbcInputScreenState extends State<AbcInputScreen> {
               widget.isExampleMode
                   ? null
                   : (chipId) {
-                    setState(() {
-                      _physicalChips.removeWhere((c) => c.chipId == chipId);
-                      _selectedPhysicalChipIds.remove(chipId);
-                      _deleteTagLocallyAndRemote(chipId);
-                    });
+                    _deleteTagLocallyAndRemote(chipId);
                   },
           onDeleteEmotion:
               widget.isExampleMode
                   ? null
                   : (chipId) {
-                    setState(() {
-                      _emotionChips.removeWhere((c) => c.chipId == chipId);
-                      _selectedEmotionChipIds.remove(chipId);
-                      _deleteTagLocallyAndRemote(chipId);
-                    });
+                    _deleteTagLocallyAndRemote(chipId);
                   },
           onDeleteBehavior:
               widget.isExampleMode
                   ? null
                   : (chipId) {
-                    setState(() {
-                      _behaviorChips.removeWhere((c) => c.chipId == chipId);
-                      _selectedBehaviorChipIds.remove(chipId);
-                      _deleteTagLocallyAndRemote(chipId);
-                    });
+                    _deleteTagLocallyAndRemote(chipId);
                   },
           onSelectionChanged: () => setState(() {}),
         );

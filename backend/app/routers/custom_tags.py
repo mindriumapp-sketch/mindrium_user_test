@@ -281,7 +281,7 @@ async def update_custom_tag(
 )
 async def delete_custom_tag(
     chip_id: str,
-    payload: CustomTagDelete,
+    payload: Optional[CustomTagDelete] = None,
     db=Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):

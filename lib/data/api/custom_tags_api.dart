@@ -130,7 +130,7 @@ class CustomTagsApi {
   /// DELETE /custom-tags/{chip_id}
   ///
   Future<Map<String, dynamic>> deleteCustomTag({required String chipId}) async {
-    final res = await _client.dio.delete('/custom-tags/$chipId');
+    final res = await _client.dio.delete('/custom-tags/$chipId', data: {});
 
     final data = res.data;
     if (data is Map<String, dynamic>) return data;
