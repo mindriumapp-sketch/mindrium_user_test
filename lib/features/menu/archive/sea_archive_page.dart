@@ -7,9 +7,11 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/worry_groups_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
 import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:gad_app_team/features/menu/archive/character_battle.dart';
+import 'package:provider/provider.dart';
 
 class SeaArchivePage extends StatefulWidget {
   const SeaArchivePage({super.key});
@@ -697,6 +699,13 @@ class _FishInfoPopup extends StatelessWidget {
     required String characterName,
     required String characterDescription,
   }) async {
+    if (context.read<UserProvider>().currentWeek < 6) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('6주차부터 사용할 수 있어요.')));
+      return;
+    }
+
     final navigator = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
     navigator.pop(); // 팝업 닫기
@@ -808,11 +817,14 @@ class _FishInfoPopup extends StatelessWidget {
     final characterId = _asInt(data['character_id']) ?? 1;
     final resolvedCreatedAt = createdAt ?? DateTime.now();
     final resolvedArchivedAt = archivedAt ?? resolvedCreatedAt;
-    final canResolve =
+    final isResolveWeekUnlocked =
+        context.watch<UserProvider>().currentWeek >= 6;
+    final canShowResolve =
         groupId.isNotEmpty &&
         groupId != 'group_example' &&
         sudAverage != null &&
         sudAverage <= 3.0;
+    final canResolve = canShowResolve && isResolveWeekUnlocked;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -1040,22 +1052,30 @@ class _FishInfoPopup extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                if (canResolve) ...[
+                if (canShowResolve) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed:
-                          () => _startResolveFlow(
-                            context,
-                            groupId: groupId,
-                            characterName: title,
-                            characterDescription: desc,
-                          ),
-                      icon: const Icon(Icons.auto_fix_high_rounded),
-                      label: const Text('해결하기'),
+                          canResolve
+                              ? () => _startResolveFlow(
+                                context,
+                                groupId: groupId,
+                                characterName: title,
+                                characterDescription: desc,
+                              )
+                              : null,
+                      icon: Icon(
+                        canResolve
+                            ? Icons.auto_fix_high_rounded
+                            : Icons.lock_outline_rounded,
+                      ),
+                      label: Text(canResolve ? '해결하기' : '6주차부터 가능'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2F8FD8),
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFFDCE8F2),
+                        disabledForegroundColor: const Color(0xFF7D91A3),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),

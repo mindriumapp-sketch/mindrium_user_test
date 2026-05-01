@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const EventChannel _widgetLaunchEventChannel = EventChannel(
     'mindrium/widget_launch_events',
   );
-  static const String _week2LockedMessage = '2주차 교육 완료 후 이용할 수 있어요.';
+  static const String _week2LockedMessage = '2주차 교육·이완 완료 후 이용할 수 있어요.';
   static const String _alarmCardEnabledTitle = '불안 완화 알림';
   static const String _alarmCardDisabledTitle = '불안 완화 알림 (잠금)';
   static const String _alarmCardEnabledDescription =
@@ -339,6 +339,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ).showSnackBar(const SnackBar(content: Text(_week2LockedMessage)));
   }
 
+  bool _hasCompletedWeek2MainProgram(UserProvider user) {
+    return user.lastCompletedWeek >= HomeWidgetTutorialController.unlockWeek ||
+        user.currentWeek > HomeWidgetTutorialController.unlockWeek ||
+        (user.currentWeek == HomeWidgetTutorialController.unlockWeek &&
+            user.mainCompleted);
+  }
+
+  int _completedWeeksForReliefUnlock(UserProvider user) {
+    if (_hasCompletedWeek2MainProgram(user)) {
+      return HomeWidgetTutorialController.unlockWeek;
+    }
+    return user.lastCompletedWeek;
+  }
+
   Future<void> _showWidgetTutorialFromTempButton() async {
     await HomeWidgetTutorialDialog.show(
       context,
@@ -347,9 +361,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _startApplyFlow() {
-    final completedWeeks = context.read<UserProvider>().lastCompletedWeek;
-    final bool canSolve =
-        completedWeeks >= HomeWidgetTutorialController.unlockWeek;
+    final user = context.read<UserProvider>();
+    final bool canSolve = _hasCompletedWeek2MainProgram(user);
     if (!canSolve) {
       _showWeek2LockedSnackBar();
       return;
@@ -440,7 +453,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _syncWidgetStatsIfNeeded(UserProvider user) {
     final diaryCount = user.totalDiaries;
     final relaxationCount = user.totalRelaxations;
-    final completedWeeks = user.lastCompletedWeek;
+    final completedWeeks = _completedWeeksForReliefUnlock(user);
     if (_lastSyncedDiaryCount == diaryCount &&
         _lastSyncedRelaxationCount == relaxationCount &&
         _lastSyncedCompletedWeeks == completedWeeks) {
@@ -717,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_didResolveRequiredPermissionState && _hasRequiredPermissions) {
       _widgetTutorialController.scheduleIfEligible(
         context: context,
-        completedWeeks: user.lastCompletedWeek,
+        completedWeeks: _completedWeeksForReliefUnlock(user),
         userId: user.userId,
       );
     }
@@ -737,7 +750,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         const SizedBox(height: 8),
         _buildTaskSection(user: user, todayTask: todayTask),
         const SizedBox(height: 8),
-        _buildTrainingSection(completedWeeks: user.lastCompletedWeek),
+        _buildTrainingSection(
+          canUseAlarmSettings: _hasCompletedWeek2MainProgram(user),
+        ),
       ],
     );
   }
@@ -1216,9 +1231,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ===================== 교육/훈련 섹션 =====================
 
-  Widget _buildTrainingSection({required int completedWeeks}) {
-    final canUseAlarmSettings =
-        completedWeeks >= HomeWidgetTutorialController.unlockWeek;
+  Widget _buildTrainingSection({required bool canUseAlarmSettings}) {
     final alarmCardColor =
         canUseAlarmSettings
             ? _alarmCardBaseColor

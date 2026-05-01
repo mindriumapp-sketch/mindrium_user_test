@@ -24,7 +24,7 @@ private struct MindriumWidgetEntry: TimelineEntry {
   }
 
   var titleText: String {
-    isUnlocked ? "Relief" : "2주차 완료 후 이용 가능"
+    isUnlocked ? "Relief" : "2주차 교육·이완 후 이용 가능"
   }
 
   var tagText: String {
@@ -36,7 +36,7 @@ private struct MindriumWidgetEntry: TimelineEntry {
       return "일기 \(diaryCount)건 · 이완 \(relaxationCount)회"
     }
 
-    return "2주차 교육 완료 후 Relief를 바로 시작할 수 있어요."
+    return "2주차 교육·이완 완료 후 Relief를 바로 시작할 수 있어요."
   }
 
   var ctaText: String {
