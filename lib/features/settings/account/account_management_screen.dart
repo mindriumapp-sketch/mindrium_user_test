@@ -2,9 +2,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/data/api/api_client.dart';
+import 'package:gad_app_team/data/api/auth_api.dart';
+import 'package:gad_app_team/data/storage/token_storage.dart';
 
-class AccountManagementScreen extends StatelessWidget {
+class AccountManagementScreen extends StatefulWidget {
   const AccountManagementScreen({super.key});
+
+  @override
+  State<AccountManagementScreen> createState() =>
+      _AccountManagementScreenState();
+}
+
+class _AccountManagementScreenState extends State<AccountManagementScreen> {
+  bool _forceDialogShown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_forceDialogShown) return;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['force'] == true) {
+      _forceDialogShown = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showPasswordChangeDialog(
+          force: true,
+          reason: args['reason'] as String?,
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +57,19 @@ class AccountManagementScreen extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           color: const Color(0xFF1E2F3F),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            final args = ModalRoute.of(context)?.settings.arguments;
+            final isForce = args is Map && args['force'] == true;
+
+            if (isForce) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('비밀번호 변경 후 이용할 수 있습니다.')),
+              );
+              return;
+            }
+
+            Navigator.pop(context);
+          },
         ),
       ),
       body: Stack(
@@ -136,7 +179,7 @@ class AccountManagementScreen extends StatelessWidget {
               icon: Icons.lock_outline_rounded,
               title: '비밀번호 변경',
               subtitle: '현재 비밀번호를 새로운 비밀번호로 변경할 수 있어요.',
-              onTap: () {},
+              onTap: () => _showPasswordChangeDialog(),
             ),
             const SizedBox(height: 10),
           ],
@@ -275,6 +318,186 @@ class AccountManagementScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showPasswordChangeDialog({
+  bool force = false,
+  String? reason,
+  }) async {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    final title =
+        force
+            ? reason == 'expired'
+                ? '비밀번호 변경 필요'
+                : '초기 비밀번호 변경'
+            : '비밀번호 변경';
+
+    final description =
+        force
+            ? '보안을 위해 비밀번호를 변경한 후 서비스를 이용할 수 있어요.'
+            : '현재 비밀번호를 입력하고 새 비밀번호로 변경해 주세요.';
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !force,
+      builder: (dialogContext) {
+        bool isLoading = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> submit() async {
+              final currentPassword = currentPasswordController.text.trim();
+              final newPassword = newPasswordController.text.trim();
+              final confirmPassword = confirmPasswordController.text.trim();
+
+              if (currentPassword.isEmpty ||
+                  newPassword.isEmpty ||
+                  confirmPassword.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('모든 항목을 입력해주세요.')),
+                );
+                return;
+              }
+
+              if (newPassword != confirmPassword) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('새 비밀번호가 일치하지 않습니다.')),
+                );
+                return;
+              }
+
+              final passwordRegex = RegExp(
+                r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,20}$',
+              );
+
+              if (!passwordRegex.hasMatch(newPassword)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('새 비밀번호는 8~20자이며, 영문/숫자/특수문자를 각각 1자 이상 포함해야 합니다.')),
+                );
+                return;
+              }
+
+              if (newPassword.length < 8) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('비밀번호는 8자 이상이어야 합니다.')),
+                );
+                return;
+              }
+
+              setDialogState(() => isLoading = true);
+
+              try {
+                final tokens = TokenStorage();
+                final client = ApiClient(tokens: tokens);
+                final authApi = AuthApi(client, tokens);
+
+                await authApi.changePassword(
+                  currentPassword: currentPassword,
+                  newPassword: newPassword,
+                );
+
+                await tokens.clear();
+
+                if (!mounted) return;
+
+                if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                  }
+
+                if (!mounted) return;
+
+                Future.microtask(() {
+                  if (!mounted) return;
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('비밀번호가 변경되었습니다. 다시 로그인해주세요.')),
+                  );
+
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/login',
+                    (_) => false,
+                  );
+                });
+              } catch (e) {
+                setDialogState(() => isLoading = false);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '비밀번호 변경 실패: ${e is Exception ? e.toString() : '오류'}',
+                    ),
+                  ),
+                );
+              }
+            }
+
+            return AlertDialog(
+              title: Text(title),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(description),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: currentPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: '현재 비밀번호',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: newPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: '새 비밀번호',
+                        hintText: '영문/숫자/특수문자 포함 8자 이상',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: '새 비밀번호 확인',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                if (!force)
+                  TextButton(
+                    onPressed:
+                        isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                    child: const Text('취소'),
+                  ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : submit,
+                  child:
+                      isLoading
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('변경'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
   }
 
   String _resolveUserName(dynamic user) {

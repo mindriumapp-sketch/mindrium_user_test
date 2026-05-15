@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 import os
 import uuid
@@ -63,6 +63,39 @@ PLATFORM_SIGNUP_URL = (
     or "http://127.0.0.1:8061/auth/signup"
 )
 
+# =========================================================
+# 인증정보 변경 주기 정책_IA-04
+# =========================================================
+
+DEFAULT_PASSWORD_POLICY_DAYS = 90
+
+
+def as_utc_datetime(value):
+    """
+    MongoDB에서 가져온 datetime이 timezone 정보 없이 들어오는 경우를 대비해 UTC로 보정.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    return None
+
+
+def is_password_expired(user: dict, now: datetime) -> bool:
+    """
+    password_changed_at 기준으로 password_policy_days가 지났는지 확인.
+    """
+    password_changed_at = as_utc_datetime(user.get("password_changed_at"))
+    password_policy_days = int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS))
+
+    if password_changed_at is None:
+        return False
+
+    return now >= password_changed_at + timedelta(days=password_policy_days)
 
 async def signup_with_platform(payload: SignupRequest) -> str:
     """
@@ -172,6 +205,11 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
         "patient_code": patient_code,
         "phone": phone_digits,
         "password_hash": hash_password(payload.password),
+        # 인증정보 관리 정책 확인용 필드_IA-04/ 일반 회원가입은 사용자가 직접 비밀번호를 설정하므로 최초 변경 강제는 False
+        "must_change_password": False,
+        "password_changed_at": now,
+        "password_policy_days": DEFAULT_PASSWORD_POLICY_DAYS,
+        "initial_password_issued_at": None,
         "updated_at": now,
     }
 
@@ -229,6 +267,10 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
     now = datetime.now(timezone.utc)
     refresh_raw = create_refresh_token(sub)
 
+    # 인증정보 관리 정책 확인용 필드_IA-04
+    password_expired = is_password_expired(user, now)
+    must_change_password = bool(user.get("must_change_password", False)) or password_expired
+
     await db["users"].update_one(
         {"_id": user["_id"]},
         {
@@ -242,6 +284,8 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
     return TokenPair(
         access_token=create_access_token(sub),
         refresh_token=refresh_raw,
+        must_change_password=must_change_password,
+        password_expired=password_expired,
     )
 
 
@@ -293,6 +337,10 @@ async def change_password(
         {
             "$set": {
                 "password_hash": hash_password(payload.new_password),
+                # 인증정보 관리 정책 확인용 필드_IA-04
+                "must_change_password": False,
+                "password_changed_at":  datetime.now(timezone.utc),
+                "password_policy_days": int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS)),
                 "updated_at": datetime.now(timezone.utc),
             },
             "$unset": {"refresh_hash": "", "refresh_issued_at": ""},
@@ -362,6 +410,10 @@ async def password_reset_finish(payload: PasswordResetFinishRequest, db=Depends(
         {
             "$set": {
                 "password_hash": hash_password(payload.new_password),
+                # 인증정보 관리 정책 확인용 필드_IA-04
+                "must_change_password": False,
+                "password_changed_at": now,
+                "password_policy_days": int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS)),
                 "updated_at": now,
             },
             "$unset": {

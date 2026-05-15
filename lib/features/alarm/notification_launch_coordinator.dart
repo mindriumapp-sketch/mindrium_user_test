@@ -15,6 +15,8 @@ class NotificationLaunchCoordinator extends StatefulWidget {
 class _NotificationLaunchCoordinatorState
     extends State<NotificationLaunchCoordinator>
     with WidgetsBindingObserver {
+  bool _initialized = false;
+
   @override
   void initState() {
     super.initState();
@@ -25,6 +27,7 @@ class _NotificationLaunchCoordinatorState
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AlarmNotificationService.instance.dispose();
     super.dispose();
   }
 
@@ -36,14 +39,28 @@ class _NotificationLaunchCoordinatorState
   }
 
   Future<void> _initializeLaunchHandling() async {
-    await AlarmNotificationService.instance.initialize();
+    if (_initialized) return;
+    _initialized = true;
+
+    try {
+      await AlarmNotificationService.instance.initialize();
+    } catch (e) {
+      debugPrint('[NotificationLaunchCoordinator] initialize skipped: $e');
+    }
+
     if (!mounted) return;
     _schedulePendingNotificationFlush();
   }
 
   void _schedulePendingNotificationFlush() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AlarmNotificationService.instance.handlePendingNotificationTap();
+      if (!mounted) return;
+
+      try {
+        AlarmNotificationService.instance.handlePendingNotificationTap();
+      } catch (e) {
+        debugPrint('[NotificationLaunchCoordinator] pending tap skipped: $e');
+      }
     });
   }
 
@@ -75,8 +92,13 @@ class _NotificationLaunchRouteObserver extends NavigatorObserver {
 
   void _publish(Route<dynamic>? route) {
     updateAppCurrentRoute(route);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AlarmNotificationService.instance.handlePendingNotificationTap();
+      try {
+        AlarmNotificationService.instance.handlePendingNotificationTap();
+      } catch (e) {
+        debugPrint('[NotificationLaunchRouteObserver] pending tap skipped: $e');
+      }
     });
   }
 }

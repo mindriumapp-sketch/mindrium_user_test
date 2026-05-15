@@ -33,6 +33,13 @@ async def get_me(
         "address": user.get("address"),
         "survey_completed": user.get("survey_completed", False),
         "email_verified": user.get("email_verified", False),
+
+        # 인증정보 관리 정책 확인용 필드_IA-04
+        "must_change_password": user.get("must_change_password", False),
+        "password_changed_at": parse_datetime_value(user.get("password_changed_at")),
+        "password_policy_days": user.get("password_policy_days", 90),
+        "initial_password_issued_at": parse_datetime_value(user.get("initial_password_issued_at")),
+
         "last_active_at": parse_datetime_value(user.get("last_active_at")),
         "created_at": parse_datetime_value(user.get("created_at")),
         "updated_at": parse_datetime_value(user.get("updated_at")),
@@ -71,6 +78,13 @@ async def update_me(
         "address": user.get("address"),
         "survey_completed": user.get("survey_completed", False),
         "email_verified": user.get("email_verified", False),
+
+        # 인증정보 관리 정책 확인용 필드_IA-04
+        "must_change_password": user.get("must_change_password", False),
+        "password_changed_at": parse_datetime_value(user.get("password_changed_at")),
+        "password_policy_days": user.get("password_policy_days", 90),
+        "initial_password_issued_at": parse_datetime_value(user.get("initial_password_issued_at")),
+
         "last_active_at": parse_datetime_value(user.get("last_active_at")),
         "created_at": parse_datetime_value(user.get("created_at")),
         "updated_at": parse_datetime_value(user.get("updated_at")),

@@ -24,6 +24,9 @@ class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    # 인증정보 관리 정책 확인용 필드_IA-04
+    must_change_password: bool = False
+    password_expired: bool = False
 
 
 class SignupRequest(BaseModel):

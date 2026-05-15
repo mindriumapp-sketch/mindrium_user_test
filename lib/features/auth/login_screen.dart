@@ -53,8 +53,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // 1) 로그인 → 토큰 저장
-      await authApi.login(email: email, password: password);
+      // 1) 로그인 → 토큰 저장 + 인증정보 정책 상태 확인
+      final loginResult = await authApi.login(email: email, password: password);
 
+      // 1-1) 최초 로그인/비밀번호 주기 만료 시 비밀번호 변경 화면으로 이동
+      if (loginResult.mustChangePassword || loginResult.passwordExpired) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('email', email);
+
+        if (!mounted) return;
+
+        Navigator.pushReplacementNamed(
+          context,
+          '/account_management',
+          arguments: {
+            'force': true,
+            'reason': loginResult.passwordExpired ? 'expired' : 'initial',
+          },
+        );
+
+        return;
+      }
       // 2) 유저 정보 + 진행도 로딩 (/users/me + /users/me/progress)
       await userProvider.loadUserData(dayCounter: dayCounter);
 
