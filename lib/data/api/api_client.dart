@@ -1,4 +1,6 @@
+import 'dart:io' show Platform, HttpClient;
 import 'dart:io' show Platform;
+import 'package:dio/io.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -9,6 +11,20 @@ const String _envBaseUrl = String.fromEnvironment(
   defaultValue: 'http://115.145.134.180:8070',
 );
 
+const bool _useBurpProxy = bool.fromEnvironment(
+  'USE_BURP_PROXY',
+  defaultValue: false,
+);
+
+const String _burpProxyHost = String.fromEnvironment(
+  'BURP_PROXY_HOST',
+  defaultValue: '10.0.2.2',
+);
+
+const String _burpProxyPort = String.fromEnvironment(
+  'BURP_PROXY_PORT',
+  defaultValue: '8080',
+);
 
 class ApiClient {
   final Dio dio;
@@ -37,6 +53,36 @@ class ApiClient {
   ApiClient({required this.tokens, String? baseUrl})
     : baseUrl = _resolveBaseUrl(baseUrl),
       dio = Dio(BaseOptions(baseUrl: _resolveBaseUrl(baseUrl))) {
+    
+    if (_useBurpProxy && !kIsWeb) {
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.findProxy = (uri) {
+            return 'PROXY $_burpProxyHost:$_burpProxyPort';
+          };
+          return client;
+        },
+      );
+
+      debugPrint(
+        '[ApiClient] Burp proxy enabled: $_burpProxyHost:$_burpProxyPort',
+      );
+    }
+
+    debugPrint('[ApiClient] baseUrl=${this.baseUrl}');
+
+    dio.interceptors.add(
+      LogInterceptor(
+        request: true,
+        requestHeader: true,
+        requestBody: true,
+        responseHeader: false,
+        responseBody: false,
+        error: true,
+      ),
+    );
+
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
