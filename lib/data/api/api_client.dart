@@ -6,9 +6,8 @@ import '../storage/token_storage.dart';
 
 const String _envBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://115.145.134.180:8070',
+  defaultValue: '',
 );
-
 
 class ApiClient {
   final Dio dio;
@@ -17,30 +16,49 @@ class ApiClient {
 
   static String _resolveBaseUrl(String? override) {
     if (override != null && override.isNotEmpty) {
-      return override;
+      return _enforceTransportPolicy(override);
     }
     if (_envBaseUrl.isNotEmpty) {
-      return _envBaseUrl;
+      return _enforceTransportPolicy(_envBaseUrl);
     }
     if (kIsWeb) {
-      // 웹에서는 Render 백엔드 서버 사용 (배포용)
       return 'https://mindrium-backend.onrender.com';
     }
-    if (Platform.isAndroid) {
-      // Android 에뮬레이터에서 호스트 머신(localhost) 접근용
-      return 'http://10.0.2.2:8080';
+    if (kDebugMode) {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:8080';
+      }
+      return 'http://127.0.0.1:8080';
     }
-    // iOS 시뮬레이터에서 호스트 머신(localhost) 접근용
-    return 'http://127.0.0.1:8080';
+    throw StateError(
+      'API_BASE_URL must be set via --dart-define for release builds.',
+    );
+  }
+
+  static String _enforceTransportPolicy(String url) {
+    final trimmed = url.trim();
+    if (kReleaseMode && trimmed.toLowerCase().startsWith('http://')) {
+      throw StateError(
+        'Release builds require HTTPS API_BASE_URL (SI-01 / DC-01).',
+      );
+    }
+    return trimmed;
   }
 
   ApiClient({required this.tokens, String? baseUrl})
     : baseUrl = _resolveBaseUrl(baseUrl),
-      dio = Dio(BaseOptions(baseUrl: _resolveBaseUrl(baseUrl))) {
+      dio = Dio(
+        BaseOptions(
+          baseUrl: _resolveBaseUrl(baseUrl),
+          // Render 무료 등은 cold start로 1분 이상 걸릴 수 있어 여유 있게 둔다.
+          connectTimeout: const Duration(seconds: 90),
+          receiveTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 30),
+        ),
+      ) {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // refresh 요청은 인터셉터를 우회
           if (options.extra['skipAuth'] == true) {
             return handler.next(options);
           }
@@ -51,7 +69,6 @@ class ApiClient {
           handler.next(options);
         },
         onError: (e, handler) async {
-          // refresh 요청 자체의 에러는 재시도하지 않음
           if (e.requestOptions.extra['skipAuth'] == true) {
             return handler.next(e);
           }
@@ -77,7 +94,6 @@ class ApiClient {
     final refresh = await tokens.refresh;
     if (refresh == null) return false;
     try {
-      // refresh 요청은 인터셉터를 우회하여 무한 루프 방지
       final res = await dio.post(
         '/auth/refresh',
         data: {'refresh_token': refresh},

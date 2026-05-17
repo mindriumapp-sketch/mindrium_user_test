@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gad_app_team/utils/text_line_utils.dart';
@@ -564,6 +565,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     setState(() => _isCheckingPermissions = true);
 
+    // permission_handler는 웹에서 위치 등 일부 API가 미구현(UnimplementedError)이라
+    // 여기서 터지면 _didResolveRequiredPermissionState가 true가 되지 않고
+    // 반투명 오버레이가 계속 남는다.
+    if (kIsWeb) {
+      if (!mounted) return;
+      setState(() {
+        _hasRequiredPermissions = true;
+        _isCheckingPermissions = false;
+        _didResolveRequiredPermissionState = true;
+      });
+      return;
+    }
+
     final location = await Permission.locationWhenInUse.status;
     final notification = await Permission.notification.status;
     final hasAllRequired = location.isGranted && notification.isGranted;
@@ -577,6 +591,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _requestRequiredPermissionsFromBlocker() async {
+    if (kIsWeb) {
+      await _refreshRequiredPermissionState();
+      return;
+    }
+
     setState(() => _isCheckingPermissions = true);
 
     var locationStatus = await Permission.locationWhenInUse.status;

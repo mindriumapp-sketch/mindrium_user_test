@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:gad_app_team/data/apply_solve_provider.dart';
+import 'package:gad_app_team/data/storage/auth_session_storage.dart';
 import 'package:gad_app_team/navigation/app_navigator_key.dart';
 
 class AlarmSetting {
@@ -841,7 +842,7 @@ class AlarmNotificationService {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final storageKey = _todayTaskLastActiveDateKey(prefs);
+    final storageKey = await _todayTaskLastActiveDateKey(prefs);
     final referenceDate = _normalizeKstDate(todayDate ?? _currentKstDate());
     final performedToday = diaryDone || relaxationDone;
 
@@ -1282,8 +1283,8 @@ class AlarmNotificationService {
     return DateTime(value.year, value.month, value.day);
   }
 
-  String _todayTaskLastActiveDateKey(SharedPreferences prefs) {
-    final uid = prefs.getString('uid')?.trim();
+  Future<String> _todayTaskLastActiveDateKey(SharedPreferences prefs) async {
+    final uid = (await AuthSessionStorage().userId)?.trim();
     if (uid == null || uid.isEmpty) {
       return _todayTaskLastActiveDateKeyPrefix;
     }

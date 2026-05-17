@@ -4,10 +4,11 @@ import os
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pymongo.errors import DuplicateKeyError
 
 from core.config import get_settings
+from core.rate_limit import auth_rate_limiter, client_ip
 from db.mongo import get_db
 from routers.custom_tags import ensure_default_custom_tags
 from routers.worry_groups import ensure_default_worry_group
@@ -39,6 +40,8 @@ from core.security import (
 
 settings = get_settings()
 router = APIRouter(prefix="/auth")
+
+_INVALID_CREDENTIALS = "Invalid credentials"
 
 # =========================================================
 # phone 정규화 정책
@@ -108,7 +111,12 @@ async def signup_with_platform(payload: SignupRequest) -> str:
 
 
 @router.post("/signup", response_model=TokenPair)
-async def signup(payload: SignupRequest, db=Depends(get_db)):
+async def signup(
+    payload: SignupRequest,
+    request: Request,
+    db=Depends(get_db),
+):
+    auth_rate_limiter.check(f"signup:{client_ip(request)}")
     # 1) 입력 검증
     phone_digits = phone_to_digits(payload.phone)
     if not phone_digits:
@@ -219,11 +227,17 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenPair)
-async def login(payload: LoginRequest, db=Depends(get_db)):
+async def login(
+    payload: LoginRequest,
+    request: Request,
+    db=Depends(get_db),
+):
+    auth_rate_limiter.check(f"login:{client_ip(request)}")
+
     user = await db["users"].find_one({"email": payload.email})
     stored_hash = user.get("password_hash") if user else None
     if not user or not stored_hash or not verify_password(payload.password, stored_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
 
     sub = str(user["_id"])
     now = datetime.now(timezone.utc)
