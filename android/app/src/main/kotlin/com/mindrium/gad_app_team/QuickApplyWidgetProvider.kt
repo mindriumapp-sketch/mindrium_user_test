@@ -58,15 +58,15 @@ class QuickApplyWidgetProvider : AppWidgetProvider() {
             val relaxationCount = prefs.getInt(keyRelaxationCount, 0)
             val completedWeeks = prefs.getInt(keyCompletedWeeks, 0)
             val isWidgetUnlocked = completedWeeks >= 2
-            val titleText = if (isWidgetUnlocked) "Relief" else "2주차 교육·이완 후 이용 가능"
+            val titleText = if (isWidgetUnlocked) "Relief" else "2주차 완료 후 이용 가능"
             val tagText = if (isWidgetUnlocked) "READY" else "LOCKED"
             val statsText =
                 if (isWidgetUnlocked) {
                     "일기 ${diaryCount}건 · 이완 ${relaxationCount}회"
                 } else {
-                    "2주차 교육·이완 완료 후 Relief를 바로 시작할 수 있어요."
+                    "교육·이완 후 Relief 열림"
                 }
-            val ctaText = if (isWidgetUnlocked) "지금 시작" else "교육 먼저 하기"
+            val ctaText = if (isWidgetUnlocked) "시작" else "교육"
 
             val launchIntent =
                 Intent(context, MainActivity::class.java).apply {
@@ -94,25 +94,43 @@ class QuickApplyWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.widget_cta, ctaText)
                 setTextColor(
                     R.id.widget_title,
-                    Color.parseColor(if (isWidgetUnlocked) "#132D4A" else "#3A4B5D"),
+                    Color.parseColor(if (isWidgetUnlocked) "#0F3558" else "#314457"),
                 )
                 setTextColor(
                     R.id.widget_stats,
-                    Color.parseColor(if (isWidgetUnlocked) "#1F3D5C" else "#5D6A78"),
+                    Color.parseColor(if (isWidgetUnlocked) "#315170" else "#667482"),
+                )
+                setTextColor(
+                    R.id.widget_brand,
+                    Color.parseColor(if (isWidgetUnlocked) "#55718B" else "#667482"),
                 )
                 setTextColor(
                     R.id.widget_tag,
-                    Color.parseColor(if (isWidgetUnlocked) "#2A6FB0" else "#6B7684"),
+                    Color.parseColor(if (isWidgetUnlocked) "#1F6FB7" else "#687481"),
                 )
                 setTextColor(
                     R.id.widget_cta,
-                    Color.parseColor(if (isWidgetUnlocked) "#FFFFFF" else "#5C6D81"),
+                    Color.parseColor(if (isWidgetUnlocked) "#FFFFFF" else "#526170"),
                 )
                 setInt(R.id.widget_title, "setMaxLines", if (isWidgetUnlocked) 1 else 2)
                 setTextViewTextSize(
                     R.id.widget_title,
                     TypedValue.COMPLEX_UNIT_SP,
-                    if (isWidgetUnlocked) 14f else 13f,
+                    if (isWidgetUnlocked) 18f else 13f,
+                )
+                setTextViewTextSize(
+                    R.id.widget_stats,
+                    TypedValue.COMPLEX_UNIT_SP,
+                    if (isWidgetUnlocked) 11f else 10.5f,
+                )
+                setInt(
+                    R.id.widget_root,
+                    "setBackgroundResource",
+                    if (isWidgetUnlocked) {
+                        R.drawable.widget_card_unlocked_background
+                    } else {
+                        R.drawable.widget_card_background
+                    },
                 )
                 setInt(
                     R.id.widget_tag,

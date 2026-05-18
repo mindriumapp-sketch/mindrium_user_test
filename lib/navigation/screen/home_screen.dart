@@ -797,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
       children: [
         _buildHeader(),
         const SizedBox(height: 16),
@@ -818,7 +818,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final user = context.watch<UserProvider>();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -829,8 +829,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 /// 💬 “OOO님 환영합니다!”
-                RichText(
-                  text: TextSpan(
+                Text.rich(
+                  TextSpan(
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -843,8 +843,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       TextSpan(text: '${user.userName}님 환영합니다!'),
                     ],
                   ),
-                  overflow: TextOverflow.visible,
                   softWrap: false,
+                  overflow: TextOverflow.visible,
                 ),
               ],
             ),
@@ -858,19 +858,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildTempWidgetGuideButton() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: OutlinedButton.icon(
-        onPressed: _showWidgetTutorialFromTempButton,
-        icon: const Icon(Icons.help_outline_rounded, size: 18),
-        label: const Text('위젯 가이드'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF1B3A57),
-          backgroundColor: const Color(0xFFF2F8FF),
-          side: const BorderSide(color: Color(0xFFBFD8EE)),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
+    return Transform.translate(
+      offset: const Offset(0, -10),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: OutlinedButton.icon(
+          onPressed: _showWidgetTutorialFromTempButton,
+          icon: const Icon(Icons.help_outline_rounded, size: 18),
+          label: const Text('위젯 가이드'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF1B3A57),
+            backgroundColor: const Color(0xFFF2F8FF),
+            side: const BorderSide(color: Color(0xFFBFD8EE)),
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
+            ),
           ),
         ),
       ),
