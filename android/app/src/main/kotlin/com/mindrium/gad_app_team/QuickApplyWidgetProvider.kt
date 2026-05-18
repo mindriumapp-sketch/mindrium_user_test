@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.util.TypedValue
 import android.widget.RemoteViews
 
 class QuickApplyWidgetProvider : AppWidgetProvider() {
@@ -106,6 +107,12 @@ class QuickApplyWidgetProvider : AppWidgetProvider() {
                 setTextColor(
                     R.id.widget_cta,
                     Color.parseColor(if (isWidgetUnlocked) "#FFFFFF" else "#5C6D81"),
+                )
+                setInt(R.id.widget_title, "setMaxLines", if (isWidgetUnlocked) 1 else 2)
+                setTextViewTextSize(
+                    R.id.widget_title,
+                    TypedValue.COMPLEX_UNIT_SP,
+                    if (isWidgetUnlocked) 14f else 13f,
                 )
                 setInt(
                     R.id.widget_tag,

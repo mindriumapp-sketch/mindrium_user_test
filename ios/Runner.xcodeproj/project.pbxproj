@@ -603,7 +603,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gad_app.widget;
+				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gadApp.widget;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mindrium.gadApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -797,7 +797,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gad_app.widget;
+				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gadApp.widget;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mindrium.gadApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -827,7 +827,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gad_app.widget;
+				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gadApp.widget;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mindrium.gadApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -854,7 +854,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gad_app.widget;
+				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gadApp.widget;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mindrium.gadApp.widget;
 				PRODUCT_NAME = MindriumWidgetExtension;
 				SKIP_INSTALL = YES;
@@ -882,7 +882,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gad_app.widget;
+				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gadApp.widget;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mindrium.gadApp.widget;
 				PRODUCT_NAME = MindriumWidgetExtension;
 				SKIP_INSTALL = YES;
@@ -909,7 +909,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gad_app.widget;
+				MINDRIUM_WIDGET_APP_GROUP = group.com.mindrium.gadApp.widget;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mindrium.gadApp.widget;
 				PRODUCT_NAME = MindriumWidgetExtension;
 				SKIP_INSTALL = YES;

@@ -71,6 +71,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int? _lastSyncedDiaryCount;
   int? _lastSyncedRelaxationCount;
   int? _lastSyncedCompletedWeeks;
+  bool _isSyncingWidgetStats = false;
+  ({int diaryCount, int relaxationCount, int completedWeeks})?
+  _pendingWidgetStatsSync;
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   Future<bool?> _showResumeTodayTaskDraftDialog(
@@ -326,6 +329,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshRequiredPermissionState();
+      unawaited(_refreshProgressForWidgetSync());
       unawaited(context.read<TodayTaskProvider>().refresh());
     }
   }
@@ -460,20 +464,71 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    _lastSyncedDiaryCount = diaryCount;
-    _lastSyncedRelaxationCount = relaxationCount;
-    _lastSyncedCompletedWeeks = completedWeeks;
+    _pendingWidgetStatsSync = (
+      diaryCount: diaryCount,
+      relaxationCount: relaxationCount,
+      completedWeeks: completedWeeks,
+    );
+    if (_isSyncingWidgetStats) return;
 
-    _widgetLaunchChannel
-        .invokeMethod<bool>('updateWidgetStats', {
-          'diaryCount': diaryCount,
-          'relaxationCount': relaxationCount,
-          'completedWeeks': completedWeeks,
-        })
-        .catchError((Object error) {
+    unawaited(_flushWidgetStatsSync());
+  }
+
+  Future<void> _flushWidgetStatsSync() async {
+    if (_isSyncingWidgetStats) return;
+    _isSyncingWidgetStats = true;
+
+    try {
+      while (mounted && _pendingWidgetStatsSync != null) {
+        final stats = _pendingWidgetStatsSync!;
+        _pendingWidgetStatsSync = null;
+
+        try {
+          final synced =
+              await _widgetLaunchChannel
+                  .invokeMethod<bool>('updateWidgetStats', {
+                    'diaryCount': stats.diaryCount,
+                    'relaxationCount': stats.relaxationCount,
+                    'completedWeeks': stats.completedWeeks,
+                  }) ??
+              false;
+
+          if (!synced) {
+            _pendingWidgetStatsSync ??= stats;
+            debugPrint('위젯 통계 동기화 실패: native returned false');
+            break;
+          }
+
+          _lastSyncedDiaryCount = stats.diaryCount;
+          _lastSyncedRelaxationCount = stats.relaxationCount;
+          _lastSyncedCompletedWeeks = stats.completedWeeks;
+          debugPrint(
+            '위젯 통계 동기화 완료: '
+            'diary=${stats.diaryCount}, '
+            'relaxation=${stats.relaxationCount}, '
+            'completedWeeks=${stats.completedWeeks}',
+          );
+        } catch (error) {
+          _pendingWidgetStatsSync ??= stats;
           debugPrint('위젯 통계 동기화 실패: $error');
-          return false;
-        });
+          break;
+        }
+      }
+    } finally {
+      _isSyncingWidgetStats = false;
+    }
+  }
+
+  Future<void> _refreshProgressForWidgetSync() async {
+    try {
+      final user = context.read<UserProvider>();
+      if (!user.isUserLoaded && user.isLoadingUser) return;
+      await user.refreshProgress();
+      if (!mounted || !user.isUserLoaded) return;
+      _syncWidgetStatsIfNeeded(user);
+    } catch (error) {
+      debugPrint('위젯 진행도 새로고침 실패: $error');
+    }
   }
 
   // ===================== build =====================

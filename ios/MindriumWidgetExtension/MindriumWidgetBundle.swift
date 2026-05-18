@@ -9,7 +9,7 @@ private enum MindriumWidgetDefaultsKey {
 
 private enum MindriumWidgetConfig {
   static let unlockWeek = 2
-  static let fallbackAppGroup = "group.com.mindrium.gad_app.widget"
+  static let fallbackAppGroup = "group.com.mindrium.gadApp.widget"
   static let launchURL = URL(string: "mindrium://widget?action=start_apply")!
 }
 
@@ -46,12 +46,7 @@ private struct MindriumWidgetEntry: TimelineEntry {
 
 private struct MindriumWidgetProvider: TimelineProvider {
   func placeholder(in context: Context) -> MindriumWidgetEntry {
-    MindriumWidgetEntry(
-      date: Date(),
-      diaryCount: 3,
-      relaxationCount: 5,
-      completedWeeks: 2
-    )
+    loadEntry()
   }
 
   func getSnapshot(in context: Context, completion: @escaping (MindriumWidgetEntry) -> Void) {
