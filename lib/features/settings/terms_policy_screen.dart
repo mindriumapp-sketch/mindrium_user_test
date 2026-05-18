@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/features/auth/terms_detail_screen.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class TermsPolicyScreen extends StatelessWidget {
   const TermsPolicyScreen({super.key});
@@ -9,23 +10,10 @@ class TermsPolicyScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text(
-          '약관 및 정책',
-          style: TextStyle(
-            color: Color(0xFF1E2F3F),
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Noto Sans KR',
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          color: const Color(0xFF1E2F3F),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: const CustomAppBar(
+        title: '약관 및 정책',
+        showHome: false,
+        confirmOnBack: false,
       ),
       body: Stack(
         fit: StackFit.expand,

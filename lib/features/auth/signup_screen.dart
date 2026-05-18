@@ -5,6 +5,7 @@ import 'package:gad_app_team/widgets/primary_action_button.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 /// 회원가입 화면 - 이메일, 이름, 전화번호, 비밀번호, 마인드리움코드로 회원가입
 class SignupScreen extends StatefulWidget {
@@ -139,7 +140,9 @@ class _SignupScreenState extends State<SignupScreen> {
           );
           break;
         case 'patientCode':
-          _patientCodeError = _validatePatientCode(patientCodeController.text.trim());
+          _patientCodeError = _validatePatientCode(
+            patientCodeController.text.trim(),
+          );
           break;
       }
       _formError = null;
@@ -244,9 +247,9 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context,).showSnackBar(
-          const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.'))
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.')));
       Navigator.pushReplacementNamed(
         context,
         '/login',
@@ -292,18 +295,10 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.grey100,
-      appBar: AppBar(
-        title: const Text('회원가입'),
-        backgroundColor: AppColors.white,
-        elevation: 0,
-        toolbarHeight: 50,
-        leading: Padding(
-          padding: const EdgeInsets.all(8),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
+      appBar: const CustomAppBar(
+        title: '회원가입',
+        showHome: false,
+        confirmOnBack: false,
       ),
       bottomNavigationBar: SafeArea(
         top: false,
@@ -422,7 +417,6 @@ class _SignupScreenState extends State<SignupScreen> {
               errorText: _patientCodeError,
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
-
           ],
         ),
       ),
@@ -571,5 +565,4 @@ class _SignupScreenState extends State<SignupScreen> {
       ],
     );
   }
-
 }

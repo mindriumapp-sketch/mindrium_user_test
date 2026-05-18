@@ -13,6 +13,7 @@ import 'package:gad_app_team/data/education_week_contents.dart';
 import 'package:gad_app_team/data/api/screen_time_api.dart';
 import 'package:gad_app_team/features/menu/archive/archived_diary_screen.dart';
 import 'package:gad_app_team/utils/server_datetime.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class MyInfoScreen extends StatefulWidget {
   const MyInfoScreen({super.key});
@@ -234,8 +235,6 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
   @override
   Widget build(BuildContext context) {
-    const Color deepNavy = Color(0xFF1E2F3F);
-
     final double maxCardWidth = MediaQuery.of(context).size.width - 32;
     final double bottomSafeInset = MediaQuery.of(context).padding.bottom;
     const double extraBottomScrollSpace = 110.0;
@@ -264,35 +263,14 @@ class _MyInfoScreenState extends State<MyInfoScreen>
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        toolbarHeight: 70,
-        title: const Text(
-          '마이페이지',
-          style: TextStyle(
-            color: deepNavy,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Noto Sans KR',
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 6,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: deepNavy),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: IconButton(
-              onPressed: () => Navigator.pushNamed(context, '/settings'),
-              icon: const Icon(
-                Icons.settings_rounded,
-                color: deepNavy,
-                size: 26,
-              ),
-              tooltip: '환경설정',
-            ),
-          ),
-        ],
+      appBar: CustomAppBar(
+        title: '마이페이지',
+        showBack: false,
+        showHome: false,
+        confirmOnBack: false,
+        confirmOnHome: false,
+        extraIcon: Icons.settings_rounded,
+        onExtraPressed: () => Navigator.pushNamed(context, '/settings'),
       ),
       body: Stack(
         fit: StackFit.expand,

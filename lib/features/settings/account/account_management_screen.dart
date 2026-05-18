@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class AccountManagementScreen extends StatelessWidget {
   const AccountManagementScreen({super.key});
@@ -11,23 +12,10 @@ class AccountManagementScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text(
-          '계정 관리',
-          style: TextStyle(
-            color: Color(0xFF1E2F3F),
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Noto Sans KR',
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          color: const Color(0xFF1E2F3F),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: const CustomAppBar(
+        title: '계정 관리',
+        showHome: false,
+        confirmOnBack: false,
       ),
       body: Stack(
         fit: StackFit.expand,

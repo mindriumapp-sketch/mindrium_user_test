@@ -1,6 +1,7 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:provider/provider.dart';
 
@@ -49,7 +50,6 @@ class TreatmentDesign extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mindriumColors = _MindriumColors();
-    const Color deepNavy = Color(0xFF1E2F3F);
     const totalWeeks = 8;
     final doneCount = (lastCompleted ?? completedWeeks.length).clamp(
       0,
@@ -58,20 +58,14 @@ class TreatmentDesign extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
+      appBar: CustomAppBar(
+        title:
+            (appBarTitle?.isNotEmpty ?? false) ? appBarTitle! : '마인드리움 교육 활동',
+        showBack: false,
+        showHome: false,
+        confirmOnBack: false,
+        confirmOnHome: false,
         toolbarHeight: 70,
-        title: Text(
-          (appBarTitle?.isNotEmpty ?? false) ? appBarTitle! : '마인드리움 교육 활동',
-          style: const TextStyle(
-            color: deepNavy,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Noto Sans KR',
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 6,
-        centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(70),
           child: Padding(
@@ -175,8 +169,7 @@ class TreatmentDesign extends StatelessWidget {
             : null;
     final requiredCbtLabel =
         requiredWeekContent?['session1Name'] ?? '불안에 대한 이해';
-    final requiredRelaxLabel =
-        requiredWeekContent?['session2Name'] ?? '점진적 이완';
+    final requiredRelaxLabel = requiredWeekContent?['session2Name'] ?? '점진적 이완';
     final continueLabel =
         (!isCurrentWeek || (appliedDone && cbtDone)) ? '복습하기' : '이어하기';
     final actionLabel =

@@ -178,7 +178,6 @@ class _EducationScreenState extends State<EducationScreen> {
                     CustomAppBar(
                       title: '불안에 대한 이해',
                       maxTitleLines: 2,
-                      titleAlign: TextAlign.start,
                       showHome: true,
                       confirmOnHome: true,
                       confirmOnBack: false,
@@ -197,12 +196,6 @@ class _EducationScreenState extends State<EducationScreen> {
                           );
                         }
                       },
-                      titleTextStyle: const TextStyle(
-                        fontFamily: 'Noto Sans KR',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
                       toolbarHeight: 56,
                     ),
                     Expanded(
