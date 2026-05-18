@@ -14,12 +14,12 @@ class AbcGroupCharacterScreen extends StatefulWidget {
     super.key,
     required this.groups,
     this.abcId,
-    this.sessionId
+    this.sessionId,
   });
 
-
   @override
-  State<AbcGroupCharacterScreen> createState() => _AbcGroupCharacterScreenState();
+  State<AbcGroupCharacterScreen> createState() =>
+      _AbcGroupCharacterScreenState();
 }
 
 class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
@@ -32,6 +32,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
 
   List<Map<String, dynamic>> availableCharacters = [];
   double _currentPage = 0.0;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -64,17 +65,21 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
   Future<void> _loadCharacters() async {
     try {
       // 1) 사용된 character_id 수집
-      final usedCharacterIds = widget.groups.map((group) {
-        final charId = group['character_id'];
-        return int.tryParse(charId?.toString() ?? '');
-      }).whereType<int>().toSet();
+      final usedCharacterIds =
+          widget.groups
+              .map((group) {
+                final charId = group['character_id'];
+                return int.tryParse(charId?.toString() ?? '');
+              })
+              .whereType<int>()
+              .toSet();
 
       debugPrint('🔍 사용된 캐릭터 IDs: $usedCharacterIds');
 
       // 2) 전체 캐릭터 1~20 생성
       final allCharacters = List.generate(
         20,
-            (index) => {
+        (index) => {
           'id': index + 1,
           'name': '캐릭터 ${index + 1}',
           'image': 'assets/image/character${index + 1}.png',
@@ -103,7 +108,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
 
       debugPrint(
         '✅ 사용 가능한 캐릭터(정렬 후): '
-            'unused=${unused.length}, used=${used.length}, total=${availableCharacters.length}',
+        'unused=${unused.length}, used=${used.length}, total=${availableCharacters.length}',
       );
     } catch (e) {
       debugPrint('❌ 캐릭터 목록 로드 실패: $e');
@@ -157,9 +162,11 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
   }
 
   Future<void> _addGroupToDB() async {
+    if (_isSubmitting) return;
+
     if (_selectedCharacterIndex == null ||
-        titleController.text.isEmpty ||
-        descriptionController.text.isEmpty) {
+        titleController.text.trim().isEmpty ||
+        descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('모든 필드를 입력하세요.'),
@@ -175,15 +182,17 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
 
     final selectedCharacter = availableCharacters[_selectedCharacterIndex!];
 
+    setState(() => _isSubmitting = true);
+
     try {
       await _worryGroupsApi.createWorryGroup(
-        groupTitle: titleController.text,
-        groupContents: descriptionController.text,
+        groupTitle: titleController.text.trim(),
+        groupContents: descriptionController.text.trim(),
         characterId: selectedCharacter['id'],
       );
 
       if (mounted) {
-        showDialog(
+        await showDialog<void>(
           context: context,
           barrierDismissible: false,
           builder:
@@ -201,6 +210,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
     } catch (e) {
       debugPrint('❌ 그룹 추가 실패: $e');
       if (mounted) {
+        setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('오류가 발생했습니다: $e'),
@@ -316,9 +326,12 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
                                     _selectedCharacterIndex == index;
                                 return GestureDetector(
                                   onTap:
-                                      () => setState(
-                                        () => _selectedCharacterIndex = index,
-                                      ),
+                                      _isSubmitting
+                                          ? null
+                                          : () => setState(
+                                            () =>
+                                                _selectedCharacterIndex = index,
+                                          ),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color:
@@ -409,6 +422,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
                           const SizedBox(height: 10),
                           TextField(
                             controller: titleController,
+                            enabled: !_isSubmitting,
                             decoration: InputDecoration(
                               hintText: '그룹 제목을 입력하세요',
                               hintStyle: const TextStyle(
@@ -455,6 +469,7 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
                           const SizedBox(height: 10),
                           TextField(
                             controller: descriptionController,
+                            enabled: !_isSubmitting,
                             maxLines: 4,
                             decoration: InputDecoration(
                               hintText: '그룹 설명을 입력하세요',
@@ -509,15 +524,41 @@ class _AbcGroupCharacterScreenState extends State<AbcGroupCharacterScreen> {
                                   0xFF7BB8E8,
                                 ).withValues(alpha: 0.4),
                               ),
-                              onPressed: _addGroupToDB,
-                              child: const Text(
-                                '걱정 그룹 추가',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
+                              onPressed: _isSubmitting ? null : _addGroupToDB,
+                              child:
+                                  _isSubmitting
+                                      ? const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            '추가 중...',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: -0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                      : const Text(
+                                        '걱정 그룹 추가',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
                             ),
                           ),
                           const SizedBox(height: 16),

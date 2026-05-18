@@ -236,6 +236,7 @@ class _ScreenTimeAutoTrackerState extends State<ScreenTimeAutoTracker>
       case TargetPlatform.fuchsia:
         return null;
     }
+    return null;
   }
 
   @override
