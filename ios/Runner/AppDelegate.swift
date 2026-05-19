@@ -76,7 +76,7 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
 }
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+@objc class AppDelegate: FlutterAppDelegate {
   private enum WidgetChannel {
     static let methodName = "mindrium/widget_launch"
     static let eventName = "mindrium/widget_launch_events"
@@ -113,12 +113,15 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self
     }
+    GeneratedPluginRegistrant.register(with: self)
+    if let flutterViewController = window?.rootViewController as? FlutterViewController {
+      configureChannels(with: flutterViewController.binaryMessenger)
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    configureChannels(with: engineBridge.applicationRegistrar.messenger())
+  func configureChannelsIfNeeded(with messenger: FlutterBinaryMessenger) {
+    configureChannels(with: messenger)
   }
 
   override func application(
