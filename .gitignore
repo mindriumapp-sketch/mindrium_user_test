@@ -96,9 +96,11 @@ secrets/
 **/firebase_app_id_file.json
 
 ##### 선택적(Firebase 설정 파일) #####
-# 보안상 민감 정보는 아니지만, 저장소에 올리고 싶지 않다면 아래 주석을 해제하세요.
-# **/android/**/app/google-services.json
-# **/ios/**/Runner/GoogleService-Info.plist
+# Firebase 설정 파일은 앱 클라이언트에 포함될 수 있지만 공개 저장소 경고를 피하려면 추적하지 않습니다.
+**/android/**/app/google-services.json
+**/ios/**/Runner/GoogleService-Info.plist
+**/macos/**/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
 
 ##### Python Backend #####
 **/__pycache__/
