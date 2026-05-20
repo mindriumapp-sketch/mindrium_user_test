@@ -31,16 +31,11 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Future<void> _showPasswordChangeDialog({
-          bool force = false,
-          String? reason,
-        }) {
-          return _showChangePasswordDialog(
-            context,
-            force: force,
-            reason: reason,
-          );
-        }
+        _showChangePasswordDialog(
+          context,
+          force: true,
+          reason: args['reason'] as String?,
+        );
       });
     }
   }
@@ -433,7 +428,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       barrierDismissible: !force,
       barrierColor: const Color(0x7A132333),
       builder: (dialogContext) {
-        final bottomInset = MediaQuery.of(dialogContext).viewInsets.bottom;
+        // final bottomInset = MediaQuery.of(dialogContext).viewInsets.bottom;
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             final String currentPassword = currentPasswordController.text.trim();
@@ -448,10 +443,10 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
             return Dialog(
               backgroundColor: Colors.transparent,
               insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: AnimatedPadding(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(bottom: bottomInset),
+              // child: AnimatedPadding(
+              //   duration: const Duration(milliseconds: 180),
+              //   curve: Curves.easeOut,
+              //   padding: EdgeInsets.only(bottom: bottomInset),
                 child: Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFCFFFFFF),
@@ -696,7 +691,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                       ],
                     ),
                   ),
-                ),
+                // ),
               ),
             );
           },
