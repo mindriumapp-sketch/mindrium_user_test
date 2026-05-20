@@ -100,22 +100,27 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         hasSurvey ? '/home' : '/tutorial',
       );
-    } catch (e) {
-      // 로그인 전체 플로우 실패 → 토큰 + 상태 정리
+    } on AuthException catch (e) {
       await tokens.clear();
       userProvider.reset();
       todayTaskProvider.reset();
       dayCounter.reset();
 
-      _showError('로그인 실패: ${e is Exception ? e.toString() : '오류'}');
+      if (!mounted) return;
+
+      _showError(e.message);
+      return;
+    } catch (e) {
+      await tokens.clear();
+      userProvider.reset();
+      todayTaskProvider.reset();
+      dayCounter.reset();
 
       if (!mounted) return;
 
-      Navigator.pushNamed(
-        context,
-        '/terms',
-        arguments: {'email': email, 'password': password},
-      );
+      _showError('로그인 중 오류가 발생했습니다.');
+      return;
+
     }
   }
 
