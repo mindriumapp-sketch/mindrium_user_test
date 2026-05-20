@@ -71,6 +71,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int? _lastSyncedDiaryCount;
   int? _lastSyncedRelaxationCount;
   int? _lastSyncedCompletedWeeks;
+  bool _isSyncingWidgetStats = false;
+  ({int diaryCount, int relaxationCount, int completedWeeks})?
+  _pendingWidgetStatsSync;
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
 
   Future<bool?> _showResumeTodayTaskDraftDialog(
@@ -326,6 +329,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshRequiredPermissionState();
+      unawaited(_refreshProgressForWidgetSync());
       unawaited(context.read<TodayTaskProvider>().refresh());
     }
   }
@@ -460,20 +464,71 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    _lastSyncedDiaryCount = diaryCount;
-    _lastSyncedRelaxationCount = relaxationCount;
-    _lastSyncedCompletedWeeks = completedWeeks;
+    _pendingWidgetStatsSync = (
+      diaryCount: diaryCount,
+      relaxationCount: relaxationCount,
+      completedWeeks: completedWeeks,
+    );
+    if (_isSyncingWidgetStats) return;
 
-    _widgetLaunchChannel
-        .invokeMethod<bool>('updateWidgetStats', {
-          'diaryCount': diaryCount,
-          'relaxationCount': relaxationCount,
-          'completedWeeks': completedWeeks,
-        })
-        .catchError((Object error) {
+    unawaited(_flushWidgetStatsSync());
+  }
+
+  Future<void> _flushWidgetStatsSync() async {
+    if (_isSyncingWidgetStats) return;
+    _isSyncingWidgetStats = true;
+
+    try {
+      while (mounted && _pendingWidgetStatsSync != null) {
+        final stats = _pendingWidgetStatsSync!;
+        _pendingWidgetStatsSync = null;
+
+        try {
+          final synced =
+              await _widgetLaunchChannel
+                  .invokeMethod<bool>('updateWidgetStats', {
+                    'diaryCount': stats.diaryCount,
+                    'relaxationCount': stats.relaxationCount,
+                    'completedWeeks': stats.completedWeeks,
+                  }) ??
+              false;
+
+          if (!synced) {
+            _pendingWidgetStatsSync ??= stats;
+            debugPrint('위젯 통계 동기화 실패: native returned false');
+            break;
+          }
+
+          _lastSyncedDiaryCount = stats.diaryCount;
+          _lastSyncedRelaxationCount = stats.relaxationCount;
+          _lastSyncedCompletedWeeks = stats.completedWeeks;
+          debugPrint(
+            '위젯 통계 동기화 완료: '
+            'diary=${stats.diaryCount}, '
+            'relaxation=${stats.relaxationCount}, '
+            'completedWeeks=${stats.completedWeeks}',
+          );
+        } catch (error) {
+          _pendingWidgetStatsSync ??= stats;
           debugPrint('위젯 통계 동기화 실패: $error');
-          return false;
-        });
+          break;
+        }
+      }
+    } finally {
+      _isSyncingWidgetStats = false;
+    }
+  }
+
+  Future<void> _refreshProgressForWidgetSync() async {
+    try {
+      final user = context.read<UserProvider>();
+      if (!user.isUserLoaded && user.isLoadingUser) return;
+      await user.refreshProgress();
+      if (!mounted || !user.isUserLoaded) return;
+      _syncWidgetStatsIfNeeded(user);
+    } catch (error) {
+      debugPrint('위젯 진행도 새로고침 실패: $error');
+    }
   }
 
   // ===================== build =====================
@@ -742,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
       children: [
         _buildHeader(),
         const SizedBox(height: 16),
@@ -763,7 +818,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final user = context.watch<UserProvider>();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -774,8 +829,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 /// 💬 “OOO님 환영합니다!”
-                RichText(
-                  text: TextSpan(
+                Text.rich(
+                  TextSpan(
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -788,8 +843,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       TextSpan(text: '${user.userName}님 환영합니다!'),
                     ],
                   ),
-                  overflow: TextOverflow.visible,
                   softWrap: false,
+                  overflow: TextOverflow.visible,
                 ),
               ],
             ),
@@ -803,19 +858,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildTempWidgetGuideButton() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: OutlinedButton.icon(
-        onPressed: _showWidgetTutorialFromTempButton,
-        icon: const Icon(Icons.help_outline_rounded, size: 18),
-        label: const Text('위젯 가이드'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF1B3A57),
-          backgroundColor: const Color(0xFFF2F8FF),
-          side: const BorderSide(color: Color(0xFFBFD8EE)),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
+    return Transform.translate(
+      offset: const Offset(0, -10),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: OutlinedButton.icon(
+          onPressed: _showWidgetTutorialFromTempButton,
+          icon: const Icon(Icons.help_outline_rounded, size: 18),
+          label: const Text('위젯 가이드'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF1B3A57),
+            backgroundColor: const Color(0xFFF2F8FF),
+            side: const BorderSide(color: Color(0xFFBFD8EE)),
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
+            ),
           ),
         ),
       ),

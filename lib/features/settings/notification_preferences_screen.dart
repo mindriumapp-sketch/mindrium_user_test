@@ -149,14 +149,6 @@ class _NotificationPreferencesScreenState
         showHome: true,
         confirmOnBack: false,
         confirmOnHome: false,
-        centerTitle: true,
-        leadingIconColor: Color(0xFF1E2F3F),
-        titleTextStyle: TextStyle(
-          fontFamily: 'Noto Sans KR',
-          fontWeight: FontWeight.w700,
-          fontSize: 18,
-          color: Color(0xFF1E2F3F),
-        ),
       ),
       body: Stack(
         fit: StackFit.expand,

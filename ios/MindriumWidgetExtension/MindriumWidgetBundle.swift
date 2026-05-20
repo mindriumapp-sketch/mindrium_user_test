@@ -9,7 +9,7 @@ private enum MindriumWidgetDefaultsKey {
 
 private enum MindriumWidgetConfig {
   static let unlockWeek = 2
-  static let fallbackAppGroup = "group.com.mindrium.gad_app.widget"
+  static let fallbackAppGroup = "group.com.mindrium.gadApp.widget"
   static let launchURL = URL(string: "mindrium://widget?action=start_apply")!
 }
 
@@ -24,7 +24,7 @@ private struct MindriumWidgetEntry: TimelineEntry {
   }
 
   var titleText: String {
-    isUnlocked ? "Relief" : "2주차 교육·이완 후 이용 가능"
+    isUnlocked ? "Relief" : "2주차 완료 후 이용 가능"
   }
 
   var tagText: String {
@@ -36,22 +36,17 @@ private struct MindriumWidgetEntry: TimelineEntry {
       return "일기 \(diaryCount)건 · 이완 \(relaxationCount)회"
     }
 
-    return "2주차 교육·이완 완료 후 Relief를 바로 시작할 수 있어요."
+    return "교육·이완을 끝내면 Relief가 열려요."
   }
 
   var ctaText: String {
-    isUnlocked ? "지금 시작" : "교육 먼저 하기"
+    isUnlocked ? "시작하기" : "교육 먼저"
   }
 }
 
 private struct MindriumWidgetProvider: TimelineProvider {
   func placeholder(in context: Context) -> MindriumWidgetEntry {
-    MindriumWidgetEntry(
-      date: Date(),
-      diaryCount: 3,
-      relaxationCount: 5,
-      completedWeeks: 2
-    )
+    loadEntry()
   }
 
   func getSnapshot(in context: Context, completion: @escaping (MindriumWidgetEntry) -> Void) {
@@ -94,82 +89,58 @@ private struct MindriumWidgetProvider: TimelineProvider {
 }
 
 private struct MindriumQuickApplyWidgetView: View {
+  @Environment(\.widgetFamily) private var family
+
   let entry: MindriumWidgetEntry
 
+  private var accentColor: Color {
+    entry.isUnlocked ? Color(hex: 0x2E7EC8) : Color(hex: 0x7A8794)
+  }
+
   private var titleColor: Color {
-    entry.isUnlocked ? Color(hex: 0x132D4A) : Color(hex: 0x3A4B5D)
+    entry.isUnlocked ? Color(hex: 0x0F3558) : Color(hex: 0x314457)
   }
 
   private var bodyColor: Color {
-    entry.isUnlocked ? Color(hex: 0x1F3D5C) : Color(hex: 0x5D6A78)
+    entry.isUnlocked ? Color(hex: 0x315170) : Color(hex: 0x667482)
   }
 
   private var badgeColor: Color {
-    entry.isUnlocked ? Color(hex: 0x2A6FB0) : Color(hex: 0x6B7684)
+    entry.isUnlocked ? Color(hex: 0x1F6FB7) : Color(hex: 0x687481)
   }
 
   private var buttonTextColor: Color {
-    entry.isUnlocked ? .white : Color(hex: 0x5C6D81)
+    entry.isUnlocked ? .white : Color(hex: 0x526170)
   }
 
   private var buttonBackgroundColor: Color {
-    entry.isUnlocked ? Color(hex: 0x2A6FB0) : Color(hex: 0xD8E0E8)
+    entry.isUnlocked ? Color(hex: 0x2179CE) : Color(hex: 0xDDE5ED)
   }
 
   private var badgeBackgroundColor: Color {
-    entry.isUnlocked ? Color(hex: 0xD7EBFF) : Color(hex: 0xE8EDF2)
+    entry.isUnlocked ? Color(hex: 0xE3F1FF) : Color(hex: 0xEEF2F5)
+  }
+
+  private var contentPadding: EdgeInsets {
+    family == .systemMedium
+      ? EdgeInsets(top: 14, leading: 15, bottom: 13, trailing: 15)
+      : EdgeInsets(top: 13, leading: 13, bottom: 12, trailing: 13)
+  }
+
+  private var titleFontSize: CGFloat {
+    if family == .systemMedium {
+      return entry.isUnlocked ? 24 : 21
+    }
+    return entry.isUnlocked ? 22 : 18
+  }
+
+  private var titleLineLimit: Int {
+    entry.isUnlocked ? 1 : 2
   }
 
   var body: some View {
-    let content = VStack(alignment: .leading, spacing: 12) {
-      HStack(alignment: .top) {
-        Text(entry.tagText)
-          .font(.system(size: 11, weight: .bold))
-          .foregroundColor(badgeColor)
-          .padding(.horizontal, 10)
-          .padding(.vertical, 6)
-          .background(
-            Capsule()
-              .fill(badgeBackgroundColor)
-          )
-
-        Spacer(minLength: 12)
-
-        Text("Mindrium")
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundColor(bodyColor.opacity(0.8))
-      }
-
-      Spacer(minLength: 0)
-
-      Text(entry.titleText)
-        .font(.system(size: 20, weight: .bold))
-        .foregroundColor(titleColor)
-        .lineLimit(2)
-
-      Text(entry.statsText)
-        .font(.system(size: 13, weight: .medium))
-        .foregroundColor(bodyColor)
-        .lineLimit(3)
-        .multilineTextAlignment(.leading)
-
-      Spacer(minLength: 0)
-
-      HStack {
-        Spacer(minLength: 0)
-
-        Text(entry.ctaText)
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundColor(buttonTextColor)
-          .padding(.horizontal, 14)
-          .padding(.vertical, 8)
-          .background(
-            Capsule()
-              .fill(buttonBackgroundColor)
-          )
-      }
-    }
-    .padding(16)
+    let content = widgetContent
+    .padding(contentPadding)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .widgetURL(MindriumWidgetConfig.launchURL)
 
@@ -181,6 +152,95 @@ private struct MindriumQuickApplyWidgetView: View {
       content.background(MindriumWidgetBackground(isUnlocked: entry.isUnlocked))
     }
   }
+
+  @ViewBuilder
+  private var widgetContent: some View {
+    if family == .systemMedium {
+      HStack(alignment: .bottom, spacing: 14) {
+        VStack(alignment: .leading, spacing: 6) {
+          header
+          Spacer(minLength: 6)
+          titleBlock
+        }
+
+        Spacer(minLength: 6)
+        cta
+      }
+    } else {
+      VStack(alignment: .leading, spacing: 6) {
+        header
+        Spacer(minLength: 2)
+        titleBlock
+        Spacer(minLength: 4)
+        HStack {
+          Spacer(minLength: 0)
+          cta
+        }
+      }
+    }
+  }
+
+  private var header: some View {
+    HStack(alignment: .center, spacing: 8) {
+      HStack(spacing: 6) {
+        Circle()
+          .fill(accentColor)
+          .frame(width: 5, height: 5)
+
+        Text(entry.tagText)
+          .font(.system(size: 10, weight: .bold))
+      }
+      .foregroundColor(badgeColor)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(Capsule().fill(badgeBackgroundColor))
+
+      Spacer(minLength: 8)
+
+      Text("Mindrium")
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundColor(bodyColor.opacity(0.72))
+    }
+  }
+
+  private var titleBlock: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(entry.titleText)
+        .font(.system(size: titleFontSize, weight: .bold))
+        .foregroundColor(titleColor)
+        .lineLimit(titleLineLimit)
+        .minimumScaleFactor(0.86)
+
+      Text(entry.statsText)
+        .font(.system(size: 12, weight: .medium))
+        .foregroundColor(bodyColor)
+        .lineLimit(entry.isUnlocked ? 1 : 2)
+        .minimumScaleFactor(0.9)
+    }
+  }
+
+  private var cta: some View {
+    HStack(spacing: 5) {
+      Text(entry.ctaText)
+        .font(.system(size: 12, weight: .bold))
+
+      Image(systemName: "chevron.right")
+        .font(.system(size: 10, weight: .bold))
+    }
+    .foregroundColor(buttonTextColor)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(
+      Capsule()
+        .fill(buttonBackgroundColor)
+        .shadow(
+          color: entry.isUnlocked ? accentColor.opacity(0.18) : .clear,
+          radius: 3,
+          x: 0,
+          y: 2
+        )
+    )
+  }
 }
 
 private struct MindriumWidgetBackground: View {
@@ -189,8 +249,8 @@ private struct MindriumWidgetBackground: View {
   var body: some View {
     LinearGradient(
       colors: isUnlocked
-        ? [Color(hex: 0xF2F8FF), Color(hex: 0xDDEEFF)]
-        : [Color(hex: 0xF3F5F7), Color(hex: 0xE5EAF0)],
+        ? [Color(hex: 0xF7FBFF), Color(hex: 0xE8F4FF), Color(hex: 0xFFF8EF)]
+        : [Color(hex: 0xF9FAFB), Color(hex: 0xEEF2F5), Color(hex: 0xF7F3EE)],
       startPoint: .topLeading,
       endPoint: .bottomTrailing
     )

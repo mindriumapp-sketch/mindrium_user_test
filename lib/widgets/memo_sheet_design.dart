@@ -41,7 +41,7 @@ class MemoFullDesign extends StatelessWidget {
     ),
     this.memoHeight,
     this.appBarTitleMaxLines = 2,
-    this.appBarTitleAlign = TextAlign.start,
+    this.appBarTitleAlign = TextAlign.center,
   });
 
   @override
@@ -75,10 +75,7 @@ class MemoFullDesign extends StatelessWidget {
             child: Column(
               children: [
                 if (topWidget != null)
-                  Padding(
-                    padding: topWidgetPadding,
-                    child: topWidget!,
-                  ),
+                  Padding(padding: topWidgetPadding, child: topWidget!),
 
                 // 👆 위쪽: 중앙에 메모장
                 Expanded(
@@ -226,7 +223,8 @@ class HighlightText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseStyle = style ??
+    final baseStyle =
+        style ??
         const TextStyle(
           fontFamily: 'NotoSansKR',
           fontSize: 14,
@@ -272,12 +270,7 @@ class HighlightText extends StatelessWidget {
       cursor = range.end;
     }
     if (cursor < plainText.length) {
-      spans.add(
-        TextSpan(
-          text: plainText.substring(cursor),
-          style: baseStyle,
-        ),
-      );
+      spans.add(TextSpan(text: plainText.substring(cursor), style: baseStyle));
     }
 
     return LayoutBuilder(
@@ -420,12 +413,7 @@ class _InlineHighlightPainter extends CustomPainter {
         // 같은 줄을 묶기 위한 key (top 좌표를 반올림해서 사용)
         final double lineKey = (box.top).roundToDouble();
 
-        final rect = Rect.fromLTRB(
-          box.left,
-          box.top,
-          box.right,
-          box.bottom,
-        );
+        final rect = Rect.fromLTRB(box.left, box.top, box.right, box.bottom);
 
         if (lineRects.containsKey(lineKey)) {
           final prev = lineRects[lineKey]!;

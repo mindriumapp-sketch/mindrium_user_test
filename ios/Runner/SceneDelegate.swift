@@ -8,6 +8,9 @@ class SceneDelegate: FlutterSceneDelegate {
     options connectionOptions: UIScene.ConnectionOptions
   ) {
     super.scene(scene, willConnectTo: session, options: connectionOptions)
+    if let flutterViewController = window?.rootViewController as? FlutterViewController {
+      AppDelegate.shared?.configureChannelsIfNeeded(with: flutterViewController.binaryMessenger)
+    }
     AppDelegate.shared?.handle(connectionOptions: connectionOptions)
   }
 

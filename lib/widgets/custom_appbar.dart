@@ -17,7 +17,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final IconData? extraIcon;
   final String? extraRoute;
   final VoidCallback? onExtraPressed;
-  final bool? centerTitle; // ← 추가 (null이면 AppBar 기본 동작)
+  final bool? centerTitle; // null이면 공통 정책(중앙 정렬)을 사용
   final TextStyle? titleTextStyle; // ← 추가 (null이면 기존 스타일)
   final double? toolbarHeight; // ← 추가 (null이면 kToolbarHeight)
   final PreferredSizeWidget? bottom; // ← 선택: 필요하면 하단 영역도 추가 가능
@@ -45,7 +45,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.toolbarHeight, // ← 추가
     this.bottom, // ← 추가
     this.maxTitleLines = 1,
-    this.titleAlign = TextAlign.start,
+    this.titleAlign = TextAlign.center,
     this.actionIconGap = 0,
     this.leadingIconColor,
     this.actionIconColor,
@@ -56,9 +56,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
        );
 
   // 🎨 내부 색상 정의
-  static const Color _indigo = Color(0xFF3F51B5);
+  static const Color _deepNavy = Color(0xFF1E2F3F);
+  static const Color _indigo = _deepNavy;
   // static const Color _mint = Color(0xFF8DE4CC);
-  static const Color _black = Color(0xFF222222);
   // static const Color _greyText = Color(0xFF666666);
   // static const Color _white = Colors.white;
 
@@ -93,7 +93,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       scrolledUnderElevation: 0,
 
-      centerTitle: centerTitle, // ← 추가
+      centerTitle: centerTitle ?? true, // ← 추가
       toolbarHeight: _effectiveToolbarHeight, // ← 추가
       bottom: bottom, // ← 추가
 
@@ -139,7 +139,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: IconButton(
-              icon: Icon(extraIcon, color: actionIconColor ?? _black),
+              icon: Icon(extraIcon, color: actionIconColor ?? _deepNavy),
               splashRadius: 22,
               onPressed:
                   onExtraPressed ??
@@ -156,7 +156,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              icon: Icon(Icons.home_outlined, color: actionIconColor ?? _black),
+              icon: Icon(
+                Icons.home_outlined,
+                color: actionIconColor ?? _deepNavy,
+              ),
               splashRadius: 22,
               onPressed: () async {
                 if (confirmOnHome) {
@@ -180,7 +183,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(_effectiveToolbarHeight); // ← 높이 반영
+  Size get preferredSize {
+    final bottomHeight = bottom?.preferredSize.height ?? 0;
+    return Size.fromHeight(_effectiveToolbarHeight + bottomHeight);
+  }
 
   double get _effectiveToolbarHeight {
     final requestedHeight = toolbarHeight ?? kToolbarHeight;
@@ -192,7 +198,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           fontFamily: 'Noto Sans KR',
           fontWeight: FontWeight.w700,
           fontSize: 18,
-          color: _black,
+          color: _deepNavy,
           letterSpacing: 0,
         );
     final fontSize = style.fontSize ?? 18;
@@ -209,7 +215,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           fontFamily: 'Noto Sans KR',
           fontWeight: FontWeight.w700,
           fontSize: 18,
-          color: _black,
+          color: _deepNavy,
           letterSpacing: 0,
         );
     final text = Text(

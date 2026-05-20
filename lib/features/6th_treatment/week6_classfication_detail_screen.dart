@@ -1,4 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class Week6ClassificationDetailScreen extends StatelessWidget {
   final List<double>? bScores;
@@ -9,11 +10,10 @@ class Week6ClassificationDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('자세히 살펴보기'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
+      appBar: const CustomAppBar(
+        title: '자세히 살펴보기',
+        showHome: false,
+        confirmOnBack: false,
       ),
       backgroundColor: const Color(0xFFFBF8FF),
       body: Padding(

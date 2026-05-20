@@ -1,4 +1,5 @@
 import 'package:gad_app_team/utils/text_line_material.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class Week5ClassificationDetailScreen extends StatelessWidget {
   final List<Map<String, dynamic>> quizResults;
@@ -13,11 +14,10 @@ class Week5ClassificationDetailScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
 
-      appBar: AppBar(
-        title: const Text('정답 상세 보기'),
-        backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFF224C78),
-        elevation: 0,
+      appBar: const CustomAppBar(
+        title: '정답 상세 보기',
+        showHome: false,
+        confirmOnBack: false,
       ),
 
       body: Stack(
