@@ -47,17 +47,28 @@ def _create_token(data: dict, expires_delta: timedelta, secret: str) -> str:
     return jwt.encode(to_encode, secret, algorithm=ALGORITHM)
 
 
-def create_access_token(sub: str) -> str:
+def role_for_email(email: str | None) -> str:
+    """
+    이메일을 받아 role(subject/staff)을 결정.
+    settings.staff_emails 목록에 있으면 staff, 아니면 subject.
+    DB 변경 없이 환경변수로만 staff 식별.
+    """
+    if not email:
+        return "subject"
+    return "staff" if email.lower() in settings.staff_emails else "subject"
+
+
+def create_access_token(sub: str, role: str = "subject") -> str:
     return _create_token(
-        {"sub": sub, "type": "access"},
+        {"sub": sub, "type": "access", "role": role},
         timedelta(minutes=settings.access_token_expire_minutes),
         settings.jwt_secret,
     )
 
 
-def create_refresh_token(sub: str) -> str:
+def create_refresh_token(sub: str, role: str = "subject") -> str:
     return _create_token(
-        {"sub": sub, "type": "refresh"},
+        {"sub": sub, "type": "refresh", "role": role},
         timedelta(days=settings.refresh_token_expire_days),
         settings.jwt_refresh_secret,
     )
@@ -183,3 +194,26 @@ async def get_current_user_id(current_user=Depends(get_current_user)) -> str:
         # 혹시라도 기존 유저에 user_id 필드가 없는 경우 대비
         raise HTTPException(status_code=500, detail="User ID not set")
     return user_id
+
+
+def require_role(*allowed_roles: str):
+    """
+    JWT access 토큰의 role claim이 allowed_roles 중 하나여야 통과시키는 의존성.
+    예) Depends(require_role("staff")) 또는 Depends(require_role("subject", "staff"))
+    """
+    async def checker(
+        authorization: str | None = Header(default=None),
+    ):
+        token = extract_bearer_token(authorization)
+        payload = decode_token(token)
+        if not payload or payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Invalid or expired access token")
+        role = payload.get("role", "subject")  # 구버전 토큰 호환: role 없으면 subject로 간주
+        if role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Role '{role}' is not allowed for this endpoint",
+            )
+        return payload
+
+    return checker

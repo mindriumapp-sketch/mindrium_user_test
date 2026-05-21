@@ -18,6 +18,14 @@ class Settings(BaseModel):
     api_port: int = int(os.getenv("API_PORT", "8050"))
     cors_origins: list[str] = os.getenv("CORS_ORIGINS", "http://localhost:56000,http://127.0.0.1:56000,http://localhost:*").split(",")
 
+    # 식별정보관리 STEP 2: role 분리용
+    # 이 목록(이메일)에 포함된 사용자는 JWT 발급 시 role="staff"로 처리됨
+    staff_emails: list[str] = [
+        e.strip().lower()
+        for e in os.getenv("STAFF_EMAILS", "").split(",")
+        if e.strip()
+    ]
+
     smtp_host: str | None = os.getenv("SMTP_HOST")
     smtp_port: int | None = int(os.getenv("SMTP_PORT", "0")) if os.getenv("SMTP_PORT") else None
     smtp_user: str | None = os.getenv("SMTP_USER")

@@ -2,7 +2,8 @@ from datetime import datetime, timezone, date
 from bson import ObjectId
 from pymongo import ReturnDocument
 
-from core.security import get_user_obj_id, get_current_user
+from core.security import get_user_obj_id, get_current_user, require_role
+from core.audit import audit_log
 from core.utils import parse_datetime_value, get_week_range_kst
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -49,6 +50,8 @@ async def update_me(
 
     update_fields = payload.model_dump(exclude_unset=True)
     if update_fields:
+        # 사용자가 실제 변경한 필드 목록 (timestamp 추가 전에 보존)
+        changed_field_names = list(update_fields.keys())
         update_fields["updated_at"] = datetime.now(timezone.utc)
         updated_user = await collection.find_one_and_update(
             {"_id": user_obj_id},
@@ -56,6 +59,14 @@ async def update_me(
             return_document=ReturnDocument.AFTER,
         )
         user = updated_user
+
+        # 식별정보관리 STEP 3: PII 변경 감사 기록
+        if user:
+            audit_log(
+                "pii_update",
+                user_id=user.get("user_id") or str(user_obj_id),
+                fields_changed=changed_field_names,
+            )
     else:
         user = await collection.find_one({"_id": user_obj_id})
 
@@ -80,7 +91,7 @@ async def update_me(
 @router.get("/stats/week", response_model=WeeklyUserStats)
 async def get_weekly_user_stats(
         week_date: date | None = Query(None),
-        _=Depends(get_current_user),
+        _=Depends(require_role("staff")),
         db=Depends(get_db),
 ):
     collection = db[USER_COLLECTION]

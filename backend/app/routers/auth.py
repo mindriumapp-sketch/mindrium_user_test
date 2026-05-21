@@ -35,7 +35,9 @@ from core.security import (
     hash_token,
     hash_refresh_token,
     verify_refresh_token,
+    role_for_email,
 )
+from core.audit import audit_log
 
 settings = get_settings()
 router = APIRouter(prefix="/auth")
@@ -207,13 +209,23 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
     await ensure_default_worry_group(db, user_id)
 
     sub = str(obj_id)
-    refresh_raw = create_refresh_token(sub)
+    role = role_for_email(payload.email)
+    refresh_raw = create_refresh_token(sub, role)
     await db["users"].update_one(
         {"_id": obj_id},
         {"$set": {"refresh_hash": hash_refresh_token(refresh_raw), "refresh_issued_at": now}},
     )
+
+    # 식별정보관리 STEP 3: 식별코드 사용(회원가입 완료) 감사 기록
+    audit_log(
+        "code_use",
+        user_id=user_id,
+        patient_id=patient_id,
+        source="platform_signup",
+    )
+
     return TokenPair(
-        access_token=create_access_token(sub),
+        access_token=create_access_token(sub, role),
         refresh_token=refresh_raw,
     )
 
@@ -226,8 +238,9 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     sub = str(user["_id"])
+    role = role_for_email(user.get("email"))
     now = datetime.now(timezone.utc)
-    refresh_raw = create_refresh_token(sub)
+    refresh_raw = create_refresh_token(sub, role)
 
     await db["users"].update_one(
         {"_id": user["_id"]},
@@ -239,8 +252,16 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
             }
         },
     )
+
+    # 식별정보관리 STEP 3: 로그인 감사 기록
+    audit_log(
+        "login",
+        user_id=user.get("user_id") or sub,
+        role=role,
+    )
+
     return TokenPair(
-        access_token=create_access_token(sub),
+        access_token=create_access_token(sub, role),
         refresh_token=refresh_raw,
     )
 
@@ -261,7 +282,8 @@ async def refresh(payload: RefreshRequest, db=Depends(get_db)):
         raise HTTPException(status_code=401, detail="Refresh token mismatch (rotated)")
 
     now = datetime.now(timezone.utc)
-    new_refresh = create_refresh_token(sub)
+    role = role_for_email(user.get("email"))
+    new_refresh = create_refresh_token(sub, role)
 
     await db["users"].update_one(
         {"_id": obj_id},
@@ -273,7 +295,7 @@ async def refresh(payload: RefreshRequest, db=Depends(get_db)):
         },
     )
     return TokenPair(
-        access_token=create_access_token(sub),
+        access_token=create_access_token(sub, role),
         refresh_token=new_refresh,
     )
 
