@@ -101,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
         hasSurvey ? '/home' : '/tutorial',
       );
     } on AuthException catch (e) {
+      // 로그인 인증 실패 → 토큰 + 상태 정리
       await tokens.clear();
       userProvider.reset();
       todayTaskProvider.reset();
@@ -111,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _showError(e.message);
       return;
     } catch (e) {
+      // 기타 로그인 오류 → 토큰 + 상태 정리
       await tokens.clear();
       userProvider.reset();
       todayTaskProvider.reset();
@@ -120,7 +122,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       _showError('로그인 중 오류가 발생했습니다.');
       return;
-
     }
   }
 

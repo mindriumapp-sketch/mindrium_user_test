@@ -20,8 +20,13 @@ class LoginResult {
 class AuthException implements Exception {
   final String message;
   final int? statusCode;
+  final Map<String, dynamic>? detail;
 
-  const AuthException(this.message, {this.statusCode});
+  const AuthException(
+    this.message, {
+    this.statusCode,
+    this.detail,
+  });
 
   @override
   String toString() => message;
@@ -55,98 +60,113 @@ class AuthApi {
   }
 
   Future<LoginResult> login({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final res = await _client.dio.post('/auth/login', data: {
-        'email': email,
-        'password': password,
-      });
+  required String email,
+  required String password,
+}) async {
+  try {
+    final res = await _client.dio.post('/auth/login', data: {
+      'email': email,
+      'password': password,
+    });
 
-      final data = res.data;
-      if (data is! Map<String, dynamic>) {
-        throw AuthException('로그인 응답 형식이 올바르지 않습니다.');
-      }
-
-      final access = data['access_token'] as String?;
-      final refresh = data['refresh_token'] as String?;
-
-      if (access == null || refresh == null) {
-        throw AuthException('로그인 토큰이 응답에 포함되어 있지 않습니다.');
-      }
-
-      final mustChangePassword = data['must_change_password'] == true;
-      final passwordExpired = data['password_expired'] == true;
-
-      await _tokens.save(access, refresh);
-
-      return LoginResult(
-        accessToken: access,
-        refreshToken: refresh,
-        mustChangePassword: mustChangePassword,
-        passwordExpired: passwordExpired,
-      );
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      final data = e.response?.data;
-
-      debugPrint(
-        '[AuthApi] login failed: status=$statusCode data=$data message=${e.message}',
-      );
-
-      String message = '로그인에 실패했습니다.';
-
-      if (data is Map && data['detail'] != null) {
-        final detail = data['detail'];
-
-        if (detail is String) {
-          message = detail;
-        } else if (detail is List && detail.isNotEmpty) {
-          final first = detail.first;
-          if (first is Map && first['msg'] != null) {
-            message = first['msg'].toString();
-          } else {
-            message = detail.toString();
-          }
-        } else {
-          message = detail.toString();
-        }
-      }
-
-      // 서버가 아직 기존 메시지를 내려주는 경우 프론트에서 한 번 더 변환
-      if (message == 'Invalid credentials') {
-        message = '이메일 또는 비밀번호가 일치하지 않습니다.';
-      } else if (message.startsWith('Invalid credentials.')) {
-        message = message.replaceFirst(
-          'Invalid credentials.',
-          '비밀번호가 일치하지 않습니다.',
-        );
-      } else if (message.contains('value is not a valid email') ||
-          message.contains('valid email') ||
-          message.contains('email')) {
-        if (statusCode == 422) {
-          message = '이메일 형식이 올바르지 않습니다.';
-        }
-      }
-
-      if (statusCode == 401 && message == '로그인에 실패했습니다.') {
-        message = '이메일 또는 비밀번호가 일치하지 않습니다.';
-      } else if (statusCode == 423 && message == '로그인에 실패했습니다.') {
-        message = '로그인 실패 횟수가 초과되어 계정이 일시적으로 제한되었습니다.';
-      } else if (statusCode == 422 && message == '로그인에 실패했습니다.') {
-        message = '이메일 또는 비밀번호 입력 형식이 올바르지 않습니다.';
-      } else if (statusCode == 503 && message == '로그인에 실패했습니다.') {
-        message = '서버가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해주세요.';
-      }
-
-      throw AuthException(message, statusCode: statusCode);
-    } catch (e) {
-      if (e is AuthException) rethrow;
-      debugPrint('[AuthApi] login unexpected error: $e');
-      throw const AuthException('로그인 중 오류가 발생했습니다.');
+    final data = res.data;
+    if (data is! Map<String, dynamic>) {
+      throw const AuthException('로그인 응답 형식이 올바르지 않습니다.');
     }
+
+    final access = data['access_token'] as String?;
+    final refresh = data['refresh_token'] as String?;
+
+    if (access == null || refresh == null) {
+      throw const AuthException('로그인 토큰이 응답에 포함되어 있지 않습니다.');
+    }
+
+    final mustChangePassword = data['must_change_password'] == true;
+    final passwordExpired = data['password_expired'] == true;
+
+    await _tokens.save(access, refresh);
+
+    return LoginResult(
+      accessToken: access,
+      refreshToken: refresh,
+      mustChangePassword: mustChangePassword,
+      passwordExpired: passwordExpired,
+    );
+  } on DioException catch (e) {
+    final statusCode = e.response?.statusCode;
+    final data = e.response?.data;
+
+    debugPrint(
+      '[AuthApi] login failed: status=$statusCode data=$data message=${e.message}',
+    );
+
+    if (e.response == null) {
+      throw const AuthException(
+        '서버에 연결할 수 없습니다. 네트워크 또는 서버 실행 상태를 확인해주세요.',
+      );
+    }
+
+    String message = '로그인에 실패했습니다.';
+    Map<String, dynamic>? detailMap;
+
+    final detail = data is Map ? data['detail'] : null;
+
+    if (detail is Map) {
+      detailMap = Map<String, dynamic>.from(detail);
+
+      final serverMessage = detailMap['message'];
+      if (serverMessage is String && serverMessage.isNotEmpty) {
+        message = serverMessage;
+      }
+
+      final failedAttempts = detailMap['failed_attempts'];
+      final maxAttempts = detailMap['max_attempts'];
+
+      if (failedAttempts is int && maxAttempts is int) {
+        message = '$message 로그인 실패 $failedAttempts/$maxAttempts회';
+      }
+    } else if (detail is String) {
+      message = detail;
+
+      if (message == 'Invalid credentials') {
+        message = '이메일 혹은 비밀번호 정보가 올바르지 않습니다.';
+      } else if (message.startsWith('Invalid credentials.')) {
+        message = '이메일 혹은 비밀번호 정보가 올바르지 않습니다.';
+      }
+    } else if (detail is List && detail.isNotEmpty) {
+      message = '이메일 또는 비밀번호 입력 형식이 올바르지 않습니다.';
+    }
+
+    if (statusCode == 401 &&
+        (message == '로그인에 실패했습니다.' ||
+            message.contains('Invalid credentials'))) {
+      message = '이메일 혹은 비밀번호 정보가 올바르지 않습니다.';
+    }
+
+    if (statusCode == 423 && message == '로그인에 실패했습니다.') {
+      message = '로그인 시도가 일시적으로 제한되었습니다.';
+    }
+
+    if (statusCode == 422) {
+      message = '이메일 또는 비밀번호 입력 형식이 올바르지 않습니다.';
+    }
+
+    if (statusCode == 503) {
+      message = '서버가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해주세요.';
+    }
+
+    throw AuthException(
+      message,
+      statusCode: statusCode,
+      detail: detailMap,
+    );
+  } catch (e) {
+    if (e is AuthException) rethrow;
+
+    debugPrint('[AuthApi] login unexpected error: $e');
+    throw const AuthException('로그인 중 오류가 발생했습니다.');
   }
+}
 
   Future<Map<String, dynamic>> me() async {
     final res = await _client.dio.get('/users/me');

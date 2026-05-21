@@ -71,6 +71,35 @@ DEFAULT_PASSWORD_POLICY_DAYS = 90
 MAX_LOGIN_FAILED_ATTEMPTS = 5
 LOGIN_LOCK_MINUTES = 15
 
+AUTH_FAILURE_MESSAGE = "이메일 혹은 비밀번호 정보가 올바르지 않습니다."
+AUTH_LOCK_MESSAGE = "로그인 시도가 일시적으로 제한되었습니다."
+
+
+def auth_failure_detail(
+    *,
+    reason_code: str,
+    failed_attempts: int | None = None,
+    remaining_attempts: int | None = None,
+    locked: bool = False,
+    locked_until: datetime | None = None,
+    lock_remaining_minutes: int | None = None,
+):
+    """
+    사용자 및 외부 API 응답에는 구체적인 실패 원인을 노출하지 않는다.
+    reason_code는 호출부 호환을 위해 받지만 응답에는 포함하지 않는다.
+    """
+    return {
+        "message": AUTH_LOCK_MESSAGE if locked else AUTH_FAILURE_MESSAGE,
+        "code": "AUTH_LOCKED" if locked else "AUTH_FAILED",
+        "failed_attempts": failed_attempts,
+        "remaining_attempts": remaining_attempts,
+        "max_attempts": MAX_LOGIN_FAILED_ATTEMPTS,
+        "lock_threshold": MAX_LOGIN_FAILED_ATTEMPTS,
+        "lock_minutes": LOGIN_LOCK_MINUTES,
+        "locked": locked,
+        "locked_until": locked_until.isoformat() if locked_until else None,
+        "lock_remaining_minutes": lock_remaining_minutes,
+    }
 
 def as_utc_datetime(value):
     """
@@ -172,6 +201,39 @@ async def clear_failed_login_state(db, user: dict, now: datetime):
             },
         },
     )
+
+async def clear_expired_login_lock_if_needed(db, user: dict, now: datetime) -> dict:
+    """
+    로그인 잠금 시간이 만료된 경우 실패 횟수와 잠금 상태를 초기화한다.
+    잠금이 아직 유효하면 기존 user를 그대로 반환한다.
+    """
+    locked_until = get_login_locked_until(user)
+
+    if locked_until is None:
+        return user
+
+    if now < locked_until:
+        return user
+
+    await db["users"].update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "failed_login_count": 0,
+                "updated_at": now,
+            },
+            "$unset": {
+                "login_locked_until": "",
+                "last_failed_login_at": "",
+            },
+        },
+    )
+
+    user["failed_login_count"] = 0
+    user.pop("login_locked_until", None)
+    user.pop("last_failed_login_at", None)
+
+    return user
 
 async def signup_with_platform(payload: SignupRequest) -> str:
     """
@@ -342,31 +404,57 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
 
     user = await db["users"].find_one({"email": payload.email})
 
-    # 사용자가 없는 경우에는 계정 존재 여부를 숨기기 위해 동일한 메시지 반환
+    # 1) 존재하지 않는 이메일
+    # 사용자 화면에는 계정 존재 여부를 직접 노출하지 않음.
+    # 다만 API 응답에는 검증용 reason_code를 포함.
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="가입되지 않은 이메일입니다.",
+            detail=auth_failure_detail(
+                reason_code="USER_NOT_FOUND_OR_INVALID_PASSWORD",
+                failed_attempts=None,
+                remaining_attempts=None,
+                locked=False,
+            ),
         )
-    
-    # 이미 잠금 상태인 경우
+    # 잠금 시간이 이미 지난 계정은 여기서 실패 횟수/잠금 상태 초기화
+    user = await clear_expired_login_lock_if_needed(db, user, now)
+
+    # 2) 이미 잠금 상태인 경우
     if is_login_locked(user, now):
         remaining_minutes = get_remaining_lock_minutes(user, now)
+        locked_until = get_login_locked_until(user)
+        failed_count = int(user.get("failed_login_count", 0))
+
         raise HTTPException(
             status_code=423,
-            detail=f"로그인 실패 횟수가 초과되어 계정이 일시 잠금되었습니다. {remaining_minutes}분 후 다시 시도해주세요.",
+            detail=auth_failure_detail(
+                reason_code="LOGIN_LOCK_ACTIVE",
+                failed_attempts=failed_count,
+                remaining_attempts=0,
+                locked=True,
+                locked_until=locked_until,
+                lock_remaining_minutes=remaining_minutes,
+            ),
         )
 
     stored_hash = user.get("password_hash")
 
-    # 비밀번호 미설정 또는 비밀번호 불일치
+    # 3) 비밀번호 미설정 또는 비밀번호 불일치
     if not stored_hash or not verify_password(payload.password, stored_hash):
         failed_count, locked_until = await record_failed_login(db, user, now)
 
         if locked_until is not None:
             raise HTTPException(
                 status_code=423,
-                detail=f"로그인 실패 횟수가 초과되어 {LOGIN_LOCK_MINUTES}분 동안 로그인이 제한됩니다.",
+                detail=auth_failure_detail(
+                    reason_code="LOGIN_LOCKED_BY_FAILED_ATTEMPTS",
+                    failed_attempts=failed_count,
+                    remaining_attempts=0,
+                    locked=True,
+                    locked_until=locked_until,
+                    lock_remaining_minutes=LOGIN_LOCK_MINUTES,
+                ),
             )
 
         remaining_attempts = max(
@@ -376,13 +464,18 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
 
         raise HTTPException(
             status_code=401,
-            detail=f"비밀번호가 일치하지 않습니다. 남은 시도 횟수: {remaining_attempts}회",
+            detail=auth_failure_detail(
+                reason_code="USER_NOT_FOUND_OR_INVALID_PASSWORD",
+                failed_attempts=failed_count,
+                remaining_attempts=remaining_attempts,
+                locked=False,
+            ),
         )
 
+    # 4) 로그인 성공
     sub = str(user["_id"])
     refresh_raw = create_refresh_token(sub)
 
-    # 인증정보 관리 정책 확인용 필드_IA-04
     password_expired = is_password_expired(user, now)
     must_change_password = bool(user.get("must_change_password", False)) or password_expired
 
@@ -409,7 +502,6 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
         must_change_password=must_change_password,
         password_expired=password_expired,
     )
-
 
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(payload: RefreshRequest, db=Depends(get_db)):
