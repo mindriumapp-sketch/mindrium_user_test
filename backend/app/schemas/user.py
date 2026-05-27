@@ -6,8 +6,6 @@ from datetime import date, datetime
 class UserBase(BaseModel):
     email: EmailStr
     name: str
-    gender: Optional[str] = None
-    address: Optional[str] = None
 
 class UserMe(UserBase):
     user_id: str
@@ -21,8 +19,6 @@ class UserMe(UserBase):
 
 class UpdateUser(BaseModel):
     name: Optional[str] = None
-    gender: Optional[str] = None
-    address: Optional[str] = None
 
 
 class ValueGoalUpdate(BaseModel):

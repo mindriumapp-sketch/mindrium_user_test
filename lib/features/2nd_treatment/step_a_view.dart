@@ -52,17 +52,14 @@ class _StepAViewState extends State<StepAView> {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
-          child: AbcStepCard(
-            activeIndex: 0,
-            bigText: '불안을 느낀 순간,\n어떤 상황이었나요?',
-          ),
+          child: AbcStepCard(activeIndex: 0, bigText: '불안을 느낀 순간,\n어떤 상황이었나요?'),
         ),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: JellyfishBanner(message: _guideMessage),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 15),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),

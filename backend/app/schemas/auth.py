@@ -1,6 +1,4 @@
 import re
-from typing import Optional
-
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 PASSWORD_REGEX = re.compile(
@@ -39,8 +37,6 @@ class SignupRequest(BaseModel):
 
     name: str
     phone: str = Field(min_length=1, max_length=30)
-    gender: str | None = None
-    address: Optional[str] = None
     patient_code: str = Field(min_length=1, description="플랫폼 환자코드")
 
 

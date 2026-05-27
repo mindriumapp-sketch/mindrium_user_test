@@ -364,7 +364,9 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
             Navigator.of(context).pop();
-            Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
@@ -417,6 +419,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
     try {
       await eduApi.completeWeekSession(weekNumber: 6, totalStages: 12);
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 6);
     } catch (e) {
       debugPrint('[Week6Visual] edu-session 완료 처리 실패: $e');
     }

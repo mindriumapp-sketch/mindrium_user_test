@@ -103,6 +103,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
         sessionId: widget.sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 3);
     } catch (e) {
       debugPrint('[Week3Visual] edu-session 완료 처리 실패: $e');
     }

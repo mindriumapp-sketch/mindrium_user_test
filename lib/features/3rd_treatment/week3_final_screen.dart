@@ -158,7 +158,11 @@ class Week3FinalScreen extends StatelessWidget {
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
             Navigator.of(context).pop();
-            Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home_edu',
+              (_) => false,
+            );
           },
         );
         return;
@@ -216,6 +220,7 @@ class Week3FinalScreen extends StatelessWidget {
         sessionId: sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 3);
     } catch (e) {
       debugPrint('[Week3Final] edu-session 완료 처리 실패: $e');
     }

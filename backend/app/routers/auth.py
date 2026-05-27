@@ -74,8 +74,6 @@ async def signup_with_platform(payload: SignupRequest) -> str:
         "password": payload.password,
         "name": payload.name,
         "patient_code": (payload.patient_code or "").strip(),
-        "gender": payload.gender,
-        "address": payload.address,
     }
 
     try:
@@ -167,8 +165,6 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
         "patient_id": patient_id,
         "email": payload.email,
         "name": payload.name,
-        "gender": payload.gender,
-        "address": payload.address,
         "patient_code": patient_code,
         "phone": phone_digits,
         "password_hash": hash_password(payload.password),

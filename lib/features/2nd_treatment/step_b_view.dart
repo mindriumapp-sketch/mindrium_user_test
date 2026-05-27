@@ -62,7 +62,7 @@ class _StepBViewState extends State<StepBView> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: JellyfishBanner(message: _guideMessage),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 15),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),

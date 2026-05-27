@@ -101,7 +101,9 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
 
                                 // 🔢 결과 텍스트
                                 Text(
-                                  _isReviewMode(context) ? '계획을 다시 점검하셨습니다!' : '계획을 완료하셨습니다!',
+                                  _isReviewMode(context)
+                                      ? '계획을 다시 점검하셨습니다!'
+                                      : '계획을 완료하셨습니다!',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 22,
@@ -241,6 +243,7 @@ class _Week7FinalScreenState extends State<Week7FinalScreen> {
           totalScreens: 1,
         );
         await userProvider.refreshProgress();
+        userProvider.markMainCbtCompletedLocally(weekNumber: 7);
       } catch (e) {
         debugPrint('7주차 완료 상태 저장 실패: $e');
         // 에러가 발생해도 다음 화면으로 진행
