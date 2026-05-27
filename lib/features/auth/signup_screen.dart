@@ -372,16 +372,6 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         child: Column(
           children: [
-            const Text(
-              AuthSecurityCopy.systemUseNotice,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                height: 1.4,
-                color: Color(0xFF5B6573),
-              ),
-            ),
-            const SizedBox(height: 12),
             _buildLabeledInput(
               title: '이메일',
               controller: emailController,
@@ -452,7 +442,16 @@ class _SignupScreenState extends State<SignupScreen> {
               errorText: _patientCodeError,
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
-
+            const SizedBox(height: 12),
+            const Text(
+              AuthSecurityCopy.systemUseNotice,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: Color(0xFF5B6573),
+              ),
+            ),
           ],
         ),
       ),
