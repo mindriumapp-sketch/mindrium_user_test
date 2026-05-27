@@ -54,6 +54,8 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
                 'weekNumber': 2,
                 'mp3Asset': 'week2.mp3',
                 'riveAsset': 'week2.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week2_cue_sheet.json',
                 'isReviewMode': false,
               },
             );
@@ -91,6 +93,8 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
                 'weekNumber': 2,
                 'mp3Asset': 'week2.mp3',
                 'riveAsset': 'week2.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week2_cue_sheet.json',
                 'isReviewMode': true,
               },
             );
@@ -155,6 +159,8 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
             'weekNumber': 2,
             'mp3Asset': 'week2.mp3',
             'riveAsset': 'week2.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week2_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 2 ||
                 (userProvider.currentWeek == 2 &&

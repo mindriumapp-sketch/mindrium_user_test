@@ -71,6 +71,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                 'weekNumber': 5,
                 'mp3Asset': 'week5.mp3',
                 'riveAsset': 'week5.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week5_cue_sheet.json',
                 'isReviewMode': false,
               },
             );
@@ -105,6 +107,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                 'weekNumber': 5,
                 'mp3Asset': 'week5.mp3',
                 'riveAsset': 'week5.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week5_cue_sheet.json',
                 'isReviewMode': true,
               },
             );
@@ -166,6 +170,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
             'weekNumber': 5,
             'mp3Asset': 'week5.mp3',
             'riveAsset': 'week5.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week5_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 5 ||
                 (userProvider.currentWeek == 5 &&

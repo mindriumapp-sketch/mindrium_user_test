@@ -139,9 +139,6 @@ flutter:
     - assets/image/popup1.png
     - assets/image/popup2.png
     - assets/image/question_icon.png
-    - assets/image/scenario_1.png
-    - assets/image/scenario_2.png
-    - assets/image/scenario_3.png
     - assets/image/think_blue.png
     - assets/image/sea_archive_bg.png
     - assets/image/edu_book1.jpg
@@ -150,7 +147,6 @@ flutter:
     - assets/image/edu_book4.jpg
     - assets/image/edu_book5.jpg
     - assets/image/edu_book6.jpg
-    - assets/image/edu_relaxation.png
     - assets/image/progressing1.png
 
     - assets/image/widget_tutorial_1.png
@@ -222,24 +218,21 @@ flutter:
     - assets/education_data/week2_relaxation_4.json
     - assets/education_data/week2_relaxation_5.json
 
-    - assets/relaxation/week1.riv
     - assets/relaxation/week1.mp3
-    - assets/relaxation/week2.riv
     - assets/relaxation/week2.mp3
-    - assets/relaxation/week3.riv
     - assets/relaxation/week3.mp3
-    - assets/relaxation/week4.riv
     - assets/relaxation/week4.mp3
-    - assets/relaxation/week5.riv
     - assets/relaxation/week5.mp3
-    - assets/relaxation/week6.riv
     - assets/relaxation/week6.mp3
-    - assets/relaxation/week7.riv
     - assets/relaxation/week7.mp3
-    - assets/relaxation/week8.riv
     - assets/relaxation/week8.mp3
     - assets/relaxation/noti.riv
     - assets/relaxation/noti.mp3
+    - assets/relaxation/cue_sheets/
+    - assets/relaxation/images/
+    - assets/relaxation/images/week1_2/
+    - assets/relaxation/images/week4_7_8/
+    - assets/relaxation/images/week5_6/
 
     - assets/image/alternative thoughts.png
 

@@ -231,6 +231,8 @@ class _EducationPageState extends State<EducationPage> {
               'weekNumber': 1,
               'mp3Asset': 'week1.mp3',
               'riveAsset': 'week1.riv',
+              'cueSheetAsset':
+                  'assets/relaxation/cue_sheets/week1_cue_sheet.json',
               'isReviewMode': false,
             },
           );
@@ -264,6 +266,8 @@ class _EducationPageState extends State<EducationPage> {
               'weekNumber': 1,
               'mp3Asset': 'week1.mp3',
               'riveAsset': 'week1.riv',
+              'cueSheetAsset':
+                  'assets/relaxation/cue_sheets/week1_cue_sheet.json',
               'isReviewMode': true,
             },
           );
@@ -302,6 +306,8 @@ class _EducationPageState extends State<EducationPage> {
             'weekNumber': 1,
             'mp3Asset': 'week1.mp3',
             'riveAsset': 'week1.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week1_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 1 ||
                 (userProvider.currentWeek == 1 &&

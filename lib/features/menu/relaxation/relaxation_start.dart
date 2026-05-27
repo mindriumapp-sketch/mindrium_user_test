@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/features/menu/education/education_page.dart';
+import 'package:gad_app_team/features/menu/relaxation/cue_sheet_practice_player.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_education.dart';
 import 'package:gad_app_team/features/session_start.dart';
 
@@ -74,6 +75,7 @@ class RelaxationStartScreen extends StatelessWidget {
   final int weekNumber;
   final String mp3Asset;
   final String riveAsset;
+  final String? cueSheetAsset;
   final bool? isReviewMode;
 
   const RelaxationStartScreen({
@@ -83,6 +85,7 @@ class RelaxationStartScreen extends StatelessWidget {
     required this.weekNumber,
     required this.mp3Asset,
     required this.riveAsset,
+    this.cueSheetAsset,
     this.isReviewMode,
   });
 
@@ -118,14 +121,23 @@ class RelaxationStartScreen extends StatelessWidget {
                     weekNumber: weekNumber,
                     mp3Asset: mp3Asset,
                     riveAsset: riveAsset,
+                    cueSheetAsset: cueSheetAsset,
                     jsonPrefix: jsonPrefix,
                   )
-                  : PracticePlayer(
+                  : cueSheetAsset == null
+                  ? PracticePlayer(
                     sessionId: sessionId,
                     taskId: taskId,
                     weekNumber: weekNumber,
                     mp3Asset: mp3Asset,
                     riveAsset: riveAsset,
+                  )
+                  : CueSheetEducationPlayer(
+                    sessionId: sessionId,
+                    taskId: taskId,
+                    weekNumber: weekNumber,
+                    mp3Asset: mp3Asset,
+                    cueSheetAsset: cueSheetAsset!,
                   ),
     );
   }
@@ -137,6 +149,7 @@ class _RelaxationEducationBridge extends StatelessWidget {
   final int weekNumber;
   final String mp3Asset;
   final String riveAsset;
+  final String? cueSheetAsset;
   final String jsonPrefix;
 
   const _RelaxationEducationBridge({
@@ -145,6 +158,7 @@ class _RelaxationEducationBridge extends StatelessWidget {
     required this.weekNumber,
     required this.mp3Asset,
     required this.riveAsset,
+    required this.cueSheetAsset,
     required this.jsonPrefix,
   });
 
@@ -156,13 +170,22 @@ class _RelaxationEducationBridge extends StatelessWidget {
       isRelax: true,
       sessionId: sessionId,
       nextPageBuilder:
-          () => PracticePlayer(
-            sessionId: sessionId,
-            taskId: taskId,
-            weekNumber: weekNumber,
-            mp3Asset: mp3Asset,
-            riveAsset: riveAsset,
-          ),
+          () =>
+              cueSheetAsset == null
+                  ? PracticePlayer(
+                    sessionId: sessionId,
+                    taskId: taskId,
+                    weekNumber: weekNumber,
+                    mp3Asset: mp3Asset,
+                    riveAsset: riveAsset,
+                  )
+                  : CueSheetEducationPlayer(
+                    sessionId: sessionId,
+                    taskId: taskId,
+                    weekNumber: weekNumber,
+                    mp3Asset: mp3Asset,
+                    cueSheetAsset: cueSheetAsset!,
+                  ),
     );
   }
 }
