@@ -137,6 +137,22 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
     );
   }
 
+  Future<void> _expandSheetForTextInput() async {
+    if (!mounted || !_sheetController.isAttached) return;
+
+    final target = _fullFormSheetExpandedSize.clamp(
+      _sheetMinSize,
+      _effectiveSheetMaxSize,
+    );
+    if (_sheetController.size >= target - 0.02) return;
+
+    await _sheetController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   String get _guideText {
     if (widget.showLocationLabelInput) {
       return widget.showTimePicker
@@ -518,6 +534,7 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
             controller: widget.locationLabelController,
             textInputAction: TextInputAction.done,
             maxLength: 15,
+            onTap: _expandSheetForTextInput,
             decoration: InputDecoration(
               hintText: '예: 집, 회사, 학교',
               hintStyle: const TextStyle(color: Colors.grey),
@@ -564,97 +581,104 @@ class _MindriumMapDesignState extends State<MindriumMapDesign> {
   Widget _buildBottomSheet() {
     final timeText = TimeOfDay.fromDateTime(_pickerTime).format(context);
     final media = MediaQuery.of(context);
+    final keyboardInset = media.viewInsets.bottom;
     final systemBottomInset =
         media.viewPadding.bottom > 0
             ? media.viewPadding.bottom
             : media.padding.bottom;
 
     return Positioned.fill(
-      child: DraggableScrollableSheet(
-        controller: _sheetController,
-        expand: false,
-        initialChildSize: _effectiveSheetInitialSize,
-        minChildSize: _sheetMinSize,
-        maxChildSize: _effectiveSheetMaxSize,
-        snap: false,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7FAFF).withValues(alpha: 0.97),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(22),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 14,
-                  offset: const Offset(0, -4),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.only(bottom: keyboardInset),
+        child: DraggableScrollableSheet(
+          controller: _sheetController,
+          expand: false,
+          initialChildSize: _effectiveSheetInitialSize,
+          minChildSize: _sheetMinSize,
+          maxChildSize: _effectiveSheetMaxSize,
+          snap: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7FAFF).withValues(alpha: 0.97),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(22),
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      10,
-                      16,
-                      systemBottomInset + 12,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 14,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        10,
+                        16,
+                        systemBottomInset + 12,
+                      ),
+                      children: [
+                        _buildDragHandle(),
+                        const SizedBox(height: 10),
+                        Text(
+                          _sheetTitleText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF3A4760),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildLocationCard(
+                          _hasLocationText,
+                          _resolvedLocationText,
+                        ),
+                        if (widget.showLocationLabelInput &&
+                            widget.locationLabelController != null) ...[
+                          const SizedBox(height: 10),
+                          _buildLocationLabelCard(),
+                        ],
+                        if (widget.showTimePicker) ...[
+                          const SizedBox(height: 10),
+                          _buildTimeCard(timeText),
+                        ],
+                      ],
                     ),
-                    children: [
-                      _buildDragHandle(),
-                      const SizedBox(height: 10),
-                      Text(
-                        _sheetTitleText,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF3A4760),
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7FAFF).withValues(alpha: 0.99),
+                      border: Border(
+                        top: BorderSide(
+                          color: const Color(0xFFD8E3F0).withValues(alpha: 0.9),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildLocationCard(
-                        _hasLocationText,
-                        _resolvedLocationText,
-                      ),
-                      if (widget.showLocationLabelInput &&
-                          widget.locationLabelController != null) ...[
-                        const SizedBox(height: 10),
-                        _buildLocationLabelCard(),
-                      ],
-                      if (widget.showTimePicker) ...[
-                        const SizedBox(height: 10),
-                        _buildTimeCard(timeText),
-                      ],
-                    ],
-                  ),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF7FAFF).withValues(alpha: 0.99),
-                    border: Border(
-                      top: BorderSide(
-                        color: const Color(0xFFD8E3F0).withValues(alpha: 0.9),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: NavigationButtons(
+                        leftLabel: '이전',
+                        rightLabel: '저장',
+                        onBack: widget.onBack ?? () => Navigator.pop(context),
+                        onNext:
+                            _hasRequiredLocationLabel ? widget.onNext : null,
                       ),
                     ),
                   ),
-                  child: SafeArea(
-                    top: false,
-                    child: NavigationButtons(
-                      leftLabel: '이전',
-                      rightLabel: '저장',
-                      onBack: widget.onBack ?? () => Navigator.pop(context),
-                      onNext: _hasRequiredLocationLabel ? widget.onNext : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

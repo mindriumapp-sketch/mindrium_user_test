@@ -445,6 +445,36 @@ class UserProvider extends ChangeNotifier {
     _notifyListenersSafely();
   }
 
+  void markMainCbtCompletedLocally({required int weekNumber}) {
+    if (weekNumber != _currentWeek) return;
+    if (_mainCbtCompleted) return;
+
+    _mainCbtCompleted = true;
+    unawaited(
+      AlarmNotificationService.instance.syncEducationReminders(
+        currentWeek: _currentWeek,
+        lastCompletedWeek: _lastCompletedWeek,
+        mainCompleted: _mainCbtCompleted && _mainRelaxCompleted,
+      ),
+    );
+    _notifyListenersSafely();
+  }
+
+  void markMainRelaxCompletedLocally({required int weekNumber}) {
+    if (weekNumber != _currentWeek) return;
+    if (_mainRelaxCompleted) return;
+
+    _mainRelaxCompleted = true;
+    unawaited(
+      AlarmNotificationService.instance.syncEducationReminders(
+        currentWeek: _currentWeek,
+        lastCompletedWeek: _lastCompletedWeek,
+        mainCompleted: _mainCbtCompleted && _mainRelaxCompleted,
+      ),
+    );
+    _notifyListenersSafely();
+  }
+
   /// 핵심 가치를 "로컬에서만" 갱신할 때 쓰는 유틸.
   ///
   /// - 예: updateValueGoal API 성공 후, 응답의 value_goal을 그대로 반영.

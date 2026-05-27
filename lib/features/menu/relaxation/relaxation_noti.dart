@@ -150,7 +150,11 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
       if (_isPlaying) {
         _audioPlayer.pause();
         _riveController?.active = false;
-        _isPlaying = false;
+        if (mounted) {
+          setState(() => _isPlaying = false);
+        } else {
+          _isPlaying = false;
+        }
       }
       _saveOnce(reason: 'app_paused');
     } else if (state == AppLifecycleState.resumed) {
@@ -200,13 +204,17 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
   }
 
   Future<void> _saveOnce({required String reason}) async {
-    if (_finalSaved) return;
+    final isCompletionSave = reason == 'complete';
+    if (_finalSaved && !isCompletionSave) return;
+
     // 최종 세이브 전 측정 중지 (Pause와 동일 로직)
     if (_isPlaying && _lastActivityTime != null) {
       _lastActivityTime = null;
     }
 
-    _finalSaved = true;
+    if (isCompletionSave) {
+      _finalSaved = true;
+    }
 
     try {
       _logger.logEvent("final_save_$reason");
@@ -235,6 +243,9 @@ class _NotiPlayerState extends State<NotiPlayer> with WidgetsBindingObserver {
         todayTaskProvider.setTodayTaskLocally(relaxationDone: true);
       } else if (widget.taskId.endsWith('_education')) {
         await userProvider.refreshProgress();
+        userProvider.markMainRelaxCompletedLocally(
+          weekNumber: widget.weekNumber ?? userProvider.currentWeek,
+        );
         todayTaskProvider.setTodayTaskLocally(relaxationDone: true);
       }
 

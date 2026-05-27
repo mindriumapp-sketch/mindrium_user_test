@@ -78,7 +78,9 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
             Navigator.of(context).pop();
-            Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
@@ -134,6 +136,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
         sessionId: widget.sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 5);
     } catch (e) {
       debugPrint('[Week5Visual] edu-session 완료 처리 실패: $e');
     }

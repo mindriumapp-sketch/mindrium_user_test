@@ -203,6 +203,7 @@ class _EducationPageState extends State<EducationPage> {
         sessionId: widget.sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 1);
     } catch (e) {
       debugPrint('[Week1Final] edu-session 완료 처리 실패: $e');
     }

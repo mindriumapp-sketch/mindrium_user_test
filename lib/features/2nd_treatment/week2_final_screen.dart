@@ -61,7 +61,11 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
             Navigator.of(context).pop();
-            Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home_edu',
+              (_) => false,
+            );
           },
         );
         return;
@@ -120,6 +124,7 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
         sessionId: widget.sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 2);
     } catch (e) {
       debugPrint('[Week2Final] edu-session 완료 처리 실패: $e');
     }

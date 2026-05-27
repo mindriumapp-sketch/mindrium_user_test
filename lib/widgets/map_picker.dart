@@ -109,11 +109,19 @@ class _MapPickerState extends State<MapPicker> {
     }
 
     _applyState(() {
-      _applyIncomingInitialState(
-        initialPoint: newInitial,
-        initialTime: widget.initialTime,
-        initialLocationLabel: widget.initialLocationLabel,
-      );
+      if (timeChanged && widget.initialTime != null) {
+        _selectedTime = widget.initialTime!;
+      }
+      if (labelChanged) {
+        _setLocationLabelText(widget.initialLocationLabel?.trim() ?? '');
+      }
+      if (initialChanged) {
+        _applyIncomingInitialState(
+          initialPoint: newInitial,
+          initialTime: null,
+          initialLocationLabel: null,
+        );
+      }
     });
   }
 
@@ -526,7 +534,7 @@ class _MapPickerState extends State<MapPicker> {
       locationText: _displayLocationText,
       showLocationLabelInput: widget.enableLocationLabel,
       locationLabelController:
-        widget.enableLocationLabel ? _locationLabelController : null,
+          widget.enableLocationLabel ? _locationLabelController : null,
       showMapPlaceholder: !_hasRenderedMap,
     );
   }

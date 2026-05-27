@@ -15,17 +15,13 @@ class AuthApi {
     required String name,
     required String phone,
     required String patientCode,
-    String gender = 'male',
-    String? address,
   }) async {
     final body = {
       'email': email,
       'password': password,
       'name': name,
       'phone': phone,
-      'gender': gender,
       'patient_code': patientCode,
-      if (address != null && address.isNotEmpty) 'address': address,
     };
     final res = await _client.dio.post('/auth/signup', data: body);
     await _saveTokensFromResponse(res);
@@ -35,10 +31,10 @@ class AuthApi {
     required String email,
     required String password,
   }) async {
-    final res = await _client.dio.post('/auth/login', data: {
-      'email': email,
-      'password': password,
-    });
+    final res = await _client.dio.post(
+      '/auth/login',
+      data: {'email': email, 'password': password},
+    );
     await _saveTokensFromResponse(res);
     final data = res.data;
     if (data is Map<String, dynamic>) {
@@ -67,9 +63,10 @@ class AuthApi {
   }
 
   Future<void> requestPasswordReset(String email) async {
-    await _client.dio.post('/auth/password/reset/start', data: {
-      'email': email,
-    });
+    await _client.dio.post(
+      '/auth/password/reset/start',
+      data: {'email': email},
+    );
   }
 
   Future<void> deleteAccount({required String password}) async {
@@ -84,20 +81,20 @@ class AuthApi {
     required String token,
     required String newPassword,
   }) async {
-    await _client.dio.post('/auth/password/reset/finish', data: {
-      'token': token,
-      'new_password': newPassword,
-    });
+    await _client.dio.post(
+      '/auth/password/reset/finish',
+      data: {'token': token, 'new_password': newPassword},
+    );
   }
 
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
-    await _client.dio.post('/auth/password/change', data: {
-      'current_password': currentPassword,
-      'new_password': newPassword,
-    });
+    await _client.dio.post(
+      '/auth/password/change',
+      data: {'current_password': currentPassword, 'new_password': newPassword},
+    );
     await logout();
   }
 

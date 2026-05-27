@@ -6,7 +6,6 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:provider/provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/1st_treatment/week1_value_goal_screen.dart';
-import 'package:gad_app_team/features/menu/education/education_screen.dart';
 
 class Week1Screen extends StatefulWidget {
   final String? sessionId;
@@ -97,15 +96,7 @@ class _Week1ScreenState extends State<Week1Screen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final vg = user.valueGoal;
-    final hasValueGoal = vg != null && vg.trim().isNotEmpty;
-
-    // 🔹 핵심 가치 없으면: Week1 가치/목표 입력 화면
-    if (!hasValueGoal) {
-      return Week1ValueGoalScreen(sessionId: _sessionId);
-    }
-
-    // 🔹 핵심 가치 있음: 1주차 교육 화면
-    return EducationScreen(sessionId: _sessionId, isRelax: true);
+    // 1주차는 핵심 가치가 이미 있어도 먼저 확인/수정 화면을 거친다.
+    return Week1ValueGoalScreen(sessionId: _sessionId);
   }
 }
