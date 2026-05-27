@@ -137,7 +137,7 @@ class AccountManagementScreen extends StatelessWidget {
             title: '회원 탈퇴',
             subtitle: '탈퇴 전에 삭제 정보와 복구 가능 여부를 확인해 주세요.',
             isDestructive: true,
-            onTap: () {},
+            onTap: () => _showDeleteAccountDialog(context),
           ),
         ],
       ),
@@ -783,6 +783,110 @@ class AccountManagementScreen extends StatelessWidget {
       default:
         return email != '-' ? email : '연결된 계정 정보를 확인해 주세요.';
     }
+  }
+
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final passwordController = TextEditingController();
+    var isSubmitting = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text(
+                '회원 탈퇴',
+                style: TextStyle(fontFamily: 'Noto Sans KR', fontWeight: FontWeight.w700),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '탈퇴 시 계정 정보가 비활성화되며 복구할 수 없습니다. 계속하려면 비밀번호를 입력해 주세요.',
+                    style: TextStyle(fontFamily: 'Noto Sans KR', height: 1.45),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: '비밀번호',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('취소'),
+                ),
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final password = passwordController.text.trim();
+                          if (password.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('비밀번호를 입력해주세요.')),
+                            );
+                            return;
+                          }
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final tokens = TokenStorage();
+                            final client = ApiClient(tokens: tokens);
+                            final authApi = AuthApi(client, tokens);
+                            await authApi.deleteAccount(password: password);
+                            if (!context.mounted) return;
+                            context.read<UserProvider>().reset();
+                            Navigator.of(dialogContext).pop();
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              '/login',
+                              (route) => false,
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+                            );
+                          } on DioException catch (e) {
+                            final detail =
+                                e.response?.data is Map
+                                    ? e.response?.data['detail']?.toString()
+                                    : e.message;
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(detail ?? '회원 탈퇴에 실패했습니다.'),
+                                ),
+                              );
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('회원 탈퇴 중 오류가 발생했습니다.')),
+                              );
+                            }
+                          } finally {
+                            if (dialogContext.mounted) {
+                              setDialogState(() => isSubmitting = false);
+                            }
+                          }
+                        },
+                  child: const Text(
+                    '탈퇴',
+                    style: TextStyle(color: Color(0xFFD85B66)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    passwordController.dispose();
   }
 
   String? _readProvider(dynamic user) {

@@ -293,11 +293,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 개발 환경: 모든 origin 허용
+# Bearer 기반이라 쿠키 credentials 불필요. allow_origins=["*"] + credentials=True 는 브라우저 스펙상 유효하지 않다.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: 모든 origin 허용 (개발용) -> 앱 도메인으로 제한할 것
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

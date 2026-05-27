@@ -1,13 +1,18 @@
 import 'dart:ui';
+import 'package:gad_app_team/common/auth_security_copy.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
+import 'package:gad_app_team/widgets/passwod_field.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 
 /// 로그인 디자인 위젯
 class LoginDesign extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
+  final bool showPassword;
+  final bool isLoading;
+  final VoidCallback onTogglePasswordVisibility;
   final VoidCallback onLogin;
   final VoidCallback onSignup;
   final VoidCallback onForgotPassword;
@@ -16,6 +21,9 @@ class LoginDesign extends StatelessWidget {
     super.key,
     required this.emailController,
     required this.passwordController,
+    required this.showPassword,
+    required this.isLoading,
+    required this.onTogglePasswordVisibility,
     required this.onLogin,
     required this.onSignup,
     required this.onForgotPassword,
@@ -27,14 +35,11 @@ class LoginDesign extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          /// 🌊 배경 이미지 (eduhome.png)
           Image.asset(
             'assets/image/eduhome.png',
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
           ),
-
-          /// 🔲 중앙 흰색 블러 박스
           Center(
             child: SingleChildScrollView(
               child: ClipRRect(
@@ -52,7 +57,7 @@ class LoginDesign extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: const Color(0xFFB2E8FA), // 하늘색 윤곽선
+                        color: const Color(0xFFB2E8FA),
                         width: 3.0,
                       ),
                       boxShadow: [
@@ -72,7 +77,17 @@ class LoginDesign extends StatelessWidget {
                           height: 120,
                           width: 120,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+                        const Text(
+                          AuthSecurityCopy.systemUseNotice,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: Color(0xFF5B6573),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
                         InputTextField(
                           controller: emailController,
                           label: '이메일',
@@ -80,14 +95,17 @@ class LoginDesign extends StatelessWidget {
                           fillColor: Colors.white,
                         ),
                         const SizedBox(height: 16),
-                        InputTextField(
+                        PasswordTextField(
                           controller: passwordController,
                           label: '비밀번호',
-                          obscureText: true,
-                          fillColor: Colors.white,
+                          isVisible: showPassword,
+                          toggleVisibility: onTogglePasswordVisibility,
                         ),
                         const SizedBox(height: 16),
-                        PrimaryActionButton(text: '로그인', onPressed: onLogin),
+                        PrimaryActionButton(
+                          text: isLoading ? '로그인 중…' : '로그인',
+                          onPressed: isLoading ? () {} : onLogin,
+                        ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

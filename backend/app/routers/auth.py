@@ -8,6 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from pymongo.errors import DuplicateKeyError
 
 from core.config import get_settings
+from core.account_lock import (
+    assert_not_locked,
+    build_failed_login_update,
+    clear_login_lock_fields,
+    failed_login_http_error,
+    password_change_notice,
+    password_change_recommended,
+)
 from db.mongo import get_db
 from routers.custom_tags import ensure_default_custom_tags
 from routers.worry_groups import ensure_default_worry_group
@@ -40,6 +48,35 @@ from core.security import (
 settings = get_settings()
 router = APIRouter(prefix="/auth")
 
+_INVALID_CREDENTIALS = "Invalid credentials"
+_PASSWORD_RESET_ACK = (
+    "If the email is registered, password reset instructions have been sent."
+)
+
+
+async def _issue_token_pair(db, obj_id: ObjectId, user: dict) -> TokenPair:
+    sub = str(obj_id)
+    now = datetime.now(timezone.utc)
+    refresh_raw = create_refresh_token(sub)
+    await db["users"].update_one(
+        {"_id": obj_id},
+        {
+            "$set": {
+                "refresh_hash": hash_refresh_token(refresh_raw),
+                "refresh_issued_at": now,
+                "last_active_at": now,
+                **clear_login_lock_fields(),
+            }
+        },
+    )
+    rec = password_change_recommended(user, now)
+    return TokenPair(
+        access_token=create_access_token(sub),
+        refresh_token=refresh_raw,
+        password_change_recommended=rec,
+        password_change_notice=password_change_notice(user) if rec else None,
+    )
+
 # =========================================================
 # phone 정규화 정책
 # - MongoDB users.phone: digits(예: 01038472918) 로 저장
@@ -56,11 +93,14 @@ def _norm_pid(v) -> str | None:
     return s or None
 
 
-# 로컬 네이티브 실행 시 127.0.0.1 권장. Docker 안에서 호스트로 붙을 때는 PLATFORM_SIGNUP_URL=http://host.docker.internal:8061/auth/signup
+# 플랫폼 회원가입 API (Swagger: POST /auth/signup)
+# - 운영(SKKU DTx): http://lamda-dtx.skku.edu:8061/auth/signup
+# - 로컬 플랫폼 개발: PLATFORM_SIGNUP_URL=http://127.0.0.1:8061/auth/signup
+# - Docker → 호스트: PLATFORM_SIGNUP_URL=http://host.docker.internal:8061/auth/signup
 PLATFORM_SIGNUP_URL = (
     os.getenv("PLATFORM_SIGNUP_URL")
     or os.getenv("PLATFORM_VERIFY_URL")
-    or "http://127.0.0.1:8061/auth/signup"
+    or "http://lamda-dtx.skku.edu:8061/auth/signup"
 )
 
 
@@ -73,6 +113,8 @@ async def signup_with_platform(payload: SignupRequest) -> str:
         "email": payload.email,
         "password": payload.password,
         "name": payload.name,
+        "gender": payload.gender or "",
+        "address": payload.address or "",
         "patient_code": (payload.patient_code or "").strip(),
     }
 
@@ -106,7 +148,10 @@ async def signup_with_platform(payload: SignupRequest) -> str:
 
 
 @router.post("/signup", response_model=TokenPair)
-async def signup(payload: SignupRequest, db=Depends(get_db)):
+async def signup(
+    payload: SignupRequest,
+    db=Depends(get_db),
+):
     # 1) 입력 검증
     phone_digits = phone_to_digits(payload.phone)
     if not phone_digits:
@@ -165,9 +210,15 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
         "patient_id": patient_id,
         "email": payload.email,
         "name": payload.name,
+        "gender": payload.gender or "",
+        "address": payload.address or "",
         "patient_code": patient_code,
         "phone": phone_digits,
         "password_hash": hash_password(payload.password),
+        "password_changed_at": now,
+        "failed_login_count": 0,
+        "locked_until": None,
+        "is_deleted": False,
         "updated_at": now,
     }
 
@@ -202,43 +253,32 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
     await ensure_default_custom_tags(db, user_id)
     await ensure_default_worry_group(db, user_id)
 
-    sub = str(obj_id)
-    refresh_raw = create_refresh_token(sub)
-    await db["users"].update_one(
-        {"_id": obj_id},
-        {"$set": {"refresh_hash": hash_refresh_token(refresh_raw), "refresh_issued_at": now}},
-    )
-    return TokenPair(
-        access_token=create_access_token(sub),
-        refresh_token=refresh_raw,
-    )
+    user_doc = await db["users"].find_one({"_id": obj_id}) or {}
+    return await _issue_token_pair(db, obj_id, user_doc)
 
 
 @router.post("/login", response_model=TokenPair)
-async def login(payload: LoginRequest, db=Depends(get_db)):
+async def login(
+    payload: LoginRequest,
+    db=Depends(get_db),
+):
     user = await db["users"].find_one({"email": payload.email})
+    if user and user.get("is_deleted"):
+        raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
+
+    if user:
+        assert_not_locked(user)
+
     stored_hash = user.get("password_hash") if user else None
     if not user or not stored_hash or not verify_password(payload.password, stored_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        if user:
+            now = datetime.now(timezone.utc)
+            fail_set = build_failed_login_update(user, now)
+            await db["users"].update_one({"_id": user["_id"]}, {"$set": fail_set})
+            raise failed_login_http_error(fail_set)
+        raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
 
-    sub = str(user["_id"])
-    now = datetime.now(timezone.utc)
-    refresh_raw = create_refresh_token(sub)
-
-    await db["users"].update_one(
-        {"_id": user["_id"]},
-        {
-            "$set": {
-                "refresh_hash": hash_refresh_token(refresh_raw),
-                "refresh_issued_at": now,
-                "last_active_at": now,
-            }
-        },
-    )
-    return TokenPair(
-        access_token=create_access_token(sub),
-        refresh_token=refresh_raw,
-    )
+    return await _issue_token_pair(db, user["_id"], user)
 
 
 @router.post("/refresh", response_model=TokenPair)
@@ -289,7 +329,9 @@ async def change_password(
         {
             "$set": {
                 "password_hash": hash_password(payload.new_password),
+                "password_changed_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc),
+                **clear_login_lock_fields(),
             },
             "$unset": {"refresh_hash": "", "refresh_issued_at": ""},
         },
@@ -299,28 +341,23 @@ async def change_password(
 
 @router.post("/password/reset/start")
 async def password_reset_start(payload: PasswordResetStartRequest, db=Depends(get_db)):
-    user = await db["users"].find_one({"email": payload.email})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    token = create_password_reset_token(str(user["_id"]))
-    token_hash = hash_token(token)
-    now = datetime.now(timezone.utc)
-
-    await db["users"].update_one(
-        {"_id": user["_id"]},
-        {
-            "$set": {
-                "password_reset_hash": token_hash,
-                "password_reset_requested_at": now,
-            }
-        },
+    user = await db["users"].find_one(
+        {"email": payload.email, "is_deleted": {"$ne": True}}
     )
-    return {
-        "success": True,
-        "message": "Password reset token issued",
-        "token_debug": token,
-    }
+    if user:
+        token = create_password_reset_token(str(user["_id"]))
+        token_hash = hash_token(token)
+        now = datetime.now(timezone.utc)
+        await db["users"].update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "password_reset_hash": token_hash,
+                    "password_reset_requested_at": now,
+                }
+            },
+        )
+    return {"success": True, "message": _PASSWORD_RESET_ACK}
 
 
 @router.post("/password/reset/finish")
@@ -358,7 +395,9 @@ async def password_reset_finish(payload: PasswordResetFinishRequest, db=Depends(
         {
             "$set": {
                 "password_hash": hash_password(payload.new_password),
+                "password_changed_at": now,
                 "updated_at": now,
+                **clear_login_lock_fields(),
             },
             "$unset": {
                 "password_reset_hash": "",

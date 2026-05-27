@@ -22,6 +22,8 @@ class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    password_change_recommended: bool = False
+    password_change_notice: str | None = None
 
 
 class SignupRequest(BaseModel):
@@ -37,6 +39,8 @@ class SignupRequest(BaseModel):
 
     name: str
     phone: str = Field(min_length=1, max_length=30)
+    gender: str = ""
+    address: str = ""
     patient_code: str = Field(min_length=1, description="플랫폼 환자코드")
 
 

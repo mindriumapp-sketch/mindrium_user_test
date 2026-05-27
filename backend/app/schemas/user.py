@@ -21,6 +21,10 @@ class UpdateUser(BaseModel):
     name: Optional[str] = None
 
 
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(min_length=1, description="탈퇴 확인용 현재 비밀번호")
+
+
 class ValueGoalUpdate(BaseModel):
     value_goal: str = Field(..., min_length=1, max_length=500, description="사용자의 핵심 가치")
 

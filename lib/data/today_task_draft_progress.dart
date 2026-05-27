@@ -3,6 +3,7 @@ import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/widgets/abc_chips_design.dart';
 import 'package:provider/provider.dart';
+import 'package:gad_app_team/data/storage/auth_session_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String todayTaskDiaryRoute = 'today_task';
@@ -190,8 +191,7 @@ class TodayTaskDraftProgressStore {
   static const String _nsPrefix = 'today_task.diary_draft';
 
   static Future<String> _prefix() async {
-    final prefs = await SharedPreferences.getInstance();
-    final uid = prefs.getString('uid')?.trim();
+    final uid = (await AuthSessionStorage().userId)?.trim();
     if (uid == null || uid.isEmpty) {
       return '$_nsPrefix.default';
     }

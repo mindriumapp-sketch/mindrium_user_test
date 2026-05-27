@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'api_client.dart';
+import '../storage/auth_session_storage.dart';
 import '../storage/token_storage.dart';
 
 class AuthApi {
@@ -22,30 +23,28 @@ class AuthApi {
       'phone': phone,
       'patient_code': patientCode,
     };
-    await _client.dio.post('/auth/signup', data: body);
+    final res = await _client.dio.post('/auth/signup', data: body);
+    await _saveTokensFromResponse(res);
   }
 
-  Future<void> login({required String email, required String password}) async {
+  Future<({bool passwordChangeRecommended, String? passwordChangeNotice})> login({
+    required String email,
+    required String password,
+  }) async {
     final res = await _client.dio.post(
       '/auth/login',
       data: {'email': email, 'password': password},
     );
+    await _saveTokensFromResponse(res);
     final data = res.data;
-    if (data is! Map<String, dynamic>) {
-      throw DioException(
-        requestOptions: res.requestOptions,
-        message: 'Invalid login response',
+    if (data is Map<String, dynamic>) {
+      return (
+        passwordChangeRecommended:
+            data['password_change_recommended'] == true,
+        passwordChangeNotice: data['password_change_notice'] as String?,
       );
     }
-    final access = data['access_token'] as String?;
-    final refresh = data['refresh_token'] as String?;
-    if (access == null || refresh == null) {
-      throw DioException(
-        requestOptions: res.requestOptions,
-        message: 'Tokens missing in response',
-      );
-    }
-    await _tokens.save(access, refresh);
+    return (passwordChangeRecommended: false, passwordChangeNotice: null);
   }
 
   Future<Map<String, dynamic>> me() async {
@@ -60,21 +59,22 @@ class AuthApi {
 
   Future<void> logout() async {
     await _tokens.clear();
+    await AuthSessionStorage().clear();
   }
 
-  Future<String?> requestPasswordResetToken(String email) async {
-    final res = await _client.dio.post(
+  Future<void> requestPasswordReset(String email) async {
+    await _client.dio.post(
       '/auth/password/reset/start',
       data: {'email': email},
     );
-    final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return data['token_debug'] as String?;
-    }
-    throw DioException(
-      requestOptions: res.requestOptions,
-      message: 'Invalid password reset start response',
+  }
+
+  Future<void> deleteAccount({required String password}) async {
+    await _client.dio.delete(
+      '/users/me',
+      data: {'password': password},
     );
+    await logout();
   }
 
   Future<void> resetPasswordWithToken({
@@ -95,5 +95,25 @@ class AuthApi {
       '/auth/password/change',
       data: {'current_password': currentPassword, 'new_password': newPassword},
     );
+    await logout();
+  }
+
+  Future<void> _saveTokensFromResponse(Response<dynamic> res) async {
+    final data = res.data;
+    if (data is! Map<String, dynamic>) {
+      throw DioException(
+        requestOptions: res.requestOptions,
+        message: 'Invalid auth response',
+      );
+    }
+    final access = data['access_token'] as String?;
+    final refresh = data['refresh_token'] as String?;
+    if (access == null || refresh == null) {
+      throw DioException(
+        requestOptions: res.requestOptions,
+        message: 'Tokens missing in response',
+      );
+    }
+    await _tokens.save(access, refresh);
   }
 }
