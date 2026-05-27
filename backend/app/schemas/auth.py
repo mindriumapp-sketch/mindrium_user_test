@@ -24,6 +24,8 @@ class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    password_change_recommended: bool = False
+    password_change_notice: str | None = None
 
 
 class SignupRequest(BaseModel):

@@ -1,14 +1,17 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 
 import 'package:gad_app_team/widgets/login_design.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
+import 'package:gad_app_team/data/api/auth_error_messages.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/daycounter.dart';
+import 'package:gad_app_team/features/auth/auth_session_helper.dart';
 
 /// 로그인 화면 (기능 로직만)
 class LoginScreen extends StatefulWidget {
@@ -21,6 +24,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _showPassword = false;
 
   void _showError(String message) {
     ScaffoldMessenger.of(
@@ -37,12 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // ⬇️ await 전에 Provider 뽑기
     final dayCounter = context.read<UserDayCounter>();
     final userProvider = context.read<UserProvider>();
     final todayTaskProvider = context.read<TodayTaskProvider>();
 
-    // 새 로그인 시도 전에 상태 초기화
     userProvider.reset();
     todayTaskProvider.reset();
     dayCounter.reset();
@@ -51,51 +54,50 @@ class _LoginScreenState extends State<LoginScreen> {
     final client = ApiClient(tokens: tokens);
     final authApi = AuthApi(client, tokens);
 
+    setState(() => _isLoading = true);
     try {
-      // 1) 로그인 → 토큰 저장
-      await authApi.login(email: email, password: password);
+      final loginMeta = await authApi.login(email: email, password: password);
 
-      // 2) 유저 정보 + 진행도 로딩 (/users/me + /users/me/progress)
-      await userProvider.loadUserData(dayCounter: dayCounter);
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('uid', userProvider.userId);
-      await prefs.setString('patient_id', userProvider.patientId);
-
-      // 3) 오늘의 할 일 로딩 ( /users/me/todaytask )
-      await todayTaskProvider.loadTodayTask();
-
-      // 4) SharedPreferences (기존 로직 유지)
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString(
-        'email',
-        userProvider.userEmail.isNotEmpty ? userProvider.userEmail : email,
+      await AuthSessionHelper.completeSession(
+        userProvider: userProvider,
+        dayCounter: dayCounter,
+        todayTaskProvider: todayTaskProvider,
+        email: email,
       );
 
       if (!mounted) return;
 
-      // 5) 설문 여부 보고 분기
+      if (loginMeta.passwordChangeRecommended) {
+        final notice =
+            loginMeta.passwordChangeNotice ??
+            '비밀번호 변경을 권장합니다. 설정 → 계정 관리에서 변경할 수 있습니다.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(notice)),
+        );
+      }
+
       final hasSurvey = userProvider.surveyCompleted;
       Navigator.pushReplacementNamed(
         context,
         hasSurvey ? '/home' : '/tutorial',
       );
     } catch (e) {
-      // 로그인 전체 플로우 실패 → 토큰 + 상태 정리
       await tokens.clear();
+      await authApi.logout();
       userProvider.reset();
       todayTaskProvider.reset();
       dayCounter.reset();
 
-      _showError('로그인 실패: ${e is Exception ? e.toString() : '오류'}');
+      if (kDebugMode) {
+        debugPrint('Login failed: ${e.runtimeType}');
+      }
 
-      if (!mounted) return;
-
-      Navigator.pushNamed(
-        context,
-        '/terms',
-        arguments: {'email': email, 'password': password},
-      );
+      final message = e is DioException
+          ? AuthErrorMessages.fromDioException(e, isSignup: false)
+          : AuthErrorMessages.loginFailed;
+      _showError(message);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -125,7 +127,12 @@ class _LoginScreenState extends State<LoginScreen> {
     return LoginDesign(
       emailController: emailController,
       passwordController: passwordController,
-      onLogin: _login,
+      showPassword: _showPassword,
+      isLoading: _isLoading,
+      onTogglePasswordVisibility: () {
+        setState(() => _showPassword = !_showPassword);
+      },
+      onLogin: _isLoading ? () {} : _login,
       onSignup: _goToSignup,
       onForgotPassword: _showForgotPasswordPlaceholder,
     );

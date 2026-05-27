@@ -2,12 +2,12 @@ from datetime import datetime, timezone, date
 from bson import ObjectId
 from pymongo import ReturnDocument
 
-from core.security import get_user_obj_id, get_current_user
+from core.security import get_user_obj_id, get_current_user, verify_password
 from core.utils import parse_datetime_value, get_week_range_kst
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from db.mongo import get_db
-from schemas.user import UserMe, UpdateUser, WeeklyUserStats
+from schemas.user import UserMe, UpdateUser, WeeklyUserStats, AccountDeleteRequest
 
 router = APIRouter(prefix="/users", tags=["users"])
 USER_COLLECTION = "users"
@@ -37,6 +37,47 @@ async def get_me(
         "created_at": parse_datetime_value(user.get("created_at")),
         "updated_at": parse_datetime_value(user.get("updated_at")),
     }
+
+
+@router.delete("/me")
+async def delete_me(
+    payload: AccountDeleteRequest,
+    db=Depends(get_db),
+    user_obj_id: ObjectId = Depends(get_user_obj_id),
+):
+    collection = db[USER_COLLECTION]
+    user = await collection.find_one({"_id": user_obj_id})
+    if not user or user.get("is_deleted"):
+        raise HTTPException(status_code=400, detail="Account not found or already deleted")
+
+    stored_hash = user.get("password_hash")
+    if not stored_hash or not verify_password(payload.password, stored_hash):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    now = datetime.now(timezone.utc)
+    user_id = user.get("user_id") or str(user_obj_id)
+    tombstone_email = f"deleted_{user_id}@invalid.local"
+
+    await collection.update_one(
+        {"_id": user_obj_id},
+        {
+            "$set": {
+                "is_deleted": True,
+                "deleted_at": now,
+                "email": tombstone_email,
+                "name": "탈퇴회원",
+                "phone": "",
+                "updated_at": now,
+            },
+            "$unset": {
+                "refresh_hash": "",
+                "refresh_issued_at": "",
+                "password_reset_hash": "",
+                "password_reset_requested_at": "",
+            },
+        },
+    )
+    return {"success": True, "message": "Account deleted"}
 
 
 @router.put("/me", response_model=UserMe)
