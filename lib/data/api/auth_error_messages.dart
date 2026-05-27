@@ -13,6 +13,9 @@ abstract final class AuthErrorMessages {
   static const localApiUnreachable =
       '로컬 API 서버에 연결하지 못했습니다. 터미널에서 백엔드를 실행했는지, 포트가 API_BASE_URL과 같은지 확인해 주세요. (예: uvicorn main:app --host 0.0.0.0 --port 8050)';
   static const serverError = '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+  static const platformSignupUnavailable =
+      '마인드리움 코드 확인 서버(플랫폼)에 연결할 수 없습니다. '
+      '환자 등록·코드 발급용 서버가 실행 중인지 확인해 주세요. (로컬: 포트 8061)';
 
   static String fromDioException(DioException e, {required bool isSignup}) {
     final status = e.response?.statusCode;
@@ -20,6 +23,13 @@ abstract final class AuthErrorMessages {
     if (status == 401) return loginFailed;
     if (status == 409 && isSignup) {
       return _detailMessage(e) ?? '이미 등록된 이메일이거나 가입 정보가 올바르지 않습니다.';
+    }
+    if (status == 502 && isSignup) {
+      final detail = _detailMessage(e) ?? '';
+      if (detail.contains('Platform') || detail.contains('8061')) {
+        return platformSignupUnavailable;
+      }
+      return platformSignupUnavailable;
     }
     if (status != null && status >= 500) return serverError;
 

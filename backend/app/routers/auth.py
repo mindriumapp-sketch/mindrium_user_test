@@ -93,11 +93,14 @@ def _norm_pid(v) -> str | None:
     return s or None
 
 
-# 로컬 네이티브 실행 시 127.0.0.1 권장. Docker 안에서 호스트로 붙을 때는 PLATFORM_SIGNUP_URL=http://host.docker.internal:8061/auth/signup
+# 플랫폼 회원가입 API (Swagger: POST /auth/signup)
+# - 운영(SKKU DTx): http://lamda-dtx.skku.edu:8061/auth/signup
+# - 로컬 플랫폼 개발: PLATFORM_SIGNUP_URL=http://127.0.0.1:8061/auth/signup
+# - Docker → 호스트: PLATFORM_SIGNUP_URL=http://host.docker.internal:8061/auth/signup
 PLATFORM_SIGNUP_URL = (
     os.getenv("PLATFORM_SIGNUP_URL")
     or os.getenv("PLATFORM_VERIFY_URL")
-    or "http://127.0.0.1:8061/auth/signup"
+    or "http://lamda-dtx.skku.edu:8061/auth/signup"
 )
 
 
@@ -110,6 +113,8 @@ async def signup_with_platform(payload: SignupRequest) -> str:
         "email": payload.email,
         "password": payload.password,
         "name": payload.name,
+        "gender": payload.gender or "",
+        "address": payload.address or "",
         "patient_code": (payload.patient_code or "").strip(),
     }
 
@@ -205,6 +210,8 @@ async def signup(
         "patient_id": patient_id,
         "email": payload.email,
         "name": payload.name,
+        "gender": payload.gender or "",
+        "address": payload.address or "",
         "patient_code": patient_code,
         "phone": phone_digits,
         "password_hash": hash_password(payload.password),

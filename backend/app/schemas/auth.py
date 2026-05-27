@@ -39,6 +39,8 @@ class SignupRequest(BaseModel):
 
     name: str
     phone: str = Field(min_length=1, max_length=30)
+    gender: str = ""
+    address: str = ""
     patient_code: str = Field(min_length=1, description="플랫폼 환자코드")
 
 
