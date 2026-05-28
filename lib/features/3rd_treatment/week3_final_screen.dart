@@ -151,6 +151,8 @@ class Week3FinalScreen extends StatelessWidget {
                 'weekNumber': 3,
                 'mp3Asset': 'week3.mp3',
                 'riveAsset': 'week3.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week3_cue_sheet.json',
                 'isReviewMode': false,
               },
             );
@@ -187,6 +189,8 @@ class Week3FinalScreen extends StatelessWidget {
                 'weekNumber': 3,
                 'mp3Asset': 'week3.mp3',
                 'riveAsset': 'week3.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week3_cue_sheet.json',
                 'isReviewMode': true,
               },
             );
@@ -252,6 +256,8 @@ class Week3FinalScreen extends StatelessWidget {
             'weekNumber': 3,
             'mp3Asset': 'week3.mp3',
             'riveAsset': 'week3.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week3_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 3 ||
                 (userProvider.currentWeek == 3 &&

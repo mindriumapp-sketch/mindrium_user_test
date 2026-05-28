@@ -174,6 +174,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                   'weekNumber': 8,
                   'mp3Asset': 'week8.mp3',
                   'riveAsset': 'week8.riv',
+                  'cueSheetAsset':
+                      'assets/relaxation/cue_sheets/week8_cue_sheet.json',
                   'isReviewMode': false,
                 },
               );
@@ -210,6 +212,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                   'weekNumber': 8,
                   'mp3Asset': 'week8.mp3',
                   'riveAsset': 'week8.riv',
+                  'cueSheetAsset':
+                      'assets/relaxation/cue_sheets/week8_cue_sheet.json',
                   'isReviewMode': true,
                 },
               );
@@ -272,6 +276,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
               'weekNumber': 8,
               'mp3Asset': 'week8.mp3',
               'riveAsset': 'week8.riv',
+              'cueSheetAsset':
+                  'assets/relaxation/cue_sheets/week8_cue_sheet.json',
               'isReviewMode':
                   user.currentWeek > 8 ||
                   (user.currentWeek == 8 && user.mainRelaxCompleted),

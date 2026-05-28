@@ -9,8 +9,12 @@ Map<String, String> _relaxationCueSheetArgument(int weekNo) {
   switch (weekNo) {
     case 1:
     case 2:
+    case 3:
+    case 4:
     case 5:
     case 6:
+    case 7:
+    case 8:
       return {
         'cueSheetAsset':
             'assets/relaxation/cue_sheets/week${weekNo}_cue_sheet.json',
