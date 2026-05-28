@@ -4,9 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../storage/token_storage.dart';
 
+const String _defaultApiBaseUrl = 'http://115.145.134.180:8070';
+const String _allowedCleartextApiHost = '115.145.134.180';
+const int _allowedCleartextApiPort = 8070;
+
 const String _envBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://115.145.134.180:8070',
+  defaultValue: _defaultApiBaseUrl,
 );
 
 class ApiClient {
@@ -37,12 +41,22 @@ class ApiClient {
 
   static String _enforceTransportPolicy(String url) {
     final trimmed = url.trim();
-    if (kReleaseMode && trimmed.toLowerCase().startsWith('http://')) {
+    if (kReleaseMode &&
+        trimmed.toLowerCase().startsWith('http://') &&
+        !_isAllowedCleartextApiUrl(trimmed)) {
       throw StateError(
         'Release builds require HTTPS API_BASE_URL (SI-01 / DC-01).',
       );
     }
     return trimmed;
+  }
+
+  static bool _isAllowedCleartextApiUrl(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null &&
+        uri.scheme.toLowerCase() == 'http' &&
+        uri.host == _allowedCleartextApiHost &&
+        uri.port == _allowedCleartextApiPort;
   }
 
   ApiClient({required this.tokens, String? baseUrl})
