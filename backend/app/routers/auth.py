@@ -93,15 +93,16 @@ def _norm_pid(v) -> str | None:
     return s or None
 
 
-# 플랫폼 회원가입 API (Swagger: POST /auth/signup)
-# - 운영(SKKU DTx): http://lamda-dtx.skku.edu:8061/auth/signup
-# - 로컬 플랫폼 개발: PLATFORM_SIGNUP_URL=http://127.0.0.1:8061/auth/signup
-# - Docker → 호스트: PLATFORM_SIGNUP_URL=http://host.docker.internal:8061/auth/signup
-PLATFORM_SIGNUP_URL = (
-    os.getenv("PLATFORM_SIGNUP_URL")
-    or os.getenv("PLATFORM_VERIFY_URL")
-    or "http://lamda-dtx.skku.edu:8061/auth/signup"
-)
+def _platform_signup_url() -> str:
+    url = (
+        os.getenv("PLATFORM_SIGNUP_URL") or os.getenv("PLATFORM_VERIFY_URL") or ""
+    ).strip()
+    if not url:
+        raise HTTPException(
+            status_code=503,
+            detail="PLATFORM_SIGNUP_URL is not configured.",
+        )
+    return url
 
 
 async def signup_with_platform(payload: SignupRequest) -> str:
@@ -120,13 +121,14 @@ async def signup_with_platform(payload: SignupRequest) -> str:
 
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.post(PLATFORM_SIGNUP_URL, json=platform_payload)
+            platform_url = _platform_signup_url()
+            res = await client.post(platform_url, json=platform_payload)
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=502,
             detail=(
                 "Platform signup service unavailable: "
-                f"cannot reach {PLATFORM_SIGNUP_URL} ({type(e).__name__}). "
+                f"cannot reach {_platform_signup_url()} ({type(e).__name__}). "
                 "Check that the platform server is running and PLATFORM_SIGNUP_URL is correct."
             ),
         )

@@ -4,13 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../storage/token_storage.dart';
 
-const String _defaultApiBaseUrl = 'http://115.145.134.180:8070';
+/// Release HTTP 허용 호스트 (SI-01). [API_BASE_URL] define 과 맞출 것.
 const String _allowedCleartextApiHost = '115.145.134.180';
 const int _allowedCleartextApiPort = 8070;
 
 const String _envBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: _defaultApiBaseUrl,
+  defaultValue: '',
 );
 
 class ApiClient {
@@ -35,7 +35,8 @@ class ApiClient {
       return 'http://127.0.0.1:8080';
     }
     throw StateError(
-      'API_BASE_URL must be set via --dart-define for release builds.',
+      'API_BASE_URL must be set via --dart-define=API_BASE_URL=... '
+      '(or --dart-define-from-file=dart_defines/api.local.json).',
     );
   }
 

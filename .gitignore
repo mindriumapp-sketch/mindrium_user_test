@@ -83,6 +83,7 @@ coverage/
 .envrc
 dart_defines/*.json
 !dart_defines/kakao.example.json
+!dart_defines/api.example.json
 *.pem
 *.p12
 *.cer
