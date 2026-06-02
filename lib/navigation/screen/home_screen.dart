@@ -143,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       progress: TodayTaskDraftProgress.none,
       allowLower: true,
       diaryDone: false,
+      syncHomeTodayTaskState: false,
     );
     if (!mounted) return;
 

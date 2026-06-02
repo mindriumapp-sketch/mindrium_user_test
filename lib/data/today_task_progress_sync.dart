@@ -12,6 +12,7 @@ Future<int> syncTodayTaskDraftState(
   String? diaryId,
   bool allowLower = false,
   bool? diaryDone,
+  bool syncHomeTodayTaskState = true,
 }) async {
   final effective = await syncTodayTaskDraftProgress(
     context,
@@ -27,13 +28,17 @@ Future<int> syncTodayTaskDraftState(
 
   final resolvedDiaryDone =
       diaryDone ?? TodayTaskDraftProgress.isCompleted(effective);
+  final todayTaskProvider =
+      syncHomeTodayTaskState ? context.read<TodayTaskProvider>() : null;
   if (resolvedDiaryDone) {
     await context.read<UserProvider>().refreshProgress();
   }
 
-  context.read<TodayTaskProvider>().setTodayTaskLocally(
-    diaryDone: resolvedDiaryDone,
-    diaryDraftProgress: effective,
-  );
+  if (todayTaskProvider != null) {
+    todayTaskProvider.setTodayTaskLocally(
+      diaryDone: resolvedDiaryDone,
+      diaryDraftProgress: effective,
+    );
+  }
   return effective;
 }
