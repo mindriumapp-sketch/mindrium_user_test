@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/storage/auth_session_storage.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/common/constants.dart';
 
@@ -41,15 +40,21 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       // 1) /users/me + /users/me/progress + value-goal + dayCounter 세팅
       await userProvider.loadUserData(dayCounter: dayCounter);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('uid', userProvider.userId);
-      // 2) 오늘의 할 일 초기 로딩
       await todayTaskProvider.loadTodayTask();
+
+      final session = AuthSessionStorage();
+      final email = await session.email ?? userProvider.userEmail;
+      await session.save(
+        uid: userProvider.userId,
+        patientId: userProvider.patientId,
+        email: email.isNotEmpty ? email : userProvider.userEmail,
+      );
 
       return userProvider.isUserLoaded;
     } catch (e) {
       // 토큰은 있는데 서버 쪽 문제 / 401 등 → 토큰 정리 후 로그인으로 돌린다
       await tokens.clear();
+      await AuthSessionStorage().clear();
 
       // 프로바이더들도 다시 초기화
       userProvider.reset();

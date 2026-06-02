@@ -1,11 +1,19 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gad_app_team/common/auth_security_copy.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
+import 'package:gad_app_team/data/api/auth_error_messages.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
+import 'package:gad_app_team/features/auth/auth_session_helper.dart';
+import 'package:gad_app_team/data/daycounter.dart';
+import 'package:gad_app_team/data/today_task_provider.dart';
+import 'package:gad_app_team/data/user_provider.dart';
+import 'package:provider/provider.dart';
 
 /// 회원가입 화면 - 이메일, 이름, 전화번호, 비밀번호, 마인드리움코드로 회원가입
 class SignupScreen extends StatefulWidget {
@@ -195,22 +203,11 @@ class _SignupScreenState extends State<SignupScreen> {
     ].every((e) => e == null);
   }
 
-  /// FastAPI `detail`(문자열 또는 validation 배열)까지 스낵바에 넘기기
   String _signupErrorMessage(Object e) {
     if (e is DioException) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic>) {
-        final detail = data['detail'];
-        if (detail is String && detail.trim().isNotEmpty) return detail;
-        if (detail is List && detail.isNotEmpty) {
-          final first = detail.first;
-          if (first is Map && first['msg'] is String) {
-            return first['msg'] as String;
-          }
-        }
-      }
+      return AuthErrorMessages.fromDioException(e, isSignup: true);
     }
-    return '회원가입 실패: $e';
+    return AuthErrorMessages.signupFailed;
   }
 
   Future<void> _signup() async {
@@ -233,11 +230,19 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    try {
-      final tokens = TokenStorage();
-      final client = ApiClient(tokens: tokens);
-      final authApi = AuthApi(client, tokens);
+    final tokens = TokenStorage();
+    final client = ApiClient(tokens: tokens);
+    final authApi = AuthApi(client, tokens);
 
+    final userProvider = context.read<UserProvider>();
+    final dayCounter = context.read<UserDayCounter>();
+    final todayTaskProvider = context.read<TodayTaskProvider>();
+
+    userProvider.reset();
+    todayTaskProvider.reset();
+    dayCounter.reset();
+
+    try {
       await authApi.signup(
         email: email,
         password: password,
@@ -246,21 +251,36 @@ class _SignupScreenState extends State<SignupScreen> {
         patientCode: patientCode,
       );
 
+      await AuthSessionHelper.completeSession(
+        userProvider: userProvider,
+        dayCounter: dayCounter,
+        todayTaskProvider: todayTaskProvider,
+        email: email,
+      );
+
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('회원가입이 완료되었습니다.')),
+      );
+
+      final hasSurvey = userProvider.surveyCompleted;
       Navigator.pushReplacementNamed(
         context,
-        '/login',
-        arguments: {'email': email, 'password': password},
+        hasSurvey ? '/home' : '/tutorial',
       );
     } catch (e, stack) {
+      await authApi.logout();
+      userProvider.reset();
+      todayTaskProvider.reset();
+      dayCounter.reset();
+
       setState(() {
         _formError = _signupErrorMessage(e);
       });
-      debugPrint('Signup error: $e');
-      debugPrint('Stack: $stack');
+      if (kDebugMode) {
+        debugPrint('Signup error: $e');
+        debugPrint('Stack: $stack');
+      }
     }
   }
 
@@ -347,6 +367,16 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         child: Column(
           children: [
+            const Text(
+              AuthSecurityCopy.systemUseNotice,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: Color(0xFF5B6573),
+              ),
+            ),
+            const SizedBox(height: 12),
             _buildLabeledInput(
               title: '이메일',
               controller: emailController,
@@ -368,7 +398,6 @@ class _SignupScreenState extends State<SignupScreen> {
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
             const SizedBox(height: _formSpacing),
-
             _buildLabeledInput(
               title: '전화번호',
               controller: phoneController,
@@ -379,7 +408,6 @@ class _SignupScreenState extends State<SignupScreen> {
               errorText: _phoneError,
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
-
             const SizedBox(height: _formSpacing),
             _buildLabeledPasswordInput(
               title: '비밀번호',
@@ -407,7 +435,6 @@ class _SignupScreenState extends State<SignupScreen> {
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
             const SizedBox(height: _formSpacing),
-
             _buildLabeledInput(
               title: '마인드리움 코드',
               controller: patientCodeController,

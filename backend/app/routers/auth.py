@@ -4,10 +4,11 @@ import os
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pymongo.errors import DuplicateKeyError
 
 from core.config import get_settings
+from core.rate_limit import auth_rate_limiter, client_ip
 from db.mongo import get_db
 from routers.custom_tags import ensure_default_custom_tags
 from routers.worry_groups import ensure_default_worry_group
@@ -39,6 +40,8 @@ from core.security import (
 
 settings = get_settings()
 router = APIRouter(prefix="/auth")
+
+_INVALID_CREDENTIALS = "Invalid credentials"
 
 # =========================================================
 # phone 정규화 정책
@@ -279,7 +282,12 @@ async def signup_with_platform(payload: SignupRequest) -> str:
 
 
 @router.post("/signup", response_model=TokenPair)
-async def signup(payload: SignupRequest, db=Depends(get_db)):
+async def signup(
+    payload: SignupRequest,
+    request: Request,
+    db=Depends(get_db),
+):
+    auth_rate_limiter.check(f"signup:{client_ip(request)}")
     # 1) 입력 검증
     phone_digits = phone_to_digits(payload.phone)
     if not phone_digits:
@@ -399,14 +407,20 @@ async def signup(payload: SignupRequest, db=Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenPair)
-async def login(payload: LoginRequest, db=Depends(get_db)):
+async def login(
+    payload: LoginRequest,
+    request: Request,
+    db=Depends(get_db),
+):
+    auth_rate_limiter.check(f"login:{client_ip(request)}")
+
     now = datetime.now(timezone.utc)
 
     user = await db["users"].find_one({"email": payload.email})
 
     # 1) 존재하지 않는 이메일
     # 사용자 화면에는 계정 존재 여부를 직접 노출하지 않음.
-    # 다만 API 응답에는 검증용 reason_code를 포함.
+    # API 응답에는 일반화된 인증 실패 메시지와 정책 정보만 제공.
     if not user:
         raise HTTPException(
             status_code=401,
@@ -417,6 +431,7 @@ async def login(payload: LoginRequest, db=Depends(get_db)):
                 locked=False,
             ),
         )
+
     # 잠금 시간이 이미 지난 계정은 여기서 실패 횟수/잠금 상태 초기화
     user = await clear_expired_login_lock_if_needed(db, user, now)
 
