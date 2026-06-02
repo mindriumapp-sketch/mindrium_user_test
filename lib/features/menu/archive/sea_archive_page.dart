@@ -13,6 +13,11 @@ import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:gad_app_team/features/menu/archive/character_battle.dart';
 import 'package:provider/provider.dart';
 
+final bool _enableWeek6ResolveLock = const bool.fromEnvironment(
+  'ENABLE_WEEK6_RESOLVE_LOCK',
+  defaultValue: false,
+);
+
 class SeaArchivePage extends StatefulWidget {
   const SeaArchivePage({super.key});
 
@@ -699,7 +704,8 @@ class _FishInfoPopup extends StatelessWidget {
     required String characterName,
     required String characterDescription,
   }) async {
-    if (context.read<UserProvider>().currentWeek < 6) {
+    if (_enableWeek6ResolveLock &&
+        context.read<UserProvider>().currentWeek < 6) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('6주차부터 사용할 수 있어요.')));
@@ -818,6 +824,7 @@ class _FishInfoPopup extends StatelessWidget {
     final resolvedCreatedAt = createdAt ?? DateTime.now();
     final resolvedArchivedAt = archivedAt ?? resolvedCreatedAt;
     final isResolveWeekUnlocked =
+        !_enableWeek6ResolveLock ||
         context.watch<UserProvider>().currentWeek >= 6;
     final canShowResolve =
         groupId.isNotEmpty &&

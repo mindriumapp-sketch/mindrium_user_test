@@ -21,6 +21,11 @@ import 'package:gad_app_team/data/today_task_draft_progress.dart';
 import 'package:gad_app_team/data/today_task_progress_sync.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 
+const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
+  'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
+  defaultValue: false,
+);
+
 /// SUD(0‒10)을 입력받아 저장하고, 점수에 따라 후속 행동을 안내하는 화면
 class BeforeSudRatingScreen extends StatefulWidget {
   final String? abcId;
@@ -252,8 +257,10 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
           if (_sud > 2) {
             final completedWeeks =
                 context.read<UserProvider>().lastCompletedWeek;
+            final canUseAlternativeThought =
+                !_enableWeek4HelpfulThoughtLock || completedWeeks >= 4;
             final nextRoute =
-                completedWeeks >= 4
+                canUseAlternativeThought
                     ? '/relax_or_alternative'
                     : '/relax_yes_or_no';
             Navigator.pushReplacementNamed(

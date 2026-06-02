@@ -30,6 +30,11 @@ import 'package:gad_app_team/navigation/screen/treatment_screen.dart';
 import 'package:gad_app_team/data/apply_solve_provider.dart';
 import 'package:gad_app_team/features/2nd_treatment/abc_visualization_screen.dart';
 
+final bool _enableWeek2ReliefLock = const bool.fromEnvironment(
+  'ENABLE_WEEK2_RELIEF_LOCK',
+  defaultValue: false,
+);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialIndex = 0});
   final int initialIndex;
@@ -348,6 +353,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   bool _hasCompletedWeek2MainProgram(UserProvider user) {
+    if (!_enableWeek2ReliefLock) return true;
+
     return user.lastCompletedWeek >= HomeWidgetTutorialController.unlockWeek ||
         user.currentWeek > HomeWidgetTutorialController.unlockWeek ||
         (user.currentWeek == HomeWidgetTutorialController.unlockWeek &&

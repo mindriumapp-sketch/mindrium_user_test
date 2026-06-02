@@ -14,6 +14,11 @@ import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
+const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
+  'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
+  defaultValue: false,
+);
+
 class DiarySelectScreen extends StatefulWidget {
   const DiarySelectScreen({super.key});
 
@@ -435,8 +440,12 @@ class _DiarySelectScreenState extends State<DiarySelectScreen> {
       );
 
       final completedWeeks = context.read<UserProvider>().lastCompletedWeek;
+      final canUseAlternativeThought =
+          !_enableWeek4HelpfulThoughtLock || completedWeeks >= 4;
       final highSudRoute =
-          completedWeeks >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
+          canUseAlternativeThought
+              ? '/relax_or_alternative'
+              : '/relax_yes_or_no';
       final nextRoute = beforeSud > 2 ? highSudRoute : '/diary_relax_home';
       Navigator.pushReplacementNamed(context, nextRoute, arguments: nextArgs);
     } on DioException catch (e) {

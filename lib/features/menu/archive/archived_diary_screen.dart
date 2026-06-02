@@ -11,6 +11,11 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/utils/server_datetime.dart';
 import 'package:provider/provider.dart';
 
+final bool _enableWeek4HelpfulThoughtLock = const bool.fromEnvironment(
+  'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
+  defaultValue: false,
+);
+
 /// 보관함 일기 목록 화면
 class ArchivedDiaryScreen extends StatefulWidget {
   final String groupId;
@@ -460,6 +465,8 @@ class _ArchivedDiaryScreenState extends State<ArchivedDiaryScreen> {
   }
 
   bool _isHelpfulThoughtUnlocked(UserProvider user) {
+    if (!_enableWeek4HelpfulThoughtLock) return true;
+
     return user.lastCompletedWeek >= 4 ||
         user.currentWeek > 4 ||
         (user.currentWeek == 4 && user.mainCompleted);

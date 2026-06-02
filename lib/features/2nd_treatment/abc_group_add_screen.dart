@@ -20,6 +20,11 @@ import '../../data/apply_solve_provider.dart';
 import 'loctime_selection_screen.dart';
 import 'week2_final_screen.dart';
 
+const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
+  'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
+  defaultValue: false,
+);
+
 class AbcGroupAddScreen extends StatefulWidget {
   final String? label;
   final String? diaryId;
@@ -186,7 +191,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       builder:
           (dialogCtx) => CustomPopupDesign(
             title: '알림 설정',
-            
+
             message:
                 '마지막에 기록한 위치/시간으로 알림을 설정할까요?\n'
                 '주소: $resolvedAddress\n'
@@ -295,7 +300,12 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
       final userProvider = context.read<UserProvider>();
       final week = userProvider.lastCompletedWeek;
       if (!mounted) return;
-      final route = week >= 4 ? '/relax_or_alternative' : '/relax_yes_or_no';
+      final canUseAlternativeThought =
+          !_enableWeek4HelpfulThoughtLock || week >= 4;
+      final route =
+          canUseAlternativeThought
+              ? '/relax_or_alternative'
+              : '/relax_yes_or_no';
       Navigator.pushReplacementNamed(context, route, arguments: args);
       return;
     }
