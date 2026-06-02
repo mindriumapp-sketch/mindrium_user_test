@@ -288,9 +288,9 @@ class AlarmNotificationService {
   static const MethodChannel _notificationLaunchChannel = MethodChannel(
     'mindrium/notification_launch',
   );
-  static const EventChannel _notificationLaunchEventChannel = EventChannel(
-    'mindrium/notification_launch_events',
-  );
+  // static const EventChannel _notificationLaunchEventChannel = EventChannel(
+  //   'mindrium/notification_launch_events',
+  // );
   static const int _todayTaskReminderHour = 19;
   static const int _todayTaskReminderMinute = 30;
   static const List<_EducationReminderSlot> _educationReminderSlots = [
@@ -313,6 +313,7 @@ class AlarmNotificationService {
   );
 
   bool _initialized = false;
+  Future<void>? _initializing;
   bool _locationListenerBound = false;
   bool? _canScheduleExactAlarms;
   StreamSubscription<dynamic>? _notificationLaunchSubscription;
@@ -325,6 +326,22 @@ class AlarmNotificationService {
   Future<void> initialize() async {
     if (_initialized) return;
 
+    final existing = _initializing;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+
+    _initializing = _initializeInternal();
+
+    try {
+      await _initializing;
+    } finally {
+      _initializing = null;
+    }
+  }
+
+  Future<void> _initializeInternal() async {
     tzdata.initializeTimeZones();
     _setBestEffortLocalLocation();
 
@@ -471,6 +488,11 @@ class AlarmNotificationService {
     }
   }
 
+  Future<void> dispose() async {
+    await _notificationLaunchSubscription?.cancel();
+    _notificationLaunchSubscription = null;
+  }
+
   void _onDidReceiveNotificationResponse(NotificationResponse response) {
     _handleNotificationTapPayload(response.payload);
   }
@@ -520,45 +542,41 @@ class AlarmNotificationService {
     }
     return const {'action': 'start_apply'};
   }
+  
+Future<void> _initializeNativeNotificationLaunchBridge() async {
+// 현재 Android 네이티브에 mindrium/notification_launch_events EventChannel 구현이 없음.
+  // EventChannel 구독 시 MissingPluginException이 발생하므로 구독을 비활성화한다.
+  //
+  // 알림 탭 처리는 flutter_local_notifications의
+  // onDidReceiveNotificationResponse 및 getNotificationAppLaunchDetails()로 처리한다.
 
-  Future<void> _initializeNativeNotificationLaunchBridge() async {
-    _notificationLaunchSubscription ??= _notificationLaunchEventChannel
-        .receiveBroadcastStream()
-        .listen(
-          (dynamic event) {
-            final payload = event?.toString();
-            if (kDebugMode) {
-              debugPrint('[notificationTap][nativeEvent] payload=$payload');
-            }
-            _handleNotificationTapPayload(payload);
-          },
-          onError: (Object error) {
-            if (kDebugMode) {
-              debugPrint('[notificationTap][nativeEvent] stream error: $error');
-            }
-          },
-        );
+  try {
+    final payload = await _notificationLaunchChannel.invokeMethod<String>(
+      'getInitialNotificationPayload',
+    );
 
-    try {
-      final payload = await _notificationLaunchChannel.invokeMethod<String>(
-        'getInitialNotificationPayload',
-      );
-      if (payload != null && payload.trim().isNotEmpty) {
-        if (kDebugMode) {
-          debugPrint('[notificationTap][nativeInitial] payload=$payload');
-        }
-        _handleNotificationTapPayload(payload);
-      }
-    } on MissingPluginException {
-      // Android and older iOS builds won't provide this fallback channel.
-    } on PlatformException catch (e) {
+    if (payload != null && payload.trim().isNotEmpty) {
       if (kDebugMode) {
-        debugPrint(
-          '[notificationTap][nativeInitial] failed: ${e.code} ${e.message}',
-        );
+        debugPrint('[notificationTap][nativeInitial] payload=$payload');
       }
+      _handleNotificationTapPayload(payload);
+    }
+  } on MissingPluginException {
+    if (kDebugMode) {
+      debugPrint('[notificationTap][nativeInitial] MethodChannel unavailable');
+    }
+  } on PlatformException catch (e) {
+    if (kDebugMode) {
+      debugPrint(
+        '[notificationTap][nativeInitial] failed: ${e.code} ${e.message}',
+      );
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('[notificationTap][nativeInitial] unexpected error: $e');
     }
   }
+}
 
   bool _isDuplicateNotificationPayload(String? payloadRaw) {
     final normalized = payloadRaw?.trim();

@@ -12,6 +12,12 @@ class UserMe(UserBase):
     patient_id: Optional[str] = None
     survey_completed: bool
     email_verified: bool
+    # 인증정보 관리 정책 확인용 필드_IA-04
+    must_change_password: bool = False
+    password_changed_at: datetime | None = None
+    password_policy_days: int = 90
+    initial_password_issued_at: datetime | None = None
+    
     last_active_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

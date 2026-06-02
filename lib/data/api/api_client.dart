@@ -1,7 +1,9 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, HttpClient;
 
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+
 import '../storage/token_storage.dart';
 
 /// Release HTTP 허용 호스트 (SI-01). [API_BASE_URL] define 과 맞출 것.
@@ -11,6 +13,21 @@ const int _allowedCleartextApiPort = 8070;
 const String _envBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: '',
+);
+
+const bool _useBurpProxy = bool.fromEnvironment(
+  'USE_BURP_PROXY',
+  defaultValue: false,
+);
+
+const String _burpProxyHost = String.fromEnvironment(
+  'BURP_PROXY_HOST',
+  defaultValue: '10.0.2.2',
+);
+
+const String _burpProxyPort = String.fromEnvironment(
+  'BURP_PROXY_PORT',
+  defaultValue: '8080',
 );
 
 class ApiClient {
@@ -71,6 +88,26 @@ class ApiClient {
           sendTimeout: const Duration(seconds: 30),
         ),
       ) {
+    if (_useBurpProxy && !kIsWeb) {
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.findProxy = (uri) {
+            return 'PROXY $_burpProxyHost:$_burpProxyPort';
+          };
+          return client;
+        },
+      );
+
+      debugPrint(
+        '[ApiClient] Burp proxy enabled: $_burpProxyHost:$_burpProxyPort',
+      );
+    }
+
+    if (kDebugMode) {
+      debugPrint('[ApiClient] baseUrl=${this.baseUrl}');
+    }
+
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {

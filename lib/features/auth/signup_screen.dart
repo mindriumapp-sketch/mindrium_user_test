@@ -8,6 +8,7 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/api/auth_error_messages.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/features/auth/auth_session_helper.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
@@ -372,6 +373,16 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         child: Column(
           children: [
+            const Text(
+              AuthSecurityCopy.systemUseNotice,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: Color(0xFF5B6573),
+              ),
+            ),
+            const SizedBox(height: 12),
             _buildLabeledInput(
               title: '이메일',
               controller: emailController,
@@ -393,7 +404,6 @@ class _SignupScreenState extends State<SignupScreen> {
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
             const SizedBox(height: _formSpacing),
-
             _buildLabeledInput(
               title: '전화번호',
               controller: phoneController,
@@ -404,7 +414,6 @@ class _SignupScreenState extends State<SignupScreen> {
               errorText: _phoneError,
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
-
             const SizedBox(height: _formSpacing),
             _buildLabeledPasswordInput(
               title: '비밀번호',
@@ -432,7 +441,6 @@ class _SignupScreenState extends State<SignupScreen> {
               onChanged: (_) => _clearFormErrorOnTyping(),
             ),
             const SizedBox(height: _formSpacing),
-
             _buildLabeledInput(
               title: '마인드리움 코드',
               controller: patientCodeController,
@@ -600,5 +608,4 @@ class _SignupScreenState extends State<SignupScreen> {
       ],
     );
   }
-
 }

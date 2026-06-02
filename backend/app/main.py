@@ -60,6 +60,16 @@ async def lifespan(app: FastAPI):
             name="idx_created_at",
         )
 
+        await users.create_index(
+            "password_changed_at",
+            name="idx_password_changed_at",
+        )
+
+        await users.create_index(
+            "must_change_password",
+            name="idx_must_change_password",
+        )
+
         print("[OK] users 인덱스 생성/확인 완료")
     except Exception as e:
         print(f"[WARN] users 인덱스 생성 중 오류: {e}")

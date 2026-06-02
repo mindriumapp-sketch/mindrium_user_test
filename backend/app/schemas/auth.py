@@ -22,6 +22,9 @@ class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    # 인증정보 관리 정책 확인용 필드_IA-04
+    must_change_password: bool = False
+    password_expired: bool = False
     password_change_recommended: bool = False
     password_change_notice: str | None = None
 
@@ -46,7 +49,7 @@ class SignupRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=20)
 
 
 class RefreshRequest(BaseModel):

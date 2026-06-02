@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:gad_app_team/common/auth_security_copy.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
@@ -75,6 +76,16 @@ class LoginDesign extends StatelessWidget {
                           'assets/image/logo.png',
                           height: 120,
                           width: 120,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          AuthSecurityCopy.systemUseNotice,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: Color(0xFF5B6573),
+                          ),
                         ),
                         const SizedBox(height: 20),
                         InputTextField(

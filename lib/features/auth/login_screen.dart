@@ -56,7 +56,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final loginMeta = await authApi.login(email: email, password: password);
+      final loginResult = await authApi.login(email: email, password: password);
+
+      if (loginResult.mustChangePassword || loginResult.passwordExpired) {
+        if (!mounted) return;
+
+        Navigator.pushReplacementNamed(
+          context,
+          '/account_management',
+          arguments: {
+            'force': true,
+            'reason': loginResult.passwordExpired ? 'expired' : 'initial',
+          },
+        );
+
+        return;
+      }
 
       await AuthSessionHelper.completeSession(
         userProvider: userProvider,
@@ -67,9 +82,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      if (loginMeta.passwordChangeRecommended) {
+      if (loginResult.passwordChangeRecommended) {
         final notice =
-            loginMeta.passwordChangeNotice ??
+            loginResult.passwordChangeNotice ??
             '비밀번호 변경을 권장합니다. 설정 → 계정 관리에서 변경할 수 있습니다.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(notice)),
@@ -81,6 +96,20 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         hasSurvey ? '/home' : '/tutorial',
       );
+    } on AuthException catch (e) {
+      await tokens.clear();
+      await authApi.logout();
+      userProvider.reset();
+      todayTaskProvider.reset();
+      dayCounter.reset();
+
+      if (kDebugMode) {
+        debugPrint('Login failed: ${e.runtimeType}');
+      }
+
+      if (!mounted) return;
+
+      _showError(e.message);
     } catch (e) {
       await tokens.clear();
       await authApi.logout();
@@ -91,6 +120,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (kDebugMode) {
         debugPrint('Login failed: ${e.runtimeType}');
       }
+
+      if (!mounted) return;
 
       final message = e is DioException
           ? AuthErrorMessages.fromDioException(e, isSignup: false)

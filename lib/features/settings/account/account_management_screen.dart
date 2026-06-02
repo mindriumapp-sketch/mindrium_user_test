@@ -8,15 +8,68 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 
-class AccountManagementScreen extends StatelessWidget {
+class AccountManagementScreen extends StatefulWidget {
   const AccountManagementScreen({super.key});
+
+  @override
+  State<AccountManagementScreen> createState() =>
+      _AccountManagementScreenState();
+}
+
+class _AccountManagementScreenState extends State<AccountManagementScreen> {
+  bool _forceDialogShown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_forceDialogShown) return;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['force'] == true) {
+      _forceDialogShown = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showChangePasswordDialog(
+          context,
+          force: true,
+          reason: args['reason'] as String?,
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: const CustomAppBar(
+      appBar: ModalRoute.of(context)?.settings.arguments is Map &&
+            (ModalRoute.of(context)?.settings.arguments as Map)['force'] == true
+        ? AppBar(
+            title: const Text(
+              '계정 관리',
+              style: TextStyle(
+                color: Color(0xFF1E2F3F),
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Noto Sans KR',
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              color: const Color(0xFF1E2F3F),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('비밀번호 변경 후 이용할 수 있습니다.')),
+                );
+              },
+            ),
+          )
+        : const CustomAppBar(
         title: '계정 관리',
         showHome: false,
         confirmOnBack: false,
@@ -269,7 +322,11 @@ class AccountManagementScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _showChangePasswordDialog(BuildContext context) async {
+  Future<void> _showChangePasswordDialog(
+    BuildContext context, {
+    bool force = false,
+    String? reason,
+    }) async {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
@@ -368,10 +425,10 @@ class AccountManagementScreen extends StatelessWidget {
 
     await showDialog<void>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: !force,
       barrierColor: const Color(0x7A132333),
       builder: (dialogContext) {
-        final bottomInset = MediaQuery.of(dialogContext).viewInsets.bottom;
+        // final bottomInset = MediaQuery.of(dialogContext).viewInsets.bottom;
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             final String currentPassword = currentPasswordController.text.trim();
@@ -386,10 +443,10 @@ class AccountManagementScreen extends StatelessWidget {
             return Dialog(
               backgroundColor: Colors.transparent,
               insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: AnimatedPadding(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(bottom: bottomInset),
+              // child: AnimatedPadding(
+              //   duration: const Duration(milliseconds: 180),
+              //   curve: Curves.easeOut,
+              //   padding: EdgeInsets.only(bottom: bottomInset),
                 child: Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFCFFFFFF),
@@ -430,9 +487,13 @@ class AccountManagementScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Text(
-                              '비밀번호 변경',
-                              style: TextStyle(
+                            Text(
+                              force
+                                  ? reason == 'expired'
+                                      ? '비밀번호 변경 필요'
+                                      : '초기 비밀번호 변경'
+                                  : '비밀번호 변경',
+                              style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF1E2F3F),
@@ -442,9 +503,11 @@ class AccountManagementScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        const Text(
-                          '현재 비밀번호 확인 후 새 비밀번호로 변경합니다.',
-                          style: TextStyle(
+                        Text(
+                          force
+                              ? '보안을 위해 비밀번호를 변경한 후 서비스를 이용할 수 있어요.'
+                              : '현재 비밀번호 확인 후 새 비밀번호로 변경합니다.',
+                          style: const TextStyle(
                             fontSize: 13.5,
                             color: Color(0xFF8A97A3),
                             height: 1.4,
@@ -568,29 +631,31 @@ class AccountManagementScreen extends StatelessWidget {
                         const SizedBox(height: 14),
                         Row(
                           children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed:
-                                    isSubmitting
-                                        ? null
-                                        : () => Navigator.of(dialogContext).pop(),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFFD6E1EB)),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
+                            if (!force) ...[
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed:
+                                      isSubmitting
+                                          ? null
+                                          : () => Navigator.of(dialogContext).pop(),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Color(0xFFD6E1EB)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                   ),
-                                ),
-                                child: const Text(
-                                  '취소',
-                                  style: TextStyle(
-                                    color: Color(0xFF5E6F80),
-                                    fontFamily: 'Noto Sans KR',
-                                    fontWeight: FontWeight.w700,
+                                  child: const Text(
+                                    '취소',
+                                    style: TextStyle(
+                                      color: Color(0xFF5E6F80),
+                                      fontFamily: 'Noto Sans KR',
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                             const SizedBox(width: 10),
                             Expanded(
                               child: FilledButton(
@@ -626,7 +691,7 @@ class AccountManagementScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                ),
+                // ),
               ),
             );
           },

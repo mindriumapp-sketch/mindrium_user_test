@@ -1,13 +1,14 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 import os
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pymongo.errors import DuplicateKeyError
 
 from core.config import get_settings
+from core.rate_limit import auth_rate_limiter, client_ip
 from core.account_lock import (
     assert_not_locked,
     build_failed_login_update,
@@ -105,6 +106,177 @@ def _platform_signup_url() -> str:
     return url
 
 
+# 인증정보 변경 주기 정책_IA-04
+DEFAULT_PASSWORD_POLICY_DAYS = 90 
+
+# 로그인 실패 제한 정책_IA-07
+MAX_LOGIN_FAILED_ATTEMPTS = 5
+LOGIN_LOCK_MINUTES = 15
+
+AUTH_FAILURE_MESSAGE = "이메일 혹은 비밀번호 정보가 올바르지 않습니다."
+AUTH_LOCK_MESSAGE = "로그인 시도가 일시적으로 제한되었습니다."
+
+
+def auth_failure_detail(
+    *,
+    reason_code: str,
+    failed_attempts: int | None = None,
+    remaining_attempts: int | None = None,
+    locked: bool = False,
+    locked_until: datetime | None = None,
+    lock_remaining_minutes: int | None = None,
+):
+    """
+    사용자 및 외부 API 응답에는 구체적인 실패 원인을 노출하지 않는다.
+    reason_code는 호출부 호환을 위해 받지만 응답에는 포함하지 않는다.
+    """
+    return {
+        "message": AUTH_LOCK_MESSAGE if locked else AUTH_FAILURE_MESSAGE,
+        "code": "AUTH_LOCKED" if locked else "AUTH_FAILED",
+        "failed_attempts": failed_attempts,
+        "remaining_attempts": remaining_attempts,
+        "max_attempts": MAX_LOGIN_FAILED_ATTEMPTS,
+        "lock_threshold": MAX_LOGIN_FAILED_ATTEMPTS,
+        "lock_minutes": LOGIN_LOCK_MINUTES,
+        "locked": locked,
+        "locked_until": locked_until.isoformat() if locked_until else None,
+        "lock_remaining_minutes": lock_remaining_minutes,
+    }
+
+def as_utc_datetime(value):
+    """
+    MongoDB에서 가져온 datetime이 timezone 정보 없이 들어오는 경우를 대비해 UTC로 보정.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    return None
+
+
+def is_password_expired(user: dict, now: datetime) -> bool:
+    """
+    password_changed_at 기준으로 password_policy_days가 지났는지 확인.
+    """
+    password_changed_at = as_utc_datetime(user.get("password_changed_at"))
+    password_policy_days = int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS))
+
+    if password_changed_at is None:
+        return False
+
+    return now >= password_changed_at + timedelta(days=password_policy_days)
+
+def get_login_locked_until(user: dict) -> datetime | None:
+    """
+    로그인 잠금 만료 시각을 UTC datetime으로 반환.
+    """
+    return as_utc_datetime(user.get("login_locked_until"))
+
+
+def is_login_locked(user: dict, now: datetime) -> bool:
+    """
+    현재 시각 기준 로그인 잠금 상태인지 확인.
+    """
+    locked_until = get_login_locked_until(user)
+    if locked_until is None:
+        return False
+    return now < locked_until
+
+
+def get_remaining_lock_minutes(user: dict, now: datetime) -> int:
+    """
+    로그인 잠금 해제까지 남은 시간을 분 단위로 반환.
+    """
+    locked_until = get_login_locked_until(user)
+    if locked_until is None:
+        return 0
+
+    remaining_seconds = max(0, int((locked_until - now).total_seconds()))
+    return max(1, (remaining_seconds + 59) // 60)
+
+
+async def record_failed_login(db, user: dict, now: datetime):
+    """
+    로그인 실패 횟수를 증가시키고, 기준 횟수 초과 시 계정을 일시 잠금.
+    """
+    current_count = int(user.get("failed_login_count", 0))
+    next_count = current_count + 1
+
+    update_doc = {
+        "failed_login_count": next_count,
+        "last_failed_login_at": now,
+        "updated_at": now,
+    }
+
+    if next_count >= MAX_LOGIN_FAILED_ATTEMPTS:
+        update_doc["login_locked_until"] = now + timedelta(
+            minutes=LOGIN_LOCK_MINUTES
+        )
+
+    await db["users"].update_one(
+        {"_id": user["_id"]},
+        {"$set": update_doc},
+    )
+
+    return next_count, update_doc.get("login_locked_until")
+
+
+async def clear_failed_login_state(db, user: dict, now: datetime):
+    """
+    로그인 성공 시 실패 횟수 및 잠금 상태 초기화.
+    """
+    await db["users"].update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "failed_login_count": 0,
+                "last_active_at": now,
+                "updated_at": now,
+            },
+            "$unset": {
+                "login_locked_until": "",
+                "last_failed_login_at": "",
+            },
+        },
+    )
+
+async def clear_expired_login_lock_if_needed(db, user: dict, now: datetime) -> dict:
+    """
+    로그인 잠금 시간이 만료된 경우 실패 횟수와 잠금 상태를 초기화한다.
+    잠금이 아직 유효하면 기존 user를 그대로 반환한다.
+    """
+    locked_until = get_login_locked_until(user)
+
+    if locked_until is None:
+        return user
+
+    if now < locked_until:
+        return user
+
+    await db["users"].update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "failed_login_count": 0,
+                "updated_at": now,
+            },
+            "$unset": {
+                "login_locked_until": "",
+                "last_failed_login_at": "",
+            },
+        },
+    )
+
+    user["failed_login_count"] = 0
+    user.pop("login_locked_until", None)
+    user.pop("last_failed_login_at", None)
+
+    return user
+
 async def signup_with_platform(payload: SignupRequest) -> str:
     """
     플랫폼 /auth/signup에 회원가입을 위임하고 patient_id를 반환한다.
@@ -152,8 +324,10 @@ async def signup_with_platform(payload: SignupRequest) -> str:
 @router.post("/signup", response_model=TokenPair)
 async def signup(
     payload: SignupRequest,
+    request: Request,
     db=Depends(get_db),
 ):
+    auth_rate_limiter.check(f"signup:{client_ip(request)}")
     # 1) 입력 검증
     phone_digits = phone_to_digits(payload.phone)
     if not phone_digits:
@@ -217,11 +391,19 @@ async def signup(
         "patient_code": patient_code,
         "phone": phone_digits,
         "password_hash": hash_password(payload.password),
+        # 인증정보 관리 정책 확인용 필드_IA-04/ 일반 회원가입은 사용자가 직접 비밀번호를 설정하므로 최초 변경 강제는 False
+        "must_change_password": False,
         "password_changed_at": now,
+        "password_policy_days": DEFAULT_PASSWORD_POLICY_DAYS,
+        "initial_password_issued_at": None,
         "failed_login_count": 0,
         "locked_until": None,
         "is_deleted": False,
         "updated_at": now,
+        # 로그인 실패 제한 정책_IA-07
+        "failed_login_count": 0,
+        "last_failed_login_at": None,
+        "login_locked_until": None,
     }
 
     if existing_patient:
@@ -262,9 +444,15 @@ async def signup(
 @router.post("/login", response_model=TokenPair)
 async def login(
     payload: LoginRequest,
+    request: Request,
     db=Depends(get_db),
 ):
+    auth_rate_limiter.check(f"login:{client_ip(request)}")
+
+    now = datetime.now(timezone.utc)
+
     user = await db["users"].find_one({"email": payload.email})
+
     if user and user.get("is_deleted"):
         raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
 
@@ -274,14 +462,39 @@ async def login(
     stored_hash = user.get("password_hash") if user else None
     if not user or not stored_hash or not verify_password(payload.password, stored_hash):
         if user:
-            now = datetime.now(timezone.utc)
             fail_set = build_failed_login_update(user, now)
             await db["users"].update_one({"_id": user["_id"]}, {"$set": fail_set})
             raise failed_login_http_error(fail_set)
+
         raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
 
-    return await _issue_token_pair(db, user["_id"], user)
+    password_expired = is_password_expired(user, now)
+    must_change_password = bool(user.get("must_change_password", False)) or password_expired
 
+    await db["users"].update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "failed_login_count": 0,
+                "last_active_at": now,
+                "updated_at": now,
+            },
+            "$unset": {
+                "login_locked_until": "",
+                "last_failed_login_at": "",
+            },
+        },
+    )
+
+    token_pair = await _issue_token_pair(db, user["_id"], user)
+
+    return TokenPair(
+        access_token=token_pair.access_token,
+        refresh_token=token_pair.refresh_token,
+        token_type=token_pair.token_type,
+        must_change_password=must_change_password,
+        password_expired=password_expired,
+    )
 
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(payload: RefreshRequest, db=Depends(get_db)):
@@ -331,7 +544,10 @@ async def change_password(
         {
             "$set": {
                 "password_hash": hash_password(payload.new_password),
-                "password_changed_at": datetime.now(timezone.utc),
+                # 인증정보 관리 정책 확인용 필드_IA-04
+                "must_change_password": False,
+                "password_changed_at":  datetime.now(timezone.utc),
+                "password_policy_days": int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS)),
                 "updated_at": datetime.now(timezone.utc),
                 **clear_login_lock_fields(),
             },
@@ -397,7 +613,10 @@ async def password_reset_finish(payload: PasswordResetFinishRequest, db=Depends(
         {
             "$set": {
                 "password_hash": hash_password(payload.new_password),
+                # 인증정보 관리 정책 확인용 필드_IA-04
+                "must_change_password": False,
                 "password_changed_at": now,
+                "password_policy_days": int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS)),
                 "updated_at": now,
                 **clear_login_lock_fields(),
             },
