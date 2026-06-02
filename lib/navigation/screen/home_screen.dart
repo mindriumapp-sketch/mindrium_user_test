@@ -246,7 +246,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _startOrResumeTodayTaskDiary() async {
-    final todayTask = context.read<TodayTaskProvider>();
+    // 완료 후 재진입을 허용하기 위해 기존 완료 차단 체크는 주석 처리.
+    // final todayTask = context.read<TodayTaskProvider>();
     TodayTaskDraftSnapshot? draft;
     try {
       final rawDraft = await _diariesApi.getLatestTodayTaskDraft();
@@ -272,13 +273,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     if (draft == null) {
-      if (todayTask.diaryDone) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('오늘의 일기는 이미 완료했어요.')));
-        return;
-      }
+      // 완료 후 재진입 허용: 기존에는 완료된 오늘의 일기를 다시 시작하지 못하게 막았다.
+      // if (todayTask.diaryDone) {
+      //   if (!mounted) return;
+      //   ScaffoldMessenger.of(
+      //     context,
+      //   ).showSnackBar(const SnackBar(content: Text('오늘의 일기는 이미 완료했어요.')));
+      //   return;
+      // }
       await _startFreshTodayTaskDiary();
       return;
     }
@@ -1233,7 +1235,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildTaskCard(_DailyTask task, {bool showConnector = true}) {
     final isDone = task.isDone;
-    final onTap = isDone ? null : task.onTap;
+    // 완료 후 재진입 허용: 완료된 카드도 탭 가능하게 둔다.
+    // final onTap = isDone ? null : task.onTap;
+    final onTap = task.onTap;
     final taskHeight = _taskHeightFor(task);
     final iconTop = _iconTopFor(task);
     final connectorSplit = taskHeight / 2;
