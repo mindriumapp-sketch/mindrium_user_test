@@ -82,6 +82,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
+      if (loginResult.passwordChangeRecommended) {
+        final notice =
+            loginResult.passwordChangeNotice ??
+            '비밀번호 변경을 권장합니다. 설정 → 계정 관리에서 변경할 수 있습니다.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(notice)),
+        );
+      }
+
       final hasSurvey = userProvider.surveyCompleted;
       Navigator.pushReplacementNamed(
         context,

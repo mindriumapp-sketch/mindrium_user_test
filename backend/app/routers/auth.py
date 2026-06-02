@@ -9,6 +9,14 @@ from pymongo.errors import DuplicateKeyError
 
 from core.config import get_settings
 from core.rate_limit import auth_rate_limiter, client_ip
+from core.account_lock import (
+    assert_not_locked,
+    build_failed_login_update,
+    clear_login_lock_fields,
+    failed_login_http_error,
+    password_change_notice,
+    password_change_recommended,
+)
 from db.mongo import get_db
 from routers.custom_tags import ensure_default_custom_tags
 from routers.worry_groups import ensure_default_worry_group
@@ -42,6 +50,33 @@ settings = get_settings()
 router = APIRouter(prefix="/auth")
 
 _INVALID_CREDENTIALS = "Invalid credentials"
+_PASSWORD_RESET_ACK = (
+    "If the email is registered, password reset instructions have been sent."
+)
+
+
+async def _issue_token_pair(db, obj_id: ObjectId, user: dict) -> TokenPair:
+    sub = str(obj_id)
+    now = datetime.now(timezone.utc)
+    refresh_raw = create_refresh_token(sub)
+    await db["users"].update_one(
+        {"_id": obj_id},
+        {
+            "$set": {
+                "refresh_hash": hash_refresh_token(refresh_raw),
+                "refresh_issued_at": now,
+                "last_active_at": now,
+                **clear_login_lock_fields(),
+            }
+        },
+    )
+    rec = password_change_recommended(user, now)
+    return TokenPair(
+        access_token=create_access_token(sub),
+        refresh_token=refresh_raw,
+        password_change_recommended=rec,
+        password_change_notice=password_change_notice(user) if rec else None,
+    )
 
 # =========================================================
 # phone 정규화 정책
@@ -59,12 +94,16 @@ def _norm_pid(v) -> str | None:
     return s or None
 
 
-# 로컬 네이티브 실행 시 127.0.0.1 권장. Docker 안에서 호스트로 붙을 때는 PLATFORM_SIGNUP_URL=http://host.docker.internal:8061/auth/signup
-PLATFORM_SIGNUP_URL = (
-    os.getenv("PLATFORM_SIGNUP_URL")
-    or os.getenv("PLATFORM_VERIFY_URL")
-    or "http://127.0.0.1:8061/auth/signup"
-)
+def _platform_signup_url() -> str:
+    url = (
+        os.getenv("PLATFORM_SIGNUP_URL") or os.getenv("PLATFORM_VERIFY_URL") or ""
+    ).strip()
+    if not url:
+        raise HTTPException(
+            status_code=503,
+            detail="PLATFORM_SIGNUP_URL is not configured.",
+        )
+    return url
 
 
 # 인증정보 변경 주기 정책_IA-04
@@ -247,20 +286,21 @@ async def signup_with_platform(payload: SignupRequest) -> str:
         "email": payload.email,
         "password": payload.password,
         "name": payload.name,
+        "gender": payload.gender or "",
+        "address": payload.address or "",
         "patient_code": (payload.patient_code or "").strip(),
-        "gender": payload.gender,
-        "address": payload.address,
     }
 
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.post(PLATFORM_SIGNUP_URL, json=platform_payload)
+            platform_url = _platform_signup_url()
+            res = await client.post(platform_url, json=platform_payload)
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=502,
             detail=(
                 "Platform signup service unavailable: "
-                f"cannot reach {PLATFORM_SIGNUP_URL} ({type(e).__name__}). "
+                f"cannot reach {_platform_signup_url()} ({type(e).__name__}). "
                 "Check that the platform server is running and PLATFORM_SIGNUP_URL is correct."
             ),
         )
@@ -346,8 +386,8 @@ async def signup(
         "patient_id": patient_id,
         "email": payload.email,
         "name": payload.name,
-        "gender": payload.gender,
-        "address": payload.address,
+        "gender": payload.gender or "",
+        "address": payload.address or "",
         "patient_code": patient_code,
         "phone": phone_digits,
         "password_hash": hash_password(payload.password),
@@ -356,6 +396,9 @@ async def signup(
         "password_changed_at": now,
         "password_policy_days": DEFAULT_PASSWORD_POLICY_DAYS,
         "initial_password_issued_at": None,
+        "failed_login_count": 0,
+        "locked_until": None,
+        "is_deleted": False,
         "updated_at": now,
         # 로그인 실패 제한 정책_IA-07
         "failed_login_count": 0,
@@ -394,16 +437,8 @@ async def signup(
     await ensure_default_custom_tags(db, user_id)
     await ensure_default_worry_group(db, user_id)
 
-    sub = str(obj_id)
-    refresh_raw = create_refresh_token(sub)
-    await db["users"].update_one(
-        {"_id": obj_id},
-        {"$set": {"refresh_hash": hash_refresh_token(refresh_raw), "refresh_issued_at": now}},
-    )
-    return TokenPair(
-        access_token=create_access_token(sub),
-        refresh_token=refresh_raw,
-    )
+    user_doc = await db["users"].find_one({"_id": obj_id}) or {}
+    return await _issue_token_pair(db, obj_id, user_doc)
 
 
 @router.post("/login", response_model=TokenPair)
@@ -418,78 +453,20 @@ async def login(
 
     user = await db["users"].find_one({"email": payload.email})
 
-    # 1) 존재하지 않는 이메일
-    # 사용자 화면에는 계정 존재 여부를 직접 노출하지 않음.
-    # API 응답에는 일반화된 인증 실패 메시지와 정책 정보만 제공.
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail=auth_failure_detail(
-                reason_code="USER_NOT_FOUND_OR_INVALID_PASSWORD",
-                failed_attempts=None,
-                remaining_attempts=None,
-                locked=False,
-            ),
-        )
+    if user and user.get("is_deleted"):
+        raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
 
-    # 잠금 시간이 이미 지난 계정은 여기서 실패 횟수/잠금 상태 초기화
-    user = await clear_expired_login_lock_if_needed(db, user, now)
+    if user:
+        assert_not_locked(user)
 
-    # 2) 이미 잠금 상태인 경우
-    if is_login_locked(user, now):
-        remaining_minutes = get_remaining_lock_minutes(user, now)
-        locked_until = get_login_locked_until(user)
-        failed_count = int(user.get("failed_login_count", 0))
+    stored_hash = user.get("password_hash") if user else None
+    if not user or not stored_hash or not verify_password(payload.password, stored_hash):
+        if user:
+            fail_set = build_failed_login_update(user, now)
+            await db["users"].update_one({"_id": user["_id"]}, {"$set": fail_set})
+            raise failed_login_http_error(fail_set)
 
-        raise HTTPException(
-            status_code=423,
-            detail=auth_failure_detail(
-                reason_code="LOGIN_LOCK_ACTIVE",
-                failed_attempts=failed_count,
-                remaining_attempts=0,
-                locked=True,
-                locked_until=locked_until,
-                lock_remaining_minutes=remaining_minutes,
-            ),
-        )
-
-    stored_hash = user.get("password_hash")
-
-    # 3) 비밀번호 미설정 또는 비밀번호 불일치
-    if not stored_hash or not verify_password(payload.password, stored_hash):
-        failed_count, locked_until = await record_failed_login(db, user, now)
-
-        if locked_until is not None:
-            raise HTTPException(
-                status_code=423,
-                detail=auth_failure_detail(
-                    reason_code="LOGIN_LOCKED_BY_FAILED_ATTEMPTS",
-                    failed_attempts=failed_count,
-                    remaining_attempts=0,
-                    locked=True,
-                    locked_until=locked_until,
-                    lock_remaining_minutes=LOGIN_LOCK_MINUTES,
-                ),
-            )
-
-        remaining_attempts = max(
-            0,
-            MAX_LOGIN_FAILED_ATTEMPTS - failed_count,
-        )
-
-        raise HTTPException(
-            status_code=401,
-            detail=auth_failure_detail(
-                reason_code="USER_NOT_FOUND_OR_INVALID_PASSWORD",
-                failed_attempts=failed_count,
-                remaining_attempts=remaining_attempts,
-                locked=False,
-            ),
-        )
-
-    # 4) 로그인 성공
-    sub = str(user["_id"])
-    refresh_raw = create_refresh_token(sub)
+        raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
 
     password_expired = is_password_expired(user, now)
     must_change_password = bool(user.get("must_change_password", False)) or password_expired
@@ -498,10 +475,8 @@ async def login(
         {"_id": user["_id"]},
         {
             "$set": {
-                "refresh_hash": hash_refresh_token(refresh_raw),
-                "refresh_issued_at": now,
-                "last_active_at": now,
                 "failed_login_count": 0,
+                "last_active_at": now,
                 "updated_at": now,
             },
             "$unset": {
@@ -511,9 +486,12 @@ async def login(
         },
     )
 
+    token_pair = await _issue_token_pair(db, user["_id"], user)
+
     return TokenPair(
-        access_token=create_access_token(sub),
-        refresh_token=refresh_raw,
+        access_token=token_pair.access_token,
+        refresh_token=token_pair.refresh_token,
+        token_type=token_pair.token_type,
         must_change_password=must_change_password,
         password_expired=password_expired,
     )
@@ -571,6 +549,7 @@ async def change_password(
                 "password_changed_at":  datetime.now(timezone.utc),
                 "password_policy_days": int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS)),
                 "updated_at": datetime.now(timezone.utc),
+                **clear_login_lock_fields(),
             },
             "$unset": {"refresh_hash": "", "refresh_issued_at": ""},
         },
@@ -580,28 +559,23 @@ async def change_password(
 
 @router.post("/password/reset/start")
 async def password_reset_start(payload: PasswordResetStartRequest, db=Depends(get_db)):
-    user = await db["users"].find_one({"email": payload.email})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    token = create_password_reset_token(str(user["_id"]))
-    token_hash = hash_token(token)
-    now = datetime.now(timezone.utc)
-
-    await db["users"].update_one(
-        {"_id": user["_id"]},
-        {
-            "$set": {
-                "password_reset_hash": token_hash,
-                "password_reset_requested_at": now,
-            }
-        },
+    user = await db["users"].find_one(
+        {"email": payload.email, "is_deleted": {"$ne": True}}
     )
-    return {
-        "success": True,
-        "message": "Password reset token issued",
-        "token_debug": token,
-    }
+    if user:
+        token = create_password_reset_token(str(user["_id"]))
+        token_hash = hash_token(token)
+        now = datetime.now(timezone.utc)
+        await db["users"].update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "password_reset_hash": token_hash,
+                    "password_reset_requested_at": now,
+                }
+            },
+        )
+    return {"success": True, "message": _PASSWORD_RESET_ACK}
 
 
 @router.post("/password/reset/finish")
@@ -644,6 +618,7 @@ async def password_reset_finish(payload: PasswordResetFinishRequest, db=Depends(
                 "password_changed_at": now,
                 "password_policy_days": int(user.get("password_policy_days", DEFAULT_PASSWORD_POLICY_DAYS)),
                 "updated_at": now,
+                **clear_login_lock_fields(),
             },
             "$unset": {
                 "password_reset_hash": "",

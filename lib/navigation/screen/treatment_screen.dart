@@ -163,6 +163,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     }
 
     _tryAutoScrollToCurrentWeek(currentWeek);
+    const unlockAllWeeks = true;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -177,16 +178,22 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
         completedWeeks: completedWeeks,
         cbtCompletedWeeks: <int>{
           ...completedWeeks,
+          // TODO: 총괄평가용 unlockAllWeeks 보정입니다. 정상 운영에서 미래 주차
+          // 접근을 잠그면 locallyCompletedCbtWeeks 반영을 제거하세요.
+          if (unlockAllWeeks) ...user.locallyCompletedCbtWeeks,
           if (user.mainCbtCompleted) currentWeek,
         },
         relaxationCompletedWeeks: <int>{
           ...completedWeeks,
+          // TODO: 총괄평가용 unlockAllWeeks 보정입니다. 정상 운영에서 미래 주차
+          // 접근을 잠그면 locallyCompletedRelaxationWeeks 반영을 제거하세요.
+          if (unlockAllWeeks) ...user.locallyCompletedRelaxationWeeks,
           if (user.mainRelaxCompleted) currentWeek,
         },
         expandedWeeks: _expandedWeeks,
         onToggleWeek: _toggleWeekExpanded,
         scrollController: _scrollController,
-        unlockAllWeeks: false,
+        unlockAllWeeks: unlockAllWeeks,
       ),
     );
   }

@@ -71,6 +71,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                 'weekNumber': 5,
                 'mp3Asset': 'week5.mp3',
                 'riveAsset': 'week5.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week5_cue_sheet.json',
                 'isReviewMode': false,
               },
             );
@@ -78,7 +80,9 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
             Navigator.of(context).pop();
-            Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
@@ -103,6 +107,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
                 'weekNumber': 5,
                 'mp3Asset': 'week5.mp3',
                 'riveAsset': 'week5.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week5_cue_sheet.json',
                 'isReviewMode': true,
               },
             );
@@ -134,6 +140,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
         sessionId: widget.sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 5);
     } catch (e) {
       debugPrint('[Week5Visual] edu-session 완료 처리 실패: $e');
     }
@@ -163,6 +170,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
             'weekNumber': 5,
             'mp3Asset': 'week5.mp3',
             'riveAsset': 'week5.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week5_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 5 ||
                 (userProvider.currentWeek == 5 &&

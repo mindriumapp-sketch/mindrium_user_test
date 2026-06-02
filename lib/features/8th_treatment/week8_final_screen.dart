@@ -156,7 +156,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
             todayTask.isTreatmentReviewFlowForWeek(8) &&
             shouldShowCbtToRelaxationTransition(
               currentWeek: context.read<UserProvider>().currentWeek,
-              mainRelaxCompleted: context.read<UserProvider>().mainRelaxCompleted,
+              mainRelaxCompleted:
+                  context.read<UserProvider>().mainRelaxCompleted,
               weekNumber: 8,
             );
         if (shouldShowRelaxLearning) {
@@ -173,6 +174,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                   'weekNumber': 8,
                   'mp3Asset': 'week8.mp3',
                   'riveAsset': 'week8.riv',
+                  'cueSheetAsset':
+                      'assets/relaxation/cue_sheets/week8_cue_sheet.json',
                   'isReviewMode': false,
                 },
               );
@@ -180,7 +183,11 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
             onFinish: () {
               todayTask.clearTreatmentReviewFlow();
               Navigator.of(context).pop();
-              Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/home_edu',
+                (_) => false,
+              );
             },
           );
           return;
@@ -205,6 +212,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
                   'weekNumber': 8,
                   'mp3Asset': 'week8.mp3',
                   'riveAsset': 'week8.riv',
+                  'cueSheetAsset':
+                      'assets/relaxation/cue_sheets/week8_cue_sheet.json',
                   'isReviewMode': true,
                 },
               );
@@ -237,7 +246,9 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
         totalScreens: _totalScreens,
       );
       if (mounted) {
-        await context.read<UserProvider>().refreshProgress();
+        final userProvider = context.read<UserProvider>();
+        await userProvider.refreshProgress();
+        userProvider.markMainCbtCompletedLocally(weekNumber: 8);
       }
       if (!mounted) return;
       final user = context.read<UserProvider>();
@@ -265,6 +276,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
               'weekNumber': 8,
               'mp3Asset': 'week8.mp3',
               'riveAsset': 'week8.riv',
+              'cueSheetAsset':
+                  'assets/relaxation/cue_sheets/week8_cue_sheet.json',
               'isReviewMode':
                   user.currentWeek > 8 ||
                   (user.currentWeek == 8 && user.mainRelaxCompleted),

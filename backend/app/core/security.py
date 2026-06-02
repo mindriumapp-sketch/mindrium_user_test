@@ -153,8 +153,9 @@ async def get_current_user(
     obj_id = sub_to_obj(sub)
     user = await db["users"].find_one({"_id": obj_id})
     if not user:
-        # TODO: "User not found" 대신 통합 메시지로 숨길지 결정
         raise HTTPException(status_code=401, detail="User not found")
+    if user.get("is_deleted"):
+        raise HTTPException(status_code=401, detail="Invalid or expired access token")
     return user
 
 

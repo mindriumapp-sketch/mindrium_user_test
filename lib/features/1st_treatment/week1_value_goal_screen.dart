@@ -21,6 +21,19 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
   final TextEditingController _controller = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _didPrefill = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didPrefill) return;
+
+    final valueGoal = context.read<UserProvider>().valueGoal?.trim();
+    if (valueGoal != null && valueGoal.isNotEmpty) {
+      _controller.text = valueGoal;
+    }
+    _didPrefill = true;
+  }
 
   Future<void> _saveUserData() async {
     // ✅ formState null 방어 + validate
@@ -50,18 +63,23 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
       // 🔹 1주차 교육 화면으로 바로 진입
       navigator.push(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => EducationScreen(isRelax: true, sessionId: widget.sessionId),
+          pageBuilder:
+              (_, __, ___) => EducationScreen(
+                isRelax: true,
+                sessionId: widget.sessionId,
+                popOnBack: true,
+              ),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('저장에 실패했습니다: $e')),
-      );
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text('저장에 실패했습니다: $e')));
     } finally {
-      if (mounted) { setState(() => _isLoading = false); }
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -87,9 +105,7 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              protectKoreanWords(
-                '이 프로그램을 통해 불안을 관리하고 더 나은 삶을 만들어가시길 바랍니다.',
-              ),
+              protectKoreanWords('이 프로그램을 통해 불안을 관리하고 더 나은 삶을 만들어가시길 바랍니다.'),
               style: const TextStyle(
                 fontSize: 14.5,
                 color: Color(0xFF333333),
@@ -98,9 +114,7 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
             ),
             const SizedBox(height: 30),
             Text(
-              protectKoreanWords(
-                '$name님, 삶에서 가장 중요하게 생각하는 가치는 무엇인가요?',
-              ),
+              protectKoreanWords('$name님, 삶에서 가장 중요하게 생각하는 가치는 무엇인가요?'),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -113,6 +127,9 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: '예: 가족, 건강, 성장, 자유, 사랑, 평화 등',
+                hintStyle: TextStyle(
+                  color: Colors.black.withValues(alpha: 0.28),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -144,4 +161,3 @@ class _Week1ValueGoalScreenState extends State<Week1ValueGoalScreen> {
     );
   }
 }
-

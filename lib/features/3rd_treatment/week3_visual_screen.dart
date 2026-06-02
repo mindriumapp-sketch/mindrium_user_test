@@ -72,6 +72,8 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
                 'weekNumber': 3,
                 'mp3Asset': 'week3.mp3',
                 'riveAsset': 'week3.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week3_cue_sheet.json',
                 'isReviewMode': true,
               },
             );
@@ -103,6 +105,7 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
         sessionId: widget.sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 3);
     } catch (e) {
       debugPrint('[Week3Visual] edu-session 완료 처리 실패: $e');
     }
@@ -132,6 +135,8 @@ class _Week3VisualScreenState extends State<Week3VisualScreen> {
             'weekNumber': 3,
             'mp3Asset': 'week3.mp3',
             'riveAsset': 'week3.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week3_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 3 ||
                 (userProvider.currentWeek == 3 &&

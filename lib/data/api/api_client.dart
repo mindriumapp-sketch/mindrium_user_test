@@ -6,6 +6,10 @@ import 'package:flutter/foundation.dart';
 
 import '../storage/token_storage.dart';
 
+/// Release HTTP 허용 호스트 (SI-01). [API_BASE_URL] define 과 맞출 것.
+const String _allowedCleartextApiHost = '115.145.134.180';
+const int _allowedCleartextApiPort = 8070;
+
 const String _envBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: '',
@@ -48,18 +52,29 @@ class ApiClient {
       return 'http://127.0.0.1:8080';
     }
     throw StateError(
-      'API_BASE_URL must be set via --dart-define for release builds.',
+      'API_BASE_URL must be set via --dart-define=API_BASE_URL=... '
+      '(or --dart-define-from-file=dart_defines/api.local.json).',
     );
   }
 
   static String _enforceTransportPolicy(String url) {
     final trimmed = url.trim();
-    if (kReleaseMode && trimmed.toLowerCase().startsWith('http://')) {
+    if (kReleaseMode &&
+        trimmed.toLowerCase().startsWith('http://') &&
+        !_isAllowedCleartextApiUrl(trimmed)) {
       throw StateError(
         'Release builds require HTTPS API_BASE_URL (SI-01 / DC-01).',
       );
     }
     return trimmed;
+  }
+
+  static bool _isAllowedCleartextApiUrl(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null &&
+        uri.scheme.toLowerCase() == 'http' &&
+        uri.host == _allowedCleartextApiHost &&
+        uri.port == _allowedCleartextApiPort;
   }
 
   ApiClient({required this.tokens, String? baseUrl})

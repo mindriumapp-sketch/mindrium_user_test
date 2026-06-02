@@ -33,8 +33,14 @@ class _NoScrollbarBehavior extends ScrollBehavior {
 class EducationScreen extends StatefulWidget {
   final String? sessionId;
   final bool isRelax;
+  final bool popOnBack;
 
-  const EducationScreen({super.key, this.sessionId, this.isRelax = false});
+  const EducationScreen({
+    super.key,
+    this.sessionId,
+    this.isRelax = false,
+    this.popOnBack = false,
+  });
 
   @override
   State<EducationScreen> createState() => _EducationScreenState();
@@ -153,6 +159,10 @@ class _EducationScreenState extends State<EducationScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        if (widget.popOnBack && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+          return;
+        }
         if (widget.isRelax) {
           Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
         } else {
@@ -182,6 +192,11 @@ class _EducationScreenState extends State<EducationScreen> {
                       confirmOnHome: true,
                       confirmOnBack: false,
                       onBack: () {
+                        if (widget.popOnBack &&
+                            Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                          return;
+                        }
                         if (widget.isRelax) {
                           Navigator.pushNamedAndRemoveUntil(
                             context,

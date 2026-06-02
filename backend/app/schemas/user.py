@@ -6,8 +6,6 @@ from datetime import date, datetime
 class UserBase(BaseModel):
     email: EmailStr
     name: str
-    gender: Optional[str] = None
-    address: Optional[str] = None
 
 class UserMe(UserBase):
     user_id: str
@@ -27,8 +25,10 @@ class UserMe(UserBase):
 
 class UpdateUser(BaseModel):
     name: Optional[str] = None
-    gender: Optional[str] = None
-    address: Optional[str] = None
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(min_length=1, description="탈퇴 확인용 현재 비밀번호")
 
 
 class ValueGoalUpdate(BaseModel):

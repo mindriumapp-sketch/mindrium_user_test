@@ -148,9 +148,7 @@ class _SignupScreenState extends State<SignupScreen> {
           );
           break;
         case 'patientCode':
-          _patientCodeError = _validatePatientCode(
-            patientCodeController.text.trim(),
-          );
+          _patientCodeError = _validatePatientCode(patientCodeController.text.trim());
           break;
       }
       _formError = null;
@@ -315,10 +313,18 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.grey100,
-      appBar: const CustomAppBar(
-        title: '회원가입',
-        showHome: false,
-        confirmOnBack: false,
+      appBar: AppBar(
+        title: const Text('회원가입'),
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        toolbarHeight: 50,
+        leading: Padding(
+          padding: const EdgeInsets.all(8),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
       ),
       bottomNavigationBar: SafeArea(
         top: false,
@@ -443,6 +449,16 @@ class _SignupScreenState extends State<SignupScreen> {
               focusNode: _patientCodeFocusNode,
               errorText: _patientCodeError,
               onChanged: (_) => _clearFormErrorOnTyping(),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              AuthSecurityCopy.systemUseNotice,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: Color(0xFF5B6573),
+              ),
             ),
           ],
         ),

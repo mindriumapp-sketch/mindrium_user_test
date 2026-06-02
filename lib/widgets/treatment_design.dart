@@ -5,6 +5,25 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
 import 'package:provider/provider.dart';
 
+Map<String, String> _relaxationCueSheetArgument(int weekNo) {
+  switch (weekNo) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+      return {
+        'cueSheetAsset':
+            'assets/relaxation/cue_sheets/week${weekNo}_cue_sheet.json',
+      };
+    default:
+      return const {};
+  }
+}
+
 /// 🌊 Mindrium 메뉴 디자인 (의미적 색상 시스템 적용)
 class TreatmentDesign extends StatelessWidget {
   final String? appBarTitle;
@@ -307,6 +326,7 @@ class TreatmentDesign extends StatelessWidget {
                           'weekNumber': weekNo,
                           'mp3Asset': 'week$weekNo.mp3',
                           'riveAsset': 'week$weekNo.riv',
+                          ..._relaxationCueSheetArgument(weekNo),
                           'isReviewMode': appliedDone,
                         },
                       );
@@ -579,6 +599,7 @@ class TreatmentDesign extends StatelessWidget {
                   'weekNumber': weekNo,
                   'mp3Asset': 'week$weekNo.mp3',
                   'riveAsset': 'week$weekNo.riv',
+                  ..._relaxationCueSheetArgument(weekNo),
                   'isReviewMode': appliedDone,
                 },
               );
@@ -596,6 +617,7 @@ class TreatmentDesign extends StatelessWidget {
                     'weekNumber': weekNo,
                     'mp3Asset': 'week$weekNo.mp3',
                     'riveAsset': 'week$weekNo.riv',
+                    ..._relaxationCueSheetArgument(weekNo),
                     'isReviewMode': appliedDone,
                   },
                 );

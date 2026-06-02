@@ -656,8 +656,8 @@ async def _sync_treatment_progress_daily_diary(
     progress = await progress_collection.find_one_and_update(
         {"user_id": user_id, "week_number": int(progress["week_number"])},
         {
+            "$inc": {"daily_diary_count": 1},
             "$set": {
-                "daily_diary_count": int(progress.get("daily_diary_count") or 0) + 1,
                 "updated_at": datetime.now(timezone.utc),
             }
         },

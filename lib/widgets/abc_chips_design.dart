@@ -11,10 +11,10 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 /// - [singleSelect] : true면 하나만 선택되도록 동작
 
 class AbcChip {
-  final String chipId;   // presets도 포함해서 전부 ID 부여
-  final String label;    // 그리드에 찍힐 텍스트
-  final String type;     // "A" | "B" | "CP" | "CE" | "CA"
-  final bool isPreset;   // 기본 제공 칩인지 여부
+  final String chipId; // presets도 포함해서 전부 ID 부여
+  final String label; // 그리드에 찍힐 텍스트
+  final String type; // "A" | "B" | "CP" | "CE" | "CA"
+  final bool isPreset; // 기본 제공 칩인지 여부
 
   const AbcChip({
     required this.chipId,
@@ -23,7 +23,6 @@ class AbcChip {
     this.isPreset = false,
   });
 }
-
 
 class AbcChipsDesign extends StatefulWidget {
   final List<AbcChip> chips;
@@ -119,6 +118,29 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
     widget.onChipDelete?.call(chip.chipId);
   }
 
+  List<AbcChip> _visibleCollapsedChips() {
+    if (widget.chips.length <= _collapsedChipLimit) {
+      return widget.chips;
+    }
+
+    final selectedChips =
+        widget.chips
+            .where((chip) => _selectedChipIds.contains(chip.chipId))
+            .toList();
+    final selectedChipIds = selectedChips.map((chip) => chip.chipId).toSet();
+    final remainingSlots = (_collapsedChipLimit - selectedChips.length).clamp(
+      0,
+      _collapsedChipLimit,
+    );
+    final leadingChips =
+        widget.chips
+            .where((chip) => !selectedChipIds.contains(chip.chipId))
+            .take(remainingSlots)
+            .toList();
+
+    return [...selectedChips, ...leadingChips];
+  }
+
   Widget _buildChipWidget(AbcChip chip) {
     final bool isSelected = _selectedChipIds.contains(chip.chipId);
     final bool canDelete = !widget.isExampleMode;
@@ -191,11 +213,11 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
         backgroundColor: Colors.transparent,
         builder: (context) {
           final media = MediaQuery.of(context);
-          final maxAllowedHeight =
-              media.size.height - media.padding.top - 8;
-          final systemBottomInset = media.viewPadding.bottom > 0
-              ? media.viewPadding.bottom
-              : media.padding.bottom;
+          final maxAllowedHeight = media.size.height - media.padding.top - 8;
+          final systemBottomInset =
+              media.viewPadding.bottom > 0
+                  ? media.viewPadding.bottom
+                  : media.padding.bottom;
           final modalBottomInset = systemBottomInset + 8;
           final initialHeight = _allItemsModalInitialHeight.clamp(
             380.0,
@@ -265,8 +287,9 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
                                         height: 5,
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFBFD2E6),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 12),
@@ -281,7 +304,9 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
                                       const SizedBox(height: 4),
                                       Text(
                                         widget.chipSectionLabel == null ||
-                                                widget.chipSectionLabel!.trim().isEmpty
+                                                widget.chipSectionLabel!
+                                                    .trim()
+                                                    .isEmpty
                                             ? '현재 칩 ${widget.chips.length}개'
                                             : '현재 ${widget.chipSectionLabel!.trim()} 칩 ${widget.chips.length}개',
                                         style: const TextStyle(
@@ -354,15 +379,12 @@ class _AbcChipsDesignState extends State<AbcChipsDesign> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final systemBottomInset = media.viewPadding.bottom > 0
-        ? media.viewPadding.bottom
-        : media.padding.bottom;
-    final int visibleCount =
-        widget.chips.length > _collapsedChipLimit
-            ? _collapsedChipLimit
-            : widget.chips.length;
-    final visibleChips = widget.chips.take(visibleCount).toList();
-    final int hiddenCount = widget.chips.length - visibleCount;
+    final systemBottomInset =
+        media.viewPadding.bottom > 0
+            ? media.viewPadding.bottom
+            : media.padding.bottom;
+    final visibleChips = _visibleCollapsedChips();
+    final int hiddenCount = widget.chips.length - visibleChips.length;
 
     final chipsArea = SingleChildScrollView(
       controller: _scrollController,
@@ -427,10 +449,7 @@ class _SelectedChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(radius),
       onTap: onTap,
       child: Container(
-        constraints: BoxConstraints(
-          minHeight: 38,
-          maxWidth: maxChipWidth,
-        ),
+        constraints: BoxConstraints(minHeight: 38, maxWidth: maxChipWidth),
         padding: EdgeInsets.only(left: 16, right: showClose ? 6 : 16),
         decoration: BoxDecoration(
           color: const Color(0xFF47A6FF),
@@ -584,7 +603,11 @@ class _MoreChipButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.expand_more_rounded, size: 18, color: Color(0xFF3B82C4)),
+            const Icon(
+              Icons.expand_more_rounded,
+              size: 18,
+              color: Color(0xFF3B82C4),
+            ),
             const SizedBox(width: 3),
             Text(
               '더보기 +$hiddenCount',

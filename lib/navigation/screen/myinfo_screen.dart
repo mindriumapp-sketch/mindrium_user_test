@@ -54,9 +54,15 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    valueGoalController.addListener(_handleProfileInputChanged);
     _loadUserData();
     _loadScreenTimeSummary();
     _loadArchivedGroups();
+  }
+
+  void _handleProfileInputChanged() {
+    if (!mounted || !isEditing) return;
+    setState(() {});
   }
 
   Future<void> _loadArchivedGroups() async {
@@ -86,6 +92,7 @@ class _MyInfoScreenState extends State<MyInfoScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    valueGoalController.removeListener(_handleProfileInputChanged);
     nameController.dispose();
     emailController.dispose();
     valueGoalController.dispose();
@@ -176,15 +183,24 @@ class _MyInfoScreenState extends State<MyInfoScreen>
 
     try {
       final userProvider = context.read<UserProvider>();
+      var didUpdate = false;
 
       if (trimmedName.isNotEmpty && trimmedName != userProvider.userName) {
         await _usersApi.updateMe({'name': trimmedName});
         userProvider.updateUserName(trimmedName);
+        didUpdate = true;
       }
 
-      if (valueGoal.isNotEmpty && valueGoal != (userProvider.valueGoal ?? '')) {
+      final previousValueGoal = (userProvider.valueGoal ?? '').trim();
+      final valueGoalChanged = valueGoal != previousValueGoal;
+      if (valueGoalChanged && valueGoal.isEmpty) {
+        return;
+      }
+
+      if (valueGoalChanged) {
         await _userDataApi.updateValueGoal(valueGoal);
         userProvider.setValueGoalLocally(valueGoal);
+        didUpdate = true;
       }
 
       if (showPasswordFields && newPw.isNotEmpty) {
@@ -199,6 +215,15 @@ class _MyInfoScreenState extends State<MyInfoScreen>
         if (!mounted) return;
 
         navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+        return;
+      }
+
+      if (!didUpdate) {
+        _showSnack('변경된 내용이 없습니다.');
+        setState(() {
+          isEditing = false;
+          showPasswordFields = false;
+        });
         return;
       }
 
@@ -446,7 +471,10 @@ class _MyInfoScreenState extends State<MyInfoScreen>
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: isLoading ? null : _updateUserData,
+                    onPressed:
+                        isLoading || valueGoalController.text.trim().isEmpty
+                            ? null
+                            : _updateUserData,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF63C6EC),
                       elevation: 0,

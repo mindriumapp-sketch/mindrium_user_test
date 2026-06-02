@@ -9,12 +9,16 @@ class LoginResult {
   final String refreshToken;
   final bool mustChangePassword;
   final bool passwordExpired;
+  final bool passwordChangeRecommended;
+  final String? passwordChangeNotice;
 
   const LoginResult({
     required this.accessToken,
     required this.refreshToken,
     required this.mustChangePassword,
     required this.passwordExpired,
+    required this.passwordChangeRecommended,
+    required this.passwordChangeNotice,
   });
 }
 
@@ -45,17 +49,13 @@ class AuthApi {
     required String name,
     required String phone,
     required String patientCode,
-    String gender = 'male',
-    String? address,
   }) async {
     final body = {
       'email': email,
       'password': password,
       'name': name,
       'phone': phone,
-      'gender': gender,
       'patient_code': patientCode,
-      if (address != null && address.isNotEmpty) 'address': address,
     };
     final res = await _client.dio.post('/auth/signup', data: body);
     await _saveTokensFromResponse(res);
@@ -66,10 +66,10 @@ class AuthApi {
     required String password,
   }) async {
     try {
-      final res = await _client.dio.post('/auth/login', data: {
-        'email': email,
-        'password': password,
-      });
+      final res = await _client.dio.post(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+      );
 
       await _saveTokensFromResponse(res);
 
@@ -87,12 +87,17 @@ class AuthApi {
 
       final mustChangePassword = data['must_change_password'] == true;
       final passwordExpired = data['password_expired'] == true;
+      final passwordChangeRecommended =
+          data['password_change_recommended'] == true;
+      final passwordChangeNotice = data['password_change_notice'] as String?;
 
       return LoginResult(
         accessToken: access,
         refreshToken: refresh,
         mustChangePassword: mustChangePassword,
         passwordExpired: passwordExpired,
+        passwordChangeRecommended: passwordChangeRecommended,
+        passwordChangeNotice: passwordChangeNotice,
       );
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
@@ -185,28 +190,29 @@ class AuthApi {
     await AuthSessionStorage().clear();
   }
 
-  Future<String?> requestPasswordResetToken(String email) async {
-    final res = await _client.dio.post('/auth/password/reset/start', data: {
-      'email': email,
-    });
-    final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return data['token_debug'] as String?;
-    }
-    throw DioException(
-      requestOptions: res.requestOptions,
-      message: 'Invalid password reset start response',
+  Future<void> requestPasswordReset(String email) async {
+    await _client.dio.post(
+      '/auth/password/reset/start',
+      data: {'email': email},
     );
+  }
+
+  Future<void> deleteAccount({required String password}) async {
+    await _client.dio.delete(
+      '/users/me',
+      data: {'password': password},
+    );
+    await logout();
   }
 
   Future<void> resetPasswordWithToken({
     required String token,
     required String newPassword,
   }) async {
-    await _client.dio.post('/auth/password/reset/finish', data: {
-      'token': token,
-      'new_password': newPassword,
-    });
+    await _client.dio.post(
+      '/auth/password/reset/finish',
+      data: {'token': token, 'new_password': newPassword},
+    );
   }
 
   Future<void> changePassword({
@@ -216,10 +222,13 @@ class AuthApi {
     try {
       debugPrint('[AuthApi] POST /auth/password/change start');
 
-      final res = await _client.dio.post('/auth/password/change', data: {
-        'current_password': currentPassword,
-        'new_password': newPassword,
-      });
+      final res = await _client.dio.post(
+        '/auth/password/change',
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
+      );
 
       debugPrint(
         '[AuthApi] POST /auth/password/change success: ${res.statusCode}',

@@ -357,6 +357,8 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
                 'weekNumber': 6,
                 'mp3Asset': 'week6.mp3',
                 'riveAsset': 'week6.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week6_cue_sheet.json',
                 'isReviewMode': false,
               },
             );
@@ -364,7 +366,9 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
             Navigator.of(context).pop();
-            Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
@@ -388,6 +392,8 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
                 'weekNumber': 6,
                 'mp3Asset': 'week6.mp3',
                 'riveAsset': 'week6.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week6_cue_sheet.json',
                 'isReviewMode': true,
               },
             );
@@ -417,6 +423,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
     try {
       await eduApi.completeWeekSession(weekNumber: 6, totalStages: 12);
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 6);
     } catch (e) {
       debugPrint('[Week6Visual] edu-session 완료 처리 실패: $e');
     }
@@ -446,6 +453,8 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
             'weekNumber': 6,
             'mp3Asset': 'week6.mp3',
             'riveAsset': 'week6.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week6_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 6 ||
                 (userProvider.currentWeek == 6 &&

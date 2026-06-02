@@ -151,6 +151,8 @@ class Week3FinalScreen extends StatelessWidget {
                 'weekNumber': 3,
                 'mp3Asset': 'week3.mp3',
                 'riveAsset': 'week3.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week3_cue_sheet.json',
                 'isReviewMode': false,
               },
             );
@@ -158,7 +160,11 @@ class Week3FinalScreen extends StatelessWidget {
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
             Navigator.of(context).pop();
-            Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home_edu',
+              (_) => false,
+            );
           },
         );
         return;
@@ -183,6 +189,8 @@ class Week3FinalScreen extends StatelessWidget {
                 'weekNumber': 3,
                 'mp3Asset': 'week3.mp3',
                 'riveAsset': 'week3.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week3_cue_sheet.json',
                 'isReviewMode': true,
               },
             );
@@ -216,6 +224,7 @@ class Week3FinalScreen extends StatelessWidget {
         sessionId: sessionId,
       );
       await userProvider.refreshProgress();
+      userProvider.markMainCbtCompletedLocally(weekNumber: 3);
     } catch (e) {
       debugPrint('[Week3Final] edu-session 완료 처리 실패: $e');
     }
@@ -247,6 +256,8 @@ class Week3FinalScreen extends StatelessWidget {
             'weekNumber': 3,
             'mp3Asset': 'week3.mp3',
             'riveAsset': 'week3.riv',
+            'cueSheetAsset':
+                'assets/relaxation/cue_sheets/week3_cue_sheet.json',
             'isReviewMode':
                 userProvider.currentWeek > 3 ||
                 (userProvider.currentWeek == 3 &&

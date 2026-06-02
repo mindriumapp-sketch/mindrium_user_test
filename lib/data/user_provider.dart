@@ -80,8 +80,20 @@ class UserProvider extends ChangeNotifier {
   bool _mainCbtCompleted = false;
   bool get mainCbtCompleted => _mainCbtCompleted;
 
+  // TODO: 총괄평가용 unlockAllWeeks 보정 상태입니다. 정상 운영에서 미래 주차
+  // 접근을 다시 잠그면 이 set과 관련 UI 반영 로직은 제거하거나 비활성화하세요.
+  final Set<int> _locallyCompletedCbtWeeks = <int>{};
+  Set<int> get locallyCompletedCbtWeeks =>
+      Set.unmodifiable(_locallyCompletedCbtWeeks);
+
   bool _mainRelaxCompleted = false;
   bool get mainRelaxCompleted => _mainRelaxCompleted;
+
+  // TODO: 총괄평가용 unlockAllWeeks 보정 상태입니다. 정상 운영에서 미래 주차
+  // 접근을 다시 잠그면 이 set과 관련 UI 반영 로직은 제거하거나 비활성화하세요.
+  final Set<int> _locallyCompletedRelaxationWeeks = <int>{};
+  Set<int> get locallyCompletedRelaxationWeeks =>
+      Set.unmodifiable(_locallyCompletedRelaxationWeeks);
 
   int _dailyDiaryCount = 0;
   int get dailyDiaryCount => _dailyDiaryCount;
@@ -250,6 +262,8 @@ class UserProvider extends ChangeNotifier {
     _totalRelaxations = 0;
     _mainCbtCompleted = false;
     _mainRelaxCompleted = false;
+    _locallyCompletedCbtWeeks.clear();
+    _locallyCompletedRelaxationWeeks.clear();
     _dailyDiaryCount = 0;
     _dailyRelaxCount = 0;
     _requirementsMet = false;
@@ -435,6 +449,44 @@ class UserProvider extends ChangeNotifier {
     if (totalRelaxations != null) {
       _totalRelaxations = totalRelaxations;
     }
+    unawaited(
+      AlarmNotificationService.instance.syncEducationReminders(
+        currentWeek: _currentWeek,
+        lastCompletedWeek: _lastCompletedWeek,
+        mainCompleted: _mainCbtCompleted && _mainRelaxCompleted,
+      ),
+    );
+    _notifyListenersSafely();
+  }
+
+  void markMainCbtCompletedLocally({required int weekNumber}) {
+    _locallyCompletedCbtWeeks.add(weekNumber);
+    if (weekNumber != _currentWeek) {
+      _notifyListenersSafely();
+      return;
+    }
+    if (_mainCbtCompleted) return;
+
+    _mainCbtCompleted = true;
+    unawaited(
+      AlarmNotificationService.instance.syncEducationReminders(
+        currentWeek: _currentWeek,
+        lastCompletedWeek: _lastCompletedWeek,
+        mainCompleted: _mainCbtCompleted && _mainRelaxCompleted,
+      ),
+    );
+    _notifyListenersSafely();
+  }
+
+  void markMainRelaxCompletedLocally({required int weekNumber}) {
+    _locallyCompletedRelaxationWeeks.add(weekNumber);
+    if (weekNumber != _currentWeek) {
+      _notifyListenersSafely();
+      return;
+    }
+    if (_mainRelaxCompleted) return;
+
+    _mainRelaxCompleted = true;
     unawaited(
       AlarmNotificationService.instance.syncEducationReminders(
         currentWeek: _currentWeek,

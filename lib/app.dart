@@ -48,6 +48,7 @@ import 'package:gad_app_team/features/menu/education/education7.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_education.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_start.dart';
 import 'package:gad_app_team/features/menu/relaxation/relaxation_noti.dart';
+import 'package:gad_app_team/features/menu/relaxation/cue_sheet_practice_player.dart';
 import 'package:gad_app_team/contents/before_sud_screen.dart';
 import 'package:gad_app_team/contents/after_sud_screen.dart';
 
@@ -165,6 +166,16 @@ class MyApp extends StatelessWidget {
           final weekNumber = args['weekNumber'] as int? ?? 1;
           final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
           final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
+          final cueSheetAsset = args['cueSheetAsset'] as String?;
+          if (cueSheetAsset != null) {
+            return CueSheetEducationPlayer(
+              sessionId: sessionId,
+              taskId: taskId,
+              weekNumber: weekNumber,
+              mp3Asset: mp3Asset,
+              cueSheetAsset: cueSheetAsset,
+            );
+          }
           return PracticePlayer(
             sessionId: sessionId,
             taskId: taskId,
@@ -181,6 +192,7 @@ class MyApp extends StatelessWidget {
           final weekNumber = args['weekNumber'] as int? ?? 1;
           final mp3Asset = args['mp3Asset'] as String? ?? 'week1.mp3';
           final riveAsset = args['riveAsset'] as String? ?? 'week1.riv';
+          final cueSheetAsset = args['cueSheetAsset'] as String?;
           final isReviewMode = args['isReviewMode'] as bool?;
           return RelaxationStartScreen(
             sessionId: sessionId,
@@ -188,6 +200,7 @@ class MyApp extends StatelessWidget {
             weekNumber: weekNumber,
             mp3Asset: mp3Asset,
             riveAsset: riveAsset,
+            cueSheetAsset: cueSheetAsset,
             isReviewMode: isReviewMode,
           );
         },
@@ -198,7 +211,17 @@ class MyApp extends StatelessWidget {
           final weekNumber = args['weekNumber'] as int?;
           final mp3Asset = args['mp3Asset'] as String? ?? 'noti.mp3';
           final riveAsset = args['riveAsset'] as String? ?? 'noti.riv';
+          final cueSheetAsset = args['cueSheetAsset'] as String?;
           final nextPage = args['nextPage'] as String? ?? '/home';
+          if (cueSheetAsset != null) {
+            return CueSheetNotiPlayer(
+              taskId: taskId,
+              weekNumber: weekNumber,
+              mp3Asset: mp3Asset,
+              cueSheetAsset: cueSheetAsset,
+              nextPage: nextPage,
+            );
+          }
           return NotiPlayer(
             taskId: taskId,
             weekNumber: weekNumber,
