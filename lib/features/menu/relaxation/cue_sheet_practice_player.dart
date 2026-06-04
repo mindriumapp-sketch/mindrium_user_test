@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +28,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+const double _kDefaultMaxImageScale = 1.5;
+
 class RelaxationCue {
   final double startSec;
   final double endSec;
@@ -34,6 +38,7 @@ class RelaxationCue {
   final String caption;
   final String phase;
   final bool overlayPlanned;
+  final double? maxImageScale;
   final String? overlayTarget;
   final String? overlayPhase;
   final String? overlayFadeIn;
@@ -51,6 +56,7 @@ class RelaxationCue {
     required this.caption,
     required this.phase,
     required this.overlayPlanned,
+    this.maxImageScale,
     this.overlayTarget,
     this.overlayPhase,
     this.overlayFadeIn,
@@ -70,6 +76,7 @@ class RelaxationCue {
       caption: (json['caption'] as String?) ?? '',
       phase: json['phase'] as String? ?? '',
       overlayPlanned: json['overlay_planned'] == true,
+      maxImageScale: (json['max_image_scale'] as num?)?.toDouble(),
       overlayTarget: json['overlay_target'] as String?,
       overlayPhase: json['overlay_phase'] as String?,
       overlayFadeIn: json['overlay_fade_in'] as String?,
@@ -360,6 +367,7 @@ class _CueSheetPlayerCoreState extends State<CueSheetPlayerCore>
   bool _canStartPlayback = false;
   String? _loadError;
 
+  final Map<String, Future<Size?>> _imageSizeFutures = {};
   Timer? _autosaveTimer;
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<void>? _completeSubscription;
@@ -437,6 +445,26 @@ class _CueSheetPlayerCoreState extends State<CueSheetPlayerCore>
         debugPrint('Cue image precache failed ($imageAsset): $e');
       }
     }
+  }
+
+  Future<Size?> _loadAssetImageSize(String asset) {
+    return _imageSizeFutures.putIfAbsent(asset, () async {
+      try {
+        final data = await rootBundle.load(asset);
+        final codec = await ui.instantiateImageCodec(
+          data.buffer.asUint8List(),
+        );
+        final frame = await codec.getNextFrame();
+        final image = frame.image;
+        final size = Size(image.width.toDouble(), image.height.toDouble());
+        image.dispose();
+        codec.dispose();
+        return size;
+      } catch (e) {
+        debugPrint('Cue image size load failed ($asset): $e');
+        return null;
+      }
+    });
   }
 
   void _showVolumeGuideIfNeeded() {
@@ -710,7 +738,7 @@ class _CueSheetPlayerCoreState extends State<CueSheetPlayerCore>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final imageAreaHeight = constraints.maxHeight * 0.58;
+        final imageAreaHeight = constraints.maxHeight * 0.66;
         final imageMaxHeight = imageAreaHeight * 0.92;
         final imageMaxWidth = constraints.maxWidth * 0.70;
 
@@ -720,32 +748,11 @@ class _CueSheetPlayerCoreState extends State<CueSheetPlayerCore>
             SizedBox(
               height: imageAreaHeight,
               child: Align(
-                alignment: Alignment.center,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: imageMaxWidth,
-                    maxHeight: imageMaxHeight,
-                  ),
-                  child: Image.asset(
-                    cue.imageAsset,
-                    fit: BoxFit.contain,
-                    gaplessPlayback: true,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: imageMaxWidth,
-                        height: imageMaxHeight,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.grey100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          '이미지를 불러오지 못했습니다.',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      );
-                    },
-                  ),
+                alignment: const Alignment(0, 0.35),
+                child: _buildCueImage(
+                  cue: cue,
+                  imageMaxWidth: imageMaxWidth,
+                  imageMaxHeight: imageMaxHeight,
                 ),
               ),
             ),
@@ -768,6 +775,72 @@ class _CueSheetPlayerCoreState extends State<CueSheetPlayerCore>
           ],
         );
       },
+    );
+  }
+
+  Widget _buildCueImage({
+    required RelaxationCue cue,
+    required double imageMaxWidth,
+    required double imageMaxHeight,
+  }) {
+    final maxImageScale = cue.maxImageScale ?? _kDefaultMaxImageScale;
+    if (maxImageScale <= 0) {
+      return _buildConstrainedCueImage(
+        cue: cue,
+        maxWidth: imageMaxWidth,
+        maxHeight: imageMaxHeight,
+      );
+    }
+
+    return FutureBuilder<Size?>(
+      future: _loadAssetImageSize(cue.imageAsset),
+      builder: (context, snapshot) {
+        final originalSize = snapshot.data;
+        final maxWidth =
+            originalSize == null
+                ? imageMaxWidth
+                : math.min(imageMaxWidth, originalSize.width * maxImageScale);
+        final maxHeight =
+            originalSize == null
+                ? imageMaxHeight
+                : math.min(imageMaxHeight, originalSize.height * maxImageScale);
+
+        return _buildConstrainedCueImage(
+          cue: cue,
+          maxWidth: maxWidth,
+          maxHeight: maxHeight,
+        );
+      },
+    );
+  }
+
+  Widget _buildConstrainedCueImage({
+    required RelaxationCue cue,
+    required double maxWidth,
+    required double maxHeight,
+  }) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
+      child: Image.asset(
+        cue.imageAsset,
+        fit: BoxFit.contain,
+        gaplessPlayback: true,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: maxWidth,
+            height: maxHeight,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.grey100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              '이미지를 불러오지 못했습니다.',
+              style: TextStyle(fontSize: 16),
+            ),
+          );
+        },
+      ),
     );
   }
 

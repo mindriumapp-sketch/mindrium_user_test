@@ -16,21 +16,21 @@ dependencies:
 
   # 나머지 기존 그대로
   provider: ^6.1.1
-  flutter_riverpod: ^2.4.9
-  cupertino_icons: ^1.0.8
+  # flutter_riverpod: ^2.4.9 # unused
+  # cupertino_icons: ^1.0.8 # unused
   intl: 0.20.2
   uuid: ^4.3.3
   shared_preferences: ^2.2.2
-  connectivity_plus: ^6.1.4
+  # connectivity_plus: ^6.1.4 # unused
   flutter_localizations:
     sdk: flutter
-  fl_chart: ^1.0.0
-  table_calendar: ^3.0.9
+  # fl_chart: ^1.0.0 # unused
+  # table_calendar: ^3.0.9 # unused
   audioplayers: ^6.4.0
-  image_picker: ^1.0.7
-  cached_network_image: ^3.3.1
-  path_provider: ^2.1.1
-  path: ^1.8.3
+  # image_picker: ^1.0.7 # unused
+  # cached_network_image: ^3.3.1 # unused
+  # path_provider: ^2.1.1 # unused
+  # path: ^1.8.3 # unused
   rive: ^0.14.0-dev.13
   flutter_map: ^8.1.1
   latlong2: ^0.9.0
@@ -41,11 +41,11 @@ dependencies:
   flutter_local_notifications: ^19.2.1
   timezone: ^0.10.1
   permission_handler: ^12.0.0+1
-  google_fonts: ^6.2.1
-  lottie: ^3.3.1
+  # google_fonts: ^6.2.1 # unused
+  # lottie: ^3.3.1 # unused
 
   # [추가/확인] TTS (Text-to-Speech) 패키지
-  flutter_tts: ^4.0.0
+  # flutter_tts: ^4.0.0 # unused
   # [추가/확인] STT (Speech-to-Text) 패키지
   speech_to_text: ^7.3.0
   webview_flutter: ^4.13.1

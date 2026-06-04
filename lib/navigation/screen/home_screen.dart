@@ -35,6 +35,15 @@ final bool _enableWeek2ReliefLock = const bool.fromEnvironment(
   defaultValue: false,
 );
 
+Map<String, String> _relaxationCueSheetArgument(int weekNo) {
+  if (weekNo < 1 || weekNo > 8) {
+    return const {};
+  }
+  return {
+    'cueSheetAsset': 'assets/relaxation/cue_sheets/week${weekNo}_cue_sheet.json',
+  };
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialIndex = 0});
   final int initialIndex;
@@ -1172,6 +1181,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         'weekNumber': weekNumber,
         'mp3Asset': 'week$weekNumber.mp3',
         'riveAsset': 'week$weekNumber.riv',
+        ..._relaxationCueSheetArgument(weekNumber),
         'nextPage': '/home',
       },
     );
