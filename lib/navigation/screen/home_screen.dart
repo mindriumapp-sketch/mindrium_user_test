@@ -36,6 +36,13 @@ final bool _enableWeek2ReliefLock = const bool.fromEnvironment(
 );
 
 Map<String, String> _relaxationCueSheetArgument(int weekNo) {
+  // TODO: 총괄평가
+  if (weekNo == 4) {
+    return const {
+      'mp3Asset': 'week4_cue.mp3',
+      'cueSheetAsset': 'assets/relaxation/cue_sheets/week4_cue_sheet.json',
+    };
+  }
   if (weekNo < 1 || weekNo > 8) {
     return const {};
   }

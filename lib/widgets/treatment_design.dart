@@ -10,7 +10,6 @@ Map<String, String> _relaxationCueSheetArgument(int weekNo) {
     case 1:
     case 2:
     case 3:
-    case 4:
     case 5:
     case 6:
     case 7:
@@ -18,6 +17,12 @@ Map<String, String> _relaxationCueSheetArgument(int weekNo) {
       return {
         'cueSheetAsset':
             'assets/relaxation/cue_sheets/week${weekNo}_cue_sheet.json',
+      };
+    // TODO: 총괄평가
+    case 4:
+      return const {
+        'mp3Asset': 'week4_cue.mp3',
+        'cueSheetAsset': 'assets/relaxation/cue_sheets/week4_cue_sheet.json',
       };
     default:
       return const {};

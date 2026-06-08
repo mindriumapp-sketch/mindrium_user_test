@@ -538,7 +538,7 @@
     "end_sec": 295.238,
     "screen_type": "ending",
     "image_asset": "assets/relaxation/images/week4_7_8/basic_with_signal.png",
-    "caption": "“편안”에 긴장이 사라질 수 있습니다",
+    "caption": "“편안”에 긴장이\n사라질 수 있습니다",
     "phase": "ending",
     "overlay_planned": false,
     "overlay_target": null,

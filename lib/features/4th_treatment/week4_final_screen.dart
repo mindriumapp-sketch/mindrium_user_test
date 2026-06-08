@@ -69,8 +69,10 @@ class Week4FinalScreen extends StatelessWidget {
                   arguments: {
                     'taskId': 'week4_education',
                     'weekNumber': 4,
-                    'mp3Asset': 'week4.mp3',
+                    'mp3Asset': 'week4_cue.mp3',
                     'riveAsset': 'week4.riv',
+                    'cueSheetAsset':
+                        'assets/relaxation/cue_sheets/week4_cue_sheet.json',
                     'isReviewMode': false,
                   },
                 );
@@ -105,8 +107,10 @@ class Week4FinalScreen extends StatelessWidget {
                   arguments: {
                     'taskId': 'week4_education',
                     'weekNumber': 4,
-                    'mp3Asset': 'week4.mp3',
+                    'mp3Asset': 'week4_cue.mp3',
                     'riveAsset': 'week4.riv',
+                    'cueSheetAsset':
+                        'assets/relaxation/cue_sheets/week4_cue_sheet.json',
                     'isReviewMode': true,
                   },
                 );
@@ -164,8 +168,10 @@ class Week4FinalScreen extends StatelessWidget {
               arguments: {
                 'taskId': 'week4_education',
                 'weekNumber': 4,
-                'mp3Asset': 'week4.mp3',
+                'mp3Asset': 'week4_cue.mp3',
                 'riveAsset': 'week4.riv',
+                'cueSheetAsset':
+                    'assets/relaxation/cue_sheets/week4_cue_sheet.json',
                 'isReviewMode':
                     userProvider.currentWeek > 4 ||
                     (userProvider.currentWeek == 4 &&

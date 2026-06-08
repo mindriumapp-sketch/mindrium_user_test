@@ -146,9 +146,11 @@ class TodayTaskProvider extends ChangeNotifier {
       _date = null;
     }
 
-    // 오늘 일기 작성 여부
-    final diaryFlag = data['has_diary_today'];
-    _diaryDone = diaryFlag == true;
+    // todo:총괄평가용
+    // 서버 has_diary_today는 교육 탭 2주차 일반 일기도 포함할 수 있어
+    // 홈 '오늘의 할 일' 일기 완료에는 사용하지 않는다.
+    // 오늘의 할 일 전용 완료 상태는 today_task draft_progress만 반영한다.
+    _diaryDone = false;
 
     // 오늘 이완 여부
     final relaxFlag = data['has_relaxation_today'];
