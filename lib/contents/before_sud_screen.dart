@@ -26,6 +26,11 @@ const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
   defaultValue: false,
 );
 
+const bool _forceRelaxOrAlternative = bool.fromEnvironment(
+  'FORCE_RELAX_OR_ALTERNATIVE',
+  defaultValue: true,
+);
+
 /// SUD(0‒10)을 입력받아 저장하고, 점수에 따라 후속 행동을 안내하는 화면
 class BeforeSudRatingScreen extends StatefulWidget {
   final String? abcId;
@@ -254,7 +259,22 @@ class _BeforeSudRatingScreenState extends State<BeforeSudRatingScreen> {
           final sudId = res?['sud_id']?.toString() ?? '';
           if (sudId.isNotEmpty) flow.setSudId(sudId);
 
-          if (_sud > 2) {
+          if (_forceRelaxOrAlternative) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/relax_or_alternative',
+              arguments: route.mergedArgs(
+                extra: {
+                  'abcId': ensuredAbcId,
+                  'groupId': groupId,
+                  'origin': origin,
+                  'beforeSud': _sud,
+                  'sudId': sudId,
+                  'isHomeTodayDiary': isHomeTodayDiary,
+                },
+              ),
+            );
+          } else if (_sud > 2) {
             final completedWeeks =
                 context.read<UserProvider>().lastCompletedWeek;
             final canUseAlternativeThought =

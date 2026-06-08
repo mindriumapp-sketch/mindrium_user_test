@@ -2,7 +2,6 @@ import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/contents/apply_flow/apply_flow_route_data.dart';
 import 'package:gad_app_team/contents/apply_flow/sud_rating_content.dart';
 import 'package:gad_app_team/widgets/tutorial_design.dart'; // ✅ ApplyDesign
-import 'package:gad_app_team/features/4th_treatment/week4_skip_choice_screen.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/sud_api.dart';
@@ -45,18 +44,56 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
   }
 
   // ───────────────────── FastAPI 저장 ─────────────────────
+  Future<Map<String, dynamic>?> _createFallbackSud({
+    required String abcId,
+    required int beforeSud,
+  }) async {
+    try {
+      return await _sudApi.createSudScore(
+        diaryId: abcId,
+        beforeScore: beforeSud,
+        afterScore: _sud,
+      );
+    } on DioException catch (e) {
+      debugPrint(
+        '[after_sud] fallback createSudScore DioException: ${e.message}',
+      );
+    } catch (e) {
+      debugPrint('[after_sud] fallback createSudScore error: $e');
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>?> _saveSud() async {
     final route = _routeData();
     final flow = route.flow;
     final abcId = route.abcId;
     final sudId = route.sudId;
+    final beforeSud = route.beforeSud ?? _sud;
 
     if (abcId != null) flow.setDiaryId(abcId);
     if (sudId != null) flow.setSudId(sudId);
 
-    if (abcId == null || abcId.isEmpty || sudId == null || sudId.isEmpty) {
-      debugPrint('[after_sud] missing ids: abcId=$abcId, sudId=$sudId');
+    if (abcId == null || abcId.isEmpty) {
+      debugPrint('[after_sud] missing abcId: abcId=$abcId, sudId=$sudId');
+      _showSnack('SUD를 저장하지 못했습니다. 다시 시도해주세요.');
       return null;
+    }
+
+    if (sudId == null || sudId.isEmpty) {
+      debugPrint('[after_sud] missing ids: abcId=$abcId, sudId=$sudId');
+      final fallback = await _createFallbackSud(
+        abcId: abcId,
+        beforeSud: beforeSud,
+      );
+      final fallbackSudId = fallback?['sud_id']?.toString();
+      if (fallbackSudId != null && fallbackSudId.isNotEmpty) {
+        flow.setSudId(fallbackSudId);
+      }
+      if (fallback == null) {
+        _showSnack('SUD를 저장하지 못했습니다. 다시 시도해주세요.');
+      }
+      return fallback;
     }
 
     final access = await _tokens.access;
@@ -74,56 +111,28 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
       return res;
     } on DioException catch (e) {
       debugPrint('[after_sud] updateSudScore DioException: ${e.message}');
-      _showSnack('SUD를 저장하지 못했습니다. 다시 시도해주세요.');
     } catch (e) {
       debugPrint('[after_sud] updateSudScore error: $e');
+    }
+
+    final fallback = await _createFallbackSud(
+      abcId: abcId,
+      beforeSud: beforeSud,
+    );
+    final fallbackSudId = fallback?['sud_id']?.toString();
+    if (fallbackSudId != null && fallbackSudId.isNotEmpty) {
+      flow.setSudId(fallbackSudId);
+    }
+    if (fallback == null) {
       _showSnack('SUD를 저장하지 못했습니다. 다시 시도해주세요.');
     }
-    return null;
+    return fallback;
   }
 
-  // ───────────────────── 비교 및 분기 ─────────────────────
-  Future<void> _compareAndNavigate(Map<String, dynamic> res) async {
-    final beforeSud = (res['before_sud'] as num?)?.toInt() ?? _sud;
-    final afterSud = (res['after_sud'] as num?)?.toInt() ?? _sud;
-
-    final route = _routeData();
-    final flow = route.flow;
-    final abcId = route.abcId;
-    final origin = route.origin;
-    if (abcId != null) flow.setDiaryId(abcId);
-    flow.setOrigin(origin);
-
-    if (abcId == null || abcId.isEmpty) {
-      if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-      return;
-    }
-
+  // ───────────────────── 저장 후 이동 ─────────────────────
+  void _navigateHome() {
     if (!mounted) return;
-    if (afterSud < beforeSud || afterSud <= 2) {
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-    } else {
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder:
-              (_, __, ___) => Week4SkipChoiceScreen(
-                allBList:
-                    (route.args['allBList'] as List?)?.cast<String>() ??
-                    const [],
-                remainingBList:
-                    (route.args['remainingBList'] as List?)?.cast<String>() ??
-                    const [],
-                existingAlternativeThoughts:
-                    (route.args['allAlternativeThoughts'] as List?)
-                        ?.cast<String>() ??
-                    const [],
-                abcId: abcId,
-              ),
-        ),
-      );
-    }
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }
 
   // ───────────────────── UI ─────────────────────
@@ -136,15 +145,9 @@ class _AfterSudRatingScreenState extends State<AfterSudRatingScreen> {
       cardTitle: '활동을 진행한 후,\n느끼는 불안 정도를 선택해 주세요',
       onBack: () => Navigator.pop(context),
       onNext: () async {
-        final res = await _saveSud();
+        await _saveSud();
         if (!context.mounted) return;
-
-        // sudId 없거나 저장 실패 등
-        if (res == null) {
-          Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-          return;
-        }
-        await _compareAndNavigate(res);
+        _navigateHome();
       },
       child: SudRatingContent(
         value: _sud,
