@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/diaries_api.dart';
 import 'package:gad_app_team/data/today_task_draft_progress.dart';
+import 'package:gad_app_team/data/today_task_local_state_store.dart';
 import 'package:gad_app_team/data/api/user_data_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/alarm/alarm_notification_service.dart';
@@ -137,8 +138,6 @@ class TodayTaskProvider extends ChangeNotifier {
     final data = await _userDataApi.getTodayTask();
     if (requestId != _requestId) return;
 
-    final previousDate = _date;
-
     // 날짜 필드 (예: "2025-12-03")
     final dateRaw = data['date'];
     if (dateRaw is String) {
@@ -153,21 +152,22 @@ class TodayTaskProvider extends ChangeNotifier {
     // 홈 '오늘의 할 일' 일기 완료에는 사용하지 않는다.
     // 오늘의 할 일 전용 완료 상태는 today_task draft_progress만 반영한다.
     _diaryDone = false;
+    _diaryDraftProgress = TodayTaskDraftProgress.none;
+    final todayKey = _todayTaskDateKey(_date);
+    final localDiaryProgress = await TodayTaskLocalStateStore.readDiaryProgress(
+      dateKey: todayKey,
+    );
+    final localRelaxationDone =
+        await TodayTaskLocalStateStore.readRelaxationDone(dateKey: todayKey);
+    if (requestId != _requestId) return;
+    _diaryDraftProgress = localDiaryProgress;
 
     // 오늘 이완 여부
     final relaxFlag = data['has_relaxation_today'];
     // todo:총괄평가용
-    // 기존 코드: 서버 false가 로컬 완료 UI를 즉시 덮어써서
-    // 완료 이미지가 잠깐 보였다가 미완료로 돌아가는 문제가 있었다.
+    // 홈 '오늘의 할 일' 이완 완료는 서버값과 같은 날짜 로컬 완료값을 함께 본다.
     // _relaxationDone = relaxFlag == true;
-    final isSameTodayTaskDate =
-        previousDate != null &&
-        _date != null &&
-        previousDate.year == _date!.year &&
-        previousDate.month == _date!.month &&
-        previousDate.day == _date!.day;
-    _relaxationDone =
-        relaxFlag == true || (isSameTodayTaskDate && _relaxationDone);
+    _relaxationDone = relaxFlag == true || localRelaxationDone;
     final relaxModeRaw = data['relaxation_entry_mode_today'];
     _relaxationEntryModeToday =
         relaxModeRaw == 'learning' ? 'learning' : 'review';
@@ -192,23 +192,36 @@ class TodayTaskProvider extends ChangeNotifier {
       if (draft != null) {
         // 미완성 초안이 있으면 서버 플래그보다 초안 상태를 우선한다.
         _diaryDone = false;
-        _diaryDraftProgress = TodayTaskDraftProgress.normalize(
+        final serverProgress = TodayTaskDraftProgress.normalize(
           draft['draft_progress'],
         );
+        // todo:총괄평가용
+        // 기존 코드: 서버 draft_progress를 그대로 대입해서 홈 '오늘의 할 일'
+        // 일기 진행 UI가 같은 날짜 안에서도 뒤로 돌아갈 수 있었다.
+        // _diaryDraftProgress = serverProgress;
+        _diaryDraftProgress = _maxDiaryProgress(serverProgress);
       } else {
-        _diaryDraftProgress =
+        final serverProgress =
             _diaryDone
                 ? TodayTaskDraftProgress.groupCompleted
                 : TodayTaskDraftProgress.none;
+        _diaryDraftProgress = _maxDiaryProgress(serverProgress);
       }
     } catch (e) {
       if (requestId != _requestId) return;
-      _diaryDraftProgress =
+      final serverProgress =
           _diaryDone
               ? TodayTaskDraftProgress.groupCompleted
               : TodayTaskDraftProgress.none;
+      _diaryDraftProgress = _maxDiaryProgress(serverProgress);
       debugPrint('TodayTaskProvider._loadDiaryDraftProgress 실패: $e');
     }
+  }
+
+  int _maxDiaryProgress(int serverProgress) {
+    return _diaryDraftProgress >= serverProgress
+        ? _diaryDraftProgress
+        : serverProgress;
   }
 
   // ───────────────────── 로컬에서만 살짝 건드릴 때 ─────────────────────
@@ -244,8 +257,22 @@ class TodayTaskProvider extends ChangeNotifier {
     if (_diaryDone) {
       _diaryDraftProgress = TodayTaskDraftProgress.groupCompleted;
     }
+    if (diaryDone != null || normalizedDiaryProgress != null) {
+      unawaited(
+        TodayTaskLocalStateStore.saveDiaryProgress(
+          progress: _diaryDraftProgress,
+          dateKey: _todayTaskDateKey(_date),
+        ),
+      );
+    }
     if (relaxationDone != null) {
       _relaxationDone = relaxationDone;
+      unawaited(
+        TodayTaskLocalStateStore.saveRelaxationDone(
+          done: _relaxationDone,
+          dateKey: _todayTaskDateKey(_date),
+        ),
+      );
     }
     _notifyListenersSafely();
     unawaited(_syncTodayTaskReminderState());
@@ -264,7 +291,10 @@ class TodayTaskProvider extends ChangeNotifier {
     _notifyListenersSafely();
   }
 
-  /// 로그아웃 등에서 상태 싹 초기화.
+  /// Provider 메모리 상태 초기화.
+  ///
+  /// 같은 날짜의 홈 오늘의할일 일기/이완 로컬 상태는
+  /// TodayTaskLocalStateStore에 남아 있고 loadTodayTask()에서 복구된다.
   void reset() {
     _requestId++;
     _date = null;
@@ -286,6 +316,13 @@ class TodayTaskProvider extends ChangeNotifier {
       diaryDone: _diaryDone,
       relaxationDone: _relaxationDone,
     );
+  }
+
+  String? _todayTaskDateKey(DateTime? date) {
+    if (date == null) return null;
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
   }
 
   // 기존 clear() 호출하는 코드가 있을 수 있으니 alias로 남겨두기
