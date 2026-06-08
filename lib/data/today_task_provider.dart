@@ -137,6 +137,8 @@ class TodayTaskProvider extends ChangeNotifier {
     final data = await _userDataApi.getTodayTask();
     if (requestId != _requestId) return;
 
+    final previousDate = _date;
+
     // 날짜 필드 (예: "2025-12-03")
     final dateRaw = data['date'];
     if (dateRaw is String) {
@@ -154,7 +156,18 @@ class TodayTaskProvider extends ChangeNotifier {
 
     // 오늘 이완 여부
     final relaxFlag = data['has_relaxation_today'];
-    _relaxationDone = relaxFlag == true;
+    // todo:총괄평가용
+    // 기존 코드: 서버 false가 로컬 완료 UI를 즉시 덮어써서
+    // 완료 이미지가 잠깐 보였다가 미완료로 돌아가는 문제가 있었다.
+    // _relaxationDone = relaxFlag == true;
+    final isSameTodayTaskDate =
+        previousDate != null &&
+        _date != null &&
+        previousDate.year == _date!.year &&
+        previousDate.month == _date!.month &&
+        previousDate.day == _date!.day;
+    _relaxationDone =
+        relaxFlag == true || (isSameTodayTaskDate && _relaxationDone);
     final relaxModeRaw = data['relaxation_entry_mode_today'];
     _relaxationEntryModeToday =
         relaxModeRaw == 'learning' ? 'learning' : 'review';
