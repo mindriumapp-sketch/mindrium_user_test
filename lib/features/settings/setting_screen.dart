@@ -8,6 +8,7 @@ import 'package:gad_app_team/features/settings/terms_policy_screen.dart';
 import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/widgets/app_version_footer.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -97,7 +98,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         context,
                                         animation,
                                         secondaryAnimation,
-                                      ) => const NotificationPreferencesScreen(),
+                                      ) =>
+                                          const NotificationPreferencesScreen(),
                                   transitionsBuilder: (
                                     context,
                                     animation,
@@ -310,6 +312,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  const AppVersionFooter(),
                 ],
               ),
             ),

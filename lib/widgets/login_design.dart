@@ -3,6 +3,7 @@ import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/widgets/input_text_field.dart';
 import 'package:gad_app_team/widgets/passwod_field.dart';
+import 'package:gad_app_team/widgets/app_version_footer.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 
 /// 로그인 디자인 위젯
@@ -139,6 +140,10 @@ class LoginDesign extends StatelessWidget {
                               child: const Text('회원가입'),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 8),
+                        const AppVersionFooter(
+                          padding: EdgeInsets.only(top: 4),
                         ),
                       ],
                     ),
