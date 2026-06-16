@@ -33,8 +33,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
   late final EduSessionsApi _eduSessionsApi;
   bool _isSaving = false;
 
-  Future<bool> _isReviewMode() async {
-    final user = context.read<UserProvider>();
+  bool _isReviewMode(UserProvider user) {
     return user.currentWeek > 5 ||
         (user.currentWeek == 5 && user.mainCbtCompleted);
   }
@@ -47,14 +46,16 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
   }
 
   Future<void> _showStartDialog() async {
-    if (await _isReviewMode()) {
-      final todayTask = context.read<TodayTaskProvider>();
-      final user = context.read<UserProvider>();
+    final todayTask = context.read<TodayTaskProvider>();
+    final userProvider = context.read<UserProvider>();
+    final nav = Navigator.of(context);
+
+    if (_isReviewMode(userProvider)) {
       final shouldShowRelaxLearning =
           todayTask.isTreatmentReviewFlowForWeek(5) &&
           shouldShowCbtToRelaxationTransition(
-            currentWeek: user.currentWeek,
-            mainRelaxCompleted: user.mainRelaxCompleted,
+            currentWeek: userProvider.currentWeek,
+            mainRelaxCompleted: userProvider.mainRelaxCompleted,
             weekNumber: 5,
           );
       if (shouldShowRelaxLearning) {
@@ -62,8 +63,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
           context: context,
           weekNumber: 5,
           onMoveNow: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).pushReplacementNamed(
+            nav.pop();
+            nav.pushReplacementNamed(
               '/relaxation_start',
               arguments: {
                 'sessionId': widget.sessionId,
@@ -79,27 +80,25 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
           },
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
-            Navigator.of(context).pop();
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            nav.pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
       }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(5) &&
-          (user.currentWeek > 5 ||
-              (user.currentWeek == 5 &&
-                  user.mainCbtCompleted &&
-                  user.mainRelaxCompleted));
+          (userProvider.currentWeek > 5 ||
+              (userProvider.currentWeek == 5 &&
+                  userProvider.mainCbtCompleted &&
+                  userProvider.mainRelaxCompleted));
       if (shouldShowRelaxReview) {
         showCbtReviewToRelaxationDialog(
           context: context,
           weekNumber: 5,
           onMoveNow: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).pushReplacementNamed(
+            nav.pop();
+            nav.pushReplacementNamed(
               '/relaxation_start',
               arguments: {
                 'sessionId': widget.sessionId,
@@ -115,10 +114,8 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
           },
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
-            Navigator.of(context).pop();
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            nav.pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
@@ -126,12 +123,9 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
 
       if (!mounted) return;
       todayTask.clearTreatmentReviewFlow();
-      Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
-
-    final userProvider = context.read<UserProvider>();
-    final nav = Navigator.of(context);
 
     try {
       await _eduSessionsApi.completeWeekSession(
@@ -152,7 +146,7 @@ class _Week5VisualScreenState extends State<Week5VisualScreen> {
       weekNumber: 5,
     );
     if (!shouldShowTransition) {
-      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
+      todayTask.clearTreatmentReviewFlow();
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }

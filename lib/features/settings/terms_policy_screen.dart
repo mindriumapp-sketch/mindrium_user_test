@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/features/auth/terms_detail_screen.dart';
+import 'package:gad_app_team/features/auth/terms_documents.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 
 class TermsPolicyScreen extends StatelessWidget {
@@ -53,33 +54,7 @@ class TermsPolicyScreen extends StatelessWidget {
   }
 
   Widget _buildPolicyCard(BuildContext context) {
-    final items = [
-      (
-        title: '서비스 이용약관',
-        subtitle: '서비스 이용 조건 및 운영 정책',
-        content: '서비스 이용약관 전문을 여기에 입력해 주세요.',
-      ),
-      (
-        title: '개인정보 처리방침',
-        subtitle: '개인정보 처리 기준과 이용자 권리',
-        content: '개인정보 처리방침 전문을 여기에 입력해 주세요.',
-      ),
-      (
-        title: '개인정보 수집 및 이용 동의',
-        subtitle: '수집 항목, 목적, 보유 기간 안내',
-        content: '개인정보 수집 및 이용 동의 내용을 여기에 입력해 주세요.',
-      ),
-      (
-        title: '민감정보 수집 및 이용 동의',
-        subtitle: '민감정보 처리 목적 및 보호 조치',
-        content: '민감정보 수집 및 이용 동의 내용을 여기에 입력해 주세요.',
-      ),
-      (
-        title: '개인정보 및 민감정보 제3자 제공 동의',
-        subtitle: '제공받는 자, 목적, 제공 항목 안내',
-        content: '개인정보 및 민감정보 제3자 제공 동의 내용을 여기에 입력해 주세요.',
-      ),
-    ];
+    const items = TermsDocuments.all;
 
     return Container(
       width: double.infinity,
@@ -115,7 +90,7 @@ class TermsPolicyScreen extends StatelessWidget {
                           builder:
                               (_) => TermsDetailScreen(
                                 title: item.title,
-                                content: item.content,
+                                documentKey: item.key,
                                 isSignupFlow: false,
                               ),
                         ),

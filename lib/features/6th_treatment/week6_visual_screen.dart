@@ -27,8 +27,7 @@ class Week6VisualScreen extends StatefulWidget {
 }
 
 class _Week6VisualScreenState extends State<Week6VisualScreen> {
-  Future<bool> _isReviewMode() async {
-    final user = context.read<UserProvider>();
+  bool _isReviewMode(UserProvider user) {
     return user.currentWeek > 6 ||
         (user.currentWeek == 6 && user.mainCbtCompleted);
   }
@@ -334,14 +333,16 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
   }
 
   Future<void> _showStartDialog() async {
-    if (await _isReviewMode()) {
-      final todayTask = context.read<TodayTaskProvider>();
-      final user = context.read<UserProvider>();
+    final todayTask = context.read<TodayTaskProvider>();
+    final userProvider = context.read<UserProvider>();
+    final nav = Navigator.of(context);
+
+    if (_isReviewMode(userProvider)) {
       final shouldShowRelaxLearning =
           todayTask.isTreatmentReviewFlowForWeek(6) &&
           shouldShowCbtToRelaxationTransition(
-            currentWeek: user.currentWeek,
-            mainRelaxCompleted: user.mainRelaxCompleted,
+            currentWeek: userProvider.currentWeek,
+            mainRelaxCompleted: userProvider.mainRelaxCompleted,
             weekNumber: 6,
           );
       if (shouldShowRelaxLearning) {
@@ -349,8 +350,8 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
           context: context,
           weekNumber: 6,
           onMoveNow: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).pushReplacementNamed(
+            nav.pop();
+            nav.pushReplacementNamed(
               '/relaxation_start',
               arguments: {
                 'taskId': 'week6_education',
@@ -365,27 +366,25 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
           },
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
-            Navigator.of(context).pop();
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            nav.pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
       }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(6) &&
-          (user.currentWeek > 6 ||
-              (user.currentWeek == 6 &&
-                  user.mainCbtCompleted &&
-                  user.mainRelaxCompleted));
+          (userProvider.currentWeek > 6 ||
+              (userProvider.currentWeek == 6 &&
+                  userProvider.mainCbtCompleted &&
+                  userProvider.mainRelaxCompleted));
       if (shouldShowRelaxReview) {
         showCbtReviewToRelaxationDialog(
           context: context,
           weekNumber: 6,
           onMoveNow: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).pushReplacementNamed(
+            nav.pop();
+            nav.pushReplacementNamed(
               '/relaxation_start',
               arguments: {
                 'taskId': 'week6_education',
@@ -400,10 +399,8 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
           },
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
-            Navigator.of(context).pop();
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+            nav.pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
@@ -411,14 +408,12 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
 
       if (!mounted) return;
       todayTask.clearTreatmentReviewFlow();
-      Navigator.of(context).pushNamedAndRemoveUntil('/home_edu', (_) => false);
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
 
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
-    final userProvider = context.read<UserProvider>();
-    final nav = Navigator.of(context);
 
     try {
       await eduApi.completeWeekSession(weekNumber: 6, totalStages: 12);
@@ -436,7 +431,7 @@ class _Week6VisualScreenState extends State<Week6VisualScreen> {
     );
 
     if (!shouldShowTransition) {
-      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
+      todayTask.clearTreatmentReviewFlow();
       nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }

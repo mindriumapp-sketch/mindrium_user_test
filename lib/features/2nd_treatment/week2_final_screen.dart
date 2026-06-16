@@ -19,8 +19,7 @@ class Week2FinalScreen extends StatefulWidget {
 class _Week2FinalScreenState extends State<Week2FinalScreen> {
   bool _isCompleting = false;
 
-  Future<bool> _isReviewMode() async {
-    final user = context.read<UserProvider>();
+  bool _isReviewMode(UserProvider user) {
     return user.currentWeek > 2 ||
         (user.currentWeek == 2 && user.mainCbtCompleted);
   }
@@ -29,14 +28,16 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
 
-    if (await _isReviewMode()) {
-      final todayTask = context.read<TodayTaskProvider>();
-      final user = context.read<UserProvider>();
+    final todayTask = context.read<TodayTaskProvider>();
+    final userProvider = context.read<UserProvider>();
+    final nav = Navigator.of(context);
+
+    if (_isReviewMode(userProvider)) {
       final shouldShowRelaxLearning =
           todayTask.isTreatmentReviewFlowForWeek(2) &&
           shouldShowCbtToRelaxationTransition(
-            currentWeek: user.currentWeek,
-            mainRelaxCompleted: user.mainRelaxCompleted,
+            currentWeek: userProvider.currentWeek,
+            mainRelaxCompleted: userProvider.mainRelaxCompleted,
             weekNumber: 2,
           );
       if (shouldShowRelaxLearning) {
@@ -44,9 +45,8 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
           context: context,
           weekNumber: 2,
           onMoveNow: () {
-            Navigator.of(context).pop();
-            Navigator.pushReplacementNamed(
-              context,
+            nav.pop();
+            nav.pushReplacementNamed(
               '/relaxation_start',
               arguments: {
                 'sessionId': widget.sessionId,
@@ -62,30 +62,25 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
           },
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
-            Navigator.of(context).pop();
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              '/home_edu',
-              (_) => false,
-            );
+            nav.pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
       }
       final shouldShowRelaxReview =
           todayTask.isTreatmentReviewFlowForWeek(2) &&
-          (user.currentWeek > 2 ||
-              (user.currentWeek == 2 &&
-                  user.mainCbtCompleted &&
-                  user.mainRelaxCompleted));
+          (userProvider.currentWeek > 2 ||
+              (userProvider.currentWeek == 2 &&
+                  userProvider.mainCbtCompleted &&
+                  userProvider.mainRelaxCompleted));
       if (shouldShowRelaxReview) {
         showCbtReviewToRelaxationDialog(
           context: context,
           weekNumber: 2,
           onMoveNow: () {
-            Navigator.of(context).pop();
-            Navigator.pushReplacementNamed(
-              context,
+            nav.pop();
+            nav.pushReplacementNamed(
               '/relaxation_start',
               arguments: {
                 'sessionId': widget.sessionId,
@@ -101,12 +96,8 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
           },
           onFinish: () {
             todayTask.clearTreatmentReviewFlow();
-            Navigator.of(context).pop();
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              '/home_edu',
-              (_) => false,
-            );
+            nav.pop();
+            nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
           },
         );
         return;
@@ -114,13 +105,12 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
 
       if (!mounted) return;
       todayTask.clearTreatmentReviewFlow();
-      Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
 
     final client = ApiClient(tokens: TokenStorage());
     final eduApi = EduSessionsApi(client);
-    final userProvider = context.read<UserProvider>();
     try {
       await eduApi.completeWeekSession(
         weekNumber: 2,
@@ -140,8 +130,8 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
       weekNumber: 2,
     );
     if (!shouldShowTransition) {
-      context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
-      Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+      todayTask.clearTreatmentReviewFlow();
+      nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
       return;
     }
 
@@ -149,9 +139,8 @@ class _Week2FinalScreenState extends State<Week2FinalScreen> {
       context: context,
       weekNumber: 2,
       onMoveNow: () {
-        Navigator.of(context).pop();
-        Navigator.pushReplacementNamed(
-          context,
+        nav.pop();
+        nav.pushReplacementNamed(
           '/relaxation_start',
           arguments: {
             'sessionId': widget.sessionId,

@@ -26,8 +26,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
   String? _sessionId;
   static const int _totalScreens = 10;
 
-  Future<bool> _isReviewMode() async {
-    final user = context.read<UserProvider>();
+  bool _isReviewMode(UserProvider user) {
     return user.currentWeek > 8 ||
         (user.currentWeek == 8 && user.mainCbtCompleted);
   }
@@ -150,14 +149,16 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
     setState(() => _isSavingCompletion = true);
 
     try {
-      if (await _isReviewMode()) {
-        final todayTask = context.read<TodayTaskProvider>();
+      final todayTask = context.read<TodayTaskProvider>();
+      final userProvider = context.read<UserProvider>();
+      final nav = Navigator.of(context);
+
+      if (_isReviewMode(userProvider)) {
         final shouldShowRelaxLearning =
             todayTask.isTreatmentReviewFlowForWeek(8) &&
             shouldShowCbtToRelaxationTransition(
-              currentWeek: context.read<UserProvider>().currentWeek,
-              mainRelaxCompleted:
-                  context.read<UserProvider>().mainRelaxCompleted,
+              currentWeek: userProvider.currentWeek,
+              mainRelaxCompleted: userProvider.mainRelaxCompleted,
               weekNumber: 8,
             );
         if (shouldShowRelaxLearning) {
@@ -165,9 +166,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
             context: context,
             weekNumber: 8,
             onMoveNow: () {
-              Navigator.of(context).pop();
-              Navigator.pushReplacementNamed(
-                context,
+              nav.pop();
+              nav.pushReplacementNamed(
                 '/relaxation_start',
                 arguments: {
                   'taskId': 'week8_education',
@@ -182,30 +182,25 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
             },
             onFinish: () {
               todayTask.clearTreatmentReviewFlow();
-              Navigator.of(context).pop();
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/home_edu',
-                (_) => false,
-              );
+              nav.pop();
+              nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
             },
           );
           return;
         }
         final shouldShowRelaxReview =
             todayTask.isTreatmentReviewFlowForWeek(8) &&
-            (context.read<UserProvider>().currentWeek > 8 ||
-                (context.read<UserProvider>().currentWeek == 8 &&
-                    context.read<UserProvider>().mainCbtCompleted &&
-                    context.read<UserProvider>().mainRelaxCompleted));
+            (userProvider.currentWeek > 8 ||
+                (userProvider.currentWeek == 8 &&
+                    userProvider.mainCbtCompleted &&
+                    userProvider.mainRelaxCompleted));
         if (shouldShowRelaxReview) {
           showCbtReviewToRelaxationDialog(
             context: context,
             weekNumber: 8,
             onMoveNow: () {
-              Navigator.of(context).pop();
-              Navigator.pushReplacementNamed(
-                context,
+              nav.pop();
+              nav.pushReplacementNamed(
                 '/relaxation_start',
                 arguments: {
                   'taskId': 'week8_education',
@@ -220,12 +215,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
             },
             onFinish: () {
               todayTask.clearTreatmentReviewFlow();
-              Navigator.of(context).pop();
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/home_edu',
-                (_) => false,
-              );
+              nav.pop();
+              nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
             },
           );
           return;
@@ -233,7 +224,7 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
 
         if (!mounted) return;
         todayTask.clearTreatmentReviewFlow();
-        Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+        nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
         return;
       }
 
@@ -246,20 +237,18 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
         totalScreens: _totalScreens,
       );
       if (mounted) {
-        final userProvider = context.read<UserProvider>();
         await userProvider.refreshProgress();
         userProvider.markMainCbtCompletedLocally(weekNumber: 8);
       }
       if (!mounted) return;
-      final user = context.read<UserProvider>();
       final shouldShowTransition = shouldShowCbtToRelaxationTransition(
-        currentWeek: user.currentWeek,
-        mainRelaxCompleted: user.mainRelaxCompleted,
+        currentWeek: userProvider.currentWeek,
+        mainRelaxCompleted: userProvider.mainRelaxCompleted,
         weekNumber: 8,
       );
       if (!shouldShowTransition) {
-        context.read<TodayTaskProvider>().clearTreatmentReviewFlow();
-        Navigator.pushNamedAndRemoveUntil(context, '/home_edu', (_) => false);
+        todayTask.clearTreatmentReviewFlow();
+        nav.pushNamedAndRemoveUntil('/home_edu', (_) => false);
         return;
       }
 
@@ -267,9 +256,8 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
         context: context,
         weekNumber: 8,
         onMoveNow: () {
-          Navigator.of(context).pop();
-          Navigator.pushReplacementNamed(
-            context,
+          nav.pop();
+          nav.pushReplacementNamed(
             '/relaxation_start',
             arguments: {
               'taskId': 'week8_education',
@@ -279,8 +267,9 @@ class _Week8FinalScreenState extends State<Week8FinalScreen> {
               'cueSheetAsset':
                   'assets/relaxation/cue_sheets/week8_cue_sheet.json',
               'isReviewMode':
-                  user.currentWeek > 8 ||
-                  (user.currentWeek == 8 && user.mainRelaxCompleted),
+                  userProvider.currentWeek > 8 ||
+                  (userProvider.currentWeek == 8 &&
+                      userProvider.mainRelaxCompleted),
             },
           );
         },

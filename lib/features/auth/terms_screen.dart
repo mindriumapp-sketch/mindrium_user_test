@@ -1,6 +1,7 @@
 // File: terms_screen.dart
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:gad_app_team/features/auth/terms_detail_screen.dart';
+import 'package:gad_app_team/features/auth/terms_documents.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
 
 class TermsScreen extends StatefulWidget {
@@ -36,18 +37,15 @@ class _TermsScreenState extends State<TermsScreen> {
     });
   }
 
-  Future<void> _openTermsDetail({
-    required String termKey,
-    required String title,
-    required String content,
-  }) async {
+  Future<void> _openTermsDetail({required String documentKey}) async {
+    final document = TermsDocuments.byKey(documentKey);
     final agreed = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder:
             (_) => TermsDetailScreen(
-              title: title,
-              content: content,
+              title: document.title,
+              documentKey: document.key,
               isSignupFlow: true,
             ),
       ),
@@ -56,7 +54,7 @@ class _TermsScreenState extends State<TermsScreen> {
     if (agreed != true || !mounted) return;
 
     setState(() {
-      switch (termKey) {
+      switch (documentKey) {
         case 'service':
           agreedServiceTerms = true;
           break;
@@ -162,11 +160,7 @@ class _TermsScreenState extends State<TermsScreen> {
                         },
                         onViewPressed:
                             () => _openTermsDetail(
-                              termKey: 'service',
-                              title: '서비스 이용약관',
-                              content:
-                                  '서비스 이용약관 전문을 여기에 입력해 주세요.\n\n'
-                                  '- 목적\n- 이용 조건\n- 책임 및 면책',
+                              documentKey: TermsDocuments.service.key,
                             ),
                       ),
 
@@ -181,11 +175,7 @@ class _TermsScreenState extends State<TermsScreen> {
                         },
                         onViewPressed:
                             () => _openTermsDetail(
-                              termKey: 'privacy_policy',
-                              title: '개인정보 처리방침',
-                              content:
-                                  '개인정보 처리방침 전문을 여기에 입력해 주세요.\n\n'
-                                  '- 처리 목적\n- 처리 항목\n- 보유 기간',
+                              documentKey: TermsDocuments.privacyPolicy.key,
                             ),
                       ),
 
@@ -200,11 +190,8 @@ class _TermsScreenState extends State<TermsScreen> {
                         },
                         onViewPressed:
                             () => _openTermsDetail(
-                              termKey: 'personal_info',
-                              title: '개인정보 수집 및 이용 동의',
-                              content:
-                                  '개인정보 수집 및 이용 동의 내용을 여기에 입력해 주세요.\n\n'
-                                  '- 수집 항목\n- 이용 목적\n- 보유 기간\n- 거부권 및 불이익',
+                              documentKey:
+                                  TermsDocuments.personalInfoConsent.key,
                             ),
                       ),
 
@@ -219,11 +206,8 @@ class _TermsScreenState extends State<TermsScreen> {
                         },
                         onViewPressed:
                             () => _openTermsDetail(
-                              termKey: 'sensitive_info',
-                              title: '민감정보 수집 및 이용 동의',
-                              content:
-                                  '민감정보 수집 및 이용 동의 내용을 여기에 입력해 주세요.\n\n'
-                                  '- 수집 항목\n- 이용 목적\n- 보유 기간\n- 거부권 및 불이익',
+                              documentKey:
+                                  TermsDocuments.sensitiveInfoConsent.key,
                             ),
                       ),
 
@@ -238,11 +222,7 @@ class _TermsScreenState extends State<TermsScreen> {
                         },
                         onViewPressed:
                             () => _openTermsDetail(
-                              termKey: 'third_party',
-                              title: '개인정보 및 민감정보 제3자 제공 동의',
-                              content:
-                                  '개인정보 및 민감정보 제3자 제공 동의 내용을 여기에 입력해 주세요.\n\n'
-                                  '- 제공받는 자\n- 제공 목적\n- 제공 항목\n- 보유 기간',
+                              documentKey: TermsDocuments.thirdPartyConsent.key,
                             ),
                       ),
 

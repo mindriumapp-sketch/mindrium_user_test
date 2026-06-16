@@ -143,12 +143,12 @@ flutter run \
 ### Android 릴리즈 빌드
 
 ```bash
-flutter build apk --release \
+flutter build appbundle --release \
   --dart-define-from-file=dart_defines/api.example.json \
   --dart-define-from-file=dart_defines/kakao.api.json
 ```
 
-현재 Android 릴리즈 설정은 개발/테스트 편의를 위해 debug signing config를 사용합니다. 배포용 APK를 만들 때는 별도 release keystore 설정이 필요합니다.
+Android 릴리즈 빌드는 `android/key.properties`의 release keystore 설정으로 서명됩니다. Play Console 내부/비공개 테스트 업로드에는 `build/app/outputs/bundle/release/app-release.aab` 산출물을 사용합니다.
 
 ### 백엔드
 

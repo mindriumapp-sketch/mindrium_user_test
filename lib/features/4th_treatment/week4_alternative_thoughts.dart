@@ -265,7 +265,6 @@ class _Week4AlternativeThoughtsScreenState
   Widget build(BuildContext context) {
     debugPrint('[alt_thought] abcId: ${widget.abcId}');
     final currentThought = _currentBeliefText();
-    final remainingThoughtCount = widget.remainingBList.length;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
