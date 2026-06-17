@@ -293,7 +293,11 @@ class TreatmentDesign extends StatelessWidget {
                         }
                         return;
                       }
-                      todayTask.clearTreatmentReviewFlow();
+                      if (cbtDone || !isCurrentWeek) {
+                        todayTask.setTreatmentReviewFlow(weekNo: weekNo);
+                      } else {
+                        todayTask.clearTreatmentReviewFlow();
+                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => screen),

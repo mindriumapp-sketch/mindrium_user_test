@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../storage/token_storage.dart';
+import 'api_error_messages.dart';
 
 /// Release HTTP 허용 호스트 (SI-01). [API_BASE_URL] define 과 맞출 것.
 const String _allowedCleartextApiHost = '115.145.134.180';
@@ -99,6 +100,11 @@ class ApiClient {
                 return handler.next(re as DioException);
               }
             }
+          }
+          if (ApiErrorMessages.isNetworkFailure(e)) {
+            return handler.next(
+              e.copyWith(message: ApiErrorMessages.fromDioException(e)),
+            );
           }
           handler.next(e);
         },

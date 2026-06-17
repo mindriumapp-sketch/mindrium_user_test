@@ -302,6 +302,10 @@ class TermsDocuments {
     sections: [
       TermsSection(
         title: '1. 제3자 제공',
+        paragraphs: [
+          '위치/지도 기능 이용 시 카카오 지도 및 주소 검색 서비스에 검색어, 선택 위치 좌표, 주소 조회 요청 정보가 제공될 수 있습니다.',
+          '베타테스트 앱 배포와 설치, 테스트 참여 관리, 피드백 접수를 위해 Google Play, Apple App Store 또는 TestFlight 등 앱 배포 플랫폼을 사용할 수 있습니다.',
+        ],
         table: TermsTable(
           headers: ['제공받는 자', '제공 목적', '제공 항목', '보유 및 이용 기간'],
           rows: [

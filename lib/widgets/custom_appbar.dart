@@ -58,6 +58,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   // 🎨 내부 색상 정의
   static const Color _deepNavy = Color(0xFF1E2F3F);
   static const Color _indigo = _deepNavy;
+  static const double _edgeButtonExtent = 56;
   // static const Color _mint = Color(0xFF8DE4CC);
   // static const Color _greyText = Color(0xFF666666);
   // static const Color _white = Colors.white;
@@ -84,6 +85,16 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final leadingExtent = showBack ? _edgeButtonExtent : 0.0;
+    final actionExtent =
+        (extraIcon != null ? _edgeButtonExtent : 0.0) +
+        (extraIcon != null && showHome && actionIconGap > 0
+            ? actionIconGap
+            : 0.0) +
+        (showHome ? _edgeButtonExtent : 0.0);
+    final edgeExtent =
+        leadingExtent > actionExtent ? leadingExtent : actionExtent;
+
     return AppBar(
       // ✅ 완전 투명 (Opacity 사용 X)
       backgroundColor: Colors.transparent,
@@ -98,84 +109,108 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       bottom: bottom, // ← 추가
 
       titleSpacing: 4,
+      leadingWidth: edgeExtent > 0 ? edgeExtent : null,
       leading:
-          showBack
-              ? Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: IconButton(
-                  icon: Icon(
-                    Icons.arrow_back_ios_new,
-                    color: leadingIconColor ?? _indigo,
-                  ),
-                  splashRadius: 22,
-                  onPressed: () async {
-                    if (confirmOnBack) {
-                      final confirmed = await _confirmExit(context);
-                      if (!confirmed || !context.mounted) return;
-                    }
-                    if (onBack != null) {
-                      onBack!();
-                    } else {
-                      final navigator = Navigator.of(context);
-                      if (navigator.canPop()) {
-                        navigator.pop();
-                      } else {
-                        // 루트(예: 탭 메인)에서는 pop 불가이므로 안전하게 홈으로 이동.
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/home',
-                          (route) => false,
-                        );
-                      }
-                    }
-                  },
-                ),
+          edgeExtent > 0
+              ? SizedBox(
+                width: edgeExtent,
+                child:
+                    showBack
+                        ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.arrow_back_ios_new,
+                                color: leadingIconColor ?? _indigo,
+                              ),
+                              splashRadius: 22,
+                              onPressed: () async {
+                                if (confirmOnBack) {
+                                  final confirmed = await _confirmExit(context);
+                                  if (!confirmed || !context.mounted) return;
+                                }
+                                if (onBack != null) {
+                                  onBack!();
+                                } else {
+                                  final navigator = Navigator.of(context);
+                                  if (navigator.canPop()) {
+                                    navigator.pop();
+                                  } else {
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      '/home',
+                                      (route) => false,
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                        )
+                        : const SizedBox.shrink(),
               )
               : null,
       title: _buildTitle(),
 
       actions: [
-        if (extraIcon != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: IconButton(
-              icon: Icon(extraIcon, color: actionIconColor ?? _deepNavy),
-              splashRadius: 22,
-              onPressed:
-                  onExtraPressed ??
-                  () {
-                    if (extraRoute != null) {
-                      Navigator.pushNamed(context, extraRoute!);
-                    }
-                  },
-            ),
-          ),
-        if (extraIcon != null && showHome && actionIconGap > 0)
-          SizedBox(width: actionIconGap),
-        if (showHome)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: IconButton(
-              icon: Icon(
-                Icons.home_outlined,
-                color: actionIconColor ?? _deepNavy,
-              ),
-              splashRadius: 22,
-              onPressed: () async {
-                if (confirmOnHome) {
-                  final confirmed = await _confirmExit(context);
-                  if (!confirmed || !context.mounted) return;
-                }
-                if (onHomePressed != null) {
-                  onHomePressed!();
-                } else {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    '/home',
-                    (route) => false,
-                  );
-                }
-              },
+        if (edgeExtent > 0)
+          SizedBox(
+            width: edgeExtent,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (extraIcon != null)
+                  SizedBox(
+                    width: _edgeButtonExtent,
+                    child: IconButton(
+                      icon: Icon(
+                        extraIcon,
+                        color: actionIconColor ?? _deepNavy,
+                      ),
+                      splashRadius: 22,
+                      onPressed:
+                          onExtraPressed ??
+                          () {
+                            if (extraRoute != null) {
+                              Navigator.pushNamed(context, extraRoute!);
+                            }
+                          },
+                    ),
+                  ),
+                if (extraIcon != null && showHome && actionIconGap > 0)
+                  SizedBox(width: actionIconGap),
+                if (showHome)
+                  SizedBox(
+                    width: _edgeButtonExtent,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.home_outlined,
+                          color: actionIconColor ?? _deepNavy,
+                        ),
+                        splashRadius: 22,
+                        onPressed: () async {
+                          if (confirmOnHome) {
+                            final confirmed = await _confirmExit(context);
+                            if (!confirmed || !context.mounted) return;
+                          }
+                          if (onHomePressed != null) {
+                            onHomePressed!();
+                          } else {
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/home',
+                              (route) => false,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
       ],

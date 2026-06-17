@@ -9,7 +9,8 @@ bool shouldShowCbtToRelaxationTransition({
   required bool mainRelaxCompleted,
   required int weekNumber,
 }) {
-  return weekNumber == currentWeek && !mainRelaxCompleted;
+  if (weekNumber == currentWeek) return !mainRelaxCompleted;
+  return weekNumber > currentWeek;
 }
 
 bool shouldShowRelaxationToCbtTransition({
@@ -19,8 +20,8 @@ bool shouldShowRelaxationToCbtTransition({
   required String taskId,
 }) {
   return taskId == 'week${weekNumber}_education' &&
-      weekNumber == currentWeek &&
-      !mainCbtCompleted;
+      ((weekNumber == currentWeek && !mainCbtCompleted) ||
+          weekNumber > currentWeek);
 }
 
 Future<void> showCbtToRelaxationDialog({

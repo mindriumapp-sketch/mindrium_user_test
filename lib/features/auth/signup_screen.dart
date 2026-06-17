@@ -147,7 +147,9 @@ class _SignupScreenState extends State<SignupScreen> {
           );
           break;
         case 'patientCode':
-          _patientCodeError = _validatePatientCode(patientCodeController.text.trim());
+          _patientCodeError = _validatePatientCode(
+            patientCodeController.text.trim(),
+          );
           break;
       }
       _formError = null;
@@ -256,9 +258,9 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회원가입이 완료되었습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다.')));
 
       final hasSurvey = userProvider.surveyCompleted;
       Navigator.pushReplacementNamed(
@@ -314,6 +316,7 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: AppColors.grey100,
       appBar: AppBar(
         title: const Text('회원가입'),
+        centerTitle: true,
         backgroundColor: AppColors.white,
         elevation: 0,
         toolbarHeight: 50,
@@ -600,5 +603,4 @@ class _SignupScreenState extends State<SignupScreen> {
       ],
     );
   }
-
 }

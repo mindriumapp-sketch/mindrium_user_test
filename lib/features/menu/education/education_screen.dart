@@ -139,6 +139,34 @@ class _EducationScreenState extends State<EducationScreen> {
     }
   }
 
+  int _initialPrefixIndexFor(BookItem item) {
+    final index = _items.indexWhere(
+      (candidate) => candidate.route == item.route,
+    );
+    return index < 0 ? 0 : index;
+  }
+
+  void _openRelaxBook(BuildContext context, BookItem item, String? sessionId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (_) => EducationPage(
+              title: '불안에 대한 이해',
+              jsonPrefixes: const [
+                'week1_part1_',
+                'week1_part2_',
+                'week1_part3_',
+                'week1_part4_',
+              ],
+              initialPrefixIndex: _initialPrefixIndexFor(item),
+              isRelax: true,
+              sessionId: sessionId,
+            ),
+      ),
+    );
+  }
+
   // ───────────────── build ─────────────────
 
   @override
@@ -323,25 +351,7 @@ class _EducationScreenState extends State<EducationScreen> {
                   width: double.infinity,
                   height: double.infinity,
                   item: rowItems[i],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => EducationPage(
-                              title: '불안에 대한 이해',
-                              jsonPrefixes: [
-                                'week1_part1_',
-                                'week1_part2_',
-                                'week1_part3_',
-                                'week1_part4_',
-                              ],
-                              isRelax: true,
-                              sessionId: sessionId,
-                            ),
-                      ),
-                    );
-                  },
+                  onTap: () => _openRelaxBook(context, rowItems[i], sessionId),
                 ),
               ),
             ),
@@ -379,24 +389,7 @@ class _EducationScreenState extends State<EducationScreen> {
             item: it,
             onTap: () {
               if (widget.isRelax) {
-                // ✅ 이완 모드: 항상 전체 1주차 교육 묶음 페이지로
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (_) => EducationPage(
-                          title: '불안에 대한 이해',
-                          jsonPrefixes: [
-                            'week1_part1_',
-                            'week1_part2_',
-                            'week1_part3_',
-                            'week1_part4_',
-                          ],
-                          isRelax: true,
-                          sessionId: sessionId,
-                        ),
-                  ),
-                );
+                _openRelaxBook(context, it, sessionId);
               } else {
                 _openBook(context, it);
               }

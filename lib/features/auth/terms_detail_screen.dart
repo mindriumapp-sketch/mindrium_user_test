@@ -26,6 +26,7 @@ class TermsDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final document = _document;
     final bool isLongTitle = document.title.length >= 16;
+    const double headerSideExtent = 40;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -37,15 +38,24 @@ class TermsDetailScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 18,
-                      color: Color(0xFF233B6E),
+                  SizedBox(
+                    width: headerSideExtent,
+                    height: headerSideExtent,
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      constraints: const BoxConstraints.tightFor(
+                        width: headerSideExtent,
+                        height: headerSideExtent,
+                      ),
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 18,
+                        color: Color(0xFF233B6E),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      splashRadius: 20,
                     ),
-                    visualDensity: VisualDensity.compact,
-                    splashRadius: 20,
                   ),
                   Expanded(
                     child: Text(
@@ -62,7 +72,7 @@ class TermsDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 34),
+                  const SizedBox(width: headerSideExtent),
                 ],
               ),
               const SizedBox(height: 10),
@@ -195,35 +205,39 @@ class TermsDetailScreen extends StatelessWidget {
   }
 
   Widget _table(TermsTable table) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFD6DDEC)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Table(
-        columnWidths: {
-          for (int i = 0; i < table.headers.length; i++)
-            i: const FlexColumnWidth(),
-        },
-        border: const TableBorder(
-          horizontalInside: BorderSide(color: Color(0xFFE3E8F3)),
-          verticalInside: BorderSide(color: Color(0xFFE3E8F3)),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        width: table.headers.length >= 4 ? 720 : 520,
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFD6DDEC)),
+          borderRadius: BorderRadius.circular(8),
         ),
-        children: [
-          TableRow(
-            decoration: const BoxDecoration(color: Color(0xFFF5F8FD)),
-            children:
-                table.headers
-                    .map((header) => _tableCell(header, isHeader: true))
-                    .toList(),
+        child: Table(
+          columnWidths: {
+            for (int i = 0; i < table.headers.length; i++)
+              i: const FlexColumnWidth(),
+          },
+          border: const TableBorder(
+            horizontalInside: BorderSide(color: Color(0xFFE3E8F3)),
+            verticalInside: BorderSide(color: Color(0xFFE3E8F3)),
           ),
-          ...table.rows.map(
-            (row) => TableRow(
-              children: row.map((cell) => _tableCell(cell)).toList(),
+          children: [
+            TableRow(
+              decoration: const BoxDecoration(color: Color(0xFFF5F8FD)),
+              children:
+                  table.headers
+                      .map((header) => _tableCell(header, isHeader: true))
+                      .toList(),
             ),
-          ),
-        ],
+            ...table.rows.map(
+              (row) => TableRow(
+                children: row.map((cell) => _tableCell(cell)).toList(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

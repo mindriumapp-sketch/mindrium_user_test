@@ -20,6 +20,7 @@ class EducationPage extends StatefulWidget {
   final bool isRelax;
   final String? imagePath;
   final String? sessionId;
+  final int initialPrefixIndex;
 
   const EducationPage({
     super.key,
@@ -29,6 +30,7 @@ class EducationPage extends StatefulWidget {
     this.isRelax = false,
     this.imagePath,
     this.sessionId,
+    this.initialPrefixIndex = 0,
   });
 
   @override
@@ -106,10 +108,20 @@ class _EducationPageState extends State<EducationPage> {
         }
       }
 
+      final maxInitialPrefixIndex =
+          widget.jsonPrefixes.isEmpty ? 0 : widget.jsonPrefixes.length - 1;
+      final safeInitialPrefixIndex = widget.initialPrefixIndex.clamp(
+        0,
+        maxInitialPrefixIndex,
+      );
+      final initialSlideIndex = slides.indexWhere(
+        (slide) => slide.prefixIndex == safeInitialPrefixIndex,
+      );
+
       setState(() {
         _slides = slides;
         isLoading = false;
-        currentIndex = 0;
+        currentIndex = initialSlideIndex >= 0 ? initialSlideIndex : 0;
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {

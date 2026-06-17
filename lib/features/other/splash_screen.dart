@@ -5,7 +5,9 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/storage/auth_session_storage.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
+import 'package:gad_app_team/data/api/api_error_messages.dart';
 import 'package:gad_app_team/common/constants.dart';
+import 'package:dio/dio.dart';
 
 /// 앱 실행 시 처음 보여지는 스플래시 화면
 class SplashScreen extends StatefulWidget {
@@ -16,7 +18,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  late final Future<bool> _initFuture;
+  late Future<bool> _initFuture;
 
   /// 앱 초기화:
   /// - 토큰 조회
@@ -52,6 +54,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
       return userProvider.isUserLoaded;
     } catch (e) {
+      if (e is DioException && ApiErrorMessages.isNetworkFailure(e)) {
+        throw _SplashInitException(ApiErrorMessages.fromDioException(e));
+      }
       // 토큰은 있는데 서버 쪽 문제 / 401 등 → 토큰 정리 후 로그인으로 돌린다
       await tokens.clear();
       await AuthSessionStorage().clear();
@@ -76,6 +81,15 @@ class _SplashScreenState extends State<SplashScreen> {
     return FutureBuilder<bool>(
       future: _initFuture,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          final error = snapshot.error;
+          final message =
+              error is _SplashInitException
+                  ? error.message
+                  : ApiErrorMessages.unknownError;
+          return _buildErrorUI(message);
+        }
+
         // 아직 로딩 중
         if (!snapshot.hasData) {
           return _buildSplashUI();
@@ -110,6 +124,12 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
+  void _retryInit() {
+    setState(() {
+      _initFuture = _initApp();
+    });
+  }
+
   Widget _buildSplashUI() {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -140,4 +160,51 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
+
+  Widget _buildErrorUI(String message) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset('assets/image/logo.png', width: 88, height: 88),
+                const SizedBox(height: AppSizes.space),
+                const Text(
+                  '연결 상태를 확인해 주세요',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: AppSizes.fontSize,
+                    color: Colors.black54,
+                    height: 1.45,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 22),
+                FilledButton(onPressed: _retryInit, child: const Text('다시 시도')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashInitException implements Exception {
+  const _SplashInitException(this.message);
+
+  final String message;
 }
