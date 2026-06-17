@@ -55,6 +55,18 @@ post_install do |installer|
       config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
       config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
       config.build_settings['DWARF_DSYM_FILE_SHOULD_ACCOMPANY_PRODUCT'] = 'YES'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['CLANG_ENABLE_MODULE_VERIFIER'] = 'NO'
+    end
+
+    next unless target.respond_to?(:source_build_phase)
+
+    target.source_build_phase.files.each do |build_file|
+      file_ref = build_file.file_ref
+      next unless file_ref&.path&.end_with?('PrivacyInfo.xcprivacy')
+
+      target.source_build_phase.remove_build_file(build_file)
+      target.resources_build_phase.add_file_reference(file_ref, true)
     end
   end
 end
