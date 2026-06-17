@@ -522,6 +522,12 @@ class AlarmNotificationService {
   }
 
   Future<void> _initializeNativeNotificationLaunchBridge() async {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.iOS &&
+            defaultTargetPlatform != TargetPlatform.macOS)) {
+      return;
+    }
+
     _notificationLaunchSubscription ??= _notificationLaunchEventChannel
         .receiveBroadcastStream()
         .listen(
