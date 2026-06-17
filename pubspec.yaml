@@ -32,7 +32,6 @@ dependencies:
   # path_provider: ^2.1.1 # unused
   # path: ^1.8.3 # unused
   rive: ^0.14.0-dev.13
-  flutter_map: ^8.1.1
   latlong2: ^0.9.0
   http: ^1.4.0
   geolocator: ^14.0.1

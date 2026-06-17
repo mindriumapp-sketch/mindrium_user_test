@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:gad_app_team/common/kakao_runtime_config.dart';
 import 'package:gad_app_team/widgets/location_picker_map_controller.dart';
-import 'package:gad_app_team/widgets/location_picker_map_fallback.dart';
 import 'package:gad_app_team/widgets/location_picker_map_kakao.dart';
 
 export 'package:gad_app_team/widgets/location_picker_map_controller.dart';
@@ -36,7 +35,8 @@ class LocationPickerMap extends StatefulWidget {
 
 class _LocationPickerMapState extends State<LocationPickerMap> {
   bool _isResolvingRenderer = true;
-  bool _preferKakaoRenderer = false;
+  bool _canUseKakaoRenderer = false;
+  String? _rendererError;
   String _kakaoJavascriptKey = '';
   String _kakaoHtmlBaseUrl = KakaoRuntimeConfig.defaultHtmlBaseUrl;
 
@@ -66,24 +66,26 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
 
     final useKakao = _supportsKakaoMapRenderer && config.hasJavascriptKey;
     debugPrint(
-      'LocationPickerMap renderer resolved: ${useKakao ? 'kakao' : 'fallback'} '
+      'LocationPickerMap renderer resolved: ${useKakao ? 'kakao' : 'unavailable'} '
       '(platform: $defaultTargetPlatform, jsKey: ${config.hasJavascriptKey ? 'present' : 'missing'})',
     );
 
     setState(() {
       _kakaoJavascriptKey = config.javascriptKey;
       _kakaoHtmlBaseUrl = config.mapHtmlBaseUrl;
-      _preferKakaoRenderer = useKakao;
+      _canUseKakaoRenderer = useKakao;
+      _rendererError = useKakao ? null : 'kakao map renderer unavailable';
       _isResolvingRenderer = false;
     });
   }
 
-  void _switchToFallback({required String reason}) {
-    if (!mounted || !_preferKakaoRenderer) return;
+  void _showRendererError({required String reason}) {
+    if (!mounted) return;
 
-    debugPrint('LocationPickerMap switching to fallback renderer: $reason');
+    debugPrint('LocationPickerMap renderer failed: $reason');
     setState(() {
-      _preferKakaoRenderer = false;
+      _canUseKakaoRenderer = false;
+      _rendererError = reason;
     });
   }
 
@@ -94,24 +96,29 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
     );
   }
 
-  Widget _buildRenderer() {
-    if (_preferKakaoRenderer) {
-      return LocationPickerMapKakaoView(
-        controller: widget.controller,
-        initialCenter: widget.initialCenter,
-        initialZoom: widget.initialZoom,
-        current: widget.current,
-        picked: widget.picked,
-        savedMarkers: widget.savedMarkers,
-        onTap: widget.onTap,
-        onMapReady: widget.onMapReady,
-        javascriptKey: _kakaoJavascriptKey,
-        htmlBaseUrl: _kakaoHtmlBaseUrl,
-        onRendererFailure: (reason) => _switchToFallback(reason: reason),
-      );
-    }
+  Widget _buildErrorPlaceholder() {
+    return const ColoredBox(
+      color: Color(0xFFEAF2FF),
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            '지도를 불러올 수 없습니다.\n인터넷 연결을 확인해 주세요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF3D4352),
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              height: 1.45,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-    return LocationPickerMapFallbackView(
+  Widget _buildKakaoRenderer() {
+    return LocationPickerMapKakaoView(
       controller: widget.controller,
       initialCenter: widget.initialCenter,
       initialZoom: widget.initialZoom,
@@ -120,6 +127,9 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
       savedMarkers: widget.savedMarkers,
       onTap: widget.onTap,
       onMapReady: widget.onMapReady,
+      javascriptKey: _kakaoJavascriptKey,
+      htmlBaseUrl: _kakaoHtmlBaseUrl,
+      onRendererFailure: (reason) => _showRendererError(reason: reason),
     );
   }
 
@@ -129,6 +139,10 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
       return _buildLoadingPlaceholder();
     }
 
-    return _buildRenderer();
+    if (!_canUseKakaoRenderer || _rendererError != null) {
+      return _buildErrorPlaceholder();
+    }
+
+    return _buildKakaoRenderer();
   }
 }
