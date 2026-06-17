@@ -62,6 +62,25 @@ class ApiClient {
         uri.port == _allowedCleartextApiPort;
   }
 
+  static bool _shouldSkipRefreshForAuthError(DioException e) {
+    if (e.requestOptions.extra['_retriedAfterRefresh'] == true) return true;
+
+    final path = e.requestOptions.path;
+    final detail = _detailMessage(e);
+    if (path.endsWith('/auth/login')) return true;
+    if (detail == 'Invalid credentials') return true;
+    if (detail == 'Current password is incorrect') return true;
+    return false;
+  }
+
+  static String? _detailMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is! Map) return null;
+    final detail = data['detail'];
+    if (detail is String && detail.trim().isNotEmpty) return detail.trim();
+    return null;
+  }
+
   ApiClient({required this.tokens, String? baseUrl})
     : baseUrl = _resolveBaseUrl(baseUrl),
       dio = Dio(
@@ -89,15 +108,19 @@ class ApiClient {
           if (e.requestOptions.extra['skipAuth'] == true) {
             return handler.next(e);
           }
-          if (e.response?.statusCode == 401) {
+          if (e.response?.statusCode == 401 &&
+              !_shouldSkipRefreshForAuthError(e)) {
             final ok = await _tryRefresh();
             if (ok) {
               final req = e.requestOptions;
+              req.extra['_retriedAfterRefresh'] = true;
               try {
                 final response = await dio.fetch(req);
                 return handler.resolve(response);
-              } catch (re) {
-                return handler.next(re as DioException);
+              } on DioException catch (re) {
+                return handler.next(re);
+              } catch (_) {
+                return handler.next(e);
               }
             }
           }

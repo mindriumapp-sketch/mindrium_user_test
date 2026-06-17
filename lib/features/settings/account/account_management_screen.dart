@@ -11,6 +11,12 @@ import 'package:gad_app_team/widgets/custom_appbar.dart';
 class AccountManagementScreen extends StatelessWidget {
   const AccountManagementScreen({super.key});
 
+  static final RegExp _passwordRegex = RegExp(
+    r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,20}$',
+  );
+  static const String _passwordPolicyMessage =
+      '비밀번호는 8~20자이며, 영문자/숫자/특수문자를 각각 1자 이상 포함해야 합니다.';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -273,9 +279,6 @@ class AccountManagementScreen extends StatelessWidget {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
-    final currentPasswordFocus = FocusNode();
-    final newPasswordFocus = FocusNode();
-    final confirmPasswordFocus = FocusNode();
     bool isSubmitting = false;
     bool obscureCurrent = true;
     bool obscureNew = true;
@@ -292,14 +295,14 @@ class AccountManagementScreen extends StatelessWidget {
     String? validateNewPassword(String value) {
       final password = value.trim();
       if (password.isEmpty) return '새 비밀번호를 입력해주세요.';
-      final regex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,20}$');
-      if (!regex.hasMatch(password)) {
-        return '비밀번호는 8~20자이며, 영문자/숫자/특수문자를 각각 1자 이상 포함해야 합니다.';
-      }
+      if (!_passwordRegex.hasMatch(password)) return _passwordPolicyMessage;
       return null;
     }
 
-    String? validateConfirmPassword(String newPassword, String confirmPassword) {
+    String? validateConfirmPassword(
+      String newPassword,
+      String confirmPassword,
+    ) {
       if (confirmPassword.trim().isEmpty) return '새 비밀번호 확인을 입력해주세요.';
       if (newPassword.trim() != confirmPassword.trim()) {
         return '새 비밀번호가 일치하지 않습니다.';
@@ -319,16 +322,19 @@ class AccountManagementScreen extends StatelessWidget {
           confirmPasswordError == null;
     }
 
-    Future<void> submit(StateSetter setDialogState) async {
+    Future<void> submit(
+      BuildContext dialogContext,
+      StateSetter setDialogState,
+    ) async {
       final currentPassword = currentPasswordController.text.trim();
       final newPassword = newPasswordController.text.trim();
-      setDialogState(() {});
       if (!validateAll()) {
         setDialogState(() {});
         return;
       }
 
       setDialogState(() => isSubmitting = true);
+      var dialogClosed = false;
       try {
         final tokens = TokenStorage();
         final client = ApiClient(tokens: tokens);
@@ -338,29 +344,41 @@ class AccountManagementScreen extends StatelessWidget {
           newPassword: newPassword,
         );
         await authApi.logout();
-        if (!context.mounted) return;
+        if (!context.mounted || !dialogContext.mounted) return;
 
-        Navigator.of(context).pop();
+        dialogClosed = true;
+        Navigator.of(dialogContext).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('비밀번호가 변경되었습니다. 다시 로그인해 주세요.')),
         );
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
       } on DioException catch (e) {
         final detail =
             e.response?.data is Map
                 ? e.response?.data['detail']?.toString()
                 : e.message;
+        if (detail == 'Current password is incorrect') {
+          if (dialogContext.mounted) {
+            setDialogState(() {
+              currentPasswordError = '현재 비밀번호가 올바르지 않습니다.';
+              isSubmitting = false;
+            });
+          }
+          return;
+        }
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(detail ?? '비밀번호 변경에 실패했습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(detail ?? '비밀번호 변경에 실패했습니다.')));
       } catch (_) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('비밀번호 변경 중 오류가 발생했습니다.')));
       } finally {
-        if (context.mounted) {
+        if (!dialogClosed && dialogContext.mounted) {
           setDialogState(() => isSubmitting = false);
         }
       }
@@ -369,265 +387,166 @@ class AccountManagementScreen extends StatelessWidget {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      barrierColor: const Color(0x7A132333),
       builder: (dialogContext) {
-        final bottomInset = MediaQuery.of(dialogContext).viewInsets.bottom;
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            final String currentPassword = currentPasswordController.text.trim();
+            final String currentPassword =
+                currentPasswordController.text.trim();
             final String newPassword = newPasswordController.text.trim();
-            final String confirmPassword = confirmPasswordController.text.trim();
+            final String confirmPassword =
+                confirmPasswordController.text.trim();
             final bool canSubmit =
                 !isSubmitting &&
                 currentPassword.isNotEmpty &&
                 newPassword.isNotEmpty &&
                 confirmPassword.isNotEmpty;
 
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: AnimatedPadding(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(bottom: bottomInset),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFCFFFFFF),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: const Color(0xFFE3ECF4)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x1A000000),
-                        blurRadius: 30,
-                        offset: Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFFEAF6FC), Color(0xFFDDF1FA)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFD6EAF5)),
-                              ),
-                              child: const Icon(
-                                Icons.lock_outline_rounded,
-                                size: 24,
-                                color: Color(0xFF2C4154),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              '비밀번호 변경',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1E2F3F),
-                                fontFamily: 'Noto Sans KR',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          '현재 비밀번호 확인 후 새 비밀번호로 변경합니다.',
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            color: Color(0xFF8A97A3),
-                            height: 1.4,
-                            fontFamily: 'Noto Sans KR',
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        _buildPasswordInputField(
-                          controller: currentPasswordController,
-                          label: '현재 비밀번호',
-                          enabled: !isSubmitting,
-                          obscureText: obscureCurrent,
-                          prefixIcon: Icons.key_rounded,
-                          focusNode: currentPasswordFocus,
-                          errorText: currentPasswordError,
-                          onChanged: (_) {
-                            if (currentPasswordError != null) {
-                              currentPasswordError = null;
-                            }
-                            setDialogState(() {});
-                          },
-                          onFocusChange: (hasFocus) {
-                            if (!hasFocus) {
-                              currentPasswordError = validateCurrentPassword(
-                                currentPasswordController.text,
-                              );
-                              setDialogState(() {});
-                            }
-                          },
-                          onEditingComplete: () {
-                            currentPasswordError = validateCurrentPassword(
-                              currentPasswordController.text,
-                            );
-                            setDialogState(() {});
-                          },
-                          onToggleVisibility:
-                              () => setDialogState(() => obscureCurrent = !obscureCurrent),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildPasswordInputField(
-                          controller: newPasswordController,
-                          label: '새 비밀번호',
-                          enabled: !isSubmitting,
-                          obscureText: obscureNew,
-                          prefixIcon: Icons.lock_rounded,
-                          focusNode: newPasswordFocus,
-                          errorText: newPasswordError,
-                          onChanged: (_) {
-                            if (newPasswordError != null) {
-                              newPasswordError = null;
-                            }
-                            if (confirmPasswordError != null) {
-                              confirmPasswordError = null;
-                            }
-                            setDialogState(() {});
-                          },
-                          onFocusChange: (hasFocus) {
-                            if (!hasFocus) {
-                              newPasswordError = validateNewPassword(
-                                newPasswordController.text,
-                              );
-                              if (confirmPasswordController.text.trim().isNotEmpty) {
-                                confirmPasswordError = validateConfirmPassword(
-                                  newPasswordController.text,
-                                  confirmPasswordController.text,
-                                );
-                              }
-                              setDialogState(() {});
-                            }
-                          },
-                          onEditingComplete: () {
-                            newPasswordError = validateNewPassword(
-                              newPasswordController.text,
-                            );
-                            if (confirmPasswordController.text.trim().isNotEmpty) {
-                              confirmPasswordError = validateConfirmPassword(
-                                newPasswordController.text,
-                                confirmPasswordController.text,
-                              );
-                            }
-                            setDialogState(() {});
-                          },
-                          onToggleVisibility:
-                              () => setDialogState(() => obscureNew = !obscureNew),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildPasswordInputField(
-                          controller: confirmPasswordController,
-                          label: '새 비밀번호 확인',
-                          enabled: !isSubmitting,
-                          obscureText: obscureConfirm,
-                          prefixIcon: Icons.verified_user_rounded,
-                          focusNode: confirmPasswordFocus,
-                          errorText: confirmPasswordError,
-                          onChanged: (_) {
-                            if (confirmPasswordError != null) {
-                              confirmPasswordError = null;
-                            }
-                            setDialogState(() {});
-                          },
-                          onFocusChange: (hasFocus) {
-                            if (!hasFocus) {
-                              confirmPasswordError = validateConfirmPassword(
-                                newPasswordController.text,
-                                confirmPasswordController.text,
-                              );
-                              setDialogState(() {});
-                            }
-                          },
-                          onEditingComplete: () {
-                            confirmPasswordError = validateConfirmPassword(
-                              newPasswordController.text,
-                              confirmPasswordController.text,
-                            );
-                            setDialogState(() {});
-                          },
-                          textInputAction: TextInputAction.done,
-                          onToggleVisibility:
-                              () => setDialogState(() => obscureConfirm = !obscureConfirm),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed:
-                                    isSubmitting
-                                        ? null
-                                        : () => Navigator.of(dialogContext).pop(),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFFD6E1EB)),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                child: const Text(
-                                  '취소',
-                                  style: TextStyle(
-                                    color: Color(0xFF5E6F80),
-                                    fontFamily: 'Noto Sans KR',
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: FilledButton(
-                                onPressed: canSubmit ? () => submit(setDialogState) : null,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF63C6EC),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                child:
-                                    isSubmitting
-                                        ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                        : const Text(
-                                          '변경',
-                                          style: TextStyle(
-                                            fontFamily: 'Noto Sans KR',
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 24,
+              ),
+              title: const Text(
+                '비밀번호 변경',
+                style: TextStyle(
+                  fontFamily: 'Noto Sans KR',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E2F3F),
                 ),
               ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '현재 비밀번호 확인 후 새 비밀번호로 변경합니다.',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: Color(0xFF6E7F8F),
+                        height: 1.4,
+                        fontFamily: 'Noto Sans KR',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPasswordInputField(
+                      controller: currentPasswordController,
+                      label: '현재 비밀번호',
+                      enabled: !isSubmitting,
+                      obscureText: obscureCurrent,
+                      prefixIcon: Icons.key_rounded,
+                      errorText: currentPasswordError,
+                      onChanged: (_) {
+                        if (currentPasswordError != null) {
+                          currentPasswordError = null;
+                        }
+                        setDialogState(() {});
+                      },
+                      onEditingComplete: () {
+                        currentPasswordError = validateCurrentPassword(
+                          currentPasswordController.text,
+                        );
+                        setDialogState(() {});
+                        FocusScope.of(dialogContext).nextFocus();
+                      },
+                      onToggleVisibility:
+                          () => setDialogState(
+                            () => obscureCurrent = !obscureCurrent,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPasswordInputField(
+                      controller: newPasswordController,
+                      label: '새 비밀번호',
+                      enabled: !isSubmitting,
+                      obscureText: obscureNew,
+                      prefixIcon: Icons.lock_rounded,
+                      errorText: newPasswordError,
+                      helperText: '영문자, 숫자, 특수문자 포함 8~20자',
+                      onChanged: (_) {
+                        if (newPasswordError != null) {
+                          newPasswordError = null;
+                        }
+                        if (confirmPasswordError != null) {
+                          confirmPasswordError = null;
+                        }
+                        setDialogState(() {});
+                      },
+                      onEditingComplete: () {
+                        newPasswordError = validateNewPassword(
+                          newPasswordController.text,
+                        );
+                        if (confirmPasswordController.text.trim().isNotEmpty) {
+                          confirmPasswordError = validateConfirmPassword(
+                            newPasswordController.text,
+                            confirmPasswordController.text,
+                          );
+                        }
+                        setDialogState(() {});
+                        FocusScope.of(dialogContext).nextFocus();
+                      },
+                      onToggleVisibility:
+                          () => setDialogState(() => obscureNew = !obscureNew),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPasswordInputField(
+                      controller: confirmPasswordController,
+                      label: '새 비밀번호 확인',
+                      enabled: !isSubmitting,
+                      obscureText: obscureConfirm,
+                      prefixIcon: Icons.verified_user_rounded,
+                      errorText: confirmPasswordError,
+                      onChanged: (_) {
+                        if (confirmPasswordError != null) {
+                          confirmPasswordError = null;
+                        }
+                        setDialogState(() {});
+                      },
+                      onEditingComplete: () {
+                        confirmPasswordError = validateConfirmPassword(
+                          newPasswordController.text,
+                          confirmPasswordController.text,
+                        );
+                        setDialogState(() {});
+                        FocusScope.of(dialogContext).unfocus();
+                      },
+                      textInputAction: TextInputAction.done,
+                      onToggleVisibility:
+                          () => setDialogState(
+                            () => obscureConfirm = !obscureConfirm,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isSubmitting
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed:
+                      canSubmit
+                          ? () => submit(dialogContext, setDialogState)
+                          : null,
+                  child:
+                      isSubmitting
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Text('변경'),
+                ),
+              ],
             );
           },
         );
@@ -637,96 +556,77 @@ class AccountManagementScreen extends StatelessWidget {
     currentPasswordController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();
-    currentPasswordFocus.dispose();
-    newPasswordFocus.dispose();
-    confirmPasswordFocus.dispose();
   }
 
   Widget _buildPasswordInputField({
     required TextEditingController controller,
-    required FocusNode focusNode,
     required String label,
     required bool enabled,
     required bool obscureText,
     required IconData prefixIcon,
     required String? errorText,
     required ValueChanged<String> onChanged,
-    required ValueChanged<bool> onFocusChange,
     required VoidCallback onEditingComplete,
+    String? helperText,
     TextInputAction textInputAction = TextInputAction.next,
     required VoidCallback onToggleVisibility,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Focus(
-          onFocusChange: onFocusChange,
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            obscureText: obscureText,
-            enabled: enabled,
-            onChanged: onChanged,
-            onEditingComplete: onEditingComplete,
-            textInputAction: textInputAction,
-            style: const TextStyle(
-              fontFamily: 'Noto Sans KR',
-              fontSize: 15.5,
-              color: Color(0xFF273A4C),
-            ),
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: const TextStyle(
-                color: Color(0xFF8493A1),
-                fontFamily: 'Noto Sans KR',
-                fontSize: 13.5,
-              ),
-              prefixIcon: Icon(prefixIcon, size: 20, color: const Color(0xFF5E768A)),
-              suffixIcon: IconButton(
-                onPressed: enabled ? onToggleVisibility : null,
-                icon: Icon(
-                  obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                  size: 20,
-                  color: const Color(0xFF7F91A1),
-                ),
-              ),
-              filled: true,
-              fillColor: enabled ? const Color(0xFFF5FAFD) : const Color(0xFFEFF4F8),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFDCE7F0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: errorText == null ? const Color(0xFFDCE7F0) : Colors.red.shade300,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: errorText == null ? const Color(0xFF89D4F5) : Colors.red.shade400,
-                  width: 1.6,
-                ),
-              ),
-            ),
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      enabled: enabled,
+      onChanged: onChanged,
+      onEditingComplete: onEditingComplete,
+      textInputAction: textInputAction,
+      keyboardType: TextInputType.visiblePassword,
+      autofillHints: const [AutofillHints.password],
+      style: const TextStyle(
+        fontFamily: 'Noto Sans KR',
+        fontSize: 15,
+        color: Color(0xFF273A4C),
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helperText,
+        helperMaxLines: 2,
+        errorText: errorText,
+        errorMaxLines: 3,
+        labelStyle: const TextStyle(
+          color: Color(0xFF6E7F8F),
+          fontFamily: 'Noto Sans KR',
+          fontSize: 13.5,
+        ),
+        prefixIcon: Icon(prefixIcon, size: 20, color: const Color(0xFF5E768A)),
+        suffixIcon: IconButton(
+          tooltip: obscureText ? '비밀번호 보기' : '비밀번호 숨기기',
+          onPressed: enabled ? onToggleVisibility : null,
+          icon: Icon(
+            obscureText
+                ? Icons.visibility_off_rounded
+                : Icons.visibility_rounded,
+            size: 20,
+            color: const Color(0xFF7F91A1),
           ),
         ),
-        if (errorText != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            errorText,
-            style: const TextStyle(
-              color: Colors.red,
-              fontSize: 10.8,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Noto Sans KR',
-              height: 1.3,
-            ),
-          ),
-        ],
-      ],
+        filled: true,
+        fillColor: enabled ? const Color(0xFFF8FBFD) : const Color(0xFFEFF4F8),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFDCE7F0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFDCE7F0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF89D4F5), width: 1.6),
+        ),
+      ),
     );
   }
 
@@ -798,7 +698,10 @@ class AccountManagementScreen extends StatelessWidget {
             return AlertDialog(
               title: const Text(
                 '회원 탈퇴',
-                style: TextStyle(fontFamily: 'Noto Sans KR', fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontFamily: 'Noto Sans KR',
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -821,60 +724,68 @@ class AccountManagementScreen extends StatelessWidget {
               ),
               actions: [
                 TextButton(
-                  onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed:
+                      isSubmitting
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
                   child: const Text('취소'),
                 ),
                 TextButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () async {
-                          final password = passwordController.text.trim();
-                          if (password.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('비밀번호를 입력해주세요.')),
-                            );
-                            return;
-                          }
-                          setDialogState(() => isSubmitting = true);
-                          try {
-                            final tokens = TokenStorage();
-                            final client = ApiClient(tokens: tokens);
-                            final authApi = AuthApi(client, tokens);
-                            await authApi.deleteAccount(password: password);
-                            if (!context.mounted) return;
-                            context.read<UserProvider>().reset();
-                            Navigator.of(dialogContext).pop();
-                            Navigator.of(context).pushNamedAndRemoveUntil(
-                              '/login',
-                              (route) => false,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
-                            );
-                          } on DioException catch (e) {
-                            final detail =
-                                e.response?.data is Map
-                                    ? e.response?.data['detail']?.toString()
-                                    : e.message;
-                            if (context.mounted) {
+                  onPressed:
+                      isSubmitting
+                          ? null
+                          : () async {
+                            final password = passwordController.text.trim();
+                            if (password.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(detail ?? '회원 탈퇴에 실패했습니다.'),
+                                const SnackBar(content: Text('비밀번호를 입력해주세요.')),
+                              );
+                              return;
+                            }
+                            setDialogState(() => isSubmitting = true);
+                            try {
+                              final tokens = TokenStorage();
+                              final client = ApiClient(tokens: tokens);
+                              final authApi = AuthApi(client, tokens);
+                              await authApi.deleteAccount(password: password);
+                              if (!context.mounted) return;
+                              context.read<UserProvider>().reset();
+                              Navigator.of(dialogContext).pop();
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                '/login',
+                                (route) => false,
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('회원 탈퇴가 완료되었습니다.'),
                                 ),
                               );
+                            } on DioException catch (e) {
+                              final detail =
+                                  e.response?.data is Map
+                                      ? e.response?.data['detail']?.toString()
+                                      : e.message;
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(detail ?? '회원 탈퇴에 실패했습니다.'),
+                                  ),
+                                );
+                              }
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('회원 탈퇴 중 오류가 발생했습니다.'),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (dialogContext.mounted) {
+                                setDialogState(() => isSubmitting = false);
+                              }
                             }
-                          } catch (_) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('회원 탈퇴 중 오류가 발생했습니다.')),
-                              );
-                            }
-                          } finally {
-                            if (dialogContext.mounted) {
-                              setDialogState(() => isSubmitting = false);
-                            }
-                          }
-                        },
+                          },
                   child: const Text(
                     '탈퇴',
                     style: TextStyle(color: Color(0xFFD85B66)),
