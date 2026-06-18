@@ -26,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool _isLoading = false;
   bool _showPassword = false;
+  bool _routeArgsApplied = false;
 
   void _showError(String message) {
     ScaffoldMessenger.of(
@@ -113,6 +114,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showForgotPasswordPlaceholder() {
     _showError('비밀번호 찾기 기능은 준비 중입니다.');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_routeArgsApplied) return;
+    _routeArgsApplied = true;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map) {
+      final email = args['email']?.toString().trim();
+      if (email != null && email.isNotEmpty) {
+        emailController.text = email;
+      }
+    }
   }
 
   @override
