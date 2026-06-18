@@ -26,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool _isLoading = false;
   bool _showPassword = false;
+  bool _routeArgsApplied = false;
 
   void _showError(String message) {
     ScaffoldMessenger.of(
@@ -71,9 +72,9 @@ class _LoginScreenState extends State<LoginScreen> {
         final notice =
             loginMeta.passwordChangeNotice ??
             '비밀번호 변경을 권장합니다. 설정 → 계정 관리에서 변경할 수 있습니다.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(notice)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
       }
 
       final hasSurvey = userProvider.surveyCompleted;
@@ -92,9 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
         debugPrint('Login failed: ${e.runtimeType}');
       }
 
-      final message = e is DioException
-          ? AuthErrorMessages.fromDioException(e, isSignup: false)
-          : AuthErrorMessages.loginFailed;
+      final message =
+          e is DioException
+              ? AuthErrorMessages.fromDioException(e, isSignup: false)
+              : AuthErrorMessages.loginFailed;
       _showError(message);
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -113,6 +115,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showForgotPasswordPlaceholder() {
     _showError('비밀번호 찾기 기능은 준비 중입니다.');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_routeArgsApplied) return;
+    _routeArgsApplied = true;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map) {
+      final email = args['email']?.toString().trim();
+      if (email != null && email.isNotEmpty) {
+        emailController.text = email;
+      }
+    }
   }
 
   @override

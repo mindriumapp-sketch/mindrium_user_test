@@ -8,7 +8,6 @@ import 'package:gad_app_team/data/api/api_client.dart';
 import 'package:gad_app_team/data/api/auth_api.dart';
 import 'package:gad_app_team/data/api/auth_error_messages.dart';
 import 'package:gad_app_team/data/storage/token_storage.dart';
-import 'package:gad_app_team/features/auth/auth_session_helper.dart';
 import 'package:gad_app_team/data/daycounter.dart';
 import 'package:gad_app_team/data/today_task_provider.dart';
 import 'package:gad_app_team/data/user_provider.dart';
@@ -250,22 +249,20 @@ class _SignupScreenState extends State<SignupScreen> {
         patientCode: patientCode,
       );
 
-      await AuthSessionHelper.completeSession(
-        userProvider: userProvider,
-        dayCounter: dayCounter,
-        todayTaskProvider: todayTaskProvider,
-        email: email,
-      );
+      await authApi.logout();
+      userProvider.reset();
+      todayTaskProvider.reset();
+      dayCounter.reset();
 
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다.')));
+      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해주세요.')));
 
-      final hasSurvey = userProvider.surveyCompleted;
       Navigator.pushReplacementNamed(
         context,
-        hasSurvey ? '/home' : '/tutorial',
+        '/login',
+        arguments: {'email': email},
       );
     } catch (e, stack) {
       await authApi.logout();
