@@ -104,7 +104,7 @@ class BeforeSurveyResultScreen extends StatelessWidget {
                     onPressed:
                         () => Navigator.pushNamedAndRemoveUntil(
                           context,
-                          '/permission_onboarding',
+                          '/home',
                           (_) => false,
                         ),
                     text: '홈으로 가기',
