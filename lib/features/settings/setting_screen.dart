@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:gad_app_team/widgets/custom_appbar.dart';
 import 'package:gad_app_team/features/settings/account/account_management_screen.dart';
+import 'package:gad_app_team/features/settings/app_info_screen.dart';
 import 'package:gad_app_team/features/settings/notification_preferences_screen.dart';
 import 'package:gad_app_team/features/settings/permission_settings_screen.dart';
 import 'package:gad_app_team/features/settings/terms_policy_screen.dart';
@@ -252,7 +253,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: '앱 정보',
                           subtitle: '현재 앱 버전과 기본 정보를 확인할 수 있어요.',
                           showDivider: false,
-                          onTap: _showComingSoon,
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                      ) => const AppInfoScreen(),
+                                  transitionsBuilder: (
+                                    context,
+                                    animation,
+                                    secondaryAnimation,
+                                    child,
+                                  ) {
+                                    const begin = Offset(1.0, 0.0);
+                                    const end = Offset.zero;
+                                    const curve = Curves.easeInOutCubic;
+                                    final tween = Tween(
+                                      begin: begin,
+                                      end: end,
+                                    ).chain(CurveTween(curve: curve));
+                                    return SlideTransition(
+                                      position: animation.drive(tween),
+                                      child: child,
+                                    );
+                                  },
+                                  transitionDuration: const Duration(
+                                    milliseconds: 300,
+                                  ),
+                                ),
+                              ),
                         ),
                       ],
                     ),

@@ -76,7 +76,7 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
 }
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, UIDocumentInteractionControllerDelegate {
   private enum WidgetChannel {
     static let methodName = "mindrium/widget_launch"
     static let eventName = "mindrium/widget_launch_events"
@@ -85,6 +85,10 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
   private enum NotificationChannel {
     static let methodName = "mindrium/notification_launch"
     static let eventName = "mindrium/notification_launch_events"
+  }
+
+  private enum ManualPdfChannel {
+    static let methodName = "mindrium/manual_pdf"
   }
 
   private enum WidgetDefaultsKey {
@@ -105,6 +109,7 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
     methodName: NotificationChannel.methodName,
     eventName: NotificationChannel.eventName
   )
+  private var manualDocumentController: UIDocumentInteractionController?
 
   override func application(
     _ application: UIApplication,
@@ -153,6 +158,7 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
   private func configureChannels(with messenger: FlutterBinaryMessenger) {
     configureWidgetChannels(with: messenger)
     configureNotificationChannels(with: messenger)
+    configureManualPdfChannel(with: messenger)
   }
 
   func handle(connectionOptions: UIScene.ConnectionOptions) {
@@ -203,6 +209,30 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
     }
   }
 
+  private func configureManualPdfChannel(with messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: ManualPdfChannel.methodName,
+      binaryMessenger: messenger
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self else {
+        result(FlutterError(
+          code: "OPEN_FAILED",
+          message: "App delegate is unavailable.",
+          details: nil
+        ))
+        return
+      }
+
+      switch call.method {
+      case "openManual":
+        self.openManualPdf(result: result)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
   private func handleWidgetMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "getInitialLaunchAction":
@@ -230,6 +260,50 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  private func openManualPdf(result: @escaping FlutterResult) {
+    guard let url = manualPdfURL() else {
+      result(FlutterError(
+        code: "NOT_FOUND",
+        message: "Mindrium manual PDF was not found in the app bundle.",
+        details: nil
+      ))
+      return
+    }
+
+    let controller = UIDocumentInteractionController(url: url)
+    controller.delegate = self
+    manualDocumentController = controller
+
+    guard controller.presentPreview(animated: true) else {
+      manualDocumentController = nil
+      result(FlutterError(
+        code: "OPEN_FAILED",
+        message: "Failed to present the manual PDF.",
+        details: nil
+      ))
+      return
+    }
+
+    result(true)
+  }
+
+  private func manualPdfURL() -> URL? {
+    let candidates: [URL?] = [
+      Bundle.main.url(forResource: "Mindrium_manual", withExtension: "pdf"),
+      Bundle.main.url(
+        forResource: "Mindrium_manual",
+        withExtension: "pdf",
+        subdirectory: "flutter_assets/assets"
+      ),
+      Bundle.main.url(
+        forResource: "Mindrium_manual",
+        withExtension: "pdf",
+        subdirectory: "Frameworks/App.framework/flutter_assets/assets"
+      )
+    ]
+    return candidates.compactMap { $0 }.first
   }
 
   private func persistWidgetStats(
@@ -318,6 +392,12 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
     }
 
     return sharedDefaults
+  }
+
+  func documentInteractionControllerViewControllerForPreview(
+    _ controller: UIDocumentInteractionController
+  ) -> UIViewController {
+    return window?.rootViewController ?? UIViewController()
   }
 
   private static func parseInt(_ value: Any?) -> Int {

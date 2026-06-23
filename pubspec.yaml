@@ -63,6 +63,7 @@ flutter:
 
   assets:
     - dart_defines/
+    - assets/Mindrium_manual.pdf
     - assets/image/activating event.png
     - assets/image/alternative thoughts.png
     - assets/image/belief.png
