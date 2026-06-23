@@ -34,7 +34,7 @@ class ApiClient {
         // return 'http://10.0.2.2:8080';
         return 'http://115.145.134.180:8070';
       }
-      return 'http://127.0.0.1:8080';
+      return 'http://115.145.134.180:8070';
     }
     throw StateError(
       'API_BASE_URL must be set via --dart-define=API_BASE_URL=... '
