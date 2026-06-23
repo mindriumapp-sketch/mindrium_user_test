@@ -108,14 +108,10 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     // 완료된 회차 집합 (1~lastCompleted)
     final completedWeeks = <int>{for (int w = 1; w <= lastCompleted; w++) w};
 
-    // TODO: 나중에 진짜 잠금 로직 쓰고 싶으면 여기서 currentWeek 기준으로 enabled 계산
-    // final enabledList = List<bool>.generate(totalWeeks, (i) {
-    //   final weekNo = i + 1;
-    //   return weekNo <= currentWeek;
-    // });
-
-    // 🔹 지금은 임시로 모두 오픈
-    final List<bool> enabledList = List<bool>.filled(totalWeeks, true);
+    final enabledList = List<bool>.generate(totalWeeks, (i) {
+      final weekNo = i + 1;
+      return weekNo <= currentWeek;
+    });
 
     final weekContents = educationWeekContents;
 
@@ -163,7 +159,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     }
 
     _tryAutoScrollToCurrentWeek(currentWeek);
-    const unlockAllWeeks = true;
+    const unlockAllWeeks = false;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -178,16 +174,10 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
         completedWeeks: completedWeeks,
         cbtCompletedWeeks: <int>{
           ...completedWeeks,
-          // TODO: 총괄평가용 unlockAllWeeks 보정입니다. 정상 운영에서 미래 주차
-          // 접근을 잠그면 locallyCompletedCbtWeeks 반영을 제거하세요.
-          if (unlockAllWeeks) ...user.locallyCompletedCbtWeeks,
           if (user.mainCbtCompleted) currentWeek,
         },
         relaxationCompletedWeeks: <int>{
           ...completedWeeks,
-          // TODO: 총괄평가용 unlockAllWeeks 보정입니다. 정상 운영에서 미래 주차
-          // 접근을 잠그면 locallyCompletedRelaxationWeeks 반영을 제거하세요.
-          if (unlockAllWeeks) ...user.locallyCompletedRelaxationWeeks,
           if (user.mainRelaxCompleted) currentWeek,
         },
         expandedWeeks: _expandedWeeks,

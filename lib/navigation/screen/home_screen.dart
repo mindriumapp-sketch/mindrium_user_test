@@ -32,7 +32,7 @@ import 'package:gad_app_team/features/2nd_treatment/abc_visualization_screen.dar
 
 final bool _enableWeek2ReliefLock = const bool.fromEnvironment(
   'ENABLE_WEEK2_RELIEF_LOCK',
-  defaultValue: false,
+  defaultValue: true,
 );
 
 Map<String, String> _relaxationCueSheetArgument(int weekNo) {

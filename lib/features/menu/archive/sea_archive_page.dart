@@ -15,7 +15,7 @@ import 'package:provider/provider.dart';
 
 final bool _enableWeek6ResolveLock = const bool.fromEnvironment(
   'ENABLE_WEEK6_RESOLVE_LOCK',
-  defaultValue: false,
+  defaultValue: true,
 );
 
 class SeaArchivePage extends StatefulWidget {

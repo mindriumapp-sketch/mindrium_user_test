@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 
 const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
   'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
-  defaultValue: false,
+  defaultValue: true,
 );
 
 class DiarySelectScreen extends StatefulWidget {

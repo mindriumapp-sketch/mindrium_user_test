@@ -23,12 +23,12 @@ import 'package:gad_app_team/data/user_provider.dart';
 
 const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
   'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
-  defaultValue: false,
+  defaultValue: true,
 );
 
 const bool _forceRelaxOrAlternative = bool.fromEnvironment(
   'FORCE_RELAX_OR_ALTERNATIVE',
-  defaultValue: true,
+  defaultValue: false,
 );
 
 /// SUD(0‒10)을 입력받아 저장하고, 점수에 따라 후속 행동을 안내하는 화면
