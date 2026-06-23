@@ -1,4 +1,5 @@
 import Flutter
+import QuickLook
 import UIKit
 import UserNotifications
 #if canImport(WidgetKit)
@@ -76,7 +77,7 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
 }
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, UIDocumentInteractionControllerDelegate {
+@objc class AppDelegate: FlutterAppDelegate, QLPreviewControllerDataSource {
   private enum WidgetChannel {
     static let methodName = "mindrium/widget_launch"
     static let eventName = "mindrium/widget_launch_events"
@@ -109,7 +110,7 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
     methodName: NotificationChannel.methodName,
     eventName: NotificationChannel.eventName
   )
-  private var manualDocumentController: UIDocumentInteractionController?
+  private var manualPreviewURL: URL?
 
   override func application(
     _ application: UIApplication,
@@ -272,21 +273,22 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
       return
     }
 
-    let controller = UIDocumentInteractionController(url: url)
-    controller.delegate = self
-    manualDocumentController = controller
+    manualPreviewURL = url
+    let controller = QLPreviewController()
+    controller.dataSource = self
 
-    guard controller.presentPreview(animated: true) else {
-      manualDocumentController = nil
+    guard let presenter = topViewController() else {
       result(FlutterError(
         code: "OPEN_FAILED",
-        message: "Failed to present the manual PDF.",
+        message: "No view controller is available to present the manual PDF.",
         details: nil
       ))
       return
     }
 
-    result(true)
+    presenter.present(controller, animated: true) {
+      result(true)
+    }
   }
 
   private func manualPdfURL() -> URL? {
@@ -394,10 +396,37 @@ private final class BufferedStringEventBridge: NSObject, FlutterStreamHandler {
     return sharedDefaults
   }
 
-  func documentInteractionControllerViewControllerForPreview(
-    _ controller: UIDocumentInteractionController
-  ) -> UIViewController {
-    return window?.rootViewController ?? UIViewController()
+  private func topViewController() -> UIViewController? {
+    let root = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap { $0.windows }
+      .first { $0.isKeyWindow }?
+      .rootViewController ?? window?.rootViewController
+    return topViewController(from: root)
+  }
+
+  private func topViewController(from root: UIViewController?) -> UIViewController? {
+    if let navigationController = root as? UINavigationController {
+      return topViewController(from: navigationController.visibleViewController)
+    }
+    if let tabBarController = root as? UITabBarController {
+      return topViewController(from: tabBarController.selectedViewController)
+    }
+    if let presented = root?.presentedViewController {
+      return topViewController(from: presented)
+    }
+    return root
+  }
+
+  func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
+    manualPreviewURL == nil ? 0 : 1
+  }
+
+  func previewController(
+    _ controller: QLPreviewController,
+    previewItemAt index: Int
+  ) -> QLPreviewItem {
+    return manualPreviewURL! as NSURL
   }
 
   private static func parseInt(_ value: Any?) -> Int {
