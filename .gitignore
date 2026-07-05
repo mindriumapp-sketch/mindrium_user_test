@@ -18,6 +18,7 @@ Thumbs.db
 .vscode/
 
 ##### Dart / Flutter #####
+.dart-tool/
 .dart_tool/
 .packages
 .flutter-plugins
@@ -44,7 +45,7 @@ coverage/
 # Flutter 생성 파일
 **/android/**/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 
-##### iOS / macOS (Xcode/CocoaPods) #####
+##### iOS (Xcode/CocoaPods) #####
 **/ios/**/Flutter/.last_build_id
 **/ios/**/Flutter/Generated.xcconfig
 **/ios/**/Flutter/Local.xcconfig
@@ -57,21 +58,6 @@ coverage/
 **/ios/**/**/*.xcuserstate
 **/ios/**/**/*.xcuserdata/
 **/ios/**/**/*.xcworkspace/
-# macOS
-**/macos/**/Flutter/.last_build_id
-**/macos/**/Flutter/Generated.xcconfig
-**/macos/**/flutter_export_environment.sh
-**/macos/**/Pods/
-**/macos/**/.symlinks/
-**/macos/**/DerivedData/
-**/macos/**/build/
-**/macos/**/Flutter/ephemeral/
-**/macos/**/Runner/GeneratedPluginRegistrant.swift
-
-##### Windows / Linux 데스크톱 #####
-**/windows/**/flutter/ephemeral/
-**/linux/**/flutter/ephemeral/
-
 ##### 배포 산출물 #####
 *.apk
 *.aab
@@ -100,7 +86,6 @@ secrets/
 # Firebase 설정 파일은 앱 클라이언트에 포함될 수 있지만 공개 저장소 경고를 피하려면 추적하지 않습니다.
 **/android/**/app/google-services.json
 **/ios/**/Runner/GoogleService-Info.plist
-**/macos/**/Runner/GoogleService-Info.plist
 lib/firebase_options.dart
 
 ##### Python Backend #####
@@ -119,3 +104,5 @@ lib/firebase_options.dart
 **/pip-log.txt
 **/pip-delete-this-directory.txt
 **/.pytest_cache/
+
+**/outputs/

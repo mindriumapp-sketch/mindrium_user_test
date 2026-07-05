@@ -4,7 +4,7 @@
 
 Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관찰하고, 구조화된 인지행동치료(CBT) 연습을 일상에서 반복할 수 있도록 돕는 모바일 애플리케이션입니다. 앱은 8주 치료 프로그램, 걱정 일기, SUD 불안 점수 기록, 이완 훈련, 위치/시간 기반 알림, 리포트, 보관함을 하나의 흐름으로 연결합니다.
 
-이 저장소에는 Flutter 앱과 FastAPI 백엔드가 함께 들어 있습니다. 앱은 Android와 iOS 중심으로 개발되어 있으며, Android/iOS 홈 위젯 코드와 Flutter Web 빌드 산출물도 포함되어 있습니다.
+이 저장소에는 Flutter 앱과 FastAPI 백엔드가 함께 들어 있습니다. 앱은 Android와 iOS 대상으로 관리되며, Android/iOS 홈 위젯 코드도 포함되어 있습니다.
 
 ## 앱의 목적
 
@@ -95,7 +95,7 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 - 알림 설정: `alarm_settings`
 - 스크린타임: `screen_time`
 
-Flutter 앱의 API 기본 주소는 `lib/data/api/api_client.dart`에서 결정됩니다. `API_BASE_URL` dart define이 있으면 그 값을 우선 사용하고, 없으면 디버그 Android 빌드에서 `http://115.145.134.180:8070`, 그 외 비웹 디버그 환경에서 `http://127.0.0.1:8080`, 웹에서 Render URL을 사용합니다. 릴리즈 빌드에서는 `API_BASE_URL`을 명시해야 합니다.
+Flutter 앱의 API 기본 주소는 `lib/data/api/api_client.dart`에서 결정됩니다. `API_BASE_URL` dart define이 있으면 그 값을 우선 사용하고, 없으면 Android/iOS 디버그 빌드에서 `http://115.145.134.180:8070`을 사용합니다. 릴리즈 빌드에서는 `API_BASE_URL`을 명시해야 합니다.
 
 ## 프로젝트 구조
 
@@ -119,7 +119,6 @@ Flutter 앱의 API 기본 주소는 `lib/data/api/api_client.dart`에서 결정�
 ├── ios/                          # iOS 앱과 MindriumWidgetExtension
 ├── backend/app/                  # FastAPI 백엔드
 ├── dart_defines/                 # API/Kakao 키 예시 및 로컬 define 파일
-├── docs/                         # Flutter Web 빌드 산출물
 └── tool/                         # 로컬 설정 보조 스크립트
 ```
 
