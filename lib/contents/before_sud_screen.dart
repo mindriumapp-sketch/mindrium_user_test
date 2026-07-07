@@ -23,7 +23,7 @@ import 'package:gad_app_team/data/user_provider.dart';
 
 const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
   'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
-  defaultValue: true,
+  defaultValue: false,
 );
 
 const bool _forceRelaxOrAlternative = bool.fromEnvironment(

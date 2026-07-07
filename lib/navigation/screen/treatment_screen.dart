@@ -159,7 +159,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     }
 
     _tryAutoScrollToCurrentWeek(currentWeek);
-    const unlockAllWeeks = false;
+    const unlockAllWeeks = true;
 
     return Scaffold(
       extendBodyBehindAppBar: true,

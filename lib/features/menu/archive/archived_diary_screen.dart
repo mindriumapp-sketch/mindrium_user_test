@@ -13,7 +13,7 @@ import 'package:provider/provider.dart';
 
 final bool _enableWeek4HelpfulThoughtLock = const bool.fromEnvironment(
   'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
-  defaultValue: true,
+  defaultValue: false,
 );
 
 /// 보관함 일기 목록 화면

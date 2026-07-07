@@ -22,7 +22,7 @@ import 'week2_final_screen.dart';
 
 const bool _enableWeek4HelpfulThoughtLock = bool.fromEnvironment(
   'ENABLE_WEEK4_HELPFUL_THOUGHT_LOCK',
-  defaultValue: true,
+  defaultValue: false,
 );
 
 class AbcGroupAddScreen extends StatefulWidget {
@@ -57,7 +57,8 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
   late final WorryGroupsApi _worryGroupsApi = WorryGroupsApi(_apiClient);
   late final DiariesApi _diariesApi = DiariesApi(_apiClient);
   late final AlarmSettingsApi _alarmSettingsApi = AlarmSettingsApi(_apiClient);
-  final AlarmNotificationService _alarmService = AlarmNotificationService.instance;
+  final AlarmNotificationService _alarmService =
+      AlarmNotificationService.instance;
 
   String? _selectedGroupId;
   List<Map<String, dynamic>> _groups = [];
@@ -251,7 +252,8 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     if (!mounted) return;
 
     if (!_shouldContinueTherapyFlow) {
-      final hasExplicitDiaryRoute = widget.diaryRoute?.trim().isNotEmpty == true;
+      final hasExplicitDiaryRoute =
+          widget.diaryRoute?.trim().isNotEmpty == true;
       if (!hasExplicitDiaryRoute) {
         Navigator.pushReplacement(
           context,
@@ -743,18 +745,19 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => LocTimeSelectionScreen(
-          abcId: diaryId,
-          label: widget.label,
-          origin: widget.origin,
-          diaryRoute: widget.diaryRoute,
-          sessionId: widget.sessionId,
-          sudId: widget.sudId,
-          beforeSud: widget.beforeSud,
-          locationConsent: true,
-          autoOpenMapOnEntry: true,
-          autoNavigateGroupOnEntry: false,
-        ),
+        builder:
+            (_) => LocTimeSelectionScreen(
+              abcId: diaryId,
+              label: widget.label,
+              origin: widget.origin,
+              diaryRoute: widget.diaryRoute,
+              sessionId: widget.sessionId,
+              sudId: widget.sudId,
+              beforeSud: widget.beforeSud,
+              locationConsent: true,
+              autoOpenMapOnEntry: true,
+              autoNavigateGroupOnEntry: false,
+            ),
       ),
     );
   }
@@ -1303,7 +1306,9 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                               '❌ 일기 그룹 할당 DioException: ${e.response?.statusCode}',
                             );
                             debugPrint('Response data: ${e.response?.data}');
-                            debugPrint('Request: PUT /diaries/${widget.diaryId}');
+                            debugPrint(
+                              'Request: PUT /diaries/${widget.diaryId}',
+                            );
                             debugPrint('Body: {group_id: $_selectedGroupId}');
                             debugPrint('Error message: ${e.message}');
                             debugPrint('Stack trace: $stackTrace');
@@ -1332,7 +1337,7 @@ class _AbcGroupAddScreenState extends State<AbcGroupAddScreen> {
                             }
                           }
                         },
-              )
+              ),
             ),
           ),
         ),
