@@ -16,6 +16,12 @@ abstract final class AuthErrorMessages {
   static const platformSignupUnavailable =
       '마인드리움 코드 확인 서버(플랫폼)에 연결할 수 없습니다. '
       '환자 등록·코드 발급용 서버가 실행 중인지 확인해 주세요. (로컬: 포트 8061)';
+  static const passwordResetEmailNotFound =
+      '등록되지 않은 이메일입니다. 가입한 이메일을 확인해 주세요.';
+  static const passwordResetRequestFailedMessage =
+      '비밀번호 재설정 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+  static const passwordResetVerifyFailedMessage =
+      '비밀번호 재설정에 실패했습니다. 인증번호를 확인하거나 다시 요청해 주세요.';
 
   static String fromDioException(DioException e, {required bool isSignup}) {
     final status = e.response?.statusCode;
@@ -55,6 +61,44 @@ abstract final class AuthErrorMessages {
     }
 
     return isSignup ? signupFailed : loginFailed;
+  }
+
+  static String passwordResetRequestFailed(DioException e) {
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      final host = e.requestOptions.uri.host;
+      if (host == '127.0.0.1' || host == 'localhost') {
+        return localApiUnreachable;
+      }
+      return networkError;
+    }
+    final status = e.response?.statusCode;
+    if (status == 404) {
+      return _detailMessage(e) ?? passwordResetEmailNotFound;
+    }
+    final detail = _detailMessage(e);
+    if (detail != null && detail.isNotEmpty) return detail;
+    if ((status ?? 0) >= 500) return serverError;
+    return passwordResetRequestFailedMessage;
+  }
+
+  static String passwordResetVerifyFailed(DioException e) {
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      final host = e.requestOptions.uri.host;
+      if (host == '127.0.0.1' || host == 'localhost') {
+        return localApiUnreachable;
+      }
+      return networkError;
+    }
+    final detail = _detailMessage(e);
+    if (detail != null && detail.isNotEmpty) return detail;
+    if ((e.response?.statusCode ?? 0) >= 500) return serverError;
+    return passwordResetVerifyFailedMessage;
   }
 
   static String? _detailMessage(DioException e) {

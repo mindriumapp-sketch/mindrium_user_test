@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 import os
 import uuid
@@ -26,10 +26,11 @@ from schemas.auth import (
     LoginRequest,
     RefreshRequest,
     PasswordResetStartRequest,
-    PasswordResetFinishRequest,
+    PasswordResetVerifyRequest,
     EmailVerifyRequest,
     PasswordChangeRequest,
 )
+from core.email import send_password_reset_code_email
 from core.security import (
     sub_to_obj,
     get_user_obj_id,
@@ -38,7 +39,7 @@ from core.security import (
     create_access_token,
     create_refresh_token,
     create_email_verification_token,
-    create_password_reset_token,
+    generate_password_reset_code,
     decode_token,
     hash_token,
     hash_refresh_token,
@@ -49,9 +50,30 @@ settings = get_settings()
 router = APIRouter(prefix="/auth")
 
 _INVALID_CREDENTIALS = "Invalid credentials"
-_PASSWORD_RESET_ACK = (
-    "If the email is registered, password reset instructions have been sent."
+_PASSWORD_RESET_ACK = "Password reset instructions have been sent."
+_PASSWORD_RESET_EMAIL_NOT_FOUND = "등록되지 않은 이메일입니다."
+_PASSWORD_RESET_RESEND_COOLDOWN = "잠시 후 다시 요청해 주세요."
+_PASSWORD_RESET_CODE_MISSING = "인증번호를 먼저 요청해 주세요."
+_PASSWORD_RESET_CODE_EXPIRED = "인증번호가 만료되었습니다. 다시 요청해 주세요."
+_PASSWORD_RESET_CODE_INVALID = "인증번호가 올바르지 않습니다."
+_PASSWORD_RESET_CODE_LOCKED = (
+    "인증 시도 횟수를 초과했습니다. 인증번호를 다시 요청해 주세요."
 )
+
+_PASSWORD_RESET_CODE_UNSET = {
+    "password_reset_code_hash": "",
+    "password_reset_code_expires_at": "",
+    "password_reset_code_attempts": "",
+    "password_reset_code_sent_at": "",
+    "password_reset_hash": "",
+    "password_reset_requested_at": "",
+}
+
+
+def _as_utc_aware(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 async def _issue_token_pair(db, obj_id: ObjectId, user: dict) -> TokenPair:
@@ -346,54 +368,97 @@ async def password_reset_start(payload: PasswordResetStartRequest, db=Depends(ge
     user = await db["users"].find_one(
         {"email": payload.email, "is_deleted": {"$ne": True}}
     )
-    if user:
-        token = create_password_reset_token(str(user["_id"]))
-        token_hash = hash_token(token)
-        now = datetime.now(timezone.utc)
-        await db["users"].update_one(
-            {"_id": user["_id"]},
-            {
-                "$set": {
-                    "password_reset_hash": token_hash,
-                    "password_reset_requested_at": now,
-                }
-            },
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=_PASSWORD_RESET_EMAIL_NOT_FOUND,
         )
+
+    now = datetime.now(timezone.utc)
+    sent_at = user.get("password_reset_code_sent_at")
+    if sent_at is not None:
+        elapsed = (now - _as_utc_aware(sent_at)).total_seconds()
+        if elapsed < settings.reset_code_resend_cooldown_seconds:
+            raise HTTPException(
+                status_code=429,
+                detail=_PASSWORD_RESET_RESEND_COOLDOWN,
+            )
+
+    code = generate_password_reset_code()
+    expires_at = now + timedelta(minutes=settings.reset_code_expire_minutes)
+    await db["users"].update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "password_reset_code_hash": hash_token(code),
+                "password_reset_code_expires_at": expires_at,
+                "password_reset_code_attempts": 0,
+                "password_reset_code_sent_at": now,
+            },
+            "$unset": {
+                "password_reset_hash": "",
+                "password_reset_requested_at": "",
+            },
+        },
+    )
+    send_password_reset_code_email(
+        payload.email,
+        code,
+        expire_minutes=settings.reset_code_expire_minutes,
+    )
     return {"success": True, "message": _PASSWORD_RESET_ACK}
 
 
-@router.post("/password/reset/finish")
-async def password_reset_finish(payload: PasswordResetFinishRequest, db=Depends(get_db)):
-    decoded = decode_token(payload.token)
-    if not decoded or decoded.get("type") != "reset":
-        raise HTTPException(status_code=400, detail="Invalid reset token")
-
-    sub = decoded["sub"]
-    obj_id = sub_to_obj(sub)
-
-    user = await db["users"].find_one({"_id": obj_id})
+@router.post("/password/reset/verify")
+async def password_reset_verify(payload: PasswordResetVerifyRequest, db=Depends(get_db)):
+    user = await db["users"].find_one(
+        {"email": payload.email, "is_deleted": {"$ne": True}}
+    )
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid reset token")
-
-    stored_hash = user.get("password_reset_hash")
-    incoming_hash = hash_token(payload.token)
-    if not stored_hash or stored_hash != incoming_hash:
         raise HTTPException(
-            status_code=400,
-            detail="Reset token mismatch or already used",
+            status_code=404,
+            detail=_PASSWORD_RESET_EMAIL_NOT_FOUND,
         )
 
-    requested_at = user.get("password_reset_requested_at")
-    if not requested_at:
-        raise HTTPException(status_code=400, detail="Reset token state invalid")
+    stored_hash = user.get("password_reset_code_hash")
+    expires_at = user.get("password_reset_code_expires_at")
+    if not stored_hash or not expires_at:
+        raise HTTPException(status_code=400, detail=_PASSWORD_RESET_CODE_MISSING)
 
     now = datetime.now(timezone.utc)
-    elapsed_sec = (now - requested_at).total_seconds()
-    if elapsed_sec > settings.reset_token_expire_minutes * 60:
-        raise HTTPException(status_code=400, detail="Reset token has expired")
+    if now > _as_utc_aware(expires_at):
+        await db["users"].update_one(
+            {"_id": user["_id"]},
+            {"$unset": _PASSWORD_RESET_CODE_UNSET},
+        )
+        raise HTTPException(status_code=400, detail=_PASSWORD_RESET_CODE_EXPIRED)
+
+    attempts = int(user.get("password_reset_code_attempts") or 0)
+    if attempts >= settings.reset_code_max_attempts:
+        await db["users"].update_one(
+            {"_id": user["_id"]},
+            {"$unset": _PASSWORD_RESET_CODE_UNSET},
+        )
+        raise HTTPException(status_code=400, detail=_PASSWORD_RESET_CODE_LOCKED)
+
+    incoming_hash = hash_token(payload.code)
+    if stored_hash != incoming_hash:
+        next_attempts = attempts + 1
+        if next_attempts >= settings.reset_code_max_attempts:
+            await db["users"].update_one(
+                {"_id": user["_id"]},
+                {"$unset": _PASSWORD_RESET_CODE_UNSET},
+            )
+            raise HTTPException(status_code=400, detail=_PASSWORD_RESET_CODE_LOCKED)
+
+        await db["users"].update_one(
+            {"_id": user["_id"]},
+            {"$set": {"password_reset_code_attempts": next_attempts}},
+        )
+        raise HTTPException(status_code=400, detail=_PASSWORD_RESET_CODE_INVALID)
 
     await db["users"].update_one(
-        {"_id": obj_id},
+        {"_id": user["_id"]},
         {
             "$set": {
                 "password_hash": hash_password(payload.new_password),
@@ -402,8 +467,7 @@ async def password_reset_finish(payload: PasswordResetFinishRequest, db=Depends(
                 **clear_login_lock_fields(),
             },
             "$unset": {
-                "password_reset_hash": "",
-                "password_reset_requested_at": "",
+                **_PASSWORD_RESET_CODE_UNSET,
                 "refresh_hash": "",
                 "refresh_issued_at": "",
             },

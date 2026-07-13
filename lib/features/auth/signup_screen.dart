@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gad_app_team/common/auth_password_policy.dart';
 import 'package:gad_app_team/common/auth_security_copy.dart';
 import 'package:gad_app_team/common/constants.dart';
 import 'package:gad_app_team/widgets/primary_action_button.dart';
@@ -26,15 +27,10 @@ class _SignupScreenState extends State<SignupScreen> {
   static const double _labelSpacing = 4;
   static const double _inlineErrorHeight = 12;
   static const double _formErrorHeight = 16;
-  static final RegExp _passwordRegex = RegExp(
-    r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,20}$',
-  );
   static final RegExp _emailRegex = RegExp(
     r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
   );
   static final RegExp _phoneRegex = RegExp(r'^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$');
-  static const String _passwordPolicyMessage =
-      '비밀번호는 8~20자이며, 영문자/숫자/특수문자를 각각 1자 이상 포함해야 합니다.';
 
   final emailController = TextEditingController();
   final nameController = TextEditingController();
@@ -104,15 +100,11 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   String? _validatePassword(String password) {
-    if (password.isEmpty) return '비밀번호를 입력해주세요.';
-    if (!_passwordRegex.hasMatch(password)) return _passwordPolicyMessage;
-    return null;
+    return AuthPasswordPolicy.validate(password);
   }
 
   String? _validateConfirmPassword(String password, String confirmPassword) {
-    if (confirmPassword.isEmpty) return '비밀번호 확인을 입력해주세요.';
-    if (password != confirmPassword) return '비밀번호가 일치하지 않습니다.';
-    return null;
+    return AuthPasswordPolicy.validateConfirm(password, confirmPassword);
   }
 
   String? _validatePatientCode(String patientCode) {
