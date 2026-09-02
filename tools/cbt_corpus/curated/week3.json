@@ -1,0 +1,43 @@
+{
+  "items": [
+    {
+      "id": "week3_overview_01",
+      "week": 3,
+      "type": "education",
+      "title": "3주차에서 배우는 것",
+      "paragraphs": [
+        "3주차에서는 어떤 생각이 불안에 도움이 되는지를 배우고, 내 생각을 도움이 되는 방향으로 바꾸는 연습을 합니다.",
+        "먼저 불안을 키우는 생각과 도움이 되는 생각을 구분하는 연습(20문항)을 하고, 그다음 자신의 불안한 생각을 떠올려 도움이 되는 생각을 직접 적어봅니다."
+      ],
+      "tags": ["thought", "cognitive_restructuring", "program"],
+      "source": "lib/features/3rd_treatment/week3_screen.dart"
+    },
+    {
+      "id": "week3_alternative_thought_01",
+      "week": 3,
+      "type": "technique",
+      "title": "도움이 되는 생각(대체 생각) 만들기",
+      "paragraphs": [
+        "하나의 불안한 생각에 대해 '도움이 되는 생각(대체 생각)'은 다양하게 있을 수 있습니다.",
+        "예를 들어 발표를 앞두고 불안한 생각이 들 때, \"말을 버벅거려도 회의를 망치지는 않을 것이다\", \"중요한 발표이기 때문에 긴장되는 것은 당연하다\" 와 같은 대체 생각을 떠올릴 수 있습니다.",
+        "대체 생각은 억지로 긍정적으로 바꾸는 것이 아니라, 걱정을 조금 더 현실적이고 균형 잡힌 시각으로 바라보는 문장입니다.",
+        "예시: 실수하더라도 누구나 그럴 수 있고, 나는 충분히 다시 해볼 수 있어요."
+      ],
+      "tags": ["thought", "alternative_thought", "cognitive_restructuring"],
+      "source": "lib/features/3rd_treatment/week3_explain_alternative_thoughts.dart"
+    },
+    {
+      "id": "week3_practice_01",
+      "week": 3,
+      "type": "technique",
+      "title": "생각 구분 연습을 되짚는 방법",
+      "paragraphs": [
+        "분류 연습을 마친 뒤에는 맞은 문항과 틀린 문항을 다시 보며 내 생각의 패턴을 천천히 점검합니다.",
+        "각 문항에 대해 이 문장이 왜 그 유형에 해당하는지 생각해보는 것이 핵심입니다.",
+        "내가 적은 생각을 한 번 더 비교해보며, 어떤 방향이 마음을 더 안정시키는지 살펴봅니다."
+      ],
+      "tags": ["thought", "cognitive_restructuring", "self_monitoring"],
+      "source": "lib/features/3rd_treatment/week3_classification_detail_screen.dart"
+    }
+  ]
+}

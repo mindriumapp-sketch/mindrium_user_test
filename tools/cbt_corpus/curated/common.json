@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "common_sud_01",
+      "week": 0,
+      "type": "technique",
+      "title": "SUD(주관적 불편감 점수)",
+      "paragraphs": [
+        "SUD는 지금 느끼는 불안의 정도를 스스로 매기는 점수입니다. Mindrium은 활동 전과 후에 각각 SUD를 기록해 변화를 비교합니다.",
+        "활동을 진행하기 전에 느끼는 불안 정도를 고르고, 활동을 진행한 후에 다시 한 번 고릅니다.",
+        "전후 점수 차이는 그 활동이 지금의 나에게 얼마나 도움이 되었는지 보여주는 단서입니다."
+      ],
+      "tags": ["sud", "self_monitoring", "assessment"],
+      "source": "lib/contents/before_sud_screen.dart"
+    },
+    {
+      "id": "common_relaxation_use_01",
+      "week": 0,
+      "type": "technique",
+      "title": "이완 활동을 언제 쓰는가",
+      "paragraphs": [
+        "불안이 올라올 때 Mindrium은 걱정 일기를 쓰거나 이완 활동을 진행하는 두 가지 경로를 제공합니다.",
+        "이완 활동은 주차별 이완 훈련(점진적 이완, 이완만 하는 이완, 신호 조절 이완 등)을 그대로 사용합니다.",
+        "이완 활동 전후로 SUD를 기록하면, 어떤 이완이 나에게 효과적인지 확인할 수 있습니다.",
+        "상담에서 이완을 권할 때는 사용자가 이미 학습한 주차의 이완만 제안합니다."
+      ],
+      "tags": ["relaxation", "technique", "sud"],
+      "source": "lib/contents/relax_yes_or_no.dart"
+    }
+  ]
+}

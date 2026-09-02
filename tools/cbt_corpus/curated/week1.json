@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "id": "week1_value_goal_01",
+      "week": 1,
+      "type": "technique",
+      "title": "핵심 가치 정하기",
+      "paragraphs": [
+        "Mindrium은 1주차 시작 시점에 사용자가 삶에서 가장 중요하게 생각하는 가치를 한 가지 적도록 합니다.",
+        "여기서 적은 가치는 프로그램 내내 기준점으로 쓰입니다. 특히 7주차 생활 습관 계획에서 '이 행동이 내 가치를 실현하는 데 도움이 되는가'를 판단하는 근거가 됩니다.",
+        "가치의 예로는 가족, 건강, 성장, 자유, 사랑, 평화 등이 있습니다.",
+        "상담에서 가치를 언급할 때는 사용자가 실제로 기록한 가치만 사용하고, 기록이 없으면 가치를 임의로 가정하지 않습니다."
+      ],
+      "tags": ["values", "program", "goal_setting"],
+      "source": "lib/features/1st_treatment/week1_value_goal_screen.dart"
+    }
+  ]
+}

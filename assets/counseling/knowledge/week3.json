@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "week": 3,
+  "items": [
+    {
+      "id": "week3_alternative_thought_01",
+      "week": 3,
+      "type": "technique",
+      "title": "도움이 되는 생각(대체 생각) 만들기",
+      "paragraphs": [
+        "하나의 불안한 생각에 대해 '도움이 되는 생각(대체 생각)'은 다양하게 있을 수 있습니다.",
+        "예를 들어 발표를 앞두고 불안한 생각이 들 때, \"말을 버벅거려도 회의를 망치지는 않을 것이다\", \"중요한 발표이기 때문에 긴장되는 것은 당연하다\" 와 같은 대체 생각을 떠올릴 수 있습니다.",
+        "대체 생각은 억지로 긍정적으로 바꾸는 것이 아니라, 걱정을 조금 더 현실적이고 균형 잡힌 시각으로 바라보는 문장입니다.",
+        "예시: 실수하더라도 누구나 그럴 수 있고, 나는 충분히 다시 해볼 수 있어요."
+      ],
+      "tags": [
+        "thought",
+        "alternative_thought",
+        "cognitive_restructuring"
+      ],
+      "source": "lib/features/3rd_treatment/week3_explain_alternative_thoughts.dart"
+    },
+    {
+      "id": "week3_overview_01",
+      "week": 3,
+      "type": "education",
+      "title": "3주차에서 배우는 것",
+      "paragraphs": [
+        "3주차에서는 어떤 생각이 불안에 도움이 되는지를 배우고, 내 생각을 도움이 되는 방향으로 바꾸는 연습을 합니다.",
+        "먼저 불안을 키우는 생각과 도움이 되는 생각을 구분하는 연습(20문항)을 하고, 그다음 자신의 불안한 생각을 떠올려 도움이 되는 생각을 직접 적어봅니다."
+      ],
+      "tags": [
+        "thought",
+        "cognitive_restructuring",
+        "program"
+      ],
+      "source": "lib/features/3rd_treatment/week3_screen.dart"
+    },
+    {
+      "id": "week3_practice_01",
+      "week": 3,
+      "type": "technique",
+      "title": "생각 구분 연습을 되짚는 방법",
+      "paragraphs": [
+        "분류 연습을 마친 뒤에는 맞은 문항과 틀린 문항을 다시 보며 내 생각의 패턴을 천천히 점검합니다.",
+        "각 문항에 대해 이 문장이 왜 그 유형에 해당하는지 생각해보는 것이 핵심입니다.",
+        "내가 적은 생각을 한 번 더 비교해보며, 어떤 방향이 마음을 더 안정시키는지 살펴봅니다."
+      ],
+      "tags": [
+        "thought",
+        "cognitive_restructuring",
+        "self_monitoring"
+      ],
+      "source": "lib/features/3rd_treatment/week3_classification_detail_screen.dart"
+    },
+    {
+      "id": "week3_relaxation_script",
+      "week": 3,
+      "type": "technique",
+      "title": "3주차 이완 훈련 원고: 이완만 하는 이완",
+      "paragraphs": [
+        "3주차 이완 훈련(이완만 하는 이완)에서 오디오가 실제로 안내하는 문장입니다. 상담 중 이완을 단계별로 안내할 때는 이 순서와 표현을 따릅니다.",
+        "오늘은 근육을 따로 긴장시키지 않고, 신체 각 부위에 주의를 기울이며, 그저 이완되는 것에만 집중할",
+        "여러분은 그 부위를 “내려놓는다”, “풀어준다”,“힘을 뺀다”는 마음으로 따라오시면 됩니다.",
+        "편안하게 숨을 쉬어볼까요? 천천히 들이쉬고,",
+        "내 몸이 바닥에, 조금씩 가라앉는 느낌을, 느껴보세요.",
+        "자연스럽고 부드럽게 호흡을 이어가 보세요.",
+        "이제 몸도 마음도 준비가 되었어요. 본격적으로 근육 이완을 시작해보겠습니다.",
+        "숨을 내쉴 때마다 이마의 미세한 긴장감도 사라집니다.",
+        "눈 주위 근육 하나하나가 조용히 이완됩니다.",
+        "턱은 가볍게 내려가고, 혀와 이반 전체가 편안하게 풀립니다.",
+        "숨을 내쉴 때마다 더 깊이 풀어지는 걸 느껴봅니다.",
+        "따뜻하고 부드러운 이완이 스며들고 있습니다.",
+        "기대어 있음 그 자체가 편안하게 느껴집니다.",
+        "등은 넓고 따뜻하게 바닥에 닿아 있습니다.",
+        "허벅지, 종아리, 발까지 천천히 이완이 퍼져나갑니다.",
+        "이제 몸 전체가 가볍고 조용하며,",
+        "지금 느껴지는 이 편안한 감각은, 이완 훈련이 끝난 이후에도 이어질 수 있습니다.",
+        "이 시간을 통해 점점 내 몸의, 신호,에, 귀를 기울일 수 있게 될 거예요."
+      ],
+      "tags": [
+        "body",
+        "relaxation",
+        "technique"
+      ],
+      "source": "assets/relaxation/cue_sheets/week3_cue_sheet.json",
+      "conversational_guidance_available": true
+    },
+    {
+      "id": "week3_thought_examples",
+      "week": 3,
+      "type": "example_bank",
+      "title": "불안을 키우는 생각과 도움이 되는 생각 예시",
+      "paragraphs": [
+        "불안을 키우는 생각과 도움이 되는 생각 예시입니다. 아래 예시는 Mindrium 3주차 분류 연습에서 사용하는 임상 검수된 문항이며, 상담 중 예시를 들 때는 이 목록 안에서만 인용합니다."
+      ],
+      "tags": [
+        "thought",
+        "cognitive_restructuring",
+        "alternative_thought",
+        "example"
+      ],
+      "source": "lib/features/3rd_treatment/week3_classification_screen.dart",
+      "examples": [
+        {
+          "text": "나는 안전하지 않아",
+          "label": "anxious_thought",
+          "rationale": "위험을 실제보다 크게 느끼게 해서 불안을 더 키울 수 있는 생각이에요."
+        },
+        {
+          "text": "무언가 나쁜 일이 일어날 것이다",
+          "label": "anxious_thought",
+          "rationale": "아직 일어나지 않은 일을 나쁘게 단정하면 걱정이 더 커질 수 있어요."
+        },
+        {
+          "text": "나쁜 일이 일어나지 않도록 미리 막아야 한다",
+          "label": "anxious_thought",
+          "rationale": "모든 위험을 완벽히 막아야 한다고 느끼면 마음이 더 긴장될 수 있어요."
+        },
+        {
+          "text": "사람들이 나를 비웃고 조롱할 것이다",
+          "label": "anxious_thought",
+          "rationale": "다른 사람의 반응을 부정적으로 단정하면 불안이 더 커질 수 있어요."
+        },
+        {
+          "text": "나는 실수를 할 것이고, 그 실수는 돌이킬 수 없을 만큼 심각할 것이다",
+          "label": "anxious_thought",
+          "rationale": "실수의 결과를 지나치게 크게 해석하면 두려움이 더 심해질 수 있어요."
+        },
+        {
+          "text": "나는 두려움을 절대 감당할 수 없다",
+          "label": "anxious_thought",
+          "rationale": "스스로의 감정 대처 능력을 너무 낮게 보면 더 불안해질 수 있어요."
+        },
+        {
+          "text": "혹시 실수해서 학부모나 학교의 불만을 살까 봐 걱정이 된다",
+          "label": "anxious_thought",
+          "rationale": "가능한 일을 실제 위협처럼 크게 느끼게 하는 생각일 수 있어요."
+        },
+        {
+          "text": "예상치 못한 지출이 생기면 감당할 수 없을 것이다",
+          "label": "anxious_thought",
+          "rationale": "어려운 상황을 감당 못 할 것이라고 단정하면 불안이 더 커질 수 있어요."
+        },
+        {
+          "text": "부모님께 갑자기 큰일이 생기면 어떡하지?",
+          "label": "anxious_thought",
+          "rationale": "일어나지 않은 미래를 미리 걱정하면 마음이 더 불안해질 수 있어요."
+        },
+        {
+          "text": "내가 무언가를 완벽히 처리하지 못하면 큰일이 날 것이다",
+          "label": "anxious_thought",
+          "rationale": "완벽해야만 괜찮다고 느끼면 부담과 긴장이 더 커질 수 있어요."
+        },
+        {
+          "text": "내 말이 오해를 불러일으켰을 수 있어",
+          "label": "anxious_thought",
+          "rationale": "불확실한 상황을 부정적으로 해석하면 걱정이 더 이어질 수 있어요."
+        },
+        {
+          "text": "대부분의 경우, 실제로는 나쁜 일이 일어나지 않는다",
+          "label": "helpful_thought",
+          "rationale": "걱정을 조금 더 현실적으로 바라보게 도와주는 균형 잡힌 생각이에요."
+        },
+        {
+          "text": "설령 나쁜 일이 일어난다고 해도 나는 잘 대처할 수 있다",
+          "label": "helpful_thought",
+          "rationale": "위험만이 아니라 내 대처 능력도 함께 떠올리게 해주는 생각이에요."
+        },
+        {
+          "text": "나는 생각보다 용기 있고, 대처 능력이 있다",
+          "label": "helpful_thought",
+          "rationale": "스스로의 힘을 기억하게 해서 불안을 줄이는 데 도움이 되는 생각이에요."
+        },
+        {
+          "text": "두렵다고 해서 중요한 일을 포기하지 않아도 된다",
+          "label": "helpful_thought",
+          "rationale": "두려움이 있어도 행동할 수 있다는 점을 알려주는 건강한 생각이에요."
+        },
+        {
+          "text": "누구나 실수할 수 있다. 실수는 인간의 당연한 모습이다",
+          "label": "helpful_thought",
+          "rationale": "실수를 지나치게 두려워하지 않도록 도와주는 현실적인 생각이에요."
+        },
+        {
+          "text": "나는 완벽하지 않아도 괜찮다 (사람들은 완벽한 사람보다는 따뜻하고 친절한 사람을 더 좋아한다)",
+          "label": "helpful_thought",
+          "rationale": "완벽해야 한다는 부담을 덜어주고 자신을 조금 더 너그럽게 보게 해줘요."
+        },
+        {
+          "text": "문제 상황은 보통 내가 잘 해결할 수 있다",
+          "label": "helpful_thought",
+          "rationale": "불안보다 해결 가능성에 더 초점을 맞추게 도와주는 생각이에요."
+        },
+        {
+          "text": "때로 불안을 느끼는 것은 정상이며 자연스러운 현상이다",
+          "label": "helpful_thought",
+          "rationale": "불안을 이상한 것이 아니라 자연스러운 감정으로 이해하게 도와줘요."
+        },
+        {
+          "text": "예상치 못한 지출이 생기더라도 감당할 수 있을 것이다",
+          "label": "helpful_thought",
+          "rationale": "어려움이 생겨도 대처할 수 있다고 보는 데 도움이 되는 생각이에요."
+        }
+      ]
+    }
+  ]
+}

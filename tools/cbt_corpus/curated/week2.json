@@ -1,0 +1,85 @@
+{
+  "items": [
+    {
+      "id": "week2_overview_01",
+      "week": 2,
+      "type": "education",
+      "title": "2주차에서 배우는 것",
+      "paragraphs": [
+        "2주차에서는 불안이 발생하는 상황을 A(사건), B(생각), C(결과)로 나누어 분석하는 ABC 모델을 배웁니다.",
+        "이후 매일 걱정 일기를 ABC 모델 형식으로 기록하게 됩니다."
+      ],
+      "tags": ["abc_model", "diary", "program"],
+      "source": "lib/features/2nd_treatment/week2_screen.dart"
+    },
+    {
+      "id": "week2_abc_model_01",
+      "week": 2,
+      "type": "education",
+      "title": "ABC 모델이란?",
+      "paragraphs": [
+        "ABC 모델은 인지행동치료(CBT)에서 사용되는 대표적인 기법 중 하나로, 사람의 정서적 반응과 행동이 특정 사건 자체보다는 그 사건에 대한 생각(믿음)에 의해 결정된다는 개념을 바탕으로 합니다.",
+        "이 모델은 심리학자 앨버트 엘리스가 1950년대에 개발한 합리적 정서행동치료(REBT)의 핵심 구성 요소로 소개되었습니다.",
+        "Mindrium에서는 걱정 일기를 매일 작성하면서 ABC 모델을 기반으로 기록합니다.",
+        "A는 사건(Activating Event), B는 생각(Belief), C는 결과(Consequence)를 뜻하며, C는 다시 신체 반응·감정·행동으로 나누어 기록합니다."
+      ],
+      "tags": ["abc_model", "cbt", "psychoeducation", "diary"],
+      "source": "lib/features/2nd_treatment/abc_guide_screen.dart"
+    },
+    {
+      "id": "week2_abc_example_01",
+      "week": 2,
+      "type": "example_bank",
+      "title": "ABC 모델 예시: 자전거 타기",
+      "paragraphs": [
+        "2주차 튜토리얼에서 사용하는 표준 ABC 예시입니다. 상담에서 ABC 구조를 설명할 때 이 예시를 사용할 수 있습니다."
+      ],
+      "tags": ["abc_model", "example", "diary"],
+      "source": "lib/features/2nd_treatment/abc_activate_screen.dart",
+      "examples": [
+        {
+          "text": "주말 오후, 오랜만에 자전거를 타려고 공원에 나갔어요. 사람들이 자전거를 타는 모습을 보니 저도 한번 타보고 싶어졌고, 자전거를 꺼내 출발하려는 순간이 바로 이번 상황(A)이에요.",
+          "label": "activating_event",
+          "rationale": "사건(A)은 해석을 붙이지 않은, 실제로 일어난 상황만 적습니다."
+        },
+        {
+          "text": "'넘어질 것 같아', '또 다치면 어떡하지?'라는 생각이 들었어요. 예전에 넘어졌던 기억이 떠오르면서 불안한 생각(B)이 더 커졌어요.",
+          "label": "belief",
+          "rationale": "생각(B)은 그 상황에서 머릿속에 떠오른 문장입니다. 사건이 아니라 이 생각이 감정과 행동을 만듭니다."
+        },
+        {
+          "text": "심장이 빨리 뛰고 몸이 긴장됐고(신체), 불안과 두려움이 커졌어요(감정). 결국 자전거를 타지 않고 피하게 됐어요(행동). 이것이 결과(C)예요.",
+          "label": "consequence",
+          "rationale": "결과(C)는 신체 반응·감정·행동 세 가지로 나누어 적습니다."
+        }
+      ]
+    },
+    {
+      "id": "week2_worry_group_01",
+      "week": 2,
+      "type": "technique",
+      "title": "걱정 그룹으로 묶기",
+      "paragraphs": [
+        "걱정 그룹은 비슷한 걱정들을 한곳에 모아 관리하는 묶음이에요.",
+        "예를 들면 \"시험 걱정\", \"친구 관계 걱정\", \"건강 걱정\"처럼 주제별로 나눌 수 있어요.",
+        "비슷한 상황에서 반복되는 걱정이라면 같은 그룹으로 묶어보세요. 주제가 다르거나 감정이 다르게 느껴지면 새 그룹으로 나누는 것이 좋아요.",
+        "그룹 이름은 나중에 다시 봐도 바로 이해되는 이름이 좋아요. 예: \"발표 전 긴장\", \"친구와의 오해\", \"건강 검사 결과 걱정\""
+      ],
+      "tags": ["worry_group", "diary", "self_monitoring"],
+      "source": "lib/features/2nd_treatment/abc_group_add_screen.dart"
+    },
+    {
+      "id": "week2_diary_habit_01",
+      "week": 2,
+      "type": "technique",
+      "title": "걱정 일기를 이어가는 방법",
+      "paragraphs": [
+        "튜토리얼을 마친 뒤에는 실제 자신의 사례를 떠올리며 걱정 일기를 작성합니다. 실제 사례를 적으며 나만의 패턴을 이해하는 것이 목적입니다.",
+        "불안을 느낄 때마다 차분히 일기를 쓰며, 내 마음의 흐름을 살펴보세요.",
+        "일기에는 위치와 시간을 함께 기록할 수 있고, 마지막에 기록한 위치·시간으로 알림을 설정할 수 있습니다."
+      ],
+      "tags": ["diary", "self_monitoring", "habit"],
+      "source": "lib/features/2nd_treatment/abc_real_start_screen.dart"
+    }
+  ]
+}

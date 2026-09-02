@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "generated_by": "tools/cbt_corpus/build_corpus.py",
+  "item_types": [
+    "assessment",
+    "education",
+    "example_bank",
+    "technique"
+  ],
+  "tag_vocabulary": [
+    "abc_model",
+    "alternative_thought",
+    "anxiety",
+    "assessment",
+    "avoidance",
+    "behavior",
+    "belief_rating",
+    "body",
+    "cbt",
+    "cognitive_restructuring",
+    "comorbidity",
+    "confrontation",
+    "cue_controlled",
+    "diary",
+    "example",
+    "exposure",
+    "gad7",
+    "goal_setting",
+    "habit",
+    "maintenance",
+    "mechanism",
+    "planning",
+    "program",
+    "psychoeducation",
+    "relapse_prevention",
+    "relaxation",
+    "self_monitoring",
+    "sud",
+    "technique",
+    "thought",
+    "treatment",
+    "values",
+    "worry_group"
+  ],
+  "files": [
+    {
+      "week": 0,
+      "file": "week0.json",
+      "item_count": 2
+    },
+    {
+      "week": 1,
+      "file": "week1.json",
+      "item_count": 44
+    },
+    {
+      "week": 2,
+      "file": "week2.json",
+      "item_count": 11
+    },
+    {
+      "week": 3,
+      "file": "week3.json",
+      "item_count": 5
+    },
+    {
+      "week": 4,
+      "file": "week4.json",
+      "item_count": 4
+    },
+    {
+      "week": 5,
+      "file": "week5.json",
+      "item_count": 4
+    },
+    {
+      "week": 6,
+      "file": "week6.json",
+      "item_count": 5
+    },
+    {
+      "week": 7,
+      "file": "week7.json",
+      "item_count": 4
+    },
+    {
+      "week": 8,
+      "file": "week8.json",
+      "item_count": 6
+    }
+  ],
+  "total_items": 85
+}

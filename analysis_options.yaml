@@ -9,6 +9,12 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # 앱 코드가 아니다. 런타임 경로에서 끊어낸 legacy 소스와 연구용 원본 데이터를
+    # 참고용으로만 보관한다. 빌드에도 포함되지 않는다.
+    - research_data/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

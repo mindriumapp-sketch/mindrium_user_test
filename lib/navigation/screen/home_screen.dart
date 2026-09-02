@@ -21,6 +21,7 @@ import 'package:gad_app_team/data/storage/token_storage.dart';
 import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_controller.dart';
 import 'package:gad_app_team/features/widget_tutorial/home_widget_tutorial_dialog.dart';
 import 'package:gad_app_team/widgets/custom_popup_design.dart';
+import 'package:gad_app_team/chatbot/chatbot_main.dart';
 
 import 'package:gad_app_team/navigation/navigation.dart';
 import 'package:gad_app_team/features/menu/archive/sea_archive_page.dart';
@@ -851,6 +852,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         const SizedBox(height: 8),
         _buildTaskSection(user: user, todayTask: todayTask),
         const SizedBox(height: 8),
+        _buildChatbotCard(),
+        const SizedBox(height: 8),
         _buildTrainingSection(
           canUseAlarmSettings: _hasCompletedWeek2MainProgram(user),
         ),
@@ -1339,6 +1342,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ===================== 교육/훈련 섹션 =====================
+
+  Widget _buildChatbotCard() {
+    return _trainingCard(
+      titleLeading: const Icon(
+        Icons.forum_rounded,
+        size: 22,
+        color: Color(0xFF315F87),
+      ),
+      title: 'AI 마음상담',
+      description: '마음속 고민을 편안하게 이야기해 보세요.',
+      color: const Color(0xFFEAF4FF),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        size: 40,
+        color: Color(0xFF315F87),
+      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const ChatPage()),
+        );
+      },
+    );
+  }
 
   Widget _buildTrainingSection({required bool canUseAlarmSettings}) {
     final alarmCardColor =

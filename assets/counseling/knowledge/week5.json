@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "week": 5,
+  "items": [
+    {
+      "id": "week5_behavior_examples",
+      "week": 5,
+      "type": "example_bank",
+      "title": "불안 회피 행동과 직면 행동 예시",
+      "paragraphs": [
+        "불안 회피 행동과 직면 행동 예시입니다. 아래 예시는 Mindrium 5주차 분류 연습에서 사용하는 임상 검수된 문항이며, 상담 중 예시를 들 때는 이 목록 안에서만 인용합니다."
+      ],
+      "tags": [
+        "behavior",
+        "avoidance",
+        "confrontation",
+        "example"
+      ],
+      "source": "lib/features/5th_treatment/week5_classification_screen.dart",
+      "examples": [
+        {
+          "text": "부담스러운 일정이나 모임을 계속 미루거나 빠진다.",
+          "label": "avoidance_behavior",
+          "rationale": "불편함을 피하면 당장은 편할 수 있지만, 불안이 계속 유지될 수 있어요."
+        },
+        {
+          "text": "불편한 사람과의 만남이나 대화를 계속 피한다.",
+          "label": "avoidance_behavior",
+          "rationale": "불안을 줄이기 위해 관계를 피하면 긴장이 줄어들 기회를 놓칠 수 있어요."
+        },
+        {
+          "text": "불안한 장소에 가더라도 빨리 떠날 생각만 한다.",
+          "label": "avoidance_behavior",
+          "rationale": "불안한 상황에 머물기보다 바로 벗어나려 하면 익숙해질 기회가 줄어들 수 있어요."
+        },
+        {
+          "text": "불안감에서 벗어나려고 스마트폰이나 TV에 지나치게 몰두한다.",
+          "label": "avoidance_behavior",
+          "rationale": "불안을 다른 것으로 덮으려 하면 마음이 스스로 진정되는 경험을 하기 어려워질 수 있어요."
+        },
+        {
+          "text": "모임이나 대화 중 말하는 것을 최소화한다.",
+          "label": "avoidance_behavior",
+          "rationale": "말을 줄이는 방식은 불안을 피하는 데는 도움이 되지만, 자신감을 키우는 데는 방해가 될 수 있어요."
+        },
+        {
+          "text": "중요한 결정을 불안 때문에 계속 미룬다.",
+          "label": "avoidance_behavior",
+          "rationale": "결정을 미루면 잠시 편할 수 있지만, 불안이 더 오래 이어질 수 있어요."
+        },
+        {
+          "text": "불안을 느낄 때마다 진정제나 두통약 등에 의존한다.",
+          "label": "avoidance_behavior",
+          "rationale": "외부 도움에만 의존하면 스스로 불안을 견디는 힘을 기르기 어려울 수 있어요."
+        },
+        {
+          "text": "발표나 회의 시 원고에만 집중하며 대화는 최소화한다.",
+          "label": "avoidance_behavior",
+          "rationale": "실수를 피하려고 지나치게 통제하면 오히려 상황에 자연스럽게 적응하기 어려워질 수 있어요."
+        },
+        {
+          "text": "불안을 덜기 위해 휴대폰이나 작은 물건을 계속 만지작거린다.",
+          "label": "avoidance_behavior",
+          "rationale": "이런 행동은 잠깐 안정을 줄 수 있지만, 불안을 직접 견디는 연습을 줄일 수 있어요."
+        },
+        {
+          "text": "불안한 생각이 떠오르면 다른 일로 주의를 돌려 생각을 차단한다.",
+          "label": "avoidance_behavior",
+          "rationale": "생각을 바로 밀어내려 하면 오히려 더 신경 쓰이게 될 수 있어요."
+        },
+        {
+          "text": "\"생각하지 말자\"고 애써 무시한다.",
+          "label": "avoidance_behavior",
+          "rationale": "불안을 억지로 지우려 하면 그 생각이 더 크게 느껴질 수 있어요."
+        },
+        {
+          "text": "부담스러운 일정이나 모임에 오랜 시간 참석해본다.",
+          "label": "confrontation_behavior",
+          "rationale": "조금 불편하더라도 머물러보는 경험은 불안이 줄어드는 데 도움이 될 수 있어요."
+        },
+        {
+          "text": "불편한 사람과의 만남이나 대화를 짧게라도 시도해본다.",
+          "label": "confrontation_behavior",
+          "rationale": "작게라도 직접 마주해보는 행동은 회피보다 자신감을 키우는 데 도움이 돼요."
+        },
+        {
+          "text": "불안한 장소에서 잠시 머물며 몸이 적응하는 걸 경험한다.",
+          "label": "confrontation_behavior",
+          "rationale": "바로 피하지 않고 잠시 머무르면 불안이 자연스럽게 낮아질 수 있다는 걸 배우게 돼요."
+        },
+        {
+          "text": "모임에서 간단한 질문을 먼저 하거나 짧은 대화를 시도한다.",
+          "label": "confrontation_behavior",
+          "rationale": "작은 시도부터 해보는 것은 불안을 직면하는 건강한 연습이 될 수 있어요."
+        },
+        {
+          "text": "불안하더라도 작은 일부터 우선순위를 정해 조금씩 결정을 내린다.",
+          "label": "confrontation_behavior",
+          "rationale": "불안이 있어도 행동을 이어가는 방식은 회피를 줄이는 데 도움이 돼요."
+        },
+        {
+          "text": "불안할 때 약물 대신 심호흡이나 근육 이완법을 시도한다.",
+          "label": "confrontation_behavior",
+          "rationale": "스스로 긴장을 조절해보는 연습은 불안을 견디는 힘을 키우는 데 도움이 될 수 있어요."
+        },
+        {
+          "text": "발표나 회의 시 미리 준비한 내용에서 벗어나 조금씩 자유롭게 말한다.",
+          "label": "confrontation_behavior",
+          "rationale": "완벽하게 통제하기보다 조금씩 직접 해보는 경험이 불안을 줄이는 데 도움이 돼요."
+        },
+        {
+          "text": "불안한 생각이 들면 그것을 간단히 적어보고 현실적인지 점검한다.",
+          "label": "confrontation_behavior",
+          "rationale": "생각을 피하지 않고 점검해보는 태도는 불안을 더 균형 있게 바라보게 도와줘요."
+        },
+        {
+          "text": "걱정거리를 명확하게 적고 가능한 대체 생각을 간략히 정리한다.",
+          "label": "confrontation_behavior",
+          "rationale": "불안을 정리하고 다시 바라보는 과정은 회피보다 직면에 더 가까운 건강한 방식이에요."
+        }
+      ]
+    },
+    {
+      "id": "week5_confront_avoid_01",
+      "week": 5,
+      "type": "education",
+      "title": "직면 행동과 회피 행동의 차이",
+      "paragraphs": [
+        "불안을 느낄 때 우리는 크게 두 가지 방식으로 반응할 수 있습니다.",
+        "① 불안을 직면하는 행동: 불안이 있어도 그 상황에 조금씩 머물며 익숙해지고 대처할 수 있다는 경험을 쌓아가는 행동입니다.",
+        "② 불안을 회피하는 행동: 불안을 느끼지 않으려고 상황을 피하거나 빨리 벗어나려 하면서, 오히려 불안이 더 오래 이어질 수 있는 행동입니다.",
+        "처음에는 직면이 더 어렵게 느껴질 수 있지만, 이런 연습이 쌓이면 불안을 견디는 힘을 키우는 데 도움이 될 수 있어요.",
+        "예시: 불안하더라도 잠시 자리에 머물러 보고, 한마디라도 먼저 해보려고 해요."
+      ],
+      "tags": [
+        "behavior",
+        "avoidance",
+        "confrontation",
+        "exposure"
+      ],
+      "source": "lib/features/5th_treatment/week5_explain_confront_avoid.dart"
+    },
+    {
+      "id": "week5_overview_01",
+      "week": 5,
+      "type": "education",
+      "title": "5주차에서 배우는 것",
+      "paragraphs": [
+        "5주차에서는 불안을 직면하는 것과 회피하는 것의 차이를 배우고 구분하는 연습을 합니다.",
+        "예시를 읽고 분류 연습(20문항)을 한 뒤, 내가 불안할 때 주로 하는 행동을 떠올려 적고 그에 대응하는 직면 행동을 적어봅니다."
+      ],
+      "tags": [
+        "behavior",
+        "avoidance",
+        "confrontation",
+        "program"
+      ],
+      "source": "lib/features/5th_treatment/week5_screen.dart"
+    },
+    {
+      "id": "week5_relaxation_script",
+      "week": 5,
+      "type": "technique",
+      "title": "5주차 이완 훈련 원고: 차등 이완",
+      "paragraphs": [
+        "5주차 이완 훈련(차등 이완)에서 오디오가 실제로 안내하는 문장입니다. 상담 중 이완을 단계별로 안내할 때는 이 순서와 표현을 따릅니다.",
+        "이제까지 배운 이완 기술을 활용해서, 필요한 근육만 쓰고, 나머지 부분은 이완된 상태로 두는 연습을 해보겠습니다.",
+        "등을 기대지 않고 앉아 있지만, 지난 연습들처럼, 몸의 긴장은 풀린 상태를 유지합니다.",
+        "얼굴과 목의 힘을 빼고, 부드럽게 움직여보세요.",
+        "고개는 정면으로 돌아오고, 이번에는 오른쪽으로 천천히 돌려봅니다.",
+        "이제 오른팔을 앞으로 천천히 들어 올려볼까요?",
+        "오른팔을 내리고, 이번에는 양팔을 함께 들어 올려 보겠습니다.",
+        "양팔을 내리면서, 다시 온몸의 긴장을 아래로 내려보냅니다.",
+        "일어설 때에 필요한, 다리와 허리 근육을 쓰지만, 어깨와 팔, 얼굴은 여전히 이완된 상태로",
+        "일어서 있는 지금도, 어깨와 팔은 힘 없이 축 처져 있습니다.",
+        "숨을 내쉴 때마다, “편안”, 을 떠올리며 불필요한 힘을 내려놓습니다.",
+        "걸을 때 다리 근육은 사용되지만, 어깨와 팔은 자연스럽게 흔들리도록 놔둡니다.",
+        "오늘은 움직이면서도, 몸의 상당 부분을 이완 상태로 유지하는 연습을 해보았습니다.",
+        "일상생활 속에서 필요한 곳에만 힘을 쓰고, 나머지는 편안히 두는 습관을 들이면,"
+      ],
+      "tags": [
+        "body",
+        "relaxation",
+        "technique"
+      ],
+      "source": "assets/relaxation/cue_sheets/week5_cue_sheet.json",
+      "conversational_guidance_available": true
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "week5_overview_01",
+      "week": 5,
+      "type": "education",
+      "title": "5주차에서 배우는 것",
+      "paragraphs": [
+        "5주차에서는 불안을 직면하는 것과 회피하는 것의 차이를 배우고 구분하는 연습을 합니다.",
+        "예시를 읽고 분류 연습(20문항)을 한 뒤, 내가 불안할 때 주로 하는 행동을 떠올려 적고 그에 대응하는 직면 행동을 적어봅니다."
+      ],
+      "tags": ["behavior", "avoidance", "confrontation", "program"],
+      "source": "lib/features/5th_treatment/week5_screen.dart"
+    },
+    {
+      "id": "week5_confront_avoid_01",
+      "week": 5,
+      "type": "education",
+      "title": "직면 행동과 회피 행동의 차이",
+      "paragraphs": [
+        "불안을 느낄 때 우리는 크게 두 가지 방식으로 반응할 수 있습니다.",
+        "① 불안을 직면하는 행동: 불안이 있어도 그 상황에 조금씩 머물며 익숙해지고 대처할 수 있다는 경험을 쌓아가는 행동입니다.",
+        "② 불안을 회피하는 행동: 불안을 느끼지 않으려고 상황을 피하거나 빨리 벗어나려 하면서, 오히려 불안이 더 오래 이어질 수 있는 행동입니다.",
+        "처음에는 직면이 더 어렵게 느껴질 수 있지만, 이런 연습이 쌓이면 불안을 견디는 힘을 키우는 데 도움이 될 수 있어요.",
+        "예시: 불안하더라도 잠시 자리에 머물러 보고, 한마디라도 먼저 해보려고 해요."
+      ],
+      "tags": ["behavior", "avoidance", "confrontation", "exposure"],
+      "source": "lib/features/5th_treatment/week5_explain_confront_avoid.dart"
+    }
+  ]
+}

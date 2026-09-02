@@ -1,0 +1,47 @@
+{
+  "items": [
+    {
+      "id": "week7_overview_01",
+      "week": 7,
+      "type": "education",
+      "title": "7주차에서 배우는 것",
+      "paragraphs": [
+        "7주차에서는 일상생활에서 불안을 관리할 수 있는 생활 습관을 세우고 개선합니다.",
+        "한 주 동안 불안한 상황에서 어떤 행동을 할지 미리 정해두고, 불안이 올라오면 바로 할 행동을 준비해 둡니다."
+      ],
+      "tags": ["habit", "planning", "behavior", "program"],
+      "source": "lib/features/7th_treatment/week7_screen.dart"
+    },
+    {
+      "id": "week7_gain_lose_01",
+      "week": 7,
+      "type": "technique",
+      "title": "회피 행동의 이득과 손실 따져보기",
+      "paragraphs": [
+        "회피 행동 하나를 골라 다음 다섯 가지 질문에 답하며 이득과 손실을 정리합니다.",
+        "1. 이 회피 행동을 했을 때 즉시 얻을 수 있는 좋은 점은 무엇인가요?",
+        "2. 이 회피 행동을 했을 때 장기적으로 얻을 수 있는 이익이 있나요?",
+        "3. 이 회피 행동을 하지 않았을 때 얻을 수 있는 이익은 무엇인가요?",
+        "4. 이 회피 행동을 하지 않았을 때 즉시 겪을 수 있는 어려운 점은 무엇인가요?",
+        "5. 이 회피 행동을 하지 않았을 때 장기적으로 겪을 수 있는 어려운 점이 있나요?",
+        "다섯 질문에 답한 뒤, 이 행동을 건강한 생활 습관 목록에 추가할지 결정합니다."
+      ],
+      "tags": ["habit", "behavior", "avoidance", "planning"],
+      "source": "lib/features/7th_treatment/week7_gain_lose_screen.dart"
+    },
+    {
+      "id": "week7_planning_01",
+      "week": 7,
+      "type": "technique",
+      "title": "가치에 맞춰 행동 계획 세우기",
+      "paragraphs": [
+        "행동을 계획할 때는 1주차에 적은 핵심 가치를 기준으로 판단합니다.",
+        "이 가치를 실현하기 위해 추가하는 행동이 도움이 될 것 같다면 목록에 추가합니다.",
+        "아니라면 가치에 더 맞도록 조금 바꿨을 때 어떤 행동이 더 나을지 생각해봅니다.",
+        "불안한 상황이 왔을 때 실제로 할 행동을 구체적으로 적고, 작게 시작할 수 있는 행동 1개부터 추가해보세요."
+      ],
+      "tags": ["habit", "planning", "values", "behavior"],
+      "source": "lib/features/7th_treatment/week7_planning_screen.dart"
+    }
+  ]
+}

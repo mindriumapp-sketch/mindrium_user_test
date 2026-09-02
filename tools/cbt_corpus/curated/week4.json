@@ -1,0 +1,46 @@
+{
+  "items": [
+    {
+      "id": "week4_overview_01",
+      "week": 4,
+      "type": "education",
+      "title": "4주차에서 배우는 것",
+      "paragraphs": [
+        "4주차에서는 내 생각을 점검하고 불안에 도움이 되도록 바꾸는 연습을 합니다.",
+        "3주차와 달리 예시 문항이 아니라, 사용자가 직접 작성한 걱정 일기의 내용을 가지고 진행합니다.",
+        "자동 생성된 일기는 인지 왜곡 찾기에 사용할 수 없고, 사용자가 직접 작성한 일기만 사용합니다."
+      ],
+      "tags": ["thought", "cognitive_restructuring", "diary", "program"],
+      "source": "lib/features/4th_treatment/week4_screen.dart"
+    },
+    {
+      "id": "week4_thought_check_01",
+      "week": 4,
+      "type": "technique",
+      "title": "생각의 믿음 정도 점검하기",
+      "paragraphs": [
+        "먼저 일기에 적은 상황과 그때의 생각을 다시 천천히 떠올립니다. 그 장면에 충분히 집중한 뒤에 다음 단계로 넘어갑니다.",
+        "그 상태에서 '지금 이 생각이 얼마나 크게 느껴지는지'를 슬라이더로 평가합니다.",
+        "도움이 되는 생각을 떠올린 뒤에 같은 생각을 다시 평가해서, 믿음의 정도가 얼마나 약해졌는지 비교합니다.",
+        "이 전후 비교가 4주차의 핵심입니다. 생각이 사실이 아니라 '믿는 정도'가 달라질 수 있는 대상이라는 것을 경험하는 과정입니다."
+      ],
+      "tags": ["thought", "cognitive_restructuring", "belief_rating"],
+      "source": "lib/features/4th_treatment/week4_classfication_screen.dart"
+    },
+    {
+      "id": "week4_alternative_thought_01",
+      "week": 4,
+      "type": "technique",
+      "title": "균형 잡힌 문장 한 줄 적기",
+      "paragraphs": [
+        "정답을 찾기보다, 지금 생각보다 조금 더 균형 잡힌 문장을 한 문장 적어보는 것이 목표입니다.",
+        "예시: 지금 불안하긴 하지만, 이 상황이 내가 생각하는 만큼 크게 흘러가지는 않을 수 있어. 차분히 하나씩 해보면 괜찮아질 수 있어.",
+        "한 상황에 여러 개의 불안한 생각이 있을 수 있고, 각각에 대해 도움이 되는 생각을 찾아봅니다.",
+        "모든 생각에서 꼭 도움이 되는 생각을 찾아야 하는 건 아니지만, 그중 하나라도 조금 덜 불안해지는 방향으로 바라보는 것이 도움이 됩니다.",
+        "반복해서 살펴볼수록 내 생각의 패턴을 더 분명하게 알아차릴 수 있습니다."
+      ],
+      "tags": ["thought", "alternative_thought", "cognitive_restructuring"],
+      "source": "lib/features/4th_treatment/week4_alternative_thoughts.dart"
+    }
+  ]
+}
