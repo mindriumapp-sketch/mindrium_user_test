@@ -1,0 +1,74 @@
+{
+  "holdout_reflect_exhausted_1": {
+    "status_code": 200,
+    "body": {
+      "request_id": "phase10_5a2_trackA_holdout_reflect_exhausted_1",
+      "reply": "면접에 대한 걱정이 드는 이유는 무엇인가요? 그 일이 실제로 일어날 가능성을 어떻게 느끼고 계신가요?",
+      "chosen_act": "socratic_question",
+      "model": "gpt-4o-mini",
+      "prompt_version": "phase10_5a2_trackA_clean_v1",
+      "latency_ms": 2140
+    },
+    "latency_ms": 2145
+  },
+  "holdout_reflect_exhausted_2": {
+    "status_code": 200,
+    "body": {
+      "request_id": "phase10_5a2_trackA_holdout_reflect_exhausted_2",
+      "reply": "검진 결과에 대해 계속 생각하게 되는 상황에서, 그 일이 실제로 일어날 가능성을 어떻게 느끼고 계신가요?",
+      "chosen_act": "socratic_question",
+      "model": "gpt-4o-mini",
+      "prompt_version": "phase10_5a2_trackA_clean_v1",
+      "latency_ms": 1712
+    },
+    "latency_ms": 1717
+  },
+  "holdout_reflect_exhausted_3": {
+    "status_code": 200,
+    "body": {
+      "request_id": "phase10_5a2_trackA_holdout_reflect_exhausted_3",
+      "reply": "시험에 대한 걱정이 계속 드신다고 하셨는데, 그 일이 실제로 일어날 가능성을 어떻게 느끼고 계신가요?",
+      "chosen_act": "socratic_question",
+      "model": "gpt-4o-mini",
+      "prompt_version": "phase10_5a2_trackA_clean_v1",
+      "latency_ms": 1565
+    },
+    "latency_ms": 1568
+  },
+  "holdout_reflect_exhausted_4": {
+    "status_code": 200,
+    "body": {
+      "request_id": "phase10_5a2_trackA_holdout_reflect_exhausted_4",
+      "reply": "모임에 대한 생각이 마음을 무겁게 한다고 하셨는데, 그 일이 실제로 일어날 가능성을 어떻게 느끼고 계신가요?",
+      "chosen_act": "socratic_question",
+      "model": "gpt-4o-mini",
+      "prompt_version": "phase10_5a2_trackA_clean_v1",
+      "latency_ms": 1045
+    },
+    "latency_ms": 1048
+  },
+  "holdout_reflect_exhausted_5": {
+    "status_code": 200,
+    "body": {
+      "request_id": "phase10_5a2_trackA_holdout_reflect_exhausted_5",
+      "reply": "팀장님의 얼굴이 계속 떠오르는 상황에서, 그 일이 실제로 일어날 가능성을 어떻게 느끼고 계신가요?",
+      "chosen_act": "socratic_question",
+      "model": "gpt-4o-mini",
+      "prompt_version": "phase10_5a2_trackA_clean_v1",
+      "latency_ms": 1581
+    },
+    "latency_ms": 1584
+  },
+  "holdout_reflect_exhausted_6": {
+    "status_code": 200,
+    "body": {
+      "request_id": "phase10_5a2_trackA_holdout_reflect_exhausted_6",
+      "reply": "가족 문제가 계속 마음에 걸린다고 하셨는데, 그 일이 실제로 일어날 가능성을 어떻게 느끼고 계신가요?",
+      "chosen_act": "socratic_question",
+      "model": "gpt-4o-mini",
+      "prompt_version": "phase10_5a2_trackA_clean_v1",
+      "latency_ms": 933
+    },
+    "latency_ms": 937
+  }
+}

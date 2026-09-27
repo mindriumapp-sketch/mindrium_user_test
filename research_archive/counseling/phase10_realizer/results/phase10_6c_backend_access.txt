@@ -1,0 +1,26 @@
+INFO:     Started server process [32997]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8074 (Press CTRL+C to quit)
+(trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/Users/ubdbd/Desktop/mindrium_콘진원DEMO_ver/.venv/lib/python3.12/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+[OK] users 인덱스 생성/확인 완료
+[OK] custom_tags 인덱스 생성/확인 완료
+[OK] diaries 인덱스 생성 완료
+[OK] notification_settings 인덱스 생성 완료
+[OK] relaxation_tasks 인덱스 생성 완료
+[OK] screen_time 인덱스 생성 완료
+[OK] edu_sessions 인덱스 생성 완료
+[OK] counseling_sessions 인덱스 생성 완료
+[OK] treatment_progress 인덱스 생성 완료
+[OK] worry_groups 인덱스 생성 완료
+INFO:     127.0.0.1:62341 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62489 - "POST /counseling/realize HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [32997]

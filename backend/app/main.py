@@ -17,6 +17,8 @@ from routers.sud_scores import router as sud_scores_router
 from routers.relaxation_tasks import router as relaxation_router
 from routers.screen_time import router as screen_time_router
 from routers.edu_sessions import router as edu_sessions_router
+from routers.counseling_sessions import router as counseling_sessions_router
+from routers.counseling_realize import router as counseling_realize_router
 from routers.treatment_progress import router as treatment_progress_router
 from routers.worry_groups import router as worry_groups_router
 from routers.alarm_settings import router as alarm_settings_router
@@ -242,6 +244,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARN] edu_sessions 인덱스 생성 중 오류: {e}")
 
+    # ---------- counseling_sessions 컬렉션 ----------
+    try:
+        counseling_sessions = db["counseling_sessions"]
+
+        # 같은 세션이 두 저장 경로(정상 종료 / 화면 이탈)로 들어오므로
+        # user_id + session_id 를 유일 키로 두고 upsert 한다.
+        await counseling_sessions.create_index(
+            [("user_id", 1), ("session_id", 1)],
+            unique=True,
+            name="unique_counseling_session",
+        )
+        # 다음 세션 개인화는 최근 세션부터 읽는다.
+        await counseling_sessions.create_index(
+            [("user_id", 1), ("ended_at", -1)],
+            name="counseling_session_recent",
+        )
+        print("[OK] counseling_sessions 인덱스 생성 완료")
+    except Exception as e:
+        print(f"[WARN] counseling_sessions 인덱스 생성 중 오류: {e}")
+
     # ---------- treatment_progress 컬렉션 ----------
     try:
         treatment_progress = db["treatment_progress"]
@@ -328,6 +350,8 @@ app.include_router(relaxation_router)
 app.include_router(screen_time_router)
 app.include_router(edu_sessions_router)
 app.include_router(treatment_progress_router)
+app.include_router(counseling_sessions_router)
+app.include_router(counseling_realize_router)
 app.include_router(custom_tags_router)
 app.include_router(worry_groups_router)
 app.include_router(alarm_settings_router)
