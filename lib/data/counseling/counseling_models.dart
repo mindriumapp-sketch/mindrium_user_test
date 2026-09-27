@@ -154,6 +154,58 @@ enum DialogueAct {
   }
 }
 
+/// Phase 11.1/11.2: names *why* a turn is being redirected into
+/// interaction-repair mode, instead of continuing ordinary worry-content
+/// selection. Lives alongside [DialogueAct] (not in `features/counseling/
+/// policy/`) for the same reason [DialogueAct] does: it needs to appear on
+/// both [CounselingTurnPlan] (features layer) and [CounselingMessage]
+/// (this file), so the data layer can't depend on features/ to define it.
+/// See `docs/counseling/phase11_1_selection_interaction_repair_design.md`.
+enum InteractionRepairReason {
+  /// "왜 똑같은 말을 반복하지?" / "아까도 물어봤잖아" — the complaint is
+  /// specifically that the same thing keeps being asked. Distinct from
+  /// [stopQuestioning]: the user isn't asking to stop, they're pointing
+  /// out non-progress. Detected starting Phase 11.2
+  /// (`DeterministicProcessSignalTurnPlanner`'s `_repeatsInteraction`).
+  repeatedQuestion,
+
+  /// "질문 그만해" / "그만 물어" / "그냥 얘기 좀 들어주세요". Detected
+  /// since before Phase 11 via `_requestsEmpathy`.
+  stopQuestioning,
+
+  /// "뭐가 달라질까" / "소용 없어" / "의미 없어". Detected since before
+  /// Phase 11 via `_showsProcessResistance`.
+  processFrustration,
+}
+
+/// Phase 11.1: names the recovery actions available once every
+/// `ReflectQuestionGoal` has been asked
+/// (`ReflectDecisionSelector._selectGoal`'s exhaustion case). Not
+/// constructed by anything yet — Phase 11.3's contract, frozen early
+/// alongside [InteractionRepairReason] since both were specified together
+/// in `phase11_1_selection_interaction_repair_design.md`.
+enum GoalExhaustionRecovery {
+  /// Hand off to a closing-style summary of what's been covered, without
+  /// asking anything new.
+  summarize,
+
+  /// The process-signal-style "no question this turn" response shape.
+  listenWithoutQuestion,
+
+  /// Pull a different topic into `reflectionTarget` instead of the
+  /// exhausted one. Needs a same-session "other topics raised earlier
+  /// this session" tracker that does not fully exist yet — see the
+  /// design doc before implementing this in Phase 11.3.
+  revisitPreviousIssue,
+
+  /// End reflect early and move to intervention/closing.
+  transition,
+
+  /// Today's only behavior (`return goalOrder.last`). Kept as the
+  /// explicit last-resort member of this enum, not removed.
+  repeatLast,
+}
+
 /// 모델 출력을 어떤 경로로 읽어냈는지. 실제 모델 벤치에서 평가 지표가 된다.
 enum ParseStatus {
   /// 응답 전체가 그대로 JSON
@@ -206,6 +258,19 @@ class CounselingMessage {
   final ParseStatus? parseStatus;
   final Duration? latency;
 
+  /// 이번 턴이 다룬 대화 목표의 안정적인 ID(예: reflect 단계의
+  /// `ReflectQuestionGoal.name`). 문장 표현이 모델(GPT)마다 달라져도 "이미
+  /// 물은 목표인가"를 텍스트가 아니라 이 ID로 추적하기 위한 필드다. 목표
+  /// 개념이 없는 턴(예: explore, closing)에는 null이다.
+  final String? dialogueGoalId;
+
+  /// Phase 11.2: 이번 턴이 interaction-repair(반복 지적/질문 중단 요청/
+  /// 과정 저항 인정)였다면 그 사유. 다음 턴 selector가 "직전 턴이 repair
+  /// 였는가"를 텍스트가 아니라 이 값으로 판단할 수 있게 한다(Phase 11.3의
+  /// goal exhaustion recovery가 이 신호를 쓸 가능성이 높다 — 아직은 아무
+  /// selector도 읽지 않는다). 일반 상담 턴에는 null이다.
+  final InteractionRepairReason? interactionRepairReason;
+
   const CounselingMessage({
     required this.id,
     required this.role,
@@ -216,6 +281,8 @@ class CounselingMessage {
     this.referencedUserContextIds = const [],
     this.parseStatus,
     this.latency,
+    this.dialogueGoalId,
+    this.interactionRepairReason,
   });
 
   bool get isUser => role == 'user';

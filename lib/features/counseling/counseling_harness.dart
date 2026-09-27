@@ -500,6 +500,7 @@ class CounselingHarness {
       // 다음 턴의 DeterministicReflectTurnPlanner._selectGoal이 텍스트가
       // 아니라 이 ID로 "이미 물은 목표"를 판단할 수 있게 한다.
       dialogueGoalId: turnPlan.progressGoalId,
+      interactionRepairReason: turnPlan.interactionRepairReason,
     );
 
     _advance(session, nextState);
