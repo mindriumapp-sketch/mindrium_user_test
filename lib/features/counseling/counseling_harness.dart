@@ -355,9 +355,15 @@ class CounselingHarness {
     final effectiveAllowLlm =
         routing.allowLlm && (rolloutDecision?.attemptRemote ?? true);
 
-    // Planner가 설치된 안전 경로에서 계획 수립에 실패하면 자유 생성으로
-    // 우회하지 않는다. 승인된 행동이 없으므로 모델 호출 없이 종료한다.
-    if (turnPlanner != null && turnPlan == null) {
+    // `turnPlanner`는 두 production factory(`.deterministic`/`.remoteGpt`)
+    // 모두 항상 채운다 — planner 없이 harness를 쓰는 경로는 production에
+    // 존재하지 않는다. planner가 설치된 안전 경로에서 계획 수립에 실패해도
+    // 자유 생성으로 우회하지 않는다: 승인된 행동이 없으므로 모델 호출 없이
+    // 종료한다. (2026-09-28: 예전에는 `turnPlanner == null`인 경우를 위한
+    // 별도의 raw LLM 생성 경로가 있었으나, 그 경로는 두 production factory
+    // 어디서도 도달하지 않는다는 게 확인되어 제거했다 — 이제 `turnPlan`이
+    // null이면 이유와 무관하게 항상 이 error turn으로 끝난다.)
+    if (turnPlan == null) {
       return _errorTurn(session, safety, bundle.promptVersion, bundle);
     }
 
@@ -367,7 +373,7 @@ class CounselingHarness {
     CounselingModelOutput parsed;
     var realizationSource = RealizationSource.deterministic;
     var actChosenByModel = false;
-    if (turnPlan != null) {
+    {
       // `effectiveAllowLlm`이 false면(승인된 개입 실행 턴, 그 밖에 라우터가
       // 고위험으로 표시한 턴, 또는 canary rollout이 이 턴/세션을 아직 포함
       //하지 않음) responseRealizer가 무엇으로 구성됐든 절대 호출하지 않는다
@@ -458,81 +464,6 @@ class CounselingHarness {
         reply: reply,
         dialogueAct: accepted ? realization.chosenAct : null,
       );
-    } else {
-      realizationSource = RealizationSource.localLlm;
-      try {
-        response = await llm.generate(
-          LlmRequest(
-            systemPrompt: bundle.systemPrompt,
-            userPrompt: bundle.userPrompt,
-            // 한국어 반영 + 질문이 잘리지 않을 정도만 허용한다.
-            maxTokens: 128,
-            temperature: 0.2,
-          ),
-        );
-        parsed = outputParser.parse(response.text);
-
-        // 작은 모델은 "반복하지 말라"는 지시만으로는 직전 문형을 그대로
-        // 재생성할 수 있다. 최근 상담사 답변과 실질적으로 같은 경우에만 한 번
-        // 다시 생성해, 사용자의 새 정보에 반응할 기회를 준다.
-        if (bundle.acceptsPlainText &&
-            (_isRepetitiveReply(parsed.reply, recentMessages) ||
-                _repeatsPreviousQuestion(parsed.reply, recentMessages) ||
-                _isLeakedModelInstruction(parsed.reply) ||
-                _isEchoingUserMessage(parsed.reply, userMessage))) {
-          final first = response;
-          final retry = await llm.generate(
-            LlmRequest(
-              systemPrompt: bundle.systemPrompt,
-              userPrompt: '''${bundle.userPrompt}
-
-<REWRITE_REQUIRED>
-첫 초안이 최근 상담사 답변을 반복했거나 사용자의 말을 그대로 되풀이했습니다.
-같은 표현과 같은 질문을 쓰지 말고, CURRENT_USER에서 새로 드러난 내용에 직접 반응해 완전히 다시 작성하세요.
-사용자의 문장을 그대로 옮기지 말고 상담사 자신의 말로 반영하세요.
-반복하면 안 되는 첫 초안: ${parsed.reply}
-</REWRITE_REQUIRED>''',
-              maxTokens: 128,
-              temperature: 0.35,
-            ),
-          );
-          response = LlmResponse(
-            text: retry.text,
-            latency: first.latency + retry.latency,
-          );
-          parsed = outputParser.parse(retry.text);
-          if (_isRepetitiveReply(parsed.reply, recentMessages) ||
-              _repeatsPreviousQuestion(parsed.reply, recentMessages) ||
-              _isLeakedModelInstruction(parsed.reply) ||
-              _isEchoingUserMessage(parsed.reply, userMessage)) {
-            if (turnPlan == null) {
-              return _errorTurn(session, safety, bundle.promptVersion, bundle);
-            }
-            parsed = _deterministicOutput(turnPlan);
-            realizationSource = RealizationSource.deterministic;
-          }
-        }
-      } on Object {
-        if (turnPlan == null) {
-          return _errorTurn(session, safety, bundle.promptVersion, bundle);
-        }
-        response = const LlmResponse(text: '', latency: Duration.zero);
-        parsed = _deterministicOutput(turnPlan);
-        realizationSource = RealizationSource.deterministic;
-      }
-      if (turnPlan != null &&
-          !turnPlanValidator.isAdherent(parsed.reply, turnPlan)) {
-        parsed = _deterministicOutput(turnPlan);
-        realizationSource = RealizationSource.deterministic;
-      } else if (turnPlan != null) {
-        parsed = CounselingModelOutput(
-          reply: parsed.reply,
-          dialogueAct: turnPlan.requiredAct,
-          referencedCbtIds: turnPlan.cbtContextIds,
-          referencedUserContextIds: turnPlan.userContextIds,
-          parseStatus: parsed.parseStatus,
-        );
-      }
     }
 
     // 8~9. 파싱하고 provenance를 검증한다.
@@ -568,7 +499,7 @@ class CounselingHarness {
       // planner가 정한 목표 ID를 그대로 옮긴다. 문장이 GPT마다 달라져도
       // 다음 턴의 DeterministicReflectTurnPlanner._selectGoal이 텍스트가
       // 아니라 이 ID로 "이미 물은 목표"를 판단할 수 있게 한다.
-      dialogueGoalId: turnPlan?.progressGoalId,
+      dialogueGoalId: turnPlan.progressGoalId,
     );
 
     _advance(session, nextState);
@@ -593,124 +524,6 @@ class CounselingHarness {
     );
   }
 
-  bool _isRepetitiveReply(
-    String reply,
-    List<CounselingMessage> recentMessages,
-  ) {
-    final candidate = _normalizedForSimilarity(reply);
-    // 짧은 한국어 질문도 "최근에 어떤 일이 생겼나요?"처럼 충분히 완결된
-    // 반복일 수 있다. 12자로 자르면 이런 대표적인 재질문을 놓친다.
-    if (candidate.length < 8) return false;
-
-    final previous = recentMessages
-        .where((message) => !message.isUser)
-        .map((message) => _normalizedForSimilarity(message.text))
-        .where((text) => text.length >= 8)
-        .toList()
-        .reversed
-        .take(4);
-
-    for (final text in previous) {
-      if (candidate == text) return true;
-      final shorter =
-          candidate.length < text.length ? candidate.length : text.length;
-      final longer =
-          candidate.length > text.length ? candidate.length : text.length;
-      if (shorter / longer >= 0.75 &&
-          (candidate.contains(text) || text.contains(candidate))) {
-        return true;
-      }
-      if (_bigramDice(candidate, text) >= 0.82) return true;
-    }
-    return false;
-  }
-
-  /// 앞 문장의 반영 표현이 달라도 질문만 같으면 대화는 제자리에 머문다.
-  /// 전체 답변 유사도 검사와 별도로 마지막 질문끼리 비교한다.
-  bool _repeatsPreviousQuestion(
-    String reply,
-    List<CounselingMessage> recentMessages,
-  ) {
-    final candidate = _lastQuestion(reply);
-    if (candidate == null || candidate.length < 6) return false;
-    for (final message in recentMessages.reversed) {
-      if (message.isUser) continue;
-      final previous = _lastQuestion(message.text);
-      if (previous == null || previous.length < 6) continue;
-      if (candidate == previous || _bigramDice(candidate, previous) >= 0.82) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  String? _lastQuestion(String value) {
-    final matches = RegExp(r'[^.!?\n]*\?').allMatches(value).toList();
-    if (matches.isEmpty) return null;
-    return _normalizedForSimilarity(matches.last.group(0) ?? '');
-  }
-
-  /// 상담사가 사용자의 말을 되묻지 않고 그대로(또는 거의 그대로) 돌려주는
-  /// 경우를 잡는다. `_isRepetitiveReply` 는 직전 상담사 발화만 비교하므로,
-  /// 특히 첫 턴처럼 비교할 상담사 발화가 없을 때 이 패턴을 놓친다. 첫 턴에서
-  /// 한 번 새어 나가면 그 문장이 대화 이력에 남아 다음 턴에도 같은 문장을
-  /// 반복하게 만드는 것을 실기기 시험(Kanana-2-3B)에서 확인했다.
-  bool _isEchoingUserMessage(String reply, String userMessage) {
-    final candidate = _normalizedForSimilarity(reply);
-    final user = _normalizedForSimilarity(userMessage);
-    if (candidate.length < 8 || user.length < 8) return false;
-
-    if (candidate == user) return true;
-    final shorter =
-        candidate.length < user.length ? candidate.length : user.length;
-    final longer =
-        candidate.length > user.length ? candidate.length : user.length;
-    if (shorter / longer >= 0.75 &&
-        (candidate.contains(user) || user.contains(candidate))) {
-      return true;
-    }
-    return _bigramDice(candidate, user) >= 0.82;
-  }
-
-  bool _isLeakedModelInstruction(String reply) {
-    final text = reply.trimLeft();
-    return RegExp(
-          r'^(사용자|상담사|assistant|system)\s*:',
-          caseSensitive: false,
-        ).hasMatch(text) ||
-        text.contains('<NEW_INFORMATION>') ||
-        text.contains('<NEXT_FOCUS>') ||
-        text.contains('<CONVERSATION>') ||
-        text.contains('<user_turn>') ||
-        text.contains('<counselor_turn>') ||
-        text.contains('/no_think') ||
-        text.contains('RESPONSE_TASK') ||
-        text.contains('CURRENT_USER');
-  }
-
-  String _normalizedForSimilarity(String value) =>
-      value.toLowerCase().replaceAll(RegExp(r'[^0-9a-z가-힣]+'), '');
-
-  double _bigramDice(String left, String right) {
-    if (left.length < 2 || right.length < 2) return 0;
-
-    final leftCounts = <String, int>{};
-    for (var i = 0; i < left.length - 1; i++) {
-      final gram = left.substring(i, i + 2);
-      leftCounts[gram] = (leftCounts[gram] ?? 0) + 1;
-    }
-
-    var intersection = 0;
-    for (var i = 0; i < right.length - 1; i++) {
-      final gram = right.substring(i, i + 2);
-      final remaining = leftCounts[gram] ?? 0;
-      if (remaining == 0) continue;
-      intersection++;
-      leftCounts[gram] = remaining - 1;
-    }
-
-    return (2 * intersection) / (left.length + right.length - 2);
-  }
 
   CounselingModelOutput _deterministicOutput(
     CounselingTurnPlan plan, {
