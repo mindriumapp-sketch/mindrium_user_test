@@ -94,9 +94,7 @@ def _norm_pid(v) -> str | None:
 
 
 def _platform_signup_url() -> str:
-    url = (
-        os.getenv("PLATFORM_SIGNUP_URL") or os.getenv("PLATFORM_VERIFY_URL") or ""
-    ).strip()
+    url = (os.getenv("PLATFORM_SIGNUP_URL") or "").strip()
     if not url:
         raise HTTPException(
             status_code=503,
