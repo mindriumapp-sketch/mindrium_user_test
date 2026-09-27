@@ -1,0 +1,248 @@
+{
+  "features": [
+    {
+      "feature_id": "worry_record",
+      "name": "걱정 기록",
+      "aliases": ["걱정 적기", "걱정 일기", "ABC 작성", "불안 평가"],
+      "description": "홈의 '오늘의 할 일'에서 불안 평가와 ABC(상황·생각·감정) 작성으로 걱정을 기록하는 기능",
+      "available": true,
+      "related_screens": ["before_sud_screen"],
+      "source_refs": [
+        "flutter:lib/navigation/screen/home_screen.dart#_buildTaskSection",
+        "flutter:lib/contents/before_sud_screen.dart"
+      ]
+    },
+    {
+      "feature_id": "relaxation",
+      "name": "이완 활동",
+      "aliases": ["이완 학습", "이완 복습", "점진적 이완"],
+      "description": "주차별 이완 학습/복습을 진행하는 기능. 홈의 오늘의 할 일 카드에서 시작한다.",
+      "available": true,
+      "related_screens": ["relaxation_start_screen"],
+      "source_refs": [
+        "flutter:lib/navigation/screen/home_screen.dart#_openRelaxationTask",
+        "flutter:lib/features/menu/relaxation/relaxation_start.dart"
+      ]
+    },
+    {
+      "feature_id": "ai_counseling",
+      "name": "AI 마음상담",
+      "aliases": ["상담", "챗봇", "디지털 CBT 상담"],
+      "description": "마음속 고민을 CBT 기반 챗봇과 대화로 나누는 기능",
+      "available": true,
+      "related_screens": ["chat_page"],
+      "source_refs": [
+        "flutter:lib/navigation/screen/home_screen.dart#_buildChatbotCard",
+        "flutter:lib/chatbot/chatbot_main.dart"
+      ]
+    },
+    {
+      "feature_id": "worry_archive",
+      "name": "걱정 물고기 보관함",
+      "aliases": ["보관함", "지난 걱정", "완료된 그룹", "걱정 캐릭터"],
+      "description": "완료한 걱정 기록을 물고기 캐릭터로 모아보는 보관함. 마인드리움 탭과 마이페이지에서 볼 수 있다.",
+      "available": true,
+      "related_screens": ["sea_archive_page", "archive_screen", "archived_diary_screen"],
+      "source_refs": [
+        "flutter:lib/features/menu/archive/sea_archive_page.dart",
+        "flutter:lib/features/menu/archive/archive_screen.dart",
+        "flutter:lib/navigation/screen/myinfo_screen.dart#_archivedGroups"
+      ]
+    },
+    {
+      "feature_id": "report",
+      "name": "리포트",
+      "aliases": ["통계", "불안 변화", "수행률"],
+      "description": "주간 캘린더, 나의 불안 변화, 수행률을 확인하는 통계 화면",
+      "available": true,
+      "related_screens": ["report_screen"],
+      "source_refs": ["flutter:lib/features/menu/report/report_screen.dart"]
+    },
+    {
+      "feature_id": "my_page",
+      "name": "마이페이지",
+      "aliases": ["내 정보", "프로필"],
+      "description": "프로필 수정, 화면 사용 시간, 완료된 그룹 목록을 확인하는 화면",
+      "available": true,
+      "related_screens": ["my_info_screen"],
+      "source_refs": ["flutter:lib/navigation/screen/myinfo_screen.dart"]
+    },
+    {
+      "feature_id": "alarm_settings",
+      "name": "불안 완화 알림",
+      "aliases": ["알림 설정", "알림 목록", "위치 기반 알림"],
+      "description": "불안 완화를 위한 알림을 추가/수정/켜기·끄기/삭제하는 기능. 2주차 프로그램을 완료해야 열린다.",
+      "available": true,
+      "related_screens": ["alarm_settings_screen"],
+      "source_refs": [
+        "flutter:lib/navigation/screen/home_screen.dart#_buildTrainingSection",
+        "flutter:lib/features/alarm/alarm_settings_screen.dart"
+      ]
+    },
+    {
+      "feature_id": "treatment_program",
+      "name": "주차별 프로그램",
+      "aliases": ["교육", "8주 프로그램", "주차 프로그램"],
+      "description": "1주차부터 8주차까지 진행하는 CBT 프로그램 목록. 하단 탭 '교육'에서 볼 수 있다.",
+      "available": true,
+      "related_screens": ["treatment_screen"],
+      "source_refs": ["flutter:lib/navigation/screen/treatment_screen.dart"]
+    },
+    {
+      "feature_id": "widget_guide",
+      "name": "위젯 가이드",
+      "aliases": ["홈 화면 위젯", "위젯 추가"],
+      "description": "휴대폰 홈 화면에 Mindrium 위젯을 추가하는 방법을 안내",
+      "available": true,
+      "related_screens": [],
+      "source_refs": ["flutter:lib/features/widget_tutorial/home_widget_tutorial_controller.dart"]
+    }
+  ],
+  "screens": [
+    {
+      "screen_id": "before_sud_screen",
+      "display_name": "불안 평가",
+      "description": "오늘의 할 일 흐름의 첫 단계. 현재 불안 정도를 평가한다.",
+      "entry_points": ["home"],
+      "available_actions": ["불안 평가 시작"],
+      "source_refs": ["flutter:lib/contents/before_sud_screen.dart"]
+    },
+    {
+      "screen_id": "relaxation_start_screen",
+      "display_name": "점진적 이완",
+      "description": "점진적 이완 훈련을 진행하는 화면",
+      "entry_points": ["home"],
+      "available_actions": ["이완 훈련 진행"],
+      "source_refs": ["flutter:lib/features/menu/relaxation/relaxation_start.dart"]
+    },
+    {
+      "screen_id": "chat_page",
+      "display_name": "디지털 CBT 상담",
+      "description": "AI와 CBT 기반 대화를 나누는 채팅 화면",
+      "entry_points": ["home"],
+      "available_actions": ["메시지 보내기", "대화 새로고침"],
+      "source_refs": ["flutter:lib/chatbot/chatbot_main.dart"]
+    },
+    {
+      "screen_id": "sea_archive_page",
+      "display_name": "마인드리움",
+      "description": "완료한 걱정을 물고기 캐릭터로 보여주는 아쿠아리움 화면",
+      "entry_points": ["bottom_nav"],
+      "available_actions": ["걱정 캐릭터 확인"],
+      "source_refs": ["flutter:lib/features/menu/archive/sea_archive_page.dart"]
+    },
+    {
+      "screen_id": "archive_screen",
+      "display_name": "걱정 물고기 보관함",
+      "description": "완료한 걱정 기록 보관함 목록",
+      "entry_points": ["my_page", "sea_archive_page"],
+      "available_actions": ["보관된 걱정 보기"],
+      "source_refs": ["flutter:lib/features/menu/archive/archive_screen.dart"]
+    },
+    {
+      "screen_id": "archived_diary_screen",
+      "display_name": "지난 걱정 기록",
+      "description": "완료된 걱정 일기의 상세 내용을 보는 화면",
+      "entry_points": ["my_page", "archive_screen", "sea_archive_page"],
+      "available_actions": ["기록 상세 보기"],
+      "source_refs": ["flutter:lib/features/menu/archive/archived_diary_screen.dart"]
+    },
+    {
+      "screen_id": "report_screen",
+      "display_name": "리포트",
+      "description": "주간 캘린더/불안 변화/수행률 통계 화면",
+      "entry_points": ["bottom_nav"],
+      "available_actions": ["주간 기록 보기", "수행률 확인"],
+      "source_refs": ["flutter:lib/features/menu/report/report_screen.dart"]
+    },
+    {
+      "screen_id": "my_info_screen",
+      "display_name": "마이페이지",
+      "description": "프로필/화면 사용 시간/완료된 그룹을 관리하는 화면",
+      "entry_points": ["bottom_nav"],
+      "available_actions": ["프로필 수정", "완료된 그룹 보기"],
+      "source_refs": ["flutter:lib/navigation/screen/myinfo_screen.dart"]
+    },
+    {
+      "screen_id": "alarm_settings_screen",
+      "display_name": "알림 목록",
+      "description": "불안 완화 알림을 추가/수정/삭제하는 화면",
+      "entry_points": ["home"],
+      "available_actions": ["알림 추가", "알림 켜기/끄기", "알림 삭제"],
+      "source_refs": ["flutter:lib/features/alarm/alarm_settings_screen.dart"]
+    },
+    {
+      "screen_id": "treatment_screen",
+      "display_name": "주차별 프로그램",
+      "description": "1~8주차 프로그램 목록 화면",
+      "entry_points": ["bottom_nav"],
+      "available_actions": ["주차 선택"],
+      "source_refs": ["flutter:lib/navigation/screen/treatment_screen.dart"]
+    }
+  ],
+  "navigation": [
+    {
+      "from": "home",
+      "to": "worry_record",
+      "steps": ["홈", "오늘의 할 일", "불안 평가"],
+      "source_refs": ["flutter:lib/navigation/screen/home_screen.dart#_buildTaskSection"]
+    },
+    {
+      "from": "home",
+      "to": "relaxation",
+      "steps": ["홈", "오늘의 할 일", "N주차 이완 학습/복습"],
+      "source_refs": ["flutter:lib/navigation/screen/home_screen.dart#_openRelaxationTask"]
+    },
+    {
+      "from": "home",
+      "to": "ai_counseling",
+      "steps": ["홈", "AI 마음상담 카드"],
+      "source_refs": ["flutter:lib/navigation/screen/home_screen.dart#_buildChatbotCard"]
+    },
+    {
+      "from": "home",
+      "to": "alarm_settings",
+      "steps": ["홈", "불안 완화 알림 카드"],
+      "source_refs": ["flutter:lib/navigation/screen/home_screen.dart#_buildTrainingSection"]
+    },
+    {
+      "from": "bottom_nav",
+      "to": "treatment_program",
+      "steps": ["하단 탭", "교육"],
+      "source_refs": ["flutter:lib/navigation/navigation.dart"]
+    },
+    {
+      "from": "bottom_nav",
+      "to": "worry_archive",
+      "steps": ["하단 탭", "마인드리움", "걱정 캐릭터 탭"],
+      "source_refs": ["flutter:lib/features/menu/archive/sea_archive_page.dart"]
+    },
+    {
+      "from": "bottom_nav",
+      "to": "report",
+      "steps": ["하단 탭", "리포트"],
+      "source_refs": ["flutter:lib/features/menu/report/report_screen.dart"]
+    },
+    {
+      "from": "bottom_nav",
+      "to": "my_page",
+      "steps": ["하단 탭", "마이페이지"],
+      "source_refs": ["flutter:lib/navigation/screen/myinfo_screen.dart"]
+    },
+    {
+      "from": "my_page",
+      "to": "worry_archive",
+      "steps": ["마이페이지", "완료된 그룹"],
+      "source_refs": ["flutter:lib/navigation/screen/myinfo_screen.dart#_archivedGroups"]
+    }
+  ],
+  "manual": [
+    {
+      "knowledge_id": "widget_add_guide",
+      "title": "홈 화면에 위젯을 추가하는 방법",
+      "content": "홈 화면 빈 공간을 길게 눌러서 메뉴를 열고, Widget(위젯)을 찾아 클릭한 뒤, 위젯 목록에서 Mindrium을 찾아 선택합니다. 원하는 크기를 고른 뒤 [+ Add] 버튼을 눌러 홈 화면에 추가하세요.",
+      "related_features": ["widget_guide"],
+      "source_refs": ["flutter:lib/features/widget_tutorial/home_widget_tutorial_controller.dart"]
+    }
+  ]
+}
