@@ -16,12 +16,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gad_app_team/data/api/counseling_realize_api.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/data/counseling/local_cbt_knowledge_repository.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/counseling_state.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
 import 'package:gad_app_team/features/counseling/policy/production_turn_planner.dart';
+import 'package:gad_app_team/features/counseling/policy/rollout/rollout_config.dart';
+import 'package:gad_app_team/features/counseling/remote_llm_realizer.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 import 'package:gad_app_team/features/counseling/turn_plan.dart';
 
@@ -39,6 +42,10 @@ enum _Kind {
 
   /// Low-information reply ("몰라요").
   lowInfo,
+
+  /// Meta feedback that is only recognizable from context (e.g. restating
+  /// one's own words with "~다고"). Reported, not gated.
+  metaImplicit,
 }
 
 class _Turn {
@@ -46,6 +53,7 @@ class _Turn {
   final _Kind kind;
   const _Turn(this.text, [this.kind = _Kind.content]);
   bool get isMeta => kind == _Kind.metaSeen || kind == _Kind.metaUnseen;
+  bool get isImplicitMeta => kind == _Kind.metaImplicit;
 }
 
 class _Scenario {
@@ -57,6 +65,11 @@ class _Scenario {
   /// True when the scenario starts from a hand-built history rather than
   /// a natural checkIn start.
   final bool synthetic;
+
+  /// Route explore/reflect through the real RemoteLlmRealizer backed by an
+  /// adversarial API that always copies the previous assistant message
+  /// (the N2 behavior seen on device).
+  final bool copyingRealizer;
   final List<_Turn> turns;
   const _Scenario({
     required this.id,
@@ -65,6 +78,7 @@ class _Scenario {
     this.start = CounselingState.checkIn,
     this.seed = const [],
     this.synthetic = false,
+    this.copyingRealizer = false,
   });
 }
 
@@ -271,6 +285,131 @@ final _scenarios = <_Scenario>[
   ),
 ];
 
+/// Phase 12.3D extension set.
+final _extensionScenarios = <_Scenario>[
+  // Real dogfood sessions (12.1), replayed at week 4 (weeks 1-3 are N1,
+  // Phase 13).
+  const _Scenario(
+    id: 'M9a_dogfood_s1',
+    family: 'M9 dogfood replay',
+    turns: [
+      _Turn('내일 발표를 해야되는데 준비를 아직 못해서 불안해'),
+      _Turn('7'),
+      _Turn('준비를 못한게 티가나서 혼날 것 같아'),
+      _Turn('저번주 발표때 정말 열심히 준비했는데도 부족하다고 혼났어'),
+      _Turn('아까 말했잖아 지금 준비를 못해서 불안하다고', _Kind.metaUnseen),
+      _Turn('빨리 집중해서 준비해야하는데 불안해서 집중이 잘 안돼'),
+    ],
+  ),
+  const _Scenario(
+    id: 'M9b_dogfood_s2',
+    family: 'M9 dogfood replay',
+    turns: [
+      _Turn('다음주에 여행이 계획 되어있는데 같이가는 친구들이랑 어색해'),
+      _Turn('6'),
+      _Turn('재밌게 놀아야하는데 어색해서 서로 조금 불편하게 놀까봐 걱정돼'),
+      _Turn('서로 불편할까봐 걱정된다고', _Kind.metaImplicit),
+      _Turn('방금 말했잖아', _Kind.metaUnseen),
+    ],
+  ),
+  const _Scenario(
+    id: 'M9c_dogfood_s3',
+    family: 'M9 dogfood replay',
+    turns: [
+      _Turn('내일 시험이 있어'),
+      _Turn('4'),
+      _Turn('내일 시험을 잘 못보면 어떡하지?'),
+      _Turn('왜 똑같은 말을해?', _Kind.metaUnseen),
+      _Turn('왜 똑같은 말 하냐고', _Kind.metaUnseen),
+    ],
+  ),
+  // Holdback phrasings (not used to design the 12.3B detector).
+  const _Scenario(
+    id: 'M10a_holdback_repair',
+    family: 'M10 holdback repair',
+    turns: [
+      _Turn('요즘 면접 때문에 잠을 잘 못 자요.'),
+      _Turn('8점이요.'),
+      _Turn('면접에서 대답을 못하면 떨어질 것 같아요.'),
+      _Turn('이미 말씀드렸는데요', _Kind.metaUnseen),
+      _Turn('그래도 면접 생각만 하면 긴장돼요.'),
+      _Turn('조금 다르게 생각해볼게요.'),
+    ],
+  ),
+  const _Scenario(
+    id: 'M10b_holdback_stop',
+    family: 'M10 holdback repair',
+    turns: [
+      _Turn('요즘 면접 때문에 잠을 잘 못 자요.'),
+      _Turn('질문 말고 그냥 들어줘', _Kind.metaUnseen),
+      _Turn('면접에서 대답을 못하면 떨어질 것 같아요.'),
+      _Turn('이제 그만 물어봐', _Kind.metaUnseen),
+      _Turn('그래도 해볼게요.'),
+    ],
+  ),
+  // N2 worst case: every realization copies the previous assistant turn.
+  const _Scenario(
+    id: 'M11a_copying_realizer_s3',
+    family: 'M11 N2 copying realizer',
+    copyingRealizer: true,
+    turns: [
+      _Turn('내일 시험이 있어'),
+      _Turn('4'),
+      _Turn('내일 시험을 잘 못보면 어떡하지?'),
+      _Turn('예전에 시험을 망친 적이 있어서요'),
+      _Turn('조금 다르게 생각해볼게요'),
+    ],
+  ),
+  const _Scenario(
+    id: 'M11b_copying_realizer_repair',
+    family: 'M11 N2 copying realizer',
+    copyingRealizer: true,
+    turns: [
+      _Turn('요즘 발표 때문에 좀 불안해요.'),
+      _Turn('7점이요.'),
+      _Turn(_worry),
+      _Turn('왜 똑같은 말을해?', _Kind.metaUnseen),
+      _Turn('네, 그냥 계속 걱정되긴 해요.'),
+    ],
+  ),
+];
+
+class _CopyPreviousApi implements CounselingRealizeApi {
+  static int calls = 0;
+
+  @override
+  Future<Map<String, dynamic>> realize({
+    required String requestId,
+    required String deterministicDraft,
+    required String reflectionTarget,
+    required String questionGoal,
+    required String requiredAct,
+    List<String> allowedActs = const [],
+    String? affect,
+    String tone = 'warm, calm, concise',
+    List<Map<String, String>> recentConversation = const [],
+    List<String> allowedCbtFacts = const [],
+    List<String> forbiddenBehaviors = const [],
+    String promptVersion = 'remote-realizer-v1',
+    Duration timeout = const Duration(seconds: 8),
+    int? sudRatingValue,
+  }) async {
+    calls++;
+    final previous = recentConversation.lastWhere(
+      (m) => m['role'] == 'assistant',
+      orElse: () => {'text': deterministicDraft},
+    );
+    return {
+      'request_id': requestId,
+      'reply': previous['text'],
+      'chosen_act': requiredAct,
+      'model': 'copy-previous-fake',
+      'prompt_version': promptVersion,
+      'latency_ms': 1,
+    };
+  }
+}
+
 /// Before-record (Phase 12.2): unseen meta expressions the 11.2 detector
 /// missed. Phase 12.3B's detector detects all of them; kept for provenance.
 // ignore: unused_element
@@ -316,6 +455,16 @@ class _Metrics {
   final missedUnseen = <String>{};
   final targetedMeta = <String>{};
 
+  /// Phase 12.3D (N2): assistant replies shown to the user that repeat the
+  /// previous assistant message's question.
+  int repeatedQuestionShown = 0;
+
+  /// F6: the exact same assistant text twice in a row (e.g. the repair
+  /// acknowledgment repeated after a second complaint).
+  int consecutiveIdenticalReply = 0;
+  int implicitMetaDetected = 0;
+  int implicitMetaTotal = 0;
+
   Map<String, Object> toJson() => {
     'immediateSameGoalRepeat': immediateSameGoalRepeat,
     'repeatedRecoveryLoop': repeatedRecoveryLoop,
@@ -333,10 +482,19 @@ class _Metrics {
     'metaContentLeakage': metaContentLeakage,
     'untaggedMetaLeakage': untaggedMetaLeakage,
     'lowInfoTextUsedAsTarget': lowInfoTextUsedAsTarget,
+    'repeatedQuestionShown': repeatedQuestionShown,
+    'consecutiveIdenticalReply': consecutiveIdenticalReply,
+    'implicitMeta': '$implicitMetaDetected/$implicitMetaTotal',
   };
 }
 
 const _policy = CounselingStatePolicy();
+
+String? _lastQuestion(String text) {
+  final ms = RegExp(r'[^.!?\n]*\?').allMatches(text).toList();
+  if (ms.isEmpty) return null;
+  return ms.last.group(0)!.replaceAll(RegExp(r'[\s.,!?“”"‘’]'), '');
+}
 
 void _score(_Scenario s, List<_Step> steps, _Metrics m) {
   final asked = <String>{
@@ -381,7 +539,21 @@ void _score(_Scenario s, List<_Step> steps, _Metrics m) {
         m.missedUnseen.add(step.turn.text);
       }
     }
-    if (!step.turn.isMeta && repaired) m.metaFalsePositive++;
+    if (step.turn.isImplicitMeta) {
+      m.implicitMetaTotal++;
+      if (repaired) m.implicitMetaDetected++;
+    } else if (!step.turn.isMeta && repaired) {
+      m.metaFalsePositive++;
+    }
+    final i = steps.indexOf(step);
+    final previousReply = i > 0 ? steps[i - 1].reply : null;
+    final q = _lastQuestion(reply.text);
+    if (previousReply != null && q != null && q == _lastQuestion(previousReply.text)) {
+      m.repeatedQuestionShown++;
+    }
+    if (previousReply != null && previousReply.text == reply.text) {
+      m.consecutiveIdenticalReply++;
+    }
 
     // A repair/recovery turn may only move state when the ordinary budget
     // would have moved it anyway.
@@ -444,12 +616,24 @@ void main() {
     repository = LocalCbtKnowledgeRepository(loadAsset: _load);
     await repository.initialize();
 
-    for (final s in _scenarios) {
-      final harness = CounselingHarness.deterministic(
-        llm: MockLlmService(),
-        safetyGate: const KeywordSafetyGate(),
-        knowledgeRepository: repository,
-      );
+    for (final s in [..._scenarios, ..._extensionScenarios]) {
+      final harness = s.copyingRealizer
+          ? CounselingHarness.remoteGpt(
+              llm: MockLlmService(),
+              safetyGate: const KeywordSafetyGate(),
+              knowledgeRepository: repository,
+              responseRealizer: RemoteLlmRealizer(api: _CopyPreviousApi()),
+              rolloutConfig: const RolloutConfig(
+                enabled: true,
+                stage: RolloutStage.internalOnly,
+              ),
+              isInternalAccount: true,
+            )
+          : CounselingHarness.deterministic(
+              llm: MockLlmService(),
+              safetyGate: const KeywordSafetyGate(),
+              knowledgeRepository: repository,
+            );
       final session = CounselingSessionState(
         sessionId: s.id,
         currentWeek: 4,
@@ -494,9 +678,10 @@ void main() {
       _score(s, steps, metrics);
     }
 
+    final all = [..._scenarios, ..._extensionScenarios];
     final report = {
-      'scenarios': _scenarios.length,
-      'userTurns': _scenarios.fold<int>(0, (n, s) => n + s.turns.length),
+      'scenarios': all.length,
+      'userTurns': all.fold<int>(0, (n, s) => n + s.turns.length),
       'metrics': metrics.toJson(),
       'missedUnseen': metrics.missedUnseen.toList()..sort(),
       'traces': {
@@ -515,16 +700,26 @@ void main() {
     print('PHASE12_REPORT ${const JsonEncoder.withIndent('  ').convert(report)}');
   });
 
-  test('suite covers 8 families and all five states', () {
+  test('suite covers the 8 base families (+ extension) and all five states', () {
     expect(_scenarios.map((s) => s.family).toSet(), hasLength(8));
+    expect(_extensionScenarios.map((s) => s.family).toSet(), hasLength(3));
     final states = {
       for (final steps in traces.values)
         for (final t in steps) ...[t.before, t.after],
     };
     expect(states, CounselingState.values.toSet());
-    for (final s in _scenarios) {
+    for (final s in [..._scenarios, ..._extensionScenarios]) {
       expect(s.turns.length, inInclusiveRange(4, 8), reason: s.id);
     }
+  });
+
+  test('N2: copying realizer was really exercised, and no repeat reached the user', () {
+    expect(_CopyPreviousApi.calls, greaterThanOrEqualTo(4));
+    expect(metrics.repeatedQuestionShown, 0);
+  });
+
+  test('F6: no assistant reply is shown twice in a row', () {
+    expect(metrics.consecutiveIdenticalReply, 0);
   });
 
   test('invariants that hold today stay at zero', () {

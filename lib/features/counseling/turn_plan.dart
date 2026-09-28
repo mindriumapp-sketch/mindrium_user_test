@@ -508,6 +508,34 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
       (!_beingAskedByOthers.hasMatch(text) &&
           _matchesAsInteraction(_questionRepeats, text));
 
+  static const Map<InteractionRepairReason, List<String>> _repairSentences = {
+    InteractionRepairReason.stopQuestioning: [
+      '질문보다 지금 마음을 그대로 들어드리는 게 먼저인 것 같아요. 편하게 이야기해 주세요.',
+      '네, 질문은 여기서 멈출게요. 하고 싶은 이야기가 있으면 편하게 이어서 해 주세요.',
+    ],
+    InteractionRepairReason.processFrustration: [
+      '이 대화가 정말 도움이 될지 확신이 안 서는 마음, 자연스러운 거예요.',
+      '지금은 이 대화가 잘 와닿지 않으실 수 있어요. 그런 마음이 드는 것도 충분히 이해돼요.',
+    ],
+    InteractionRepairReason.repeatedQuestion: [
+      '맞아요, 비슷한 질문을 반복해서 드렸네요. 같은 내용을 다시 여쭙지 않고 지금 말씀해 주신 내용을 기준으로 이어갈게요.',
+      '계속 같은 말을 드려서 답답하셨을 것 같아요. 이미 말씀해 주신 내용은 충분히 들었으니, 그대로 이어서 들을게요.',
+    ],
+  };
+
+  static int _consecutiveRepairs(
+    List<CounselingMessage> messages,
+    InteractionRepairReason reason,
+  ) {
+    var count = 0;
+    for (final message in messages.reversed) {
+      if (message.isUser) continue;
+      if (message.interactionRepairReason != reason) break;
+      count++;
+    }
+    return count;
+  }
+
   const DeterministicProcessSignalTurnPlanner();
 
   @override
@@ -527,18 +555,21 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     if (!wantsEmpathy && !resists && !repeatsInteraction) return null;
 
     final InteractionRepairReason reason;
-    final String reflectionSentence;
     if (wantsEmpathy) {
       reason = InteractionRepairReason.stopQuestioning;
-      reflectionSentence = '질문보다 지금 마음을 그대로 들어드리는 게 먼저인 것 같아요. 편하게 이야기해 주세요.';
     } else if (resists) {
       reason = InteractionRepairReason.processFrustration;
-      reflectionSentence = '이 대화가 정말 도움이 될지 확신이 안 서는 마음, 자연스러운 거예요.';
     } else {
       reason = InteractionRepairReason.repeatedQuestion;
-      reflectionSentence =
-          '맞아요, 비슷한 질문을 반복해서 드렸네요. 같은 내용을 다시 여쭙지 않고 지금 말씀해 주신 내용을 기준으로 이어갈게요.';
     }
+    // Phase 12.3D (F6): a second complaint in a row must not get the same
+    // acknowledgment word for word. Alternate by how many immediately
+    // preceding assistant turns were repairs for the same reason (metadata,
+    // not text). The first variant is the original sentence.
+    final variants = _repairSentences[reason]!;
+    final reflectionSentence =
+        variants[_consecutiveRepairs(context.recentMessages, reason) %
+            variants.length];
 
     return CounselingTurnPlan(
       reflectionTarget: current,
