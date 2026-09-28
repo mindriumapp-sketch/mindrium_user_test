@@ -520,6 +520,37 @@ entity), so "다른 관점에서 어떻게 봐야할지 모르겠어" stays coun
 
 `flutter test` **1231/1231**, `flutter analyze` unchanged.
 
+### Session 6 (week 4, build dc38bb7): final confirmation
+
+| # | Input | State | Result |
+|---|---|---|---|
+| 2 | 6 | explore | GPT accepted |
+| 3 | 내일 미팅에서 발표를 해야하는데 아직 준비를 못했어 | reflect | GPT accepted. Clarify is correct here (a situation, not a thought) |
+| 4 | 내 준비가 미흡해서 평가자가 우리를 안좋게 보면 어떡하지 | reflect | GPT accepted, **evidence question** (N3) |
+| 5 | 모르겠어. 그냥 불안해 | intervention | correct target (the thought, not the complaint); verbatim quote (N6) |
+| 6 | 왜 벌써 상담을 끝내? | closing | "오늘은 “왜 벌써 상담을 끝내”라는 이야기를 나눴습니다" (F5 + N6) |
+
+**Phase 12 fixes confirmed on device.** No realizer fallback, no repeated
+question, reflect progressed via N3, and the intervention used the right
+target.
+
+**N7 — session ends too early (class E, turn budget; new, critical UX).**
+The budget is checkIn 1, explore 1, reflect 2, intervention 1, so every
+session reaches closing on user turn 6. As a result:
+- the intervention question ("균형 있게 바꾼다면?") is never answered;
+  the user's reply goes straight to closing, so the alternative thought
+  is never produced
+- reflect never reaches the probability goal (and goal exhaustion is
+  unreachable in a natural session)
+- closing can't be left, even when the user objects ("왜 벌써 상담을
+  끝내?"), and nothing signals the stage change
+
+StatePolicy is frozen in Phase 12, so this is recorded only. Proposed:
+merge with N1 into one phase covering intervention policy and session
+flow (multi-turn intervention that processes the user's answer, a reflect
+budget covering all 3 goals, a closing transition that offers to
+continue, progress-based transitions).
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
