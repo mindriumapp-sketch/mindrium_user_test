@@ -112,9 +112,9 @@ const _states = [
   CounselingState.intervention,
 ];
 
-// Baseline before the change: recall 2/24 (8.3%), FP 0. Enabled by the
-// detector commit that follows this freeze.
-const Object _pendingDetector = 'frozen before the 12.3B detector change';
+// Baseline before the change (commit dcd1ca4): recall 2/24 (8.3%), FP 0.
+// First and only run after the change: recall 24/24, FP 0, design 4/4,
+// implicit 0/5. The holdback was not tuned against after this run.
 
 void main() {
   test('G1 negatives: zero false positives in every Hard Guard state', () {
@@ -137,13 +137,13 @@ void main() {
         '(${_verificationExplicit.length - missed.length}/${_verificationExplicit.length}) '
         'missed=$missed');
     expect(recall, greaterThanOrEqualTo(0.8));
-  }, skip: _pendingDetector);
+  });
 
   test('G3 design explicit items all detected', () {
     for (final c in _design) {
       expect(c.accept, contains(_detect(c.text, CounselingState.reflect)), reason: c.text);
     }
-  }, skip: _pendingDetector);
+  });
 
   test('implicit items (reported, not gated)', () {
     final hits = [

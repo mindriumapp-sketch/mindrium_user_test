@@ -434,6 +434,80 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     r'계속\s*비슷한\s*질문)',
   );
 
+  // Phase 12.3B: cue-composition predicates, added alongside (never
+  // replacing) the three patterns above. Real dogfood showed users mostly
+  // point at THEIR OWN earlier statement ("아까 말했잖아", "방금
+  // 말했잖아") or name the repetition loosely ("왜 똑같은 말을 해?"),
+  // which the fixed alternations above never modeled. Every rule pairs an
+  // interaction cue (speech verb / 질문 / 묻다 / 듣다) with a repetition or
+  // stop cue; none fires on a single keyword. A cue preceded by a
+  // third-party subject ("선생님이 전에 말했잖아", "사람들이 자꾸 물어봐서")
+  // is ignored, since that is worry content about someone else.
+
+  /// R-A: the user points at their own earlier statement.
+  static final RegExp _refersToOwnStatement = RegExp(
+    r'(아까|방금|이미|벌써|전에|앞에서)\s*(도\s*)?(제가\s*|내가\s*|다\s*)?'
+    r'(말했|말씀드렸|얘기했|이야기했|대답했|답했|말한\s*건|대답한\s*건|얘기한\s*건)',
+  );
+
+  /// R-A2: "이 얘기 아까 하지 않았어요?" — the topic first, then when.
+  static final RegExp _topicAlreadyCovered = RegExp(
+    r'(이|그|같은)\s*(얘기|이야기|말|질문)\S{0,2}\s*(아까|전에|방금|이미)\s*(도\s*)?'
+    r'(했|하지\s*않았|나눴)',
+  );
+
+  /// R-B: the counselor keeps saying the same thing.
+  static final RegExp _saysSameThing = RegExp(
+    r'(왜|또|계속|자꾸|맨날)\s*(똑같은|같은|비슷한)\s*(말|소리|얘기|질문|거|것|걸)'
+    r'(을|를|만|이|은)?\s*(또\s*|계속\s*|자꾸\s*|다시\s*)?'
+    r'(해|하냐|하네|하시네|하세요|하시|하는\s*거|하는거|하지|물어|묻|반복|이야|이에요|예요)',
+  );
+
+  /// R-C: the question itself is named as repeating.
+  static final RegExp _questionRepeats = RegExp(
+    r'(질문(이|을|은|만)?\s*(또|다시|계속|자꾸|반복|거의\s*같|똑같|비슷)|'
+    r'(또|다시|계속|자꾸)\s*(그\s*|같은\s*|똑같은\s*)?질문)',
+  );
+
+  /// S: explicit request to stop being asked / to just be listened to.
+  static final RegExp _asksToStopQuestions = RegExp(
+    r'(질문\S{0,2}\s*(좀\s*)?(그만|안\s*했으면|하지\s*마|하지\s*말|말고|없이)|'
+    r'(더|그만|이제\s*그만)\s*(물어|묻|질문)|'
+    r'들어\s*(만\s*)?(주면|줘|주실|주세요|줄래))',
+  );
+
+  /// "질문을 받다" is about being asked by others (interviews, class), not
+  /// about this conversation.
+  static final RegExp _beingAskedByOthers = RegExp(r'질문\S{0,2}\s*(\S+\s*)?받');
+
+  static final RegExp _subjectMarker = RegExp(r'([가-힣]+)(이|가|께서)\s');
+  static const _selfSubjects = {'제가', '내가', '우리가', '저희가'};
+
+  static bool _matchesAsInteraction(RegExp pattern, String text) {
+    for (final match in pattern.allMatches(text)) {
+      final prefix = text.substring(0, match.start);
+      final thirdParty = _subjectMarker
+          .allMatches(prefix)
+          .any((m) => !_selfSubjects.contains(m.group(0)!.trim()));
+      if (thirdParty) continue;
+      if (text.substring(match.start).startsWith('안 들어')) continue;
+      return true;
+    }
+    return false;
+  }
+
+  static bool _generalizedStop(String text) =>
+      !_beingAskedByOthers.hasMatch(text) &&
+      _matchesAsInteraction(_asksToStopQuestions, text) &&
+      !RegExp(r'안\s*들어').hasMatch(text);
+
+  static bool _generalizedRepeat(String text) =>
+      _matchesAsInteraction(_refersToOwnStatement, text) ||
+      _matchesAsInteraction(_topicAlreadyCovered, text) ||
+      _matchesAsInteraction(_saysSameThing, text) ||
+      (!_beingAskedByOthers.hasMatch(text) &&
+          _matchesAsInteraction(_questionRepeats, text));
+
   const DeterministicProcessSignalTurnPlanner();
 
   @override
@@ -443,10 +517,13 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     final current = context.userMessage.trim();
     if (current.isEmpty) return null;
 
-    final wantsEmpathy = _requestsEmpathy.hasMatch(current);
+    final wantsEmpathy =
+        _requestsEmpathy.hasMatch(current) || _generalizedStop(current);
     final resists = !wantsEmpathy && _showsProcessResistance.hasMatch(current);
     final repeatsInteraction =
-        !wantsEmpathy && !resists && _repeatsInteraction.hasMatch(current);
+        !wantsEmpathy &&
+        !resists &&
+        (_repeatsInteraction.hasMatch(current) || _generalizedRepeat(current));
     if (!wantsEmpathy && !resists && !repeatsInteraction) return null;
 
     final InteractionRepairReason reason;

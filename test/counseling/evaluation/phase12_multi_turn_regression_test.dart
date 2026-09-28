@@ -271,9 +271,10 @@ final _scenarios = <_Scenario>[
   ),
 ];
 
-/// Frozen failure corpus: unseen meta expressions the 11.2 detector
-/// misses today (class A, detector miss). Found by this suite, not fixed.
-const _knownDetectorMisses = <String>{
+/// Before-record (Phase 12.2): unseen meta expressions the 11.2 detector
+/// missed. Phase 12.3B's detector detects all of them; kept for provenance.
+// ignore: unused_element
+const _knownDetectorMissesBefore12_3B = <String>{
   '우리 이 얘기 아까 하지 않았어요?',
   '그 질문 또 하는 거예요?',
   '이거 전에 대답했던 것 같은데',
@@ -546,8 +547,9 @@ void main() {
       expect(metrics.maximumConsecutiveSameRecovery, 2);
     });
 
-    test('F2 unseen meta expressions missed by the detector (class A)', () {
-      expect(metrics.missedUnseen, _knownDetectorMisses);
+    test('F2 fixed (12.3B): no unseen meta expression is missed in multi-turn', () {
+      expect(metrics.missedUnseen, isEmpty);
+      expect(metrics.ignoredMetaFeedbackUnseen, 0);
     });
 
     // Phase 12.2 value, kept as the before-record:
@@ -560,11 +562,11 @@ void main() {
       expect(metrics.metaContentLeakage, 0);
     });
 
-    test('F3 residue: only undetected meta still leaks (F2/F5-owned)', () {
-      expect(metrics.untaggedMetaLeakage, 3);
+    // 12.3A residue was 3 (M3b, M3c from F2 misses; M8 from closing). With
+    // F2 fixed in 12.3B, only the closing case (F5, by design) remains.
+    test('F3 residue: only closing meta (F5) still leaks', () {
+      expect(metrics.untaggedMetaLeakage, 1);
       expect(metrics.targetedMeta, {
-        'M3b_repair_unseen_phrases: 우리 이 얘기 아까 하지 않았어요?',
-        'M3c_repair_on_exhausted_reflect: 이거 전에 대답했던 것 같은데',
         'M8_repair_then_intervention: 이런 거 한다고 뭐가 달라질까 싶어요.',
       });
     });
@@ -579,8 +581,9 @@ void main() {
   });
 
   // Single-turn probe of the Phase 12.1 example expressions (reflect state,
-  // empty history). Frozen: every unseen meta expression is missed today,
-  // and none of the worry-repetition sentences is misdetected.
+  // empty history). Before 12.3B all 11 were missed. After 12.3B the 9
+  // explicit ones are detected; the 2 implicit ones are still missed
+  // (frozen), and no worry-repetition sentence is misdetected.
   group('F2b single-turn probe of 12.1 example expressions', () {
     const unseenMeta = [
       '우리 이 얘기 아까 하지 않았어요?',
@@ -610,8 +613,16 @@ void main() {
         ))
         ?.interactionRepairReason;
 
+    const stillMissedImplicit = {
+      '계속 같은 데서 맴도는 느낌이에요',
+      '굳이 답을 찾기보다 그냥 말하고 싶어요',
+    };
     for (final m in unseenMeta) {
-      test('miss (frozen): $m', () => expect(detect(m), isNull));
+      if (stillMissedImplicit.contains(m)) {
+        test('implicit, still missed (frozen): $m', () => expect(detect(m), isNull));
+      } else {
+        test('detected after 12.3B: $m', () => expect(detect(m), isNotNull));
+      }
     }
     for (final m in worryRepetition) {
       test('no false positive: $m', () => expect(detect(m), isNull));
