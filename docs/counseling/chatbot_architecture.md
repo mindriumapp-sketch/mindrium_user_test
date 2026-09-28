@@ -625,15 +625,21 @@ Week 4~8은 정확한 corpus ID/type/tag/guidance 조건을 모두 만족하는 
 느껴졌던 직접 원인이며, AI 경로를 별도로 활성화한 이유다. Phase 10.5의 실측 평가로
 explore/reflect의 문장 표현 자체는 GPT 경로가 결정적으로 낫다는 게 확인됐다(§22.1) —
 다만 **이 한계는 표현이 아니라 선택(target/questionGoal)이 정해지는 이 계층에서
-비롯된다는 점**은 GPT를 켜도 그대로 남는다. `GoalExhaustionPolicy.repeatLast`가
-새 신호를 못 찾으면 같은 target/questionGoal을 다시 고르고, GPT는 같은 재료로
-거의 같은 문장을 성실히 만들어낼 뿐이다 — 실기기 dogfooding에서 실제 대화로
-재현됨(`phase10_6c_dogfood_log.md` 3번 항목). 더 나아가 사용자가 "왜 똑같은
-말을 반복하지?"처럼 **시스템 행동 자체에 대한 메타 발화**를 해도, 이 계층은
-그것을 새로운 걱정 내용과 구분하지 못하고 같은 target으로 계속 캐묻는다(같은
-로그의 4번 항목, `metaConversation`/`interactionRepair` 같은 별도
-dialogue act가 없어서 생기는 문제 — 이 두 가지는 Phase 10 selection-freeze
-범위 밖의 별도 백로그다).
+비롯된다는 점**은 GPT를 켜도 그대로 남는다.
+
+**Phase 11.2/11.3로 해소됨** (아래 두 항목은 실기기 dogfooding에서 재현된 뒤
+`phase11_1_selection_interaction_repair_design.md`에서 문제를 좁히고,
+`phase11_2_meta_conversation_detection.md`/`phase11_3_goal_exhaustion_recovery.md`에서
+고쳤다): 예전에는 `ReflectDecisionSelector`가 새 신호를 못 찾으면
+`goalOrder.last`(구두상 "`GoalExhaustionPolicy.repeatLast`")를 반복해서 같은
+target/questionGoal을 다시 골랐고, 사용자가 "왜 똑같은 말을 반복하지?"처럼
+시스템 행동 자체에 대한 메타 발화를 해도 이를 새로운 걱정 내용과 구분하지 못했다
+(`phase10_6c_dogfood_log.md` 3/4번 항목). 지금은 `InteractionRepairReason`이
+반복 지적/질문 중단 요청/과정 저항을 구분해 인식하고(Phase 11.2),
+`ReflectDecisionSelector`가 목표 소진 시 같은 목표를 반복하는 대신
+`GoalExhaustionRecovery`(summarize/listenWithoutQuestion)로 명시적으로
+전환한다(Phase 11.3) — `revisitPreviousIssue`/`transition`은 아직 선택 불가
+계약으로 남아 있다.
 
 ---
 
@@ -865,21 +871,23 @@ dogfooder/사용자를 아우르는 집계 대시보드는 아직 없다.
 `/counseling-sessions` 라우트가 아직 배포되지 않아 실제 계정 persistence는 현재
 비활성 상태다.
 
-### 19.4 선택 레이어(selection)의 두 가지 알려진 한계 — Realizer 문제 아님
+### 19.4 선택 레이어(selection)의 두 가지 한계 — Phase 11.2/11.3로 해소
 
-GPT 표현 계층을 켜도 고쳐지지 않는, "무엇을 말할지" 계층(§10.3)의 문제 두 가지가
-실기기 dogfooding에서 실제 대화로 재현됐다(`phase10_6c_dogfood_log.md`).
+GPT 표현 계층을 켜도 고쳐지지 않는, "무엇을 말할지" 계층(§10.3)의 문제 두
+가지가 실기기 dogfooding에서 실제 대화로 재현됐다(`phase10_6c_dogfood_log.md`).
+Phase 10 당시에는 selection-freeze 범위 밖이라 고치지 않았지만, 이후
+Phase 11에서 각각 해소됐다.
 
-- **Goal exhaustion 복구 부재**: `GoalExhaustionPolicy.repeatLast`가 새 신호를
-  못 찾으면 항상 같은 target을 반복 선택한다. `summarize`/`revisitPreviousIssue`/
-  `transition` 같은 다른 선택지가 없다.
-- **Meta-conversation 인식 부재**: "왜 똑같은 말을 반복하지?" 같이 시스템
-  행동 자체를 문제 삼는 발화를, 새로운 걱정 내용과 구분할 방법이 selection/
-  router 계층에 없다. 이건 wording으로 고칠 수 없는 문제다 — 애초에 필요한
-  것은 더 나은 표현이 아니라 다른 dialogue act(인정+교정)다.
-
-둘 다 Phase 10의 selection-freeze 범위 밖이라 이번 단계에서 고치지 않았고,
-다음 selection-policy phase의 문제 정의로 백로그에 남는다.
+- **Goal exhaustion 복구 부재 (해소, Phase 11.3)**: 예전에는 `ReflectDecisionSelector`가
+  새 신호를 못 찾으면 항상 같은 target/goal을 반복 선택했다(구두상
+  "`GoalExhaustionPolicy.repeatLast`"). 지금은 `ExhaustedReflectGoals` 분기가
+  명시적 `GoalExhaustionRecovery`(`summarize`/`listenWithoutQuestion`)로
+  전환한다 — 자세한 내용은 `phase11_3_goal_exhaustion_recovery.md`. `revisitPreviousIssue`/
+  `transition`은 아직 선택 불가 계약으로 남아 있다.
+- **Meta-conversation 인식 부재 (해소, Phase 11.2)**: "왜 똑같은 말을
+  반복하지?" 같이 시스템 행동 자체를 문제 삼는 발화를 `DeterministicProcessSignalTurnPlanner`가
+  `InteractionRepairReason.repeatedQuestion`으로 인식해 반영-전용(질문 없음)
+  응답으로 전환한다 — 자세한 내용은 `phase11_2_meta_conversation_detection.md`.
 
 ### 19.5 Canary rollout의 두 가지 임시 조치
 
@@ -983,7 +991,8 @@ dogfood 백엔드 경유)에서 확인된 것:
   오늘 `SemanticDeterministicResponseRealizer`로 fallback을 바꿔 해결(§9.2).
 - 말풍선 중복(즉시 공감 + 실제 답변)도 오늘 배선에서 제거(§5.1).
 - 선택 레이어의 goal exhaustion/meta-conversation 한계는 실사용으로 재현됐고
-  Realizer 결함이 아닌 별도 백로그로 기록(§19.4).
+  Realizer 결함이 아닌 별도 백로그로 기록됨 — 이후 Phase 11.2/11.3에서
+  해소됨(§19.4).
 
 관련 파일:
 

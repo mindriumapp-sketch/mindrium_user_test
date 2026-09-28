@@ -11,7 +11,9 @@ is historical record.
 - [`chatbot_architecture.md`](chatbot_architecture.md) — current architecture, updated as the system changes.
 - [`phase10_7_baseline.md`](phase10_7_baseline.md) — the frozen `counseling-v1-clean-baseline` snapshot Phase 11 builds on top of (deterministic selection + validated Remote wording + safe fallback + rollout infra + cleaned production tree).
 - [`phase11_1_selection_interaction_repair_design.md`](phase11_1_selection_interaction_repair_design.md) — Selection Policy & Interaction Repair, problem/contract freeze.
-- [`phase11_2_meta_conversation_detection.md`](phase11_2_meta_conversation_detection.md) — **current phase**: repeated-question detection, complete. Next: 11.3 (goal exhaustion recovery).
+- [`phase11_2_meta_conversation_detection.md`](phase11_2_meta_conversation_detection.md) — repeated-question detection, complete.
+- [`phase11_3_goal_exhaustion_recovery.md`](phase11_3_goal_exhaustion_recovery.md) — goal exhaustion recovery (replaces `repeatLast`), complete.
+- [`phase11_4_selection_regression.md`](phase11_4_selection_regression.md) — **latest**: frozen-scenario selection regression, all four metrics at 0. Phase 11 closed.
 - [`adaptive_dialogue_policy.md`](adaptive_dialogue_policy.md) — forward-looking design for expanding GPT's role beyond wording-only.
 - [`affective_system.md`](affective_system.md) — avatar/affect-cue subsystem reference.
 - [`remote_gpt_realizer_integration.md`](remote_gpt_realizer_integration.md) — the original GPT-realizer integration contract (referenced from `chatbot_architecture.md`).
