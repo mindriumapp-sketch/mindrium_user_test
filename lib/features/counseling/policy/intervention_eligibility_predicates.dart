@@ -1,0 +1,65 @@
+import 'package:gad_app_team/data/counseling/counseling_models.dart';
+
+import '../intervention_registry.dart';
+
+/// Phase 8.3: pure predicate functions shared between the legacy
+/// `DeterministicInterventionTurnPlanner` (turn_plan.dart) and
+/// `DeterministicPolicyBoundaryBuilder` (policy_boundary_request.dart).
+///
+/// These were previously duplicated (byte-for-byte) in both places. This
+/// file is the single source of truth; both call sites now call into it
+/// instead of keeping private copies. Logic/signatures/return values are
+/// unchanged from the originals — this is a behavior-preserving move, not a
+/// rewrite.
+class InterventionEligibilityPredicates {
+  const InterventionEligibilityPredicates._();
+
+  /// Mirrors the legacy `_alreadyUsed`: was this intervention policy already
+  /// referenced or textually signaled in a recent assistant message?
+  static bool alreadyUsed(
+    List<CounselingMessage> messages,
+    ApprovedInterventionPolicy policy,
+  ) {
+    return messages.any(
+      (message) =>
+          !message.isUser &&
+          (message.referencedCbtIds.contains(policy.requiredId) ||
+              textSignalsType(message.text, policy.interventionType)),
+    );
+  }
+
+  /// Mirrors the legacy `_textSignalsType`: does this message text signal
+  /// that this intervention type was already discussed?
+  static bool textSignalsType(String text, InterventionType type) {
+    switch (type) {
+      case InterventionType.balancedThought:
+        return text.contains('균형') && text.contains('문장');
+      case InterventionType.behaviorPatternReview:
+        return text.contains('회피') && text.contains('직면');
+      case InterventionType.consequenceReview:
+        return text.contains('단기') && text.contains('장기');
+      case InterventionType.gainLossReview:
+        return text.contains('회피 행동') &&
+            (text.contains('이득') || text.contains('좋은 점'));
+      case InterventionType.valueBasedChoice:
+        return false;
+      case InterventionType.maintenanceReview:
+        return text.contains('이어가') || text.contains('유지');
+    }
+  }
+
+  /// Mirrors the legacy `_looksLikeAvoidance`: does the user's message look
+  /// avoidance-shaped (gainLossReview eligibility)?
+  static bool looksLikeAvoidance(String text) {
+    return RegExp(r'(피하|회피|미루|빠지|않고|안\s|줄이|원고만|벗어나)').hasMatch(text);
+  }
+
+  /// Mirrors the legacy `_looksLikeMaintenance`: does the user's message
+  /// describe an ongoing practice with a felt benefit (maintenanceReview
+  /// eligibility)?
+  static bool looksLikeMaintenance(String text) {
+    final hasPractice = RegExp(r'(연습|습관|호흡|이완|방법|행동)').hasMatch(text);
+    final hasBenefit = RegExp(r'(도움|효과|나아|편안|좋았|계속|유지|이어가)').hasMatch(text);
+    return hasPractice && hasBenefit;
+  }
+}

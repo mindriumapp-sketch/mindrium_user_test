@@ -308,40 +308,49 @@ void main() {
       expect(decision.selectedGoalId, ReflectQuestionGoal.probability.name);
     });
 
-    test('모든 goal 소진 후 반복 (goalsExhausted + repeatLast)', () {
-      const message = '그럴 수도 있겠네요.';
-      final recent = [
-        _assistant('그 생각의 근거는요?', goalId: 'evidence'),
-        _assistant('다른 관점은요?', goalId: 'alternative'),
-        _assistant('가능성은요?', goalId: 'probability'),
-      ];
-      final legacy = legacyPlan(userMessage: message, recent: recent);
-      final decision = selector.select(
-        userMessage: message,
-        recentMessages: recent,
-        userContext: null,
-      );
-      // repeatLast: stays on the last goal in sequence.
-      expect(legacy!.progressGoalId, ReflectQuestionGoal.probability.name);
-      expect(decision.selectedGoalId, ReflectQuestionGoal.probability.name);
-
-      final boundary = boundaryBuilder.build(
-        PolicyBoundaryRequest(
-          currentState: CounselingState.reflect,
+    test(
+      'Phase 11.3: 모든 goal 소진 후에는 반복 대신 명시적 recovery로 전환된다 '
+      '(goalsExhausted + goalExhaustionRecovery, repeatLast를 대체)',
+      () {
+        const message = '그럴 수도 있겠네요.';
+        final recent = [
+          _assistant('그 생각의 근거는요?', goalId: 'evidence'),
+          _assistant('다른 관점은요?', goalId: 'alternative'),
+          _assistant('가능성은요?', goalId: 'probability'),
+        ];
+        final legacy = legacyPlan(userMessage: message, recent: recent);
+        final decision = selector.select(
           userMessage: message,
           recentMessages: recent,
-          currentWeek: 0,
-          interventionRegistry: const ApprovedInterventionRegistry(),
-          knowledge: const [],
-          retrievalSummary: RetrievalSummary.empty,
-        ),
-      )!;
-      expect(boundary.goalsExhausted, isTrue);
-      expect(
-        boundary.candidateGoalIds,
-        [ReflectQuestionGoal.probability.name],
-      );
-    });
+          userContext: null,
+        );
+        // Phase 11.3 replaced repeatLast (silently re-asking the last goal
+        // forever) with an explicit recovery outcome — legacy planner and
+        // selector still agree, just on the new shape: no goal claimed,
+        // recovery type set instead.
+        expect(legacy!.progressGoalId, isNull);
+        expect(legacy.goalExhaustionRecovery, GoalExhaustionRecovery.summarize);
+        expect(decision.selectedGoalId, isNull);
+        expect(
+          decision.goalExhaustionRecovery,
+          GoalExhaustionRecovery.summarize,
+        );
+
+        final boundary = boundaryBuilder.build(
+          PolicyBoundaryRequest(
+            currentState: CounselingState.reflect,
+            userMessage: message,
+            recentMessages: recent,
+            currentWeek: 0,
+            interventionRegistry: const ApprovedInterventionRegistry(),
+            knowledge: const [],
+            retrievalSummary: RetrievalSummary.empty,
+          ),
+        )!;
+        expect(boundary.goalsExhausted, isTrue);
+        expect(boundary.candidateGoalIds, [ReflectQuestionGoal.probability.name]);
+      },
+    );
   });
 
   group('Intervention: selector matches legacy', () {

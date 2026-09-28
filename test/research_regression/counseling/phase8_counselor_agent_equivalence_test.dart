@@ -232,7 +232,10 @@ void main() {
       expect(fresh!.progressGoalId, legacy.progressGoalId);
     });
 
-    test('goal 소진: 모두 질문된 후 마지막 goal(probability) 반복', () {
+    test(
+      'Phase 11.3: goal 소진 후에는 마지막 goal을 반복하지 않고 명시적 '
+      'recovery로 전환된다 (legacy/fresh 경로 모두 동일하게 합의)',
+      () {
       final context = TurnPlanningContext(
         state: CounselingState.reflect,
         userMessage: '그럴 가능성은 낮은 것 같아요.',
@@ -262,8 +265,10 @@ void main() {
         ],
       );
       final (legacy, fresh) = _runBoth(context);
-      expect(legacy!.progressGoalId, 'probability');
-      expect(fresh!.progressGoalId, 'probability');
+      expect(legacy!.progressGoalId, isNull);
+      expect(legacy.goalExhaustionRecovery, GoalExhaustionRecovery.summarize);
+      expect(fresh!.progressGoalId, isNull);
+      expect(fresh.goalExhaustionRecovery, GoalExhaustionRecovery.summarize);
 
       // Boundary-level verification of the Step 0 exhaustion semantics.
       final request = PolicyBoundaryRequest(
@@ -280,7 +285,8 @@ void main() {
       final boundary = builder.build(request)!;
       expect(boundary.goalsExhausted, isTrue);
       expect(boundary.candidateGoalIds, ['probability']);
-    });
+      },
+    );
 
     test('일기 기반 target 사용', () {
       final context = TurnPlanningContext(

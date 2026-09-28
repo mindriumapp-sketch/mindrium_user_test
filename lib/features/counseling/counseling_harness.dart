@@ -501,6 +501,7 @@ class CounselingHarness {
       // 아니라 이 ID로 "이미 물은 목표"를 판단할 수 있게 한다.
       dialogueGoalId: turnPlan.progressGoalId,
       interactionRepairReason: turnPlan.interactionRepairReason,
+      goalExhaustionRecovery: turnPlan.goalExhaustionRecovery,
     );
 
     _advance(session, nextState);

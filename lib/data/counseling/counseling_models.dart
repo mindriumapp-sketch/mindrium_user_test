@@ -178,12 +178,12 @@ enum InteractionRepairReason {
   processFrustration,
 }
 
-/// Phase 11.1: names the recovery actions available once every
+/// Phase 11.1/11.3: names the recovery actions available once every
 /// `ReflectQuestionGoal` has been asked
-/// (`ReflectDecisionSelector._selectGoal`'s exhaustion case). Not
-/// constructed by anything yet — Phase 11.3's contract, frozen early
-/// alongside [InteractionRepairReason] since both were specified together
-/// in `phase11_1_selection_interaction_repair_design.md`.
+/// (`ReflectDecisionSelector._selectGoalOrRecover`'s exhaustion case).
+/// [summarize] and [listenWithoutQuestion] are implemented (Phase 11.3);
+/// [revisitPreviousIssue] and [transition] are frozen contract members not
+/// yet selectable — see each member's doc.
 enum GoalExhaustionRecovery {
   /// Hand off to a closing-style summary of what's been covered, without
   /// asking anything new.
@@ -192,17 +192,24 @@ enum GoalExhaustionRecovery {
   /// The process-signal-style "no question this turn" response shape.
   listenWithoutQuestion,
 
-  /// Pull a different topic into `reflectionTarget` instead of the
-  /// exhausted one. Needs a same-session "other topics raised earlier
-  /// this session" tracker that does not fully exist yet — see the
-  /// design doc before implementing this in Phase 11.3.
+  /// Not selectable yet (Phase 11.3 scope freeze): pulling a different
+  /// topic into `reflectionTarget` instead of the exhausted one needs a
+  /// same-session "other topics raised earlier this session" tracker that
+  /// does not exist yet — see the design doc before implementing this.
   revisitPreviousIssue,
 
-  /// End reflect early and move to intervention/closing.
+  /// Not selectable yet (Phase 11.3 scope freeze): ending reflect early
+  /// and moving to intervention/closing is not this recovery's job —
+  /// `CounselingStatePolicy`'s turn budget already advances state on its
+  /// own schedule (confirmed in Phase 11.2), and a recovery selection must
+  /// not bypass that authority.
   transition,
 
-  /// Today's only behavior (`return goalOrder.last`). Kept as the
-  /// explicit last-resort member of this enum, not removed.
+  /// Pre-Phase-11.3 legacy behavior (`ReflectDecisionSelector` used to
+  /// silently fall through to `goalOrder.last` and keep asking it forever).
+  /// Kept as an explicit enum member for that history, but no longer
+  /// selected by anything — [summarize]/[listenWithoutQuestion] replaced
+  /// it as of Phase 11.3.
   repeatLast,
 }
 
@@ -271,6 +278,13 @@ class CounselingMessage {
   /// selector도 읽지 않는다). 일반 상담 턴에는 null이다.
   final InteractionRepairReason? interactionRepairReason;
 
+  /// Phase 11.3: 이번 턴이 reflect의 모든 `ReflectQuestionGoal`이 소진된
+  /// 뒤의 recovery 턴이었다면 그 종류(summarize/listenWithoutQuestion 등).
+  /// [ReflectDecisionSelector]가 다음 턴에서 "직전 턴이 recovery였는가"를
+  /// 판단할 수 있게 한다 — [interactionRepairReason]과 같은 이유로 이
+  /// 파일에 둔다. 일반 상담 턴/goal이 아직 남아있는 턴에는 null이다.
+  final GoalExhaustionRecovery? goalExhaustionRecovery;
+
   const CounselingMessage({
     required this.id,
     required this.role,
@@ -283,6 +297,7 @@ class CounselingMessage {
     this.latency,
     this.dialogueGoalId,
     this.interactionRepairReason,
+    this.goalExhaustionRecovery,
   });
 
   bool get isUser => role == 'user';

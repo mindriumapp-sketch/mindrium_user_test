@@ -76,6 +76,14 @@ class CounselingTurnPlan {
   /// carried forward.
   final InteractionRepairReason? interactionRepairReason;
 
+  /// Phase 11.3: set only by `TurnPlanMaterializer.reflect()`'s recovery
+  /// branch, when `CounselorDecision.goalExhaustionRecovery` was non-null
+  /// (every `ReflectQuestionGoal` already asked this reflect phase). `null`
+  /// for every other turn. See `CounselingMessage.goalExhaustionRecovery`'s
+  /// doc for why this is carried forward the same way
+  /// [interactionRepairReason] is.
+  final GoalExhaustionRecovery? goalExhaustionRecovery;
+
   const CounselingTurnPlan({
     required this.reflectionTarget,
     required this.questionGoal,
@@ -92,6 +100,7 @@ class CounselingTurnPlan {
     this.progressGoalId,
     this.realizationSpec,
     this.interactionRepairReason,
+    this.goalExhaustionRecovery,
   });
 
   String get deterministicReply => [
