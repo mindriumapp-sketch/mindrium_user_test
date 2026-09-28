@@ -378,6 +378,45 @@ Every automated gate passes. Two conditions from the plan remain:
 - Semantic-deterministic fallback wording quotes SUD answers as the
   concern ("7점이요 부분이 마음에 걸리시는") (G).
 
+### Session 4 (week 4, build e4b461d, all 12.3 fixes; confirmation run)
+
+| # | Input | State | Device reply | Source |
+|---|---|---|---|---|
+| 1 | 내일까지 해야할 일이 너무 많아 | checkIn | ok | deterministic |
+| 2 | 7 | explore | ok ("…느끼는 이유가 무엇인지…") | GPT |
+| 3 | 수업 과제도 해야하고 공모전 준비, 논문 작성, 융합연구 미팅준비 등 할게 진짜 많아 | — | **N4**: "걱정 기록는 홈 → 오늘의 할 일 → 불안 평가에서 확인할 수 있어요." | app-guide route |
+| 4 | 갑자기 무슨말이야 | reflect | ok, natural | GPT |
+| 5 | 미팅준비가 가장 마음에 걸려 | reflect | **N5**: "미팅준비가 가장 마음에 걸려 부분이 마음에 걸리시는 것 같아요." | semantic-deterministic fallback (GPT reply rejected) |
+| 6 | 내일 미팅인데 준비를 하나도 못했어. 교수님께 양해를… 답장이 없어 | intervention | **N6**: "“미팅준비가 가장 마음에 걸려”라는 생각을 함께 살펴보겠습니다…" | deterministic |
+
+Confirmed: no repeated question reached the user (N2 held), no dead end.
+No meta complaint was made this session, so F2/F3/F6 weren't exercised.
+
+**User feedback (primary): quoting the user's words back is unnatural.**
+The worst case was turn 5. Three different root causes:
+
+- **N5 — fallback template slots a whole clause into a noun position (G).**
+  `SemanticDeterministicResponseRealizer` builds `'$clean 부분이 마음에
+  걸리시는 것 같아요.'` / `'지금 $clean 때문에…'` / `'$clean 생각이…'`.
+  `classifyReflectionTargetShape` only diverts multi-sentence and
+  question targets to the generic acknowledgment. A single verb-final
+  clause ("…마음에 걸려", "7점이요") passes as if it were a noun phrase.
+  **Interaction with the N2 fix:** the new guard sends more turns to this
+  fallback, so its ugly surface shows up more often.
+- **N6 — deterministic templates parrot verbatim (G), and the target is
+  stale (C).** The deterministic realization quotes the raw utterance
+  ("“X”라고 말씀해 주셨군요", "“X”라는 생각을 함께 살펴보겠습니다").
+  Intervention and checkIn never go through GPT, so nothing paraphrases
+  them. Here the target is also the *previous* message: the rich current
+  message isn't `thoughtShaped`, so the selector falls back to
+  `latestUserMessage` (same family as N3/F4).
+- **N4 — intent router misroutes counseling to app guide (new layer: intent
+  routing).** The message has no counseling stem (불안/걱정…), and the
+  entity signal fires on a single 2+-character keyword overlap with the
+  app catalog (e.g. "작성"). The router also ignores that a counseling
+  session is in progress. There's a grammar bug in the guide answer too
+  ("걱정 기록는" should use 은).
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
