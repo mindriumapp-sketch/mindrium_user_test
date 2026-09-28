@@ -191,13 +191,24 @@ class ReflectDecisionSelector {
         previous != null && !previous.isUser
             ? previous.interactionRepairReason
             : null;
-    return switch (previousRepair) {
+    final preferred = switch (previousRepair) {
       InteractionRepairReason.repeatedQuestion ||
       InteractionRepairReason.stopQuestioning =>
         GoalExhaustionRecovery.listenWithoutQuestion,
       InteractionRepairReason.processFrustration || null =>
         GoalExhaustionRecovery.summarize,
     };
+    // Phase 12.3C (F1): never the same recovery twice in a row. Read from
+    // the previous turn's recovery metadata, not its text. The two
+    // selectable recoveries simply alternate.
+    final previousRecovery =
+        previous != null && !previous.isUser
+            ? previous.goalExhaustionRecovery
+            : null;
+    if (preferred != previousRecovery) return preferred;
+    return preferred == GoalExhaustionRecovery.summarize
+        ? GoalExhaustionRecovery.listenWithoutQuestion
+        : GoalExhaustionRecovery.summarize;
   }
 
   String? _explicitThoughtFromRecent(List<CounselingMessage> messages) {

@@ -542,9 +542,10 @@ void main() {
   // Each must change deliberately, together with the failure corpus in
   // docs/counseling/phase12_conversation_robustness.md.
   group('frozen known failures', () {
-    test('F1 recovery loop: summarize -> summarize (class D)', () {
-      expect(metrics.repeatedRecoveryLoop, 2);
-      expect(metrics.maximumConsecutiveSameRecovery, 2);
+    // Phase 12.2 value was 2 / 2 (M2, M6: summarize -> summarize).
+    test('F1 fixed (12.3C): no consecutive identical recovery', () {
+      expect(metrics.repeatedRecoveryLoop, 0);
+      expect(metrics.maximumConsecutiveSameRecovery, 1);
     });
 
     test('F2 fixed (12.3B): no unseen meta expression is missed in multi-turn', () {

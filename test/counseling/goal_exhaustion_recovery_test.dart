@@ -359,4 +359,96 @@ void main() {
       },
     );
   });
+
+  // Phase 12.3C (F1): the same recovery must never be chosen twice in a
+  // row. Decided from the previous assistant message's
+  // goalExhaustionRecovery metadata, never from its text.
+  group('D. consecutive recovery guard (F1)', () {
+    final exhausted = [
+      _goalMessage('a1', 'evidence'),
+      _goalMessage('a2', 'alternative'),
+      _goalMessage('a3', 'probability'),
+    ];
+    CounselingMessage recovery(GoalExhaustionRecovery r) => CounselingMessage(
+      id: 'rec_${r.name}',
+      role: 'assistant',
+      text: 'recovery',
+      createdAt: DateTime.now(),
+      dialogueAct: DialogueAct.reflect,
+      goalExhaustionRecovery: r,
+    );
+
+    test('A. summarize -> next turn is not summarize again', () {
+      final d = selector.select(
+        userMessage: '그래도 여전히 걱정돼요.',
+        recentMessages: [...exhausted, recovery(GoalExhaustionRecovery.summarize)],
+        userContext: null,
+      );
+      expect(d.goalExhaustionRecovery, isNot(GoalExhaustionRecovery.summarize));
+      expect(d.goalExhaustionRecovery, GoalExhaustionRecovery.listenWithoutQuestion);
+      expect(d.selectedGoalId, isNull);
+    });
+
+    test('B. listenWithoutQuestion -> next turn is not listenWithoutQuestion again', () {
+      final d = selector.select(
+        userMessage: '네, 그냥 계속 걱정되긴 해요.',
+        recentMessages: [
+          ...exhausted,
+          recovery(GoalExhaustionRecovery.listenWithoutQuestion),
+        ],
+        userContext: null,
+      );
+      expect(d.goalExhaustionRecovery, GoalExhaustionRecovery.summarize);
+    });
+
+    test('a repair turn still takes precedence (repeatedQuestion -> listen)', () {
+      final d = selector.select(
+        userMessage: '네.',
+        recentMessages: [
+          ...exhausted,
+          _goalMessage('a4', null, repair: InteractionRepairReason.repeatedQuestion),
+        ],
+        userContext: null,
+      );
+      expect(d.goalExhaustionRecovery, GoalExhaustionRecovery.listenWithoutQuestion);
+    });
+
+    test('C. at the reflect budget edge, state follows StatePolicy like a control turn', () async {
+      final repository = LocalCbtKnowledgeRepository(loadAsset: _load);
+      await repository.initialize();
+      CounselingHarness harness() => CounselingHarness.deterministic(
+        llm: MockLlmService(),
+        safetyGate: const KeywordSafetyGate(),
+        knowledgeRepository: repository,
+      );
+      final recoverySession = CounselingSessionState(
+        sessionId: 'p12-3c-edge',
+        currentWeek: 4,
+        state: CounselingState.reflect,
+        turnsInCurrentState: 1,
+        messages: [...exhausted, recovery(GoalExhaustionRecovery.summarize)],
+      );
+      final controlSession = CounselingSessionState(
+        sessionId: 'p12-3c-control',
+        currentWeek: 4,
+        state: CounselingState.reflect,
+        turnsInCurrentState: 1,
+        messages: [_goalMessage('a1', 'evidence')],
+      );
+      final r = await harness().handleTurn(session: recoverySession, userMessage: '그래도 걱정돼요.');
+      await harness().handleTurn(session: controlSession, userMessage: '그래도 걱정돼요.');
+      expect(r.assistantMessage.goalExhaustionRecovery, GoalExhaustionRecovery.listenWithoutQuestion);
+      expect(recoverySession.state, controlSession.state);
+    });
+
+    test('D. normal non-exhausted progression is unchanged', () {
+      final d = selector.select(
+        userMessage: '그럴 수도 있을 것 같아요.',
+        recentMessages: [_goalMessage('a1', 'evidence'), recovery(GoalExhaustionRecovery.summarize)],
+        userContext: null,
+      );
+      expect(d.selectedGoalId, 'alternative');
+      expect(d.goalExhaustionRecovery, isNull);
+    });
+  });
 }
