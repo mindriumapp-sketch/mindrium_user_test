@@ -734,6 +734,7 @@ class DeterministicInterventionTurnPlanner implements CounselingTurnPlanner {
       return materializer.interventionNoEligible(
         decision,
         recentMessages: context.recentMessages,
+        userMessage: context.userMessage,
       );
     }
 
@@ -741,6 +742,8 @@ class DeterministicInterventionTurnPlanner implements CounselingTurnPlanner {
       decision,
       currentWeek: context.currentWeek,
       knowledge: context.knowledge,
+      recentMessages: context.recentMessages,
+      userMessage: context.userMessage,
     );
   }
 

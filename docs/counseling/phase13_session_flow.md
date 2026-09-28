@@ -105,40 +105,68 @@ mutation was applied alone and then reverted:
 | closing always continues | stateLoop 126, sessionNotFinalized 56 |
 | noEligible `inProgress` + intervention cap 30 | noEligibleInterventionDeadlock 578, sessionNotFinalized 21 |
 
-### Found in the traces, not gated (frozen)
+### Found in the traces: Q1, Q2 (fixed in 13.6b)
 
-These are outside the Phase 13 gate list. The suite pins them at their
-current values, so any change has to be deliberate.
+These are not in the Phase 13 gate list. The suite measured them, and
+both are now fixed and pinned at 0.
 
-**Q1: reflect's last question is dropped (56 of 56 sessions).** The turn
-that completes reflect still asks the next reflective question, for
-example "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?". The
-session is already in intervention by the time the user answers. That
-answer then becomes the technique's entry turn (weeks 4–8), or it is
-summarized over (weeks 1–3, noEligible). This is the same "question sent
-≠ stage done" pattern that 13.3 fixed for intervention, now showing up
-at the reflect → intervention boundary.
+**Q1: the answer to reflect's last question was dropped (56 of 56
+sessions).** The turn that completes reflect still asks a reflective
+question, for example "그 상황을 다른 관점에서 본다면 어떻게 볼 수
+있을까요?". By the time the user answers, the session is in
+intervention. The answer then became the technique's entry turn (weeks
+4–8) or was summarized over (weeks 1–3). This is the same "question sent
+≠ stage done" pattern 13.3 fixed for intervention, at the reflect →
+intervention boundary.
 
-**Q2: the technique question quotes an unsuitable target (36).**
-- Behavior-type techniques (week 5 behavior pattern, week 6 short/long
-  term, week 7 gain/loss) quote the current message as "the behavior",
-  whatever it says. Example: "“그래도 긴장되는 건 어쩔 수 없네요”라는
-  행동의 영향을…". The single-turn design assumed the entry message
-  described a behavior. Cumulative use (13.2) now applies these
-  techniques to ordinary worry, which exposes the assumption. The same
-  thing happens in weeks 5–6, where the technique is the current week's.
-- Balanced thought (week 4) falls back to the previous user turn when the
-  current one isn't thought-shaped. That turn is often the evidence
-  answer ("예전에 발표하다 말이 막힌 적이 있어요") rather than the worry
-  thought.
+Fix: the first intervention reply (technique prompt or noEligible
+summary) now opens by acknowledging that answer, without quoting it. The
+wording depends on which reflective goal was asked:
 
-Both issues change what a technique addresses, so their fixes need a
-decision (see "Open" below). They do not block the flow gate.
+| Goal answered | Acknowledgment |
+|---|---|
+| evidence | 그 걱정이 어디서 오는지 조금 더 알 것 같아요. |
+| alternative | 말씀해 주신 생각도 함께 담아 둘게요. |
+| probability | 말씀해 주신 느낌도 함께 담아 둘게요. |
+| low-info answer | 바로 떠오르지 않아도 괜찮아요. |
+
+The wording has to hold whatever the answer says, because the answer's
+content isn't judged. So it never claims the user found another view. A
+stop request gets no acknowledgment. Repair turns in between are
+skipped. The reflect turn itself was left alone: making the completing
+turn ask nothing would force the user to reply to a statement with no
+question.
+
+**Q2: the technique question quoted an unsuitable target (36).**
+Behavior-type techniques (weeks 5–7) quoted the current message as "the
+behavior", whatever it said. Example: "“그래도 긴장되는 건 어쩔 수
+없네요”라는 행동의 영향을…". Balanced thought (week 4) fell back to the
+previous user turn, usually the evidence answer. Cumulative use (13.2)
+exposed this, but weeks 5–6 had it with their own technique too.
+
+Fix: the technique targets the worry the reflect round started from.
+`UserThoughtExtractor.roundWorryThought` finds the user message that the
+round's first goal question answered. A round starts at the session start
+or at the last closing continuation, and repair turns are excluded.
+- Balanced thought: round worry, else the current message if it is
+  thought-shaped, else the previous fallbacks.
+- Behavior techniques: if the user described a behavior
+  (`looksLikeBehavior`), examine that behavior with the original wording.
+  Otherwise ask about behavior around the round worry, with the same
+  technique's question anchored to the worry. Example: "“…”라는 걱정과
+  관련된 행동을 함께 살펴볼게요. 그 걱정이 들 때 보통 어떻게 하시는지
+  떠올려 보면, 피하는 쪽과 마주하는 쪽 중 어디에 더 가까운가요?"
+- Gain/loss keeps its avoidance gate, and maintenance its maintenance
+  gate. Both already require a matching message.
+
+No technique, gate, or approval changed. Only the target and the
+technique question's anchor did.
+
+Mutation checks: removing the round-worry target fails the Q2 checks;
+removing the acknowledgment fails the Q1 checks.
 
 ## Open
 
-- Q1/Q2 fix scope: decide before the 13.7 device dogfood, because both
-  are visible in every session on device.
 - 13.7 real-device dogfood, then tag `counseling-v1.2-session-flow`.
 - Backlog: F4 (reflect recovery quoting "네"), N6 surface phase, week 1–3
   clinical approval.

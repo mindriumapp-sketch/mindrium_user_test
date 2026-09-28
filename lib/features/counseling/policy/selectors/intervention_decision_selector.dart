@@ -87,11 +87,26 @@ class InterventionDecisionSelector {
     final policy = candidate.policy;
     final selected = candidate.item;
 
-    final explicitThought =
+    // Phase 13.6 (Q2): this turn's message is usually the answer to reflect's
+    // last question (evidence, another view), not the worry itself. The
+    // technique is about the worry the reflect round started from.
+    final roundWorry = UserThoughtExtractor.roundWorryThought(
+      UserThoughtExtractor.semanticContent(recentMessages),
+    );
+    final behaviorType =
         policy.interventionType == InterventionType.behaviorPatternReview ||
-                policy.interventionType == InterventionType.consequenceReview ||
-                policy.interventionType == InterventionType.gainLossReview
-            ? userMessage.trim()
+        policy.interventionType == InterventionType.consequenceReview ||
+        policy.interventionType == InterventionType.gainLossReview;
+    final explicitThought =
+        behaviorType
+            // A behavior technique examines a behavior the user described;
+            // otherwise it asks about behavior around the worry (the
+            // materializer words the question by the target's shape).
+            ? (InterventionEligibilityPredicates.looksLikeBehavior(userMessage)
+                ? userMessage.trim()
+                : roundWorry ?? userMessage.trim())
+            : policy.interventionType == InterventionType.balancedThought
+            ? roundWorry ?? UserThoughtExtractor.thoughtShaped(userMessage)
             : policy.interventionType == InterventionType.maintenanceReview
             ? (InterventionEligibilityPredicates.looksLikeMaintenance(
                 userMessage,

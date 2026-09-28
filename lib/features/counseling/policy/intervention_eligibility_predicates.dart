@@ -54,6 +54,15 @@ class InterventionEligibilityPredicates {
     return RegExp(r'(피하|회피|미루|빠지|않고|안\s|줄이|원고만|벗어나)').hasMatch(text);
   }
 
+  /// Phase 13.6 (Q2): does the message describe something the user does
+  /// (a behavior a behavior-type technique can examine), rather than a
+  /// feeling or a thought?
+  static bool looksLikeBehavior(String text) {
+    return looksLikeAvoidance(text) ||
+        RegExp(r'(게\s*돼|게\s*되|하고\s*있|했어요|했더니|해\s*버리|확인하|찾아보|연습하|준비하)')
+            .hasMatch(text);
+  }
+
   /// Mirrors the legacy `_looksLikeMaintenance`: does the user's message
   /// describe an ongoing practice with a felt benefit (maintenanceReview
   /// eligibility)?

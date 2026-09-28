@@ -18,13 +18,13 @@ import 'package:gad_app_team/features/counseling/intervention_registry.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
-// Q1: every session's first reflect->intervention (structural: the turn
-// that completes reflect still asks the next reflective question).
-const _frozenQ1 = 56;
-// Q2: behavior-type techniques (weeks 5–7) quote the current message as
-// "the behavior" whatever it is; balanced thought (week 4) falls back to the
-// previous user turn when the current one isn't thought-shaped.
-const _frozenQ2 = 36;
+// Q1: was 56 (every session) before the fix: the answer to reflect's last
+// question reached intervention unacknowledged. Now acknowledged.
+const _frozenQ1 = 0;
+// Q2: was 36 before the fix: behavior techniques quoted any message as "the
+// behavior", balanced thought quoted the evidence answer as "the thought".
+// Now the target is the reflect round's worry (or a described behavior).
+const _frozenQ2 = 0;
 
 const _registry = ApprovedInterventionRegistry();
 const _policy = CounselingStatePolicy();
@@ -81,8 +81,11 @@ const _continueTopic = [
 
 const _ordinaryEntry = '그래도 긴장되는 건 어쩔 수 없네요';
 
-/// Entry message that satisfies the current week's gate.
+/// Entry message that satisfies the current week's gate. Weeks 5–6 have no
+/// gate; there it describes a behavior, so the technique examines that
+/// behavior instead of asking about behavior around the worry.
 String _gatedEntry(int week) => switch (week) {
+  5 || 6 => '그래서 발표 자료만 계속 확인하게 돼요',
   7 => '그래서 발표 연습을 자꾸 미루고 피하게 돼요',
   8 => '요즘 호흡 연습을 계속했더니 도움이 됐어요',
   _ => _ordinaryEntry,
@@ -92,10 +95,21 @@ String _gatedEntry(int week) => switch (week) {
 /// or a message shaped for a gated technique.
 final _appropriateTargets = {
   _opening[2],
+  _continueTopic[0],
   _continueTopic[1],
+  _gatedEntry(5),
   _gatedEntry(7),
   _gatedEntry(8),
 };
+
+/// Openings with which intervention acknowledges the answer to reflect's
+/// last question (Q1 fix).
+const _reflectAnswerAcks = [
+  '그 걱정이 어디서 오는지 조금 더 알 것 같아요',
+  '말씀해 주신 생각도 함께 담아 둘게요',
+  '말씀해 주신 느낌도 함께 담아 둘게요',
+  '바로 떠오르지 않아도 괜찮아요',
+];
 
 const _techniqueAnswer = '긴장해도 준비한 만큼은 할 수 있을 것 같아요';
 
@@ -146,7 +160,7 @@ class _Metrics {
     'sessionNotFinalized': 0,
   };
 
-  /// Found in the 13.6 traces; reported and frozen, not gated (see
+  /// Found in the 13.6 traces and fixed in 13.6b; not in the gate list (see
   /// docs/counseling/phase13_session_flow.md, Q1/Q2).
   final quality = <String, int>{
     // Q1: reflect's last question is sent in the turn that completes
@@ -298,7 +312,8 @@ void _score(_Run run, _Metrics m) {
         s.reply.text.trim().endsWith('?') &&
         i + 1 < steps.length &&
         (steps[i + 1].reply.interventionStep == InterventionStep.prompt ||
-            steps[i + 1].reply.interventionStep == InterventionStep.noEligible)) {
+            steps[i + 1].reply.interventionStep == InterventionStep.noEligible) &&
+        !_reflectAnswerAcks.any(steps[i + 1].reply.text.startsWith)) {
       m.quality.update('reflectQuestionDroppedAtTransition', (v) => v + 1);
     }
     if (s.reply.interventionStep == InterventionStep.prompt) {
@@ -458,9 +473,9 @@ void main() {
     }
   });
 
-  // Frozen at their 13.6 values. Both must change deliberately, together
-  // with the Q1/Q2 notes in docs/counseling/phase13_session_flow.md.
-  group('frozen quality findings (not gated)', () {
+  // Found in 13.6, fixed in 13.6b. Kept at 0; see Q1/Q2 in
+  // docs/counseling/phase13_session_flow.md.
+  group('quality findings Q1/Q2 (fixed)', () {
     test('Q1 reflect question dropped at reflect->intervention', () {
       expect(metrics.quality['reflectQuestionDroppedAtTransition'], _frozenQ1);
     });
@@ -518,6 +533,44 @@ void main() {
       for (final w in [7, 8]) {
         final r = find(_Family.currentWeek, w);
         expect(firstTechnique(r), _registry.policyForWeek(w)!.requiredId, reason: r.id);
+      }
+    });
+
+    CounselingMessage promptOf(_Run r) => r.steps
+        .firstWhere((s) => s.reply.interventionStep == InterventionStep.prompt)
+        .reply;
+
+    test('Q2: ordinary worry — the technique is about the worry thought', () {
+      for (var w = 4; w <= 8; w++) {
+        final r = find(_Family.normalWorry, w);
+        expect(promptOf(r).text, contains('“${_opening[2]}”'), reason: r.id);
+      }
+      // Behavior techniques ask about behavior around the worry.
+      expect(promptOf(find(_Family.normalWorry, 5)).text, contains('그 걱정이 들 때 보통 어떻게 하시는지'));
+      expect(promptOf(find(_Family.normalWorry, 6)).text, contains('그 걱정이 들 때 주로 하게 되는 행동'));
+    });
+
+    test('Q2: a described behavior is what the behavior technique examines', () {
+      for (final w in [5, 6]) {
+        final r = find(_Family.currentWeek, w);
+        final text = promptOf(r).text;
+        expect(text, contains('“${_gatedEntry(w)}”'), reason: r.id);
+        expect(text.contains('그 걱정이 들 때'), isFalse, reason: r.id);
+      }
+    });
+
+    test('Q1: intervention opens by acknowledging the reflect answer, without quoting it', () {
+      for (final r in runs) {
+        final i = r.steps.indexWhere(
+          (s) => s.before == CounselingState.intervention,
+        );
+        final reply = r.steps[i].reply;
+        expect(_reflectAnswerAcks.any(reply.text.startsWith), isTrue, reason: '${r.id}: ${reply.text}');
+        // Quoting is right only when the answer is itself the technique's
+        // target (a described behavior or practice).
+        if (!_appropriateTargets.contains(r.steps[i].user)) {
+          expect(reply.text.contains('“${r.steps[i].user}”'), isFalse, reason: r.id);
+        }
       }
     });
 

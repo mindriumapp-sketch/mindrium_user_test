@@ -97,12 +97,15 @@ class TurnPlanAdapter {
           return materializer.interventionNoEligible(
             decision,
             recentMessages: request.recentMessages,
+            userMessage: request.userMessage,
           );
         }
         return materializer.intervention(
           decision,
           currentWeek: request.currentWeek,
           knowledge: request.knowledge,
+          recentMessages: request.recentMessages,
+          userMessage: request.userMessage,
         );
 
       case CounselingState.closing:

@@ -134,6 +134,34 @@ class UserThoughtExtractor {
     return reply?.interactionRepairReason != null;
   }
 
+  /// Phase 13.6 (Q2): the worry this reflect round was about — the user
+  /// message the round's first reflective-goal question answered. A round
+  /// starts at the session start or at the last closing continuation.
+  /// Later answers (evidence, another view) are about that worry, not a new
+  /// one, so they must not become an intervention's target. Null when no
+  /// goal question has been asked. Pass [semanticContent] so repair turns
+  /// are skipped.
+  static String? roundWorryThought(List<CounselingMessage> messages) {
+    var start = 0;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      if (!messages[i].isUser && messages[i].closingStep == ClosingStep.continued) {
+        start = i + 1;
+        break;
+      }
+    }
+    for (var i = start; i < messages.length; i++) {
+      final message = messages[i];
+      if (message.isUser || message.dialogueGoalId == null) continue;
+      for (var j = i - 1; j >= start; j--) {
+        if (messages[j].isUser && messages[j].text.trim().isNotEmpty) {
+          return messages[j].text.trim();
+        }
+      }
+      return null;
+    }
+    return null;
+  }
+
   static String? latestUserMessage(List<CounselingMessage> messages) {
     for (final message in messages.reversed) {
       if (message.isUser && message.text.trim().isNotEmpty) {

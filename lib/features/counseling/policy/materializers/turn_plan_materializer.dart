@@ -4,6 +4,7 @@ import '../../intervention_registry.dart';
 import '../../surface_variation.dart';
 import '../../turn_plan.dart';
 import '../counselor_decision.dart';
+import '../intervention_eligibility_predicates.dart';
 import 'realization_spec_builder.dart';
 
 /// Phase 8.4B: shared *surface realization* for all five counseling states.
@@ -550,6 +551,8 @@ class TurnPlanMaterializer {
     CounselorDecision decision, {
     required int currentWeek,
     required List<CbtKnowledgeItem> knowledge,
+    List<CounselingMessage> recentMessages = const [],
+    String userMessage = '',
   }) {
     // Phase 13.2: techniques are cumulative, so the policy is the one that
     // approves the selected item, which may be from an earlier week.
@@ -564,7 +567,13 @@ class TurnPlanMaterializer {
     final target = _requireText(decision.reflectionTarget, 'intervention');
 
     final cleanTarget = target.replaceFirst(RegExp(r'[.!?]+$'), '');
-    final question = _questionFor(policy.interventionType);
+    // Phase 13.6 (Q2): a behavior technique whose target is a worry rather
+    // than a described behavior asks about behavior around that worry.
+    final aboutWorry = _isBehaviorType(policy.interventionType) &&
+        !InterventionEligibilityPredicates.looksLikeBehavior(target);
+    final question = aboutWorry
+        ? _worryAnchoredQuestionFor(policy.interventionType)
+        : _questionFor(policy.interventionType);
     final plan = InterventionPlan(
       type: policy.interventionType,
       target: target,
@@ -580,7 +589,13 @@ class TurnPlanMaterializer {
     return CounselingTurnPlan(
       reflectionTarget: target,
       questionGoal: _goalFor(policy.interventionType),
-      reflectionSentence: _reflectionFor(policy.interventionType, cleanTarget),
+      reflectionSentence: _withReflectAnswerAck(
+        aboutWorry
+            ? '“$cleanTarget”라는 걱정과 관련된 행동을 함께 살펴볼게요.'
+            : _reflectionFor(policy.interventionType, cleanTarget),
+        recentMessages: recentMessages,
+        userMessage: userMessage,
+      ),
       questionSentence: question,
       forbidden: interventionForbidden,
       constraints: const [
@@ -696,6 +711,7 @@ class TurnPlanMaterializer {
   CounselingTurnPlan interventionNoEligible(
     CounselorDecision decision, {
     required List<CounselingMessage> recentMessages,
+    String userMessage = '',
   }) {
     final target = switch (decision.reflectionTarget) {
       ReflectionTargetText(:final value) => value,
@@ -704,7 +720,7 @@ class TurnPlanMaterializer {
     return CounselingTurnPlan(
       reflectionTarget: target,
       questionGoal: '새로운 방법을 제안하지 않고 오늘 나눈 이야기를 짧게 정리한다.',
-      reflectionSentence: surfaceVariation.select(
+      reflectionSentence: _withReflectAnswerAck(surfaceVariation.select(
         candidates: const [
           '지금은 새로운 방법을 더 제안하기보다, 오늘 이야기해 주신 걱정을 짧게 정리해 볼게요. 마음에 걸리는 부분을 차분히 살펴본 것만으로도 의미가 있어요.',
           '오늘은 새로운 방법보다, 지금까지 나눈 이야기를 정리하는 데 집중해 볼게요. 걱정되는 마음을 이렇게 말로 꺼내 보신 것도 중요한 한 걸음이에요.',
@@ -712,7 +728,7 @@ class TurnPlanMaterializer {
         recentMessages: recentMessages,
         seed: target,
         repetitionMarkers: const ['짧게 정리해 볼게요', '정리하는 데 집중해 볼게요'],
-      ),
+      ), recentMessages: recentMessages, userMessage: userMessage),
       questionSentence: closingProposalQuestion,
       forbidden: noEligibleForbidden,
       constraints: const [
@@ -770,6 +786,59 @@ class TurnPlanMaterializer {
       planningStatus: TurnPlanningStatus.unavailable,
       realizationSpec: RealizationSpecBuilder.interventionUnavailable(target),
     );
+  }
+
+  bool _isBehaviorType(InterventionType type) =>
+      type == InterventionType.behaviorPatternReview ||
+      type == InterventionType.consequenceReview ||
+      type == InterventionType.gainLossReview;
+
+  String _worryAnchoredQuestionFor(InterventionType type) {
+    switch (type) {
+      case InterventionType.behaviorPatternReview:
+        return '그 걱정이 들 때 보통 어떻게 하시는지 떠올려 보면, 피하는 쪽과 마주하는 쪽 중 어디에 더 가까운가요?';
+      case InterventionType.consequenceReview:
+        return '그 걱정이 들 때 주로 하게 되는 행동은 당장 불안을 얼마나 줄여주고, 시간이 지난 뒤에도 도움이 된다고 느끼시나요?';
+      case InterventionType.gainLossReview:
+        return '그 걱정 때문에 피하게 되는 일이 있다면, 피했을 때 당장 얻을 수 있는 좋은 점은 무엇인가요?';
+      case InterventionType.balancedThought:
+      case InterventionType.valueBasedChoice:
+      case InterventionType.maintenanceReview:
+        return _questionFor(type);
+    }
+  }
+
+  /// Phase 13.6 (Q1): the turn that completes reflect still asks a
+  /// reflective question, and the answer arrives here, in intervention.
+  /// Acknowledge it (without quoting) before moving on, so it isn't
+  /// silently dropped. The wording holds whatever the answer says, since
+  /// its content isn't judged here. Only when reflect's goal question is the one being
+  /// answered; repair turns in between are skipped.
+  String _withReflectAnswerAck(
+    String sentence, {
+    required List<CounselingMessage> recentMessages,
+    required String userMessage,
+  }) {
+    CounselingMessage? previous;
+    for (final m in recentMessages.reversed) {
+      if (m.isUser || m.interactionRepairReason != null) continue;
+      previous = m;
+      break;
+    }
+    final goalId = previous?.dialogueGoalId;
+    final answer = userMessage.trim();
+    if (goalId == null || answer.isEmpty || _wantsToStop.hasMatch(answer)) {
+      return sentence;
+    }
+    final ack = _lowInfoAnswer.hasMatch(answer)
+        ? '바로 떠오르지 않아도 괜찮아요.'
+        : switch (ReflectQuestionGoal.values.asNameMap()[goalId]) {
+            ReflectQuestionGoal.evidence => '그 걱정이 어디서 오는지 조금 더 알 것 같아요.',
+            ReflectQuestionGoal.alternative => '말씀해 주신 생각도 함께 담아 둘게요.',
+            ReflectQuestionGoal.probability => '말씀해 주신 느낌도 함께 담아 둘게요.',
+            null => null,
+          };
+    return ack == null ? sentence : '$ack $sentence';
   }
 
   String _questionFor(InterventionType type) {

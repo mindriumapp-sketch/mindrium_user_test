@@ -15,7 +15,7 @@ is historical record.
 - [`phase11_3_goal_exhaustion_recovery.md`](phase11_3_goal_exhaustion_recovery.md) — goal exhaustion recovery (replaces `repeatLast`), complete.
 - [`phase11_4_selection_regression.md`](phase11_4_selection_regression.md) — frozen-scenario selection regression, all four metrics at 0. Phase 11 closed.
 - [`phase12_conversation_robustness.md`](phase12_conversation_robustness.md) — Phase 12 full record: multi-turn evaluation, device dogfood (6 sessions), failure corpus and fixes.
-- [`phase13_session_flow.md`](phase13_session_flow.md) — **current phase**: Phase 13.2–13.6. Cumulative interventions, completion-driven progression, closing handshake, week × multi-turn gate (all 0), frozen findings Q1/Q2.
+- [`phase13_session_flow.md`](phase13_session_flow.md) — **current phase**: Phase 13.2–13.6. Cumulative interventions, completion-driven progression, closing handshake, week × multi-turn gate (all 0), findings Q1/Q2 fixed (13.6b).
 - [`phase13_1_progression_audit.md`](phase13_1_progression_audit.md) — Phase 13.1 audit: N1/N7 root causes, week 1–8 measurements, corpus audit.
 - [`phase12_baseline_v1_1.md`](phase12_baseline_v1_1.md) — **latest baseline**: `counseling-v1.1-selection-repair` (selection repair validated; N1/N7 are open critical blockers → Phase 13).
 - [`adaptive_dialogue_policy.md`](adaptive_dialogue_policy.md) — forward-looking design for expanding GPT's role beyond wording-only.
