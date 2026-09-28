@@ -22,6 +22,9 @@ void main() {
 
   const counselingContent = [
     '수업 과제도 해야하고 공모전 준비, 논문 작성, 융합연구 미팅준비 등 할게 진짜 많아', // dogfood s4
+    '다른 관점에서 어떻게 봐야할지 모르겠어', // dogfood s5: usage pattern "어떻게 … 봐" without an app term
+    '이 상황을 어떻게 해야 할지 모르겠어',
+    '어디서부터 해야 할지 모르겠어요',
     '내일 미팅인데 준비를 하나도 못했어',
     '오늘 할 일을 하나도 못 끝냈어',
   ];

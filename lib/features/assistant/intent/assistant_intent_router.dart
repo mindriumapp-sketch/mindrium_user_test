@@ -91,6 +91,13 @@ class DeterministicAssistantIntentRouter implements AssistantIntentRouter {
     return false;
   }
 
+  static final RegExp _appTerm = RegExp(
+    r'(앱|어플|기능|화면|메뉴|설정|알림|위젯|리포트|보관함|기록|탭|버튼|mindrium|마인드리움)',
+    caseSensitive: false,
+  );
+
+  bool _mentionsAppTerm(String text) => _appTerm.hasMatch(text);
+
   bool _hasUsagePatternSignal(String text) =>
       _appGuideUsagePatterns.any((pattern) => pattern.hasMatch(text));
 
@@ -125,8 +132,12 @@ class DeterministicAssistantIntentRouter implements AssistantIntentRouter {
     // dogfood sent "…논문 작성… 할게 진짜 많아" to the app guide because
     // "작성" matched a feature name, cutting the counseling turn short.
     final usageQuestion = _hasUsagePatternSignal(userMessage);
+    // Mid-session the usage pattern must also name something in the app:
+    // "다른 관점에서 어떻게 봐야할지 모르겠어" matches "어떻게 … 봐" but is
+    // about the user's thinking, not the app (dogfood session 5).
     final needsAppGuidance = counselingInProgress
-        ? usageQuestion
+        ? usageQuestion &&
+            (_mentionsAppTerm(userMessage) || _hasEntitySignal(userMessage))
         : usageQuestion || _hasEntitySignal(userMessage);
 
     if (!needsCounseling && !needsAppGuidance) {
