@@ -238,6 +238,53 @@ realization identical to the previous assistant message.
 1. 아까 말했잖아 지금 준비를 못해서 불안하다고 (repeatedQuestion, mixed
    with a content restatement, missed)
 
+### Session 2 (week 4, build 7c202cc, Remote Realizer on)
+
+| # | Input | State | Device reply | Deterministic replay |
+|---|---|---|---|---|
+| 1 | 다음주에 여행이 계획 되어있는데 같이가는 친구들이랑 어색해 | checkIn | ok | same |
+| 2 | 6 | explore | ok ("가장 걱정되는 순간은?") | same |
+| 3 | 재밌게 놀아야하는데 어색해서 서로 조금 불편하게 놀까봐 걱정돼 | reflect | **N2**: turn 2's explore question again | clarify: "가장 걸리는 부분을 조금 더 구체적으로…" |
+| 4 | 서로 불편할까봐 걱정된다고 | reflect | **N2**: turn 3's reply repeated **verbatim** | clarify: "어떤 생각이 스쳐 지나갔는지…" |
+| 5 | 방금 말했잖아 | intervention | **F2 miss**: balanced-thought CBT delivered over the complaint | same |
+
+**N2 upgraded: now the trigger of the complaints.** In both sessions the
+user complained right after the GPT realization repeated the previous
+sentence. The deterministic plan wanted a different question every time
+(evidence → alternative in session 1, clarify → clarify-2 in session 2).
+The realized text ignored `questionSentence` and copied the previous
+assistant turn, and realization validation accepted it. That's 3
+verbatim or near-verbatim repeats in 2 sessions. The Realizer is frozen
+in Phase 12, but this is the evidence the freeze asks for before any
+change. Candidate (needs approval): the realization validator rejects a
+reply whose question matches the previous assistant message, and falls
+back to `SemanticDeterministicResponseRealizer`.
+
+**N3 — reflect never leaves clarify for "~할까봐 걱정돼" (class C, target
+extraction).** "…서로 조금 불편하게 놀까봐 걱정돼" contains an explicit
+feared outcome, but `UserThoughtExtractor.evaluativeThought` /
+`thoughtShaped` don't treat it as a thought. Both reflect turns went to
+the clarify branch, so no evidence or alternative goal was ever asked
+before the budget moved to intervention. This predates Phase 11 and is
+recorded only.
+
+**F3:** not exercised. No complaint was detected, so there was nothing to
+exclude. The intervention target ("서로 불편할까봐 걱정된다고") is a
+content restatement, which is fine.
+
+**F2 corpus (real, dogfood):**
+2. 서로 불편할까봐 걱정된다고 (implicit repeatedQuestion: the user
+   restates their own words with the quotative "~다고" meaning "I just
+   told you". Missed. This one is hard, since the same form can also be
+   plain content.)
+3. 방금 말했잖아 (explicit repeatedQuestion, missed; the pattern only has
+   "방금도 + 질문/얘기 + 했")
+
+Pattern so far (3/3 real items): users refer to **their own previous
+statement** ("아까 말했잖아", "방금 말했잖아", "~다고"), not to the
+counselor's question. The 11.2 detector only models "you asked the same
+question again", which is the core structural gap for 12.3B.
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
