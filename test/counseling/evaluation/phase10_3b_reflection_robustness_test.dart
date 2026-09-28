@@ -112,7 +112,7 @@ void main() {
   );
 
   test(
-    'ordinary declarative single-clause target is unaffected by the 10.3B gate',
+    'Phase 12.3 (N5): declarative single-clause target gets the generic acknowledgment',
     () async {
       final plan = materializer.checkIn(
         const CounselorDecision(
@@ -121,9 +121,11 @@ void main() {
         ),
       );
       final semantic = await _realize(plan, semanticRealizer);
-      // Still uses the specific (non-fallback) template — content-bearing,
-      // not swept into the generic acknowledgment.
-      expect(semantic.contains('면접이 다가오니까 계속 초조해요'), isTrue);
+      // Reversed from the original 10.3B decision. Slotting a clause into
+      // "X 부분이 마음에 걸리시는" is ungrammatical; device dogfood produced
+      // exactly that ("미팅준비가 가장 마음에 걸려 부분이…").
+      expect(semantic.contains('면접이 다가오니까 계속 초조해요'), isFalse);
+      expect(semantic.contains('초조해요 부분이'), isFalse);
     },
   );
 

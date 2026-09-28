@@ -201,6 +201,16 @@ class SemanticDeterministicResponseRealizer implements ResponseRealizer {
         shape == ReflectionTargetShape.questionSentence) {
       return _groundedAcknowledgmentFallback(recentMessages, seed: clean);
     }
+    // Phase 12.3 (N5): the templates below put the target in a noun
+    // position ("X 부분이…", "X 때문에…"), which only works for a noun
+    // phrase. Device dogfood produced "미팅준비가 가장 마음에 걸려 부분이
+    // 마음에 걸리시는 것 같아요" from a verb-final clause. Declarative and
+    // predicate-final targets now get the generic acknowledgment, which also
+    // avoids parroting the user's sentence back verbatim.
+    if (shape == ReflectionTargetShape.declarativeSentence ||
+        _endsWithPredicate(clean)) {
+      return _groundedAcknowledgmentFallback(recentMessages, seed: clean);
+    }
 
     return surfaceVariation.select(
       candidates: [
@@ -217,6 +227,17 @@ class SemanticDeterministicResponseRealizer implements ResponseRealizer {
       ],
     );
   }
+
+  /// Casual verb/adjective endings ("걸려", "어색해", "있어", "것 같아",
+  /// "7점이요"). Errs toward the generic acknowledgment: a noun that happens
+  /// to end in one of these syllables ("여행지") just loses specificity,
+  /// never grammar.
+  static final RegExp _predicateFinal = RegExp(
+    r'(어|아|해|돼|워|려|야|지|네|요|다|죠|까|래|게|고|서|데|니|냐|봐|줘|와|겠)$',
+  );
+
+  static bool _endsWithPredicate(String clean) =>
+      _predicateFinal.hasMatch(clean.trim());
 
   /// Phase 10.3B: used whenever the target can't be safely suffixed as a
   /// noun phrase (empty, multi-sentence, or question-shaped). Deliberately

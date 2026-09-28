@@ -53,7 +53,11 @@ void main() {
     final plan = materializer.checkIn(
       const CounselorDecision(
         selectedAction: DialogueAct.explore,
-        reflectionTarget: ReflectionTarget.text('오늘은 좀 힘들었어요'),
+        // Phase 12.3 (N5): a noun-phrase target. A verb-final clause
+        // ("오늘은 좀 힘들었어요") can't sit in the noun slot of these
+        // templates and now gets the generic acknowledgment instead — see
+        // test/counseling/semantic_fallback_clause_target_test.dart.
+        reflectionTarget: ReflectionTarget.text('오늘 힘들었던 일'),
       ),
     );
     final legacy = await _realize(plan, legacyRealizer);
@@ -61,7 +65,7 @@ void main() {
 
     expect(legacy.contains('“'), isTrue, reason: 'legacy path still quotes — sanity check');
     expect(semantic.contains('“'), isFalse);
-    expect(semantic.contains('오늘은 좀 힘들었어요'), isTrue,
+    expect(semantic.contains('오늘 힘들었던 일'), isTrue,
         reason: 'target content must be preserved, only the quoting removed');
   });
 
