@@ -95,6 +95,10 @@ class CounselorDecision {
   /// every reflect decision made while a goal is still available.
   final GoalExhaustionRecovery? goalExhaustionRecovery;
 
+  /// Phase 13.5: closing state only — which step of the closing handshake
+  /// this turn is (finalize, or the one allowed continuation).
+  final ClosingStep? closingStep;
+
   const CounselorDecision({
     required this.selectedAction,
     this.selectedGoalId,
@@ -103,5 +107,6 @@ class CounselorDecision {
     this.usedFactIds = const [],
     this.isUnavailable = false,
     this.goalExhaustionRecovery,
+    this.closingStep,
   });
 }

@@ -88,16 +88,36 @@ void main() {
     final provider = build(api);
     await provider.initialize();
 
+    // Phase 13.5: a session is complete when the closing handshake is
+    // finalized; the proposal is answered with "네".
     var guard = 0;
-    while (provider.state != CounselingState.closing && guard < 12) {
-      await provider.sendMessage('사람들이 저를 무능하게 볼 것 같아요. $guard');
+    while (!provider.isSessionFinalized && guard < 14) {
+      await provider.sendMessage(
+        provider.state == CounselingState.closing
+            ? '네'
+            : '사람들이 저를 무능하게 볼 것 같아요. $guard',
+      );
       guard++;
     }
     return provider;
   }
 
   group('정상 종료 저장', () {
-    test('closing 최초 진입에 completed 로 저장한다', () async {
+    test('Phase 13.5: entering closing (proposal) does not save completed yet', () async {
+      final api = _FakeSessionsApi();
+      final provider = build(api);
+      await provider.initialize();
+      var guard = 0;
+      while (provider.state != CounselingState.closing && guard < 12) {
+        await provider.sendMessage('사람들이 저를 무능하게 볼 것 같아요. $guard');
+        guard++;
+      }
+      expect(provider.state, CounselingState.closing);
+      expect(provider.isSessionFinalized, isFalse);
+      expect(api.saved.where((s) => s['completion_status'] == 'completed'), isEmpty);
+    });
+
+    test('closing 확정(finalized) 시점에 completed 로 저장한다', () async {
       final api = _FakeSessionsApi();
       final provider = await runToClosing(api);
 
@@ -114,7 +134,7 @@ void main() {
       await provider.sendMessage('네 알겠습니다.');
       await provider.sendMessage('고맙습니다.');
 
-      // "closing 인 매 턴"이 아니라 "closing 으로 넘어가는 순간"이 기준이다.
+      // Saved once, when the handshake is finalized, not on every closing turn.
       expect(api.saved, hasLength(1));
     });
 

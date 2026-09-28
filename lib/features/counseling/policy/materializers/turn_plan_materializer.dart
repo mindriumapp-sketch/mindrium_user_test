@@ -116,21 +116,48 @@ class TurnPlanMaterializer {
     '새로운 질문이나 과제를 제시하지 않는다.',
   ];
 
+  /// Phase 13.5: the one controlled continuation after a closing proposal.
+  /// No question mark (it's an invitation, not a new probe), and it reopens
+  /// reflect via [StageProgress.reopen].
+  CounselingTurnPlan closingContinuation(CounselorDecision decision) {
+    return CounselingTurnPlan(
+      reflectionTarget: '',
+      questionGoal: '사용자가 더 이야기하고 싶어 하므로 한 번 더 이어간다.',
+      reflectionSentence: '좋아요, 조금 더 이야기해 볼게요. 지금 가장 마음에 걸리는 부분을 편하게 말씀해 주세요.',
+      questionSentence: '',
+      forbidden: closingForbidden,
+      constraints: const [
+        TurnConstraint.requireReflection,
+        TurnConstraint.requireNoQuestion,
+        TurnConstraint.forbidAdvice,
+        TurnConstraint.forbidNewUserFacts,
+        TurnConstraint.forbidNewIntervention,
+      ],
+      requiredAct: DialogueAct.closing,
+      userContextIds: const [],
+      cbtContextIds: const [],
+      closingStep: ClosingStep.continued,
+      stageProgress: StageProgress.reopen,
+    );
+  }
+
   /// Mirrors `DeterministicClosingTurnPlanner.plan`'s realization.
   CounselingTurnPlan closing(CounselorDecision decision) {
+    if (decision.closingStep == ClosingStep.continued) {
+      return closingContinuation(decision);
+    }
     final target = switch (decision.reflectionTarget!) {
       ReflectionTargetText(:final value) => value,
       ReflectionTargetNone() => null,
     };
-    final reflection =
-        target == null
-            ? '오늘 나눈 내용을 여기까지 정리하겠습니다.'
-            : '오늘은 “${target.replaceFirst(RegExp(r'[.!?]+$'), '')}”라는 이야기를 나눴습니다.';
-
+    // Phase 13.5: the final closing no longer quotes the user's words back
+    // (dogfood session 6 closed on "오늘은 “왜 벌써 상담을 끝내”라는 이야기를
+    // 나눴습니다"). The target stays in the plan and spec for grounding only.
     return CounselingTurnPlan(
       reflectionTarget: target ?? '',
       questionGoal: '새로운 내용을 추가하지 않고 현재 대화를 마무리한다.',
-      reflectionSentence: '$reflection 여기까지 이야기해 주셔서 감사합니다.',
+      reflectionSentence:
+          '오늘 이야기 나눠 주셔서 감사합니다. 오늘 함께 살펴본 생각을 필요할 때 다시 떠올려 보세요.',
       questionSentence: '',
       forbidden: closingForbidden,
       constraints: const [
@@ -148,6 +175,7 @@ class TurnPlanMaterializer {
         decision: decision,
         target: target,
       ),
+      closingStep: ClosingStep.finalized,
     );
   }
 
@@ -311,6 +339,8 @@ class TurnPlanMaterializer {
         userContextIds: const [],
         cbtContextIds: const [],
         realizationSpec: RealizationSpecBuilder.reflectClarify(decision),
+        // Phase 13.4: no usable thought yet, so reflect isn't done.
+        stageProgress: StageProgress.inProgress,
       );
     }
 
@@ -346,6 +376,12 @@ class TurnPlanMaterializer {
         decision: decision,
         goal: goal,
       ),
+      // Phase 13.4: goals are asked in order, so any goal after `evidence`
+      // means the user has already answered at least one reflective goal —
+      // enough material for intervention. The first goal question alone
+      // isn't.
+      stageProgress:
+          isFollowUp ? StageProgress.complete : StageProgress.inProgress,
     );
   }
 
@@ -408,6 +444,7 @@ class TurnPlanMaterializer {
       userContextIds: decision.usedFactIds,
       cbtContextIds: const [],
       goalExhaustionRecovery: decision.goalExhaustionRecovery,
+      stageProgress: StageProgress.complete,
     );
   }
 
@@ -558,6 +595,9 @@ class TurnPlanMaterializer {
       userContextIds: decision.usedFactIds,
       cbtContextIds: [selected.id],
       interventionPlan: plan,
+      // Phase 13.3: the question was asked; the answer is still pending.
+      interventionStep: InterventionStep.prompt,
+      stageProgress: StageProgress.inProgress,
       realizationSpec: RealizationSpecBuilder.intervention(
         decision: decision,
         type: policy.interventionType,
@@ -570,8 +610,83 @@ class TurnPlanMaterializer {
   static const List<String> noEligibleForbidden = [
     '새로운 CBT 기법을 제안하지 않는다.',
     '새로운 사용자 사실을 만들지 않는다.',
-    '질문하지 않는다.',
+    '새로운 상담 질문을 하지 않는다(마무리 제안만).',
   ];
+
+  /// Phase 13.5: the closing proposal every intervention completion ends on.
+  static const String closingProposalQuestion =
+      '오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?';
+
+  static final RegExp _lowInfoAnswer = RegExp(
+    r'^(몰라|모르겠|잘\s*모르|글쎄|그냥|음+|네|응|아니)',
+  );
+
+  /// An answer that asks to stop rather than attempting the technique
+  /// ("오늘은 여기까지 할게요"). Crediting it with a technique outcome would put
+  /// words in the user's mouth.
+  static final RegExp _wantsToStop = RegExp(r'(여기까지|그만|마칠|마무리|끝낼|다음에)');
+
+  /// Phase 13.3: integrate the user's answer to the technique's question,
+  /// then propose closing. The answer is acknowledged in the technique's own
+  /// terms, never quoted verbatim, and no new technique or fact is added.
+  /// A low-information answer ("모르겠어") gets a no-pressure acknowledgment.
+  CounselingTurnPlan interventionIntegration(
+    CounselorDecision decision, {
+    required int currentWeek,
+    required List<CbtKnowledgeItem> knowledge,
+    required List<CounselingMessage> recentMessages,
+  }) {
+    final selected = knowledge.firstWhere(
+      (item) => item.id == decision.selectedInterventionId,
+    );
+    final policy =
+        registry.policyForItemId(selected.id) ??
+        registry.policyForWeek(currentWeek)!;
+    final answer = _requireText(decision.reflectionTarget, 'interventionIntegration');
+    final lowInfo =
+        _lowInfoAnswer.hasMatch(answer.trim()) || _wantsToStop.hasMatch(answer);
+    final reflection =
+        lowInfo
+            ? '바로 떠오르지 않아도 괜찮아요. 이렇게 한 번 생각해 보려고 한 것만으로도 충분히 의미가 있어요.'
+            : _integrationFor(policy.interventionType);
+    return CounselingTurnPlan(
+      reflectionTarget: answer,
+      questionGoal: '사용자의 답을 기법의 관점에서 짧게 인정하고 마무리를 제안한다.',
+      reflectionSentence: reflection,
+      questionSentence: closingProposalQuestion,
+      forbidden: interventionForbidden,
+      constraints: const [
+        TurnConstraint.requireReflection,
+        TurnConstraint.requireExactlyOneQuestion,
+        TurnConstraint.forbidAdvice,
+        TurnConstraint.forbidNewUserFacts,
+        TurnConstraint.forbidNewIntervention,
+      ],
+      requiredAct: DialogueAct.reflect,
+      userContextIds: const [],
+      cbtContextIds: [selected.id],
+      interventionStep: InterventionStep.integration,
+      stageProgress: StageProgress.complete,
+      closingStep: ClosingStep.proposed,
+    );
+  }
+
+  String _integrationFor(InterventionType type) {
+    switch (type) {
+      case InterventionType.balancedThought:
+        return '그렇게 보면 걱정되는 마음은 남아 있어도, 결과를 조금 더 현실적으로 바라볼 수 있겠네요.';
+      case InterventionType.behaviorPatternReview:
+        return '그 행동이 불안과 어떻게 이어져 있는지 스스로 살펴보신 것 자체가 중요한 관찰이에요.';
+      case InterventionType.consequenceReview:
+        return '당장의 안도감과 시간이 지난 뒤의 영향을 나눠서 보신 것이 앞으로의 선택에 도움이 될 수 있겠어요.';
+      case InterventionType.gainLossReview:
+        return '그 행동이 당장 주는 것과 대신 잃게 하는 것을 함께 따져 보신 게 의미 있어요.';
+      case InterventionType.valueBasedChoice:
+        throw StateError('아직 승인되지 않은 intervention type: $type');
+      case InterventionType.maintenanceReview:
+        return '이어갈 때와 상황을 구체적으로 정해 두신 것이 꾸준히 해 나가는 데 도움이 될 거예요.';
+    }
+  }
 
   /// Phase 13.2: noEligibleIntervention — no approved technique fits this
   /// turn. A brief, generic wrap-up of what was discussed, with no question
@@ -598,11 +713,11 @@ class TurnPlanMaterializer {
         seed: target,
         repetitionMarkers: const ['짧게 정리해 볼게요', '정리하는 데 집중해 볼게요'],
       ),
-      questionSentence: '',
+      questionSentence: closingProposalQuestion,
       forbidden: noEligibleForbidden,
       constraints: const [
         TurnConstraint.requireReflection,
-        TurnConstraint.requireNoQuestion,
+        TurnConstraint.requireExactlyOneQuestion,
         TurnConstraint.forbidAdvice,
         TurnConstraint.forbidNewUserFacts,
         TurnConstraint.forbidNewIntervention,
@@ -610,6 +725,9 @@ class TurnPlanMaterializer {
       requiredAct: DialogueAct.summarize,
       userContextIds: const [],
       cbtContextIds: const [],
+      interventionStep: InterventionStep.noEligible,
+      stageProgress: StageProgress.complete,
+      closingStep: ClosingStep.proposed,
     );
   }
 

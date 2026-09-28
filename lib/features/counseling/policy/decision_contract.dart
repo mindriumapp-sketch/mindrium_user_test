@@ -129,6 +129,15 @@ DecisionRequirements decisionRequirementsFor({
       );
 
     case CounselingState.intervention:
+      if (selectedAction == DialogueAct.reflect) {
+        // Phase 13.3: integration of the user's answer to the technique's
+        // question. The same technique id and the answer text are required.
+        return const DecisionRequirements(
+          goalRequirement: GoalRequirement.forbidden,
+          reflectionTargetRequirement: ReflectionTargetRequirement.textRequired,
+          interventionRequired: true,
+        );
+      }
       if (selectedAction == DialogueAct.summarize) {
         // Phase 13.2: noEligibleIntervention. No technique is selected (the
         // boundary's eligibleInterventionIds is empty, so any id is already

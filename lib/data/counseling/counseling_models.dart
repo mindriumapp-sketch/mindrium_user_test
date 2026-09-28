@@ -213,6 +213,49 @@ enum GoalExhaustionRecovery {
   repeatLast,
 }
 
+/// Phase 13.3: what a planned turn contributes to finishing its stage.
+/// Read by `CounselingStatePolicy`, which advances on completion instead of
+/// a fixed turn count for stages that report it (reflect, intervention,
+/// closing). `null` means "no stage signal"; checkIn/explore keep their
+/// fixed budget, and repair turns don't count toward completion.
+enum StageProgress {
+  /// The stage's goal isn't met yet (e.g. the intervention question was just
+  /// asked). Advance only at the stage's maximum turns.
+  inProgress,
+
+  /// The stage's goal is met (e.g. the user's answer was integrated). May
+  /// advance once the stage's minimum turns are reached.
+  complete,
+
+  /// Closing only: the user wants to keep talking. One controlled return
+  /// to reflect.
+  reopen,
+}
+
+/// Phase 13.3: where an intervention turn sits in ask → answer → integrate.
+enum InterventionStep {
+  /// The technique's question was asked. Not complete: the answer is pending.
+  prompt,
+
+  /// The user's answer to the prompt was acknowledged and integrated.
+  integration,
+
+  /// No approved technique fits (Phase 13.2). A normal wrap-up.
+  noEligible,
+}
+
+/// Phase 13.5: the closing handshake.
+enum ClosingStep {
+  /// The session wrap-up was proposed; waiting for the user's answer.
+  proposed,
+
+  /// The user agreed (or the session had to end). The session is complete.
+  finalized,
+
+  /// The user wanted to keep talking. Used at most once per session.
+  continued,
+}
+
 /// 모델 출력을 어떤 경로로 읽어냈는지. 실제 모델 벤치에서 평가 지표가 된다.
 enum ParseStatus {
   /// 응답 전체가 그대로 JSON
@@ -285,6 +328,13 @@ class CounselingMessage {
   /// 파일에 둔다. 일반 상담 턴/goal이 아직 남아있는 턴에는 null이다.
   final GoalExhaustionRecovery? goalExhaustionRecovery;
 
+  /// Phase 13.3: this assistant turn's place in the intervention
+  /// ask → answer → integrate sequence, if it was an intervention turn.
+  final InterventionStep? interventionStep;
+
+  /// Phase 13.5: this assistant turn's place in the closing handshake.
+  final ClosingStep? closingStep;
+
   const CounselingMessage({
     required this.id,
     required this.role,
@@ -298,6 +348,8 @@ class CounselingMessage {
     this.dialogueGoalId,
     this.interactionRepairReason,
     this.goalExhaustionRecovery,
+    this.interventionStep,
+    this.closingStep,
   });
 
   bool get isUser => role == 'user';

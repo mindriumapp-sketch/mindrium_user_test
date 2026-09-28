@@ -84,6 +84,16 @@ class CounselingTurnPlan {
   /// [interactionRepairReason] is.
   final GoalExhaustionRecovery? goalExhaustionRecovery;
 
+  /// Phase 13.3: this turn's contribution to finishing its stage, read by
+  /// `CounselingStatePolicy`. `null` keeps the fixed-budget behavior.
+  final StageProgress? stageProgress;
+
+  /// Phase 13.3: see `CounselingMessage.interventionStep`.
+  final InterventionStep? interventionStep;
+
+  /// Phase 13.5: see `CounselingMessage.closingStep`.
+  final ClosingStep? closingStep;
+
   const CounselingTurnPlan({
     required this.reflectionTarget,
     required this.questionGoal,
@@ -101,6 +111,9 @@ class CounselingTurnPlan {
     this.realizationSpec,
     this.interactionRepairReason,
     this.goalExhaustionRecovery,
+    this.stageProgress,
+    this.interventionStep,
+    this.closingStep,
   });
 
   String get deterministicReply => [
@@ -708,6 +721,14 @@ class DeterministicInterventionTurnPlanner implements CounselingTurnPlanner {
         );
       }
       return null;
+    }
+    if (decision.selectedAction == DialogueAct.reflect) {
+      return materializer.interventionIntegration(
+        decision,
+        currentWeek: context.currentWeek,
+        knowledge: context.knowledge,
+        recentMessages: context.recentMessages,
+      );
     }
     if (decision.selectedAction == DialogueAct.summarize) {
       return materializer.interventionNoEligible(

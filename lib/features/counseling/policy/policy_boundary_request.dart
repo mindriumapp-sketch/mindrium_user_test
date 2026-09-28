@@ -256,6 +256,31 @@ class DeterministicPolicyBoundaryBuilder implements PolicyBoundaryBuilder {
 
   PolicyBoundary _buildInterventionBoundary(PolicyBoundaryRequest request) {
     final usedInterventionIds = _usedInterventionIds(request.recentMessages);
+
+    // Phase 13.3: answer to a pending technique question → integration turn
+    // for that same technique only.
+    final pending = InterventionProgressTracker.pendingPromptTechniqueId(
+      request.recentMessages,
+    );
+    if (pending != null && request.knowledge.any((item) => item.id == pending)) {
+      return PolicyBoundary(
+        currentState: request.currentState,
+        allowedActions: const [DialogueAct.reflect],
+        candidateGoalIds: const [],
+        eligibleInterventionIds: [pending],
+        allowedFactIds: const [],
+        forbiddenConstraints: const [
+          TurnConstraint.forbidAdvice,
+          TurnConstraint.forbidNewUserFacts,
+          TurnConstraint.forbidNewIntervention,
+        ],
+        progressInfo: _buildProgressInfo(
+          request.recentMessages,
+          usedInterventionIds: usedInterventionIds,
+        ),
+      );
+    }
+
     final effectiveIntervention = UserThoughtExtractor.firstEffective(
       request.userContext,
     );

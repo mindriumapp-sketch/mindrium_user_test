@@ -134,6 +134,13 @@ void main() {
       await provider.sendMessage(message);
       if (provider.state == CounselingState.closing) break;
     }
+    // Phase 13.5: answer the closing proposal so the session is finalized
+    // (and saved as completed), and keep answering any pending question.
+    for (var i = 0; i < 4 && !provider.isSessionFinalized; i++) {
+      await provider.sendMessage(
+        provider.state == CounselingState.closing ? '네' : '준비한 만큼은 설명할 수 있을 것 같아요.',
+      );
+    }
     return provider;
   }
 

@@ -85,7 +85,9 @@ void main() {
     );
   });
 
-  test('closing quotes the target verbatim when present, and asks no question', () {
+  // Phase 13.5 changed this baseline on purpose: the final closing no longer
+  // quotes the target (dogfood feedback on verbatim quoting, N6).
+  test('Phase 13.5: closing keeps the target for grounding but does not quote it, and asks no question', () {
     final plan = materializer.closing(
       const CounselorDecision(
         selectedAction: DialogueAct.closing,
@@ -94,11 +96,8 @@ void main() {
         ),
       ),
     );
-    expect(
-      plan.reflectionSentence,
-      '오늘은 “가족 모임에서 오빠와 다시 부딪힐까 봐 걱정된다”라는 이야기를 나눴습니다. '
-      '여기까지 이야기해 주셔서 감사합니다.',
-    );
+    expect(plan.reflectionTarget, '가족 모임에서 오빠와 다시 부딪힐까 봐 걱정된다');
+    expect(plan.reflectionSentence.contains('“'), isFalse);
     expect(plan.questionSentence, '');
   });
 

@@ -28,7 +28,22 @@ class DeterministicSurfaceVariation {
       if (!assistantText.contains(marker)) return candidates[index];
     }
 
-    return candidates[_stableHash(seed) % candidates.length];
+    // Every candidate has been used. Still never repeat the immediately
+    // previous assistant turn (Phase 13.4: longer reflect stages cycle
+    // through clarify prompts, and a hash pick could land on the same one
+    // twice in a row).
+    final last = recentMessages.lastWhere(
+      (m) => !m.isUser,
+      orElse: () => CounselingMessage(id: '', role: 'user', text: '', createdAt: DateTime(0)),
+    );
+    final fresh = [
+      for (var index = 0; index < candidates.length; index++)
+        if (last.isUser ||
+            !last.text.contains(repetitionMarkers?[index] ?? candidates[index]))
+          candidates[index],
+    ];
+    final pool = fresh.isEmpty ? candidates : fresh;
+    return pool[_stableHash(seed) % pool.length];
   }
 
   int _stableHash(String value) {

@@ -42,6 +42,20 @@ class InterventionDecisionSelector {
     required MindriumCounselingContext? userContext,
     required ApprovedInterventionRegistry registry,
   }) {
+    // Phase 13.3: the technique's question was just asked, so this turn
+    // integrates the user's answer instead of starting anything new.
+    final pending = InterventionProgressTracker.pendingPromptTechniqueId(
+      recentMessages,
+    );
+    if (pending != null && knowledge.any((item) => item.id == pending)) {
+      final answer = userMessage.trim();
+      return CounselorDecision(
+        selectedAction: DialogueAct.reflect,
+        selectedInterventionId: pending,
+        reflectionTarget: ReflectionTarget.text(answer.isEmpty ? '…' : answer),
+      );
+    }
+
     final effectiveIntervention = UserThoughtExtractor.firstEffective(
       userContext,
     );

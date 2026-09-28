@@ -452,7 +452,10 @@ void main() {
           )!;
 
       expect(plan.requiredAct, DialogueAct.closing);
-      expect(plan.deterministicReply, contains('질문을 받으면 무능해 보일까 봐'));
+      // Phase 13.5: the summary target is still selected (grounding), but the
+      // final closing no longer quotes it back verbatim.
+      expect(plan.reflectionTarget, contains('질문을 받으면 무능해 보일까 봐'));
+      expect(plan.deterministicReply, isNot(contains('“')));
       expect(plan.deterministicReply, isNot(contains('새로운 조언')));
       expect('?'.allMatches(plan.deterministicReply), isEmpty);
       expect(plan.constraints, contains(TurnConstraint.forbidNewIntervention));
@@ -480,7 +483,7 @@ void main() {
       expect(plan.reflectionTarget, isEmpty);
       expect(
         plan.deterministicReply,
-        '오늘 나눈 내용을 여기까지 정리하겠습니다. 여기까지 이야기해 주셔서 감사합니다.',
+        '오늘 이야기 나눠 주셔서 감사합니다. 오늘 함께 살펴본 생각을 필요할 때 다시 떠올려 보세요.',
       );
       expect('?'.allMatches(plan.deterministicReply), isEmpty);
     });
@@ -568,8 +571,10 @@ void main() {
           contains(TurnConstraint.forbidNewIntervention),
         );
         expect(plan.deterministicReply, isNot(contains('이완')));
-        // Phase 13.2: the noEligible wrap-up asks no question.
-        expect('?'.allMatches(plan.deterministicReply).length, 0);
+        // Phase 13.5: the noEligible wrap-up's only question is the closing
+        // proposal.
+        expect('?'.allMatches(plan.deterministicReply).length, 1);
+        expect(plan.closingStep, ClosingStep.proposed);
       }
     });
 
@@ -817,7 +822,10 @@ void main() {
         DeterministicInterventionTurnPlanner.balancedThoughtCbtId,
       ]);
       expect(result.assistantMessage.referencedUserContextIds, isEmpty);
-      expect(result.state, CounselingState.closing);
+      // Phase 13.3: asking the technique's question doesn't finish the
+      // intervention; the answer is integrated on the next turn.
+      expect(result.state, CounselingState.intervention);
+      expect(result.assistantMessage.interventionStep, InterventionStep.prompt);
     });
   });
 
@@ -1050,7 +1058,10 @@ void main() {
         'week6_short_long_term_01',
       ]);
       expect(result.assistantMessage.referencedUserContextIds, isEmpty);
-      expect(result.state, CounselingState.closing);
+      // Phase 13.3: asking the technique's question doesn't finish the
+      // intervention; the answer is integrated on the next turn.
+      expect(result.state, CounselingState.intervention);
+      expect(result.assistantMessage.interventionStep, InterventionStep.prompt);
     });
   });
 

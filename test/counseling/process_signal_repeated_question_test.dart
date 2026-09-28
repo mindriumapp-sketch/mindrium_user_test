@@ -202,7 +202,11 @@ void main() {
           session: control,
           userMessage: '잘 모르겠어요, 그냥 그런 것 같아요.',
         );
-        expect(session.state, control.state);
+        // Phase 13.4: a repair turn no longer counts toward completing
+        // reflect, so it stays while the control advances. The Phase 11
+        // invariant is "never faster than a control turn", and this is slower.
+        expect(session.state.index, lessThanOrEqualTo(control.state.index));
+        expect(session.state, CounselingState.reflect);
         expect(controlSecond.assistantMessage.interactionRepairReason, isNull);
       },
     );

@@ -121,3 +121,25 @@ class InterventionCandidateResolver {
     return null;
   }
 }
+
+/// Phase 13.3: tracks where the intervention is in ask → answer → integrate.
+/// Shared by the boundary builder and the selector (same reason as
+/// [InterventionCandidateResolver]).
+class InterventionProgressTracker {
+  const InterventionProgressTracker._();
+
+  /// The technique id whose question is still waiting for an answer: the
+  /// most recent assistant turn was that technique's prompt. Repair turns in
+  /// between are skipped, since they don't answer anything.
+  static String? pendingPromptTechniqueId(List<CounselingMessage> messages) {
+    for (final message in messages.reversed) {
+      if (message.isUser) continue;
+      if (message.interactionRepairReason != null) continue;
+      if (message.interventionStep != InterventionStep.prompt) return null;
+      return message.referencedCbtIds.isEmpty
+          ? null
+          : message.referencedCbtIds.first;
+    }
+    return null;
+  }
+}

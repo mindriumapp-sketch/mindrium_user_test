@@ -496,6 +496,7 @@ class CounselingHarness {
       turnsInCurrentState: session.turnsInCurrentState,
       totalTurns: session.totalTurns,
       lastAct: validated.dialogueAct,
+      progress: turnPlan.stageProgress,
     );
 
     final message = CounselingMessage(
@@ -514,6 +515,8 @@ class CounselingHarness {
       dialogueGoalId: turnPlan.progressGoalId,
       interactionRepairReason: turnPlan.interactionRepairReason,
       goalExhaustionRecovery: turnPlan.goalExhaustionRecovery,
+      interventionStep: turnPlan.interventionStep,
+      closingStep: turnPlan.closingStep,
     );
 
     _advance(session, nextState);

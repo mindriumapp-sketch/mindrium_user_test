@@ -35,7 +35,6 @@ import 'package:gad_app_team/features/counseling/counseling_benchmark.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/data/api/counseling_realize_api.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
-import 'package:gad_app_team/features/counseling/counseling_state.dart';
 import 'package:gad_app_team/features/counseling/remote_llm_realizer.dart';
 import 'package:gad_app_team/features/counseling/llm_service.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
@@ -610,7 +609,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     setState(() {});
     _jumpToBottom();
 
-    if (!_closingHintShown && _provider.state == CounselingState.closing) {
+    if (!_closingHintShown && _provider.isSessionFinalized) {
       _closingHintShown = true;
       _appendNotice(
         '오늘 상담은 여기까지예요. 새로운 주제로 다시 이야기하고 싶다면 오른쪽 위 새로고침 버튼을 눌러주세요.',

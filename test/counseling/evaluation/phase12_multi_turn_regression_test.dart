@@ -555,12 +555,17 @@ void _score(_Scenario s, List<_Step> steps, _Metrics m) {
       m.consecutiveIdenticalReply++;
     }
 
-    // A repair/recovery turn may only move state when the ordinary budget
-    // would have moved it anyway.
-    if (step.isRepairOrRecovery && step.after != step.before) {
-      final budgetDone =
-          step.turnsInStateBefore + 1 >= _policy.budgetFor(step.before);
-      if (!budgetDone) m.abnormalEarlyTransition++;
+    // A repair turn never completes a stage, so it may only move state at
+    // the stage cap. A recovery turn completes reflect (Phase 13.4), so it
+    // may move state once the stage minimum is reached, and not before.
+    if (step.isRepairOrRecovery &&
+        step.after != step.before &&
+        step.before != CounselingState.closing) {
+      final turnsAfter = step.turnsInStateBefore + 1;
+      final allowedAt = reply.interactionRepairReason != null
+          ? _policy.budgetFor(step.before)
+          : _policy.minTurnsFor(step.before);
+      if (turnsAfter < allowedAt) m.abnormalEarlyTransition++;
     }
 
     if (reply.referencedCbtIds.isNotEmpty &&
@@ -760,19 +765,26 @@ void main() {
 
     // 12.3A residue was 3 (M3b, M3c from F2 misses; M8 from closing). With
     // F2 fixed in 12.3B, only the closing case (F5, by design) remains.
-    test('F3 residue: only closing meta (F5) still leaks', () {
-      expect(metrics.untaggedMetaLeakage, 1);
-      expect(metrics.targetedMeta, {
-        'M8_repair_then_intervention: 이런 거 한다고 뭐가 달라질까 싶어요.',
-      });
+    // 12.3B value was 1 (M8's closing meta). After Phase 13 the same turn
+    // lands in intervention (the Hard Guard is on there) and the final
+    // closing no longer quotes anything, so nothing leaks.
+    test('F3 residue: none left', () {
+      expect(metrics.untaggedMetaLeakage, 0);
+      expect(metrics.targetedMeta, isEmpty);
     });
 
     test('F4 low-info reply quoted as the intervention/closing target', () {
-      expect(metrics.lowInfoTextUsedAsTarget, 5);
+      // 12.2 value was 5. Phase 13's non-quoting closing removed 4; the one
+      // left is reflect's recovery quoting "네" (F4 backlog).
+      expect(metrics.lowInfoTextUsedAsTarget, 1);
     });
 
-    test('F5 meta feedback in closing is not handled (Hard Guard off by design)', () {
-      expect(metrics.metaInClosingUnhandled, 1);
+    // Not a fix: the Hard Guard is still off in closing. Phase 13 shifted
+    // the M8 turn into intervention, so this suite no longer exercises it.
+    // The closing handshake treats substantive closing input as "continue",
+    // which covers the user-visible case.
+    test('F5 not exercised by this suite after Phase 13 timing change', () {
+      expect(metrics.metaInClosingUnhandled, 0);
     });
   });
 

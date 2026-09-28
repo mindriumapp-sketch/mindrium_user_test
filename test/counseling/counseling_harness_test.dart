@@ -113,43 +113,44 @@ void main() {
     );
   });
 
-  test('T15 단계별 턴 예산을 다 쓰면 다음 단계로 넘어간다', () async {
+  test('T15 Phase 13.4: reflect advances on completion (min 2), capped at 4', () async {
     const policy = CounselingStatePolicy();
+    expect(policy.minTurnsFor(CounselingState.reflect), 2);
+    expect(policy.budgetFor(CounselingState.reflect), 4);
 
-    // 되짚기는 예산이 2턴이다. 1턴을 끝낸 상태에서 이번 턴이 마지막이 된다.
-    expect(policy.budgetFor(CounselingState.reflect), 2);
-    expect(
-      policy.next(
-        current: CounselingState.reflect,
-        turnsInCurrentState: 1,
-        totalTurns: 5,
-        lastAct: DialogueAct.reflect,
-      ),
-      CounselingState.intervention,
+    CounselingState next(int done, StageProgress? progress) => policy.next(
+      current: CounselingState.reflect,
+      turnsInCurrentState: done,
+      totalTurns: 5,
+      lastAct: DialogueAct.socraticQuestion,
+      progress: progress,
     );
 
-    // 예산이 남아 있으면 머문다.
-    expect(
-      policy.next(
-        current: CounselingState.reflect,
-        turnsInCurrentState: 0,
-        totalTurns: 5,
-        lastAct: DialogueAct.reflect,
-      ),
-      CounselingState.reflect,
-    );
+    // Complete before the minimum: stay.
+    expect(next(0, StageProgress.complete), CounselingState.reflect);
+    // Complete at the minimum: advance.
+    expect(next(1, StageProgress.complete), CounselingState.intervention);
+    // Not complete: stay until the cap.
+    expect(next(1, StageProgress.inProgress), CounselingState.reflect);
+    expect(next(2, StageProgress.inProgress), CounselingState.reflect);
+    expect(next(3, StageProgress.inProgress), CounselingState.intervention);
+    // No signal (e.g. a repair turn) never counts as completion.
+    expect(next(2, null), CounselingState.reflect);
+  });
 
-    // 승인 개입은 한 턴에 하나만 수행하고 곧바로 마무리로 이동한다.
-    expect(policy.budgetFor(CounselingState.intervention), 1);
-    expect(
-      policy.next(
-        current: CounselingState.intervention,
-        turnsInCurrentState: 0,
-        totalTurns: 5,
-        lastAct: DialogueAct.socraticQuestion,
-      ),
-      CounselingState.closing,
-    );
+  test('T15b Phase 13.3/13.5: intervention and closing progression', () async {
+    const policy = CounselingStatePolicy();
+    CounselingState next(CounselingState s, int done, StageProgress? p, DialogueAct act) =>
+        policy.next(current: s, turnsInCurrentState: done, totalTurns: 6, lastAct: act, progress: p);
+
+    // The technique question alone doesn't finish intervention.
+    expect(next(CounselingState.intervention, 0, StageProgress.inProgress, DialogueAct.socraticQuestion), CounselingState.intervention);
+    // Integration (or noEligible) completes it.
+    expect(next(CounselingState.intervention, 1, StageProgress.complete, DialogueAct.reflect), CounselingState.closing);
+    expect(next(CounselingState.intervention, 0, StageProgress.complete, DialogueAct.summarize), CounselingState.closing);
+    // Closing stays unless the user asks to continue.
+    expect(next(CounselingState.closing, 0, null, DialogueAct.closing), CounselingState.closing);
+    expect(next(CounselingState.closing, 0, StageProgress.reopen, DialogueAct.closing), CounselingState.reflect);
   });
 
   test('T15 모델의 발화 행위는 진행을 앞당기기만 한다', () {

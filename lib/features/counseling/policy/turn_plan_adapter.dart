@@ -85,6 +85,14 @@ class TurnPlanAdapter {
             ReflectionTargetText() => null,
           };
         }
+        if (decision.selectedAction == DialogueAct.reflect) {
+          return materializer.interventionIntegration(
+            decision,
+            currentWeek: request.currentWeek,
+            knowledge: request.knowledge,
+            recentMessages: request.recentMessages,
+          );
+        }
         if (decision.selectedAction == DialogueAct.summarize) {
           return materializer.interventionNoEligible(
             decision,

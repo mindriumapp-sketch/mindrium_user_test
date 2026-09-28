@@ -27,8 +27,8 @@ const _script = [
 
 class _Run {
   final List<CounselingState> before = [];
+  final List<CounselingState> after = [];
   final List<CounselingMessage> replies = [];
-  CounselingState finalState = CounselingState.checkIn;
 }
 
 void main() {
@@ -53,8 +53,8 @@ void main() {
         ..add(CounselingMessage(id: 'u$i', role: 'user', text: t, createdAt: DateTime(2026)))
         ..add(r.assistantMessage);
       out.replies.add(r.assistantMessage);
+      out.after.add(s.state);
     }
-    out.finalState = s.state;
     return out;
   }
 
@@ -62,7 +62,8 @@ void main() {
     for (var week = 1; week <= 8; week++) {
       test('week $week', () async {
         final r = await run(week);
-        expect(r.finalState, CounselingState.closing);
+        // Reaches closing (the user may then continue once, Phase 13.5).
+        expect(r.after, contains(CounselingState.closing));
         final interventionTurns = [
           for (final (i, st) in r.before.indexed)
             if (st == CounselingState.intervention) r.replies[i],
@@ -82,7 +83,10 @@ void main() {
         final i = r.before.indexOf(CounselingState.intervention);
         expect(r.replies[i].dialogueAct, DialogueAct.summarize);
         expect(r.replies[i].referencedCbtIds, isEmpty);
-        expect(r.replies[i].text.contains('?'), isFalse);
+        // Phase 13.5: the only question is the closing proposal.
+        expect(r.replies[i].interventionStep, InterventionStep.noEligible);
+        expect(r.replies[i].closingStep, ClosingStep.proposed);
+        expect('?'.allMatches(r.replies[i].text), hasLength(1));
       });
     }
   });

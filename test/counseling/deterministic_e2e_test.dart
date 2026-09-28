@@ -65,12 +65,17 @@ void main() {
     await send('예전에 답을 못하고 당황했던 경험이 있어요.');
     await send('그래도 한 번 답하지 못한다고 항상 무능한 건 아닐 것 같아요.');
     await send('조금 정리가 된 것 같아요. 감사합니다.');
+    await send('네');
 
+    // Phase 13.3/13.5: the technique question (turn 5) keeps the session in
+    // intervention; the answer is integrated with a closing proposal (turn
+    // 6), and "네" finalizes (turn 7).
     expect(results.map((result) => result.stateBefore), [
       CounselingState.checkIn,
       CounselingState.explore,
       CounselingState.reflect,
       CounselingState.reflect,
+      CounselingState.intervention,
       CounselingState.intervention,
       CounselingState.closing,
     ]);
@@ -79,9 +84,13 @@ void main() {
       CounselingState.reflect,
       CounselingState.reflect,
       CounselingState.intervention,
+      CounselingState.intervention,
       CounselingState.closing,
       CounselingState.closing,
     ]);
+    expect(results[4].assistantMessage.interventionStep, InterventionStep.prompt);
+    expect(results[5].assistantMessage.interventionStep, InterventionStep.integration);
+    expect(results[6].assistantMessage.closingStep, ClosingStep.finalized);
     expect(llm.calls, 0);
 
     for (var index = 0; index < results.length; index++) {
@@ -120,7 +129,8 @@ void main() {
 
     final closing = results.last;
     expect(closing.assistantMessage.dialogueAct, DialogueAct.closing);
-    expect(closing.assistantMessage.text, contains('조금 정리가 된 것 같아요'));
+    // Phase 13.5: the final closing thanks the user without quoting them.
+    expect(closing.assistantMessage.text.contains('“'), isFalse);
     expect(closing.assistantMessage.referencedCbtIds, isEmpty);
     expect(closing.assistantMessage.referencedUserContextIds, isEmpty);
   });
