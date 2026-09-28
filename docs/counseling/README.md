@@ -13,7 +13,8 @@ is historical record.
 - [`phase11_1_selection_interaction_repair_design.md`](phase11_1_selection_interaction_repair_design.md) — Selection Policy & Interaction Repair, problem/contract freeze.
 - [`phase11_2_meta_conversation_detection.md`](phase11_2_meta_conversation_detection.md) — repeated-question detection, complete.
 - [`phase11_3_goal_exhaustion_recovery.md`](phase11_3_goal_exhaustion_recovery.md) — goal exhaustion recovery (replaces `repeatLast`), complete.
-- [`phase11_4_selection_regression.md`](phase11_4_selection_regression.md) — **latest**: frozen-scenario selection regression, all four metrics at 0. Phase 11 closed.
+- [`phase11_4_selection_regression.md`](phase11_4_selection_regression.md) — frozen-scenario selection regression, all four metrics at 0. Phase 11 closed.
+- [`phase12_conversation_robustness.md`](phase12_conversation_robustness.md) — **latest**: multi-turn evaluation + failure corpus (F1–F5). Activation gate not met; 12.1 device dogfood pending.
 - [`adaptive_dialogue_policy.md`](adaptive_dialogue_policy.md) — forward-looking design for expanding GPT's role beyond wording-only.
 - [`affective_system.md`](affective_system.md) — avatar/affect-cue subsystem reference.
 - [`remote_gpt_realizer_integration.md`](remote_gpt_realizer_integration.md) — the original GPT-realizer integration contract (referenced from `chatbot_architecture.md`).
