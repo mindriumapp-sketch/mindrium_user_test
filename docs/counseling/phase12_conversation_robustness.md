@@ -482,6 +482,44 @@ fix, open a separate `realize_v3` prompt phase.
   11/12 selection repair baseline", not "production-ready counseling
   chatbot".
 
+### Session 5 (week 4, build b1e6d26, N3 build) and the real N2 root cause
+
+| # | Input | State | Device reply | Finding |
+|---|---|---|---|---|
+| 3 | 내일 시험인데 공부를 많이 못했어… 못볼까봐 걱정이야 | reflect | generic fallback + **evidence question** | N3 works (not clarify). GPT reply rejected |
+| 4 | 저번 기말고사때… 이번에도 망칠까봐 걱정돼 | reflect | generic fallback + **alternative question** | N3 works. GPT rejected again |
+| 5 | 다른 관점에서 어떻게 봐야할지 모르겠어 | intervention | app guide: "…기능 정보에서는 해당 내용을 찾을 수 없어요" | **N4b** |
+| 6 | 갑자기 무슨 말이야 | intervention | "“다른 관점에서 어떻게 봐야할지 모르겠어”라는 생각을…" | stale target (N6 family) |
+
+**N2 root cause (class F, context propagation). This is a regression I
+introduced in Phase 10.6C-DOGFOOD.** Replaying turn 3 to the real
+Remote Realizer: GPT returned the previous turn verbatim **6/6**, even
+though the plan asked a different question. Ablation showed the copies
+disappear whenever the previous assistant turn isn't the last thing in
+context. The request showed why: `recent_conversation` was `[user "9",
+assistant <previous question>]`, and **the user's current message was
+missing**. `CounselingProvider` synced the current turn into
+`session.messages` only inside the instant-empathy branch, and Phase
+10.6C-DOGFOOD disabled instant empathy (duplicate-bubble fix). From then
+on, the model saw a conversation ending on its own question and repeated
+it. This explains every copy in sessions 1–5, including session 1's
+"different questions" case.
+
+**Fix** (`1e4333e`): the harness appends the current user message to the
+**realization request only**. Session history isn't changed, so the
+selectors, which rely on history ending on the previous assistant reply,
+are unaffected. Nothing is added if the history already ends with the
+message. Real-GPT check: s5 T3 copies 6/6 → **0/8**, all accepted; s4 T5
+with the old clarify plan 8/8 → **0/6**. The N2 guard and the N3 fix stay;
+they're now defense in depth, not the primary fix. `realize_v3` isn't
+needed.
+
+**N4b** (`81a859d`): mid-session, a usage pattern ("어떻게 … 봐") also has
+to name something in the app (앱/기능/설정/알림/기록/… or a catalog
+entity), so "다른 관점에서 어떻게 봐야할지 모르겠어" stays counseling.
+
+`flutter test` **1231/1231**, `flutter analyze` unchanged.
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
