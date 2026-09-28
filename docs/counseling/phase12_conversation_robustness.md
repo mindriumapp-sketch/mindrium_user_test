@@ -431,6 +431,57 @@ paraphrase without GPT). Recommended as its own phase.
 
 `flutter test` **1206/1206**, `flutter analyze` unchanged.
 
+### N3 fixed — worry-thought recognition (and the N2 root cause)
+
+**Why the realizer rejected GPT (session 4, turn 5).** I rebuilt the exact
+request the app sent and replayed it to the local backend 8 times. GPT
+returned the previous assistant turn verbatim **8/8**, and the validator
+rejected it with `repeats_previous_question` (N2 guard). Ablation, 4 runs
+each:
+
+| Variant | Copies |
+|---|---|
+| no `recent_conversation` | 0/4 |
+| forbidden list + "don't repeat the previous turn" | 4/4 (ineffective) |
+| plan question semantically different (evidence) | 0/4 |
+| previous assistant turn not a similar question | 0/4 |
+
+Copying happens when the plan asks **the same question as the previous
+turn** and that turn is in context. The same-question plan came from N3:
+the user's worry ("미팅준비가 가장 마음에 걸려") wasn't recognized as a
+thought, so reflect asked clarify again.
+
+**Fix (C, target extraction).** `UserThoughtExtractor._hasThoughtShape`
+now accepts feared-outcome "~까 봐" (excluding "해볼까 봐"), "~면
+어떡하지", and a named concern "X가/이 (가장) 마음에 걸려 / 신경 쓰여".
+Negatives stay non-thoughts: plain feeling, situation-plus-feeling ("발표가
+내일이라 걱정돼", "시험이 있어서 신경 쓰여").
+
+**Evidence.**
+- `worry_thought_recognition_test.dart`: 7 positives, 7 negatives, 3
+  dogfood replays at selector level. 9 failed before the fix; all 18 pass.
+- Multi-turn: dogfood s2 replay now goes evidence → alternative (was
+  clarify → clarify), and s3 gets evidence. All 12.3D gates are still 0.
+- **Real GPT, same session-4 context, new plan: verbatim copy 8/8 → 0/8**,
+  same-question 0/8, no quoting. The Realizer prompt is unchanged. The N2
+  guard stays as a safety net.
+- `flutter test` **1224/1224**, `flutter analyze` unchanged.
+
+Open: session 1's copy happened with different plan questions (evidence →
+alternative), not reproduced yet. If copies persist on device after this
+fix, open a separate `realize_v3` prompt phase.
+
+### Phase 12 closing status
+
+- Remaining before the `counseling-v1.1-selection-repair` tag: one or two
+  final device sessions on the N3 build.
+- **N1 is deferred to Phase 13 (cumulative intervention policy) as an
+  unresolved CRITICAL blocker.** Weeks 1–3 users can't reach closing
+  (intervention repeats until the 20-turn cap). **This must be fixed before
+  any external rollout that includes weeks 1–3.** v1.1 means the "Phase
+  11/12 selection repair baseline", not "production-ready counseling
+  chatbot".
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
