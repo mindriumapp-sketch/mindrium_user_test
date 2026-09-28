@@ -33,7 +33,31 @@ class UserThoughtExtractor {
       text.contains('것 같') ||
       text.contains('것이다') ||
       text.contains('보일') ||
-      text.contains('생각');
+      text.contains('생각') ||
+      _hasWorryThoughtForm(text);
+
+  // Phase 12.3 (N3): common worry-thought forms that name a feared outcome
+  // or a specific concern, seen in device dogfood. A plain feeling ("그냥
+  // 걱정돼요") or a situation plus feeling ("발표가 내일이라 걱정돼") is not a
+  // thought and still goes to clarify.
+  //   - "~할까 봐 (걱정돼/불안해/신경 쓰여)": feared outcome. "해볼까 봐" is
+  //     "I think I'll try", so it's excluded.
+  //   - "~하면 어떡하지": catastrophic "what if".
+  //   - "X가 (가장) 마음에 걸려 / 신경 쓰여": a named concern. Requires a
+  //     subject directly before it, so "시험이 있어서 신경 쓰여" (reason +
+  //     feeling) stays a situation.
+  static final RegExp _fearedOutcome = RegExp(r'까\s*봐');
+  static final RegExp _tryingIntent = RegExp(r'해\s*볼까\s*봐');
+  static final RegExp _whatIf = RegExp(r'(면|하면)\s*(어떡하지|어떡해|어떡하나|어떻게\s*하지)');
+  static final RegExp _namedConcern = RegExp(
+    r'[가-힣](이|가)\s*(가장\s*|제일\s*|계속\s*|너무\s*|좀\s*)?'
+    r'(마음에\s*걸|신경\s*쓰)',
+  );
+
+  static bool _hasWorryThoughtForm(String text) =>
+      (_fearedOutcome.hasMatch(text) && !_tryingIntent.hasMatch(text)) ||
+      _whatIf.hasMatch(text) ||
+      _namedConcern.hasMatch(text);
 
   /// `상황: ... / 생각: ... / 감정: ...` 형태에서 한 항목을 꺼낸다.
   static String? fieldFromDiary(String? text, String label) {
