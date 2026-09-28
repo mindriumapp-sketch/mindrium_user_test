@@ -311,6 +311,73 @@ F3 to take effect.**
    "말을 해" misses)
 5. 왜 똑같은 말 하냐고 (explicit, quotative re-ask)
 
+## Phase 12.3 — repair hardening (N2, F2, F1, F6) and 12.3D re-evaluation
+
+Order followed: F3 (12.3A) → device dogfood (12.1, 3 sessions) → N2 →
+F2 (12.3B) → F1 (12.3C) → re-evaluation (12.3D). N2 was added to Phase
+12.3 with approval after dogfood showed it causing every complaint.
+
+| Fix | Layer | Production change | Evidence |
+|---|---|---|---|
+| **N2** realizer copies previous turn | G (Realizer validation) | `RemoteLlmRealizer._validate` adds `repeats_previous_question`: the reply's last question equals the previous assistant question while the plan asked something else, so it falls back to deterministic. Following the plan is never rejected. | 7 tests from real transcripts. Multi-turn with an always-copy API: 0 repeats shown; guard disabled: 5 (mutation check) |
+| **F2** detector recall | A (detector) | `DeterministicProcessSignalTurnPlanner`: 4 cue-composition predicates (own-statement reference, same-thing repetition, question repetition, stop/listen), a third-party-subject guard, and exclusion of "질문을 받다". The 11.2 patterns and sentences are unchanged. | Gate frozen **before** the change (`dcd1ca4`): verification recall 2/24 → **24/24**, FP **0** (21 negatives x 4 states), design 4/4, implicit 0/5 (not gated) |
+| **F1** recovery loop | D (recovery selection) | `_selectRecovery` reads the previous `goalExhaustionRecovery` and never repeats it. Repair still takes precedence. | repro 2/5 failing → pass; multi-turn loop 2 → **0** |
+| **F6** identical repair twice (new, found in 12.3D) | G (process-signal surface) | Repair sentences alternate by the count of immediately preceding same-reason repairs (metadata). The first variant is the original. | multi-turn `consecutiveIdenticalReply` 4 → **0** |
+
+**Caveat on F2 = 24/24.** The same author wrote the holdback and the
+detector, and knew the cue families while writing it. Treat 24/24 as an
+upper bound. The real generalization check is the next device session.
+
+### 12.3D final metrics (19 scenarios, 102 user turns, all 5 states)
+
+| Metric | Gate | Result |
+|---|---|---|
+| immediateSameGoalRepeat | 0 | 0 |
+| repeatedRecoveryLoop | 0 | 0 (was 2) |
+| ignoredMetaFeedback (seen / unseen) | 0 | 0 / 0 (unseen was 6) |
+| metaFalsePositive | 0 | 0 |
+| metaContentLeakage (detected) | 0 | 0 (was 6) |
+| abnormalEarlyTransition | 0 | 0 |
+| unauthorizedCbtDecision | 0 | 0 |
+| validatorOrMaterializerFailure | 0 | 0 |
+| deadEndConversation | 0 | 0 |
+| maximumConsecutiveSameGoal | ≤1 | 1 |
+| maximumConsecutiveSameRecovery | ≤1 | 1 (was 2) |
+| repeatedQuestionShown (N2) | 0 | 0 |
+| consecutiveIdenticalReply (F6) | 0 | 0 (was 4) |
+| unseen meta detection (frozen 12.3B gate) | ≥80%, FP 0 | 100%, FP 0 |
+| *reported:* untaggedMetaLeakage | — | 1 (closing, F5 by design) |
+| *reported:* lowInfoTextUsedAsTarget (F4) | — | 5 (backlog, unchanged) |
+| *reported:* implicit meta | — | 0/1 |
+
+Dogfood replays: session 3 ("왜 똑같은 말을해?" x2) now gets two different
+acknowledgments. Its intervention restructures the real worry, not the
+complaint.
+
+`flutter test` **1187/1187**, `flutter analyze` unchanged (5 infos).
+
+### Activation gate / tag: not yet
+
+Every automated gate passes. Two conditions from the plan remain:
+1. **Real-device confirmation of these fixes.** The fixes haven't run
+   on a device yet.
+2. **"No new critical failure in dogfood."** N1 (weeks 1–3 intervention
+   dead end) is critical. It predates Phase 11/12 and is assigned to
+   Phase 13. Tagging `counseling-v1.1-selection-repair` requires
+   explicitly accepting N1 as out of scope for this baseline.
+
+### Remaining backlog
+- **Phase 13:** cumulative intervention policy (N1).
+- **F4:** low-information semantic target filtering.
+- **N3:** "~할까봐 걱정돼" / "~하면 어떡하지" not extracted as thoughts, so
+  reflect stays in clarify.
+- **F5:** meta feedback in closing.
+- Implicit restatement ("~다고") detection, which needs context.
+- Mixed worry-plus-complaint messages lose their worry part as a target
+  (12.3A tradeoff).
+- Semantic-deterministic fallback wording quotes SUD answers as the
+  concern ("7점이요 부분이 마음에 걸리시는") (G).
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
