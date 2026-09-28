@@ -514,10 +514,16 @@ class TurnPlanMaterializer {
     required int currentWeek,
     required List<CbtKnowledgeItem> knowledge,
   }) {
-    final policy = registry.policyForWeek(currentWeek)!;
+    // Phase 13.2: techniques are cumulative, so the policy is the one that
+    // approves the selected item, which may be from an earlier week.
     final selected = knowledge.firstWhere(
       (item) => item.id == decision.selectedInterventionId,
     );
+    // Callers that hand-build a decision around a non-registry item (surface
+    // tests) keep the pre-13.2 contract: the current week's policy.
+    final policy =
+        registry.policyForItemId(selected.id) ??
+        registry.policyForWeek(currentWeek)!;
     final target = _requireText(decision.reflectionTarget, 'intervention');
 
     final cleanTarget = target.replaceFirst(RegExp(r'[.!?]+$'), '');
@@ -558,6 +564,52 @@ class TurnPlanMaterializer {
         questionGoal: _goalFor(policy.interventionType),
         target: target,
       ),
+    );
+  }
+
+  static const List<String> noEligibleForbidden = [
+    '새로운 CBT 기법을 제안하지 않는다.',
+    '새로운 사용자 사실을 만들지 않는다.',
+    '질문하지 않는다.',
+  ];
+
+  /// Phase 13.2: noEligibleIntervention — no approved technique fits this
+  /// turn. A brief, generic wrap-up of what was discussed, with no question
+  /// and no technique. `DialogueAct.summarize` (never `unknown`), so the
+  /// session progresses instead of looping (N1). It doesn't quote the user
+  /// verbatim (see N6).
+  CounselingTurnPlan interventionNoEligible(
+    CounselorDecision decision, {
+    required List<CounselingMessage> recentMessages,
+  }) {
+    final target = switch (decision.reflectionTarget) {
+      ReflectionTargetText(:final value) => value,
+      _ => '',
+    };
+    return CounselingTurnPlan(
+      reflectionTarget: target,
+      questionGoal: '새로운 방법을 제안하지 않고 오늘 나눈 이야기를 짧게 정리한다.',
+      reflectionSentence: surfaceVariation.select(
+        candidates: const [
+          '지금은 새로운 방법을 더 제안하기보다, 오늘 이야기해 주신 걱정을 짧게 정리해 볼게요. 마음에 걸리는 부분을 차분히 살펴본 것만으로도 의미가 있어요.',
+          '오늘은 새로운 방법보다, 지금까지 나눈 이야기를 정리하는 데 집중해 볼게요. 걱정되는 마음을 이렇게 말로 꺼내 보신 것도 중요한 한 걸음이에요.',
+        ],
+        recentMessages: recentMessages,
+        seed: target,
+        repetitionMarkers: const ['짧게 정리해 볼게요', '정리하는 데 집중해 볼게요'],
+      ),
+      questionSentence: '',
+      forbidden: noEligibleForbidden,
+      constraints: const [
+        TurnConstraint.requireReflection,
+        TurnConstraint.requireNoQuestion,
+        TurnConstraint.forbidAdvice,
+        TurnConstraint.forbidNewUserFacts,
+        TurnConstraint.forbidNewIntervention,
+      ],
+      requiredAct: DialogueAct.summarize,
+      userContextIds: const [],
+      cbtContextIds: const [],
     );
   }
 

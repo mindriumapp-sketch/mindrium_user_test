@@ -558,8 +558,8 @@ void main() {
               ),
             )!;
 
-        expect(plan.planningStatus, TurnPlanningStatus.unavailable);
-        expect(plan.requiredAct, DialogueAct.unknown);
+        expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
         expect(plan.interventionPlan, isNull);
         expect(plan.cbtContextIds, isEmpty);
         expect(plan.userContextIds, isEmpty);
@@ -568,7 +568,8 @@ void main() {
           contains(TurnConstraint.forbidNewIntervention),
         );
         expect(plan.deterministicReply, isNot(contains('이완')));
-        expect('?'.allMatches(plan.deterministicReply).length, 1);
+        // Phase 13.2: the noEligible wrap-up asks no question.
+        expect('?'.allMatches(plan.deterministicReply).length, 0);
       }
     });
 
@@ -594,11 +595,12 @@ void main() {
       );
 
       expect(llm.calls, 0);
-      expect(result.turnPlan!.planningStatus, TurnPlanningStatus.unavailable);
-      expect(result.assistantMessage.dialogueAct, DialogueAct.unknown);
+      expect(result.turnPlan!.planningStatus, TurnPlanningStatus.planned); // Phase 13.2 noEligible
+      expect(result.assistantMessage.dialogueAct, DialogueAct.summarize);
       expect(result.assistantMessage.referencedCbtIds, isEmpty);
       expect(result.assistantMessage.referencedUserContextIds, isEmpty);
-      expect(result.state, CounselingState.intervention);
+      // Phase 13.2 (N1): no longer stuck in intervention.
+      expect(result.state, CounselingState.closing);
     });
   });
 
@@ -665,13 +667,27 @@ void main() {
             knowledge: [item],
           ),
         );
-        expect(plan!.planningStatus, TurnPlanningStatus.unavailable);
+        expect(plan!.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
         expect(plan.cbtContextIds, isEmpty);
         expect(plan.interventionPlan, isNull);
       }
     });
 
-    test('Week 4가 아니면 balanced-thought를 적용하지 않는다', () {
+    test('Phase 13.2: before week 4, balanced-thought is never applied (no future-week technique)', () {
+      final plan = interventionPlanner.plan(
+        TurnPlanningContext(
+          state: CounselingState.intervention,
+          currentWeek: 3,
+          userMessage: '사람들이 저를 무능하게 볼 것 같아요.',
+          knowledge: [balanced],
+        ),
+      );
+      expect(plan!.requiredAct, DialogueAct.summarize);
+      expect(plan.interventionPlan, isNull);
+    });
+
+    test('Phase 13.2: after week 4, the learned balanced-thought technique can be reused', () {
       final plan = interventionPlanner.plan(
         TurnPlanningContext(
           state: CounselingState.intervention,
@@ -680,8 +696,8 @@ void main() {
           knowledge: [balanced],
         ),
       );
-      expect(plan!.planningStatus, TurnPlanningStatus.unavailable);
-      expect(plan.requiredAct, DialogueAct.unknown);
+      expect(plan!.requiredAct, DialogueAct.socraticQuestion);
+      expect(plan.cbtContextIds, [balanced.id]);
     });
 
     test('현재 발화에 생각이 있으면 diary provenance를 붙이지 않는다', () {
@@ -764,7 +780,8 @@ void main() {
         ),
       );
 
-      expect(plan!.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan!.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
       expect(plan.cbtContextIds, isEmpty);
     });
@@ -865,10 +882,10 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
       expect(plan.cbtContextIds, isEmpty);
-      expect(plan.requiredAct, DialogueAct.unknown);
       expect(plan.deterministicReply, isNot(contains('이완')));
     });
 
@@ -892,7 +909,8 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
     });
   });
@@ -972,10 +990,10 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
       expect(plan.cbtContextIds, isEmpty);
-      expect(plan.requiredAct, DialogueAct.unknown);
       expect(plan.deterministicReply, isNot(contains('회피에 가까운')));
       expect(plan.deterministicReply, isNot(contains('이완')));
     });
@@ -1000,7 +1018,8 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
     });
 
@@ -1101,7 +1120,8 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
       expect(plan.cbtContextIds, isEmpty);
       expect(plan.deterministicReply, isNot(contains('회피 행동')));
@@ -1124,8 +1144,8 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
-      expect(plan.requiredAct, DialogueAct.unknown);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
     });
 
@@ -1149,7 +1169,8 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
     });
 
@@ -1260,7 +1281,8 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
       expect(plan.userContextIds, isEmpty);
       expect(plan.cbtContextIds, isEmpty);
@@ -1321,7 +1343,8 @@ void main() {
             ),
           )!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
+      expect(plan.planningStatus, TurnPlanningStatus.planned); // Phase 13.2: noEligibleIntervention, not unavailable
+        expect(plan.requiredAct, DialogueAct.summarize);
       expect(plan.interventionPlan, isNull);
     });
 

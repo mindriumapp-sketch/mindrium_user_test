@@ -129,6 +129,17 @@ DecisionRequirements decisionRequirementsFor({
       );
 
     case CounselingState.intervention:
+      if (selectedAction == DialogueAct.summarize) {
+        // Phase 13.2: noEligibleIntervention. No technique is selected (the
+        // boundary's eligibleInterventionIds is empty, so any id is already
+        // rejected by membership). The summary may or may not have a
+        // specific target.
+        return const DecisionRequirements(
+          goalRequirement: GoalRequirement.forbidden,
+          reflectionTargetRequirement: ReflectionTargetRequirement.optional,
+          interventionRequired: false,
+        );
+      }
       return const DecisionRequirements(
         goalRequirement: GoalRequirement.forbidden,
         reflectionTargetRequirement: ReflectionTargetRequirement.textRequired,

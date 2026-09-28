@@ -1,3 +1,4 @@
+import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import '../counseling_state.dart';
 import '../turn_plan.dart';
 import 'counselor_decision.dart';
@@ -83,6 +84,12 @@ class TurnPlanAdapter {
             ReflectionTargetNone() => null,
             ReflectionTargetText() => null,
           };
+        }
+        if (decision.selectedAction == DialogueAct.summarize) {
+          return materializer.interventionNoEligible(
+            decision,
+            recentMessages: request.recentMessages,
+          );
         }
         return materializer.intervention(
           decision,

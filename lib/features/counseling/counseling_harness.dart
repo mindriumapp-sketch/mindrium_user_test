@@ -4,6 +4,7 @@ import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'compact_prompt_builder.dart';
 import 'counseling_state.dart';
 import 'hybrid_turn_router.dart';
+import 'intervention_registry.dart';
 import 'llm_service.dart';
 import 'output_parser.dart';
 import 'policy/production_turn_planner.dart';
@@ -178,6 +179,11 @@ class CounselingHarness {
   /// contain). `null` (the default) emits nothing — behavior-neutral.
   final RealizationTelemetrySink? telemetrySink;
 
+  /// Phase 13.2: approved techniques the intervention state may draw on.
+  /// Must match the registry the turn planner uses (both default to
+  /// [ApprovedInterventionRegistry.defaults]).
+  final ApprovedInterventionRegistry interventionRegistry;
+
   /// 한 턴에 제공할 CBT 근거 수. 창을 넘기지 않도록 적게 유지한다.
   static const int knowledgeLimit = 3;
 
@@ -201,6 +207,7 @@ class CounselingHarness {
     this.rolloutConfig,
     this.isInternalAccount = false,
     this.telemetrySink,
+    this.interventionRegistry = const ApprovedInterventionRegistry(),
   });
 
   /// 제품 기본 deterministic 상담 구성.
@@ -286,13 +293,14 @@ class CounselingHarness {
     // 조회를 끝냈다는 뜻) 재조회하지 않는다 — 같은 retrieval을 두 번 계산
     // 하지 않기 위한 Phase 5 bridge. 없으면(기존 CounselingHarness를 직접
     // 쓰는 호출부·테스트) 이전과 완전히 동일하게 직접 조회한다.
-    final knowledge = precomputedContext?.knowledge ??
+    final retrieved = precomputedContext?.knowledge ??
         knowledgeRepository.search(
           query: userMessage,
           week: session.currentWeek,
           tags: session.state.retrievalTags,
           limit: knowledgeLimit,
         );
+    final knowledge = _withApprovedInterventions(retrieved, session);
 
     // 5~6. 허용 행위를 정하고 프롬프트를 만든다.
     final recentMessages = _recentMessages(session);
@@ -591,6 +599,25 @@ class CounselingHarness {
               .toList(),
       parseStatus: output.parseStatus,
     );
+  }
+
+  /// Phase 13.2: search only covers the current week, but intervention may
+  /// use any approved technique up to the current week. In intervention,
+  /// add those approved items by id (never future weeks) so the policy can
+  /// actually choose them.
+  List<CbtKnowledgeItem> _withApprovedInterventions(
+    List<CbtKnowledgeItem> retrieved,
+    CounselingSessionState session,
+  ) {
+    if (session.state != CounselingState.intervention) return retrieved;
+    final ids = {for (final item in retrieved) item.id};
+    final extra = <CbtKnowledgeItem>[];
+    for (final policy in interventionRegistry.policiesUpTo(session.currentWeek)) {
+      if (ids.contains(policy.requiredId)) continue;
+      final item = knowledgeRepository.getById(policy.requiredId);
+      if (item != null) extra.add(item);
+    }
+    return extra.isEmpty ? retrieved : [...retrieved, ...extra];
   }
 
   /// Phase 12.3 (N2 root cause): the realizer must see what the user just

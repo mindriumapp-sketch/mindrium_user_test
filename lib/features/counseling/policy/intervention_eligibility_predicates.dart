@@ -63,3 +63,61 @@ class InterventionEligibilityPredicates {
     return hasPractice && hasBenefit;
   }
 }
+
+/// Phase 13.2: the one approved technique chosen for this intervention
+/// turn, or none.
+class InterventionCandidate {
+  final ApprovedInterventionPolicy policy;
+  final CbtKnowledgeItem item;
+  const InterventionCandidate(this.policy, this.item);
+}
+
+/// Phase 13.2: single source of truth for which approved technique (if any)
+/// fits this turn. Used by both `DeterministicPolicyBoundaryBuilder` and
+/// `InterventionDecisionSelector`, so the boundary and the decision can't
+/// disagree (the Phase 9.2D failure mode).
+///
+/// Candidates are every approved policy up to the current week, most
+/// recently introduced first (never a future week). The existing per-policy
+/// gates still apply: not already used this session, its knowledge item is
+/// available, gain/loss needs an avoidance-shaped message, and maintenance
+/// needs a maintenance-shaped message or an effective-intervention record.
+/// Returns null when nothing fits. That is a normal outcome
+/// (`noEligibleIntervention`), not a failure.
+class InterventionCandidateResolver {
+  const InterventionCandidateResolver._();
+
+  static InterventionCandidate? resolve({
+    required int currentWeek,
+    required String userMessage,
+    required List<CounselingMessage> recentMessages,
+    required List<CbtKnowledgeItem> knowledge,
+    required bool hasEffectiveIntervention,
+    required ApprovedInterventionRegistry registry,
+  }) {
+    for (final policy in registry.policiesUpTo(currentWeek)) {
+      if (InterventionEligibilityPredicates.alreadyUsed(recentMessages, policy)) {
+        continue;
+      }
+      CbtKnowledgeItem? item;
+      for (final candidate in knowledge) {
+        if (policy.accepts(candidate)) {
+          item = candidate;
+          break;
+        }
+      }
+      if (item == null) continue;
+      if (policy.interventionType == InterventionType.gainLossReview &&
+          !InterventionEligibilityPredicates.looksLikeAvoidance(userMessage)) {
+        continue;
+      }
+      if (policy.interventionType == InterventionType.maintenanceReview &&
+          !InterventionEligibilityPredicates.looksLikeMaintenance(userMessage) &&
+          !hasEffectiveIntervention) {
+        continue;
+      }
+      return InterventionCandidate(policy, item);
+    }
+    return null;
+  }
+}

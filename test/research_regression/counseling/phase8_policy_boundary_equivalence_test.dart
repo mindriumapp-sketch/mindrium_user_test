@@ -160,7 +160,7 @@ void main() {
   group('Intervention boundary equivalence', () {
     final approvedBalanced = _cbtItem(id: 'week4_alternative_thought_01');
 
-    test('주차 미승인 케이스: unavailabilityReason이 non-null', () {
+    test('주차 미승인 케이스: noEligible boundary (Phase 13.2)', () {
       final context = TurnPlanningContext(
         state: CounselingState.intervention,
         currentWeek: 2,
@@ -170,9 +170,11 @@ void main() {
       final plan = const DeterministicInterventionTurnPlanner().plan(context)!;
       final boundary = builder.build(_requestFrom(context))!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
-      expect(boundary.unavailabilityReason, isNotNull);
-      expect(boundary.isAvailable, isFalse);
+      // Phase 13.2: noEligibleIntervention replaces 'unavailable' here.
+      expect(plan.requiredAct, DialogueAct.summarize);
+      expect(boundary.unavailabilityReason, isNull);
+      expect(boundary.allowedActions, [DialogueAct.summarize]);
+      expect(boundary.eligibleInterventionIds, isEmpty);
     });
 
     test('정상 케이스 (balancedThought, week4): eligible + isAvailable true', () {
@@ -217,7 +219,7 @@ void main() {
       expect(boundary.isAvailable, isTrue);
     });
 
-    test('이미 사용된 개입: unavailabilityReason이 non-null', () {
+    test('이미 사용된 개입: noEligible boundary (Phase 13.2)', () {
       final context = TurnPlanningContext(
         state: CounselingState.intervention,
         currentWeek: 4,
@@ -236,11 +238,13 @@ void main() {
       final plan = const DeterministicInterventionTurnPlanner().plan(context)!;
       final boundary = builder.build(_requestFrom(context))!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
-      expect(boundary.unavailabilityReason, isNotNull);
+      // Phase 13.2: noEligibleIntervention replaces 'unavailable' here.
+      expect(plan.requiredAct, DialogueAct.summarize);
+      expect(boundary.allowedActions, [DialogueAct.summarize]);
+      expect(boundary.eligibleInterventionIds, isEmpty);
     });
 
-    test('지식 미매칭: unavailabilityReason이 non-null', () {
+    test('지식 미매칭: noEligible boundary (Phase 13.2)', () {
       final context = TurnPlanningContext(
         state: CounselingState.intervention,
         currentWeek: 4,
@@ -250,8 +254,10 @@ void main() {
       final plan = const DeterministicInterventionTurnPlanner().plan(context)!;
       final boundary = builder.build(_requestFrom(context))!;
 
-      expect(plan.planningStatus, TurnPlanningStatus.unavailable);
-      expect(boundary.unavailabilityReason, isNotNull);
+      // Phase 13.2: noEligibleIntervention replaces 'unavailable' here.
+      expect(plan.requiredAct, DialogueAct.summarize);
+      expect(boundary.allowedActions, [DialogueAct.summarize]);
+      expect(boundary.eligibleInterventionIds, isEmpty);
     });
   });
 

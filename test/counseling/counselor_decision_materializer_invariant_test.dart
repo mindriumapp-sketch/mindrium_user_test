@@ -268,7 +268,7 @@ void main() {
       );
     });
 
-    test('unavailable week policy: isUnavailable decision needs no materialization', () {
+    test('Phase 13.2: no approved technique -> noEligible summarize decision validates and materializes', () {
       final request = PolicyBoundaryRequest(
         currentState: CounselingState.intervention,
         userMessage: '아무거나요.',
@@ -280,14 +280,32 @@ void main() {
       );
       final policy = builder.build(request);
       expect(policy, isNotNull);
-      expect(policy!.isAvailable, isFalse);
+      expect(policy!.allowedActions, [DialogueAct.summarize]);
       expect(policy.eligibleInterventionIds, isEmpty);
 
-      const decision = CounselorDecision(
-        selectedAction: DialogueAct.socraticQuestion,
-        isUnavailable: true,
+      for (final target in const [ReflectionTarget.text('아무거나요.'), ReflectionTarget.none()]) {
+        final decision = CounselorDecision(
+          selectedAction: DialogueAct.summarize,
+          reflectionTarget: target,
+        );
+        expect(validator.validate(decision: decision, policy: policy), isNull);
+        expect(
+          () => adapter.build(request: request, policy: policy, decision: decision),
+          returnsNormally,
+        );
+      }
+      // A technique id is never valid here (eligibleInterventionIds is empty).
+      expect(
+        validator.validate(
+          decision: const CounselorDecision(
+            selectedAction: DialogueAct.summarize,
+            selectedInterventionId: 'week4_alternative_thought_01',
+            reflectionTarget: ReflectionTarget.none(),
+          ),
+          policy: policy,
+        ),
+        isNotNull,
       );
-      expect(validator.validate(decision: decision, policy: policy), isNull);
     });
   });
 

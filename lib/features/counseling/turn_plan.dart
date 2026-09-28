@@ -709,6 +709,12 @@ class DeterministicInterventionTurnPlanner implements CounselingTurnPlanner {
       }
       return null;
     }
+    if (decision.selectedAction == DialogueAct.summarize) {
+      return materializer.interventionNoEligible(
+        decision,
+        recentMessages: context.recentMessages,
+      );
+    }
 
     return materializer.intervention(
       decision,

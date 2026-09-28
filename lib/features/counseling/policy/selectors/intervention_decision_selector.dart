@@ -42,39 +42,37 @@ class InterventionDecisionSelector {
     required MindriumCounselingContext? userContext,
     required ApprovedInterventionRegistry registry,
   }) {
-    final policy = registry.policyForWeek(currentWeek);
-    if (policy == null ||
-        InterventionEligibilityPredicates.alreadyUsed(recentMessages, policy)) {
-      return const CounselorDecision(
-        selectedAction: DialogueAct.unknown,
-        isUnavailable: true,
-      );
-    }
-
-    CbtKnowledgeItem? selected;
-    for (final item in knowledge) {
-      if (policy.accepts(item)) {
-        selected = item;
-        break;
-      }
-    }
-    if (selected == null) {
-      return const CounselorDecision(
-        selectedAction: DialogueAct.unknown,
-        isUnavailable: true,
-      );
-    }
-    if (policy.interventionType == InterventionType.gainLossReview &&
-        !InterventionEligibilityPredicates.looksLikeAvoidance(userMessage)) {
-      return const CounselorDecision(
-        selectedAction: DialogueAct.unknown,
-        isUnavailable: true,
-      );
-    }
-
     final effectiveIntervention = UserThoughtExtractor.firstEffective(
       userContext,
     );
+    final candidate = InterventionCandidateResolver.resolve(
+      currentWeek: currentWeek,
+      userMessage: userMessage,
+      recentMessages: recentMessages,
+      knowledge: knowledge,
+      hasEffectiveIntervention: effectiveIntervention != null,
+      registry: registry,
+    );
+    if (candidate == null) {
+      // Phase 13.2: nothing approved fits. A normal outcome — briefly
+      // summarize and move on — never `unknown`, which StatePolicy would
+      // not count as progress (N1 deadlock).
+      final summaryTarget =
+          UserThoughtExtractor.latestUserMessage(
+            UserThoughtExtractor.semanticContent(recentMessages),
+          ) ??
+          userMessage.trim();
+      return CounselorDecision(
+        selectedAction: DialogueAct.summarize,
+        reflectionTarget:
+            summaryTarget.isEmpty
+                ? const ReflectionTarget.none()
+                : ReflectionTarget.text(summaryTarget),
+      );
+    }
+    final policy = candidate.policy;
+    final selected = candidate.item;
+
     final explicitThought =
         policy.interventionType == InterventionType.behaviorPatternReview ||
                 policy.interventionType == InterventionType.consequenceReview ||
@@ -87,15 +85,6 @@ class InterventionDecisionSelector {
                 ? userMessage.trim()
                 : null)
             : UserThoughtExtractor.thoughtShaped(userMessage);
-    if (policy.interventionType == InterventionType.maintenanceReview &&
-        explicitThought == null &&
-        effectiveIntervention == null) {
-      return const CounselorDecision(
-        selectedAction: DialogueAct.unknown,
-        isUnavailable: true,
-      );
-    }
-
     final diary = UserThoughtExtractor.firstDiary(userContext);
     final diaryThought =
         policy.interventionType == InterventionType.behaviorPatternReview ||

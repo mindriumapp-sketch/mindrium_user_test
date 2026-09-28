@@ -326,9 +326,10 @@ void main() {
         knowledge: [approvedBalanced],
       );
       final (legacy, fresh) = _runBoth(context);
-      expect(legacy!.planningStatus, TurnPlanningStatus.unavailable);
-      expect(fresh!.planningStatus, TurnPlanningStatus.unavailable);
-      expect(fresh.requiredAct, legacy.requiredAct);
+      // Phase 13.2: noEligibleIntervention replaces 'unavailable' here.
+      expect(legacy!.requiredAct, DialogueAct.summarize);
+      expect(fresh!.requiredAct, legacy.requiredAct);
+      expect(fresh.reflectionSentence, legacy.reflectionSentence);
     });
 
     test('balancedThought 성공', () {
@@ -382,8 +383,9 @@ void main() {
         ],
       );
       final (legacy, fresh) = _runBoth(context);
-      expect(legacy!.planningStatus, TurnPlanningStatus.unavailable);
-      expect(fresh!.planningStatus, TurnPlanningStatus.unavailable);
+      // Phase 13.2: noEligibleIntervention replaces 'unavailable' here.
+      expect(legacy!.requiredAct, DialogueAct.summarize);
+      expect(fresh!.requiredAct, legacy.requiredAct);
     });
   });
 

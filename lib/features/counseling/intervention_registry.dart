@@ -91,4 +91,19 @@ class ApprovedInterventionRegistry {
     }
     return null;
   }
+
+  /// Phase 13.2: every approved policy the user has already reached
+  /// (`policy.week <= week`), most recently introduced first. Never a
+  /// future-week technique.
+  List<ApprovedInterventionPolicy> policiesUpTo(int week) =>
+      policies.where((p) => p.week <= week).toList()
+        ..sort((a, b) => b.week.compareTo(a.week));
+
+  /// The policy that approves the knowledge item [itemId], if any.
+  ApprovedInterventionPolicy? policyForItemId(String itemId) {
+    for (final policy in policies) {
+      if (policy.requiredId == itemId) return policy;
+    }
+    return null;
+  }
 }

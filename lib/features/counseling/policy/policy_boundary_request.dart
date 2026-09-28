@@ -256,114 +256,44 @@ class DeterministicPolicyBoundaryBuilder implements PolicyBoundaryBuilder {
 
   PolicyBoundary _buildInterventionBoundary(PolicyBoundaryRequest request) {
     final usedInterventionIds = _usedInterventionIds(request.recentMessages);
-    final policy = interventionRegistry.policyForWeek(request.currentWeek);
-
-    if (policy == null ||
-        InterventionEligibilityPredicates.alreadyUsed(
-          request.recentMessages,
-          policy,
-        )) {
-      return PolicyBoundary(
-        currentState: request.currentState,
-        allowedActions: const [],
-        candidateGoalIds: const [],
-        eligibleInterventionIds: const [],
-        allowedFactIds: const [],
-        forbiddenConstraints: const [
-          TurnConstraint.forbidNewIntervention,
-          TurnConstraint.forbidStageAdvance,
-        ],
-        progressInfo: _buildProgressInfo(
-          request.recentMessages,
-          usedInterventionIds: usedInterventionIds,
-        ),
-        unavailabilityReason:
-            policy == null
-                ? 'No approved intervention policy for week ${request.currentWeek}'
-                : 'Intervention policy ${policy.requiredId} already used this session',
-      );
-    }
-
-    final matchedKnowledge =
-        request.knowledge.where((item) => policy.accepts(item)).toList();
-    if (matchedKnowledge.isEmpty) {
-      return PolicyBoundary(
-        currentState: request.currentState,
-        allowedActions: const [],
-        candidateGoalIds: const [],
-        eligibleInterventionIds: const [],
-        allowedFactIds: const [],
-        forbiddenConstraints: const [
-          TurnConstraint.forbidNewIntervention,
-          TurnConstraint.forbidStageAdvance,
-        ],
-        progressInfo: _buildProgressInfo(
-          request.recentMessages,
-          usedInterventionIds: usedInterventionIds,
-        ),
-        unavailabilityReason:
-            'No knowledge item matches policy ${policy.requiredId}',
-      );
-    }
-
-    if (policy.interventionType == InterventionType.gainLossReview &&
-        !InterventionEligibilityPredicates.looksLikeAvoidance(
-          request.userMessage,
-        )) {
-      return PolicyBoundary(
-        currentState: request.currentState,
-        allowedActions: const [],
-        candidateGoalIds: const [],
-        eligibleInterventionIds: const [],
-        allowedFactIds: const [],
-        forbiddenConstraints: const [
-          TurnConstraint.forbidNewIntervention,
-          TurnConstraint.forbidStageAdvance,
-        ],
-        progressInfo: _buildProgressInfo(
-          request.recentMessages,
-          usedInterventionIds: usedInterventionIds,
-        ),
-        unavailabilityReason:
-            'gainLossReview requires an avoidance-shaped user message',
-      );
-    }
-
-    if (policy.interventionType == InterventionType.maintenanceReview) {
-      final explicitThought =
-          InterventionEligibilityPredicates.looksLikeMaintenance(
-                request.userMessage,
-              )
-              ? request.userMessage.trim()
-              : null;
-      final effectiveIntervention = UserThoughtExtractor.firstEffective(
-        request.userContext,
-      );
-      if (explicitThought == null && effectiveIntervention == null) {
-        return PolicyBoundary(
-          currentState: request.currentState,
-          allowedActions: const [],
-          candidateGoalIds: const [],
-          eligibleInterventionIds: const [],
-          allowedFactIds: const [],
-          forbiddenConstraints: const [
-            TurnConstraint.forbidNewIntervention,
-            TurnConstraint.forbidStageAdvance,
-          ],
-          progressInfo: _buildProgressInfo(
-            request.recentMessages,
-            usedInterventionIds: usedInterventionIds,
-          ),
-          unavailabilityReason:
-              'maintenanceReview requires an explicit thought or an effective intervention',
-        );
-      }
-    }
-
-    final diary = UserThoughtExtractor.firstDiary(request.userContext);
     final effectiveIntervention = UserThoughtExtractor.firstEffective(
       request.userContext,
     );
+    // Phase 13.2: same resolver as InterventionDecisionSelector — cumulative
+    // approved techniques up to the current week, never a future week.
+    final candidate = InterventionCandidateResolver.resolve(
+      currentWeek: request.currentWeek,
+      userMessage: request.userMessage,
+      recentMessages: request.recentMessages,
+      knowledge: request.knowledge,
+      hasEffectiveIntervention: effectiveIntervention != null,
+      registry: interventionRegistry,
+    );
+
+    if (candidate == null) {
+      // noEligibleIntervention: a normal outcome whose only action is a
+      // brief summary (DialogueAct.summarize). Not `unavailable`, so the
+      // session can progress.
+      return PolicyBoundary(
+        currentState: request.currentState,
+        allowedActions: const [DialogueAct.summarize],
+        candidateGoalIds: const [],
+        eligibleInterventionIds: const [],
+        allowedFactIds: const [],
+        forbiddenConstraints: const [
+          TurnConstraint.forbidAdvice,
+          TurnConstraint.forbidNewUserFacts,
+          TurnConstraint.forbidNewIntervention,
+        ],
+        progressInfo: _buildProgressInfo(
+          request.recentMessages,
+          usedInterventionIds: usedInterventionIds,
+        ),
+      );
+    }
+
+    final policy = candidate.policy;
+    final diary = UserThoughtExtractor.firstDiary(request.userContext);
     final List<String> allowedFactIds;
     if (policy.interventionType == InterventionType.maintenanceReview) {
       allowedFactIds =
@@ -378,8 +308,7 @@ class DeterministicPolicyBoundaryBuilder implements PolicyBoundaryBuilder {
       currentState: request.currentState,
       allowedActions: const [DialogueAct.socraticQuestion],
       candidateGoalIds: const [],
-      eligibleInterventionIds:
-          matchedKnowledge.map((item) => item.id).toList(),
+      eligibleInterventionIds: [candidate.item.id],
       allowedFactIds: allowedFactIds,
       forbiddenConstraints: const [
         TurnConstraint.forbidAdvice,

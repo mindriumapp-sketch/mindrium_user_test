@@ -386,9 +386,11 @@ void main() {
         registry: registry,
       );
 
-      expect(legacy!.planningStatus, TurnPlanningStatus.unavailable);
-      expect(decision.isUnavailable, isTrue);
-      expect(decision.reflectionTarget, isNull);
+      // Phase 13.2: noEligibleIntervention replaces 'unavailable' here.
+      expect(legacy!.requiredAct, DialogueAct.summarize);
+      expect(decision.isUnavailable, isFalse);
+      expect(decision.selectedAction, DialogueAct.summarize);
+      expect(decision.selectedInterventionId, isNull);
     });
 
     test('balancedThought 성공', () {
@@ -506,9 +508,11 @@ void main() {
         registry: registry,
       );
 
-      expect(legacy!.planningStatus, TurnPlanningStatus.unavailable);
-      expect(decision.isUnavailable, isTrue);
-      expect(decision.reflectionTarget, isNull);
+      // Phase 13.2: noEligibleIntervention replaces 'unavailable' here.
+      expect(legacy!.requiredAct, DialogueAct.summarize);
+      expect(decision.isUnavailable, isFalse);
+      expect(decision.selectedAction, DialogueAct.summarize);
+      expect(decision.selectedInterventionId, isNull);
     });
   });
 
