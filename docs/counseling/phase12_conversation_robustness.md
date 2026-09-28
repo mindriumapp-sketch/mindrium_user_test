@@ -417,6 +417,20 @@ The worst case was turn 5. Three different root causes:
   session is in progress. There's a grammar bug in the guide answer too
   ("걱정 기록는" should use 은).
 
+### Session 4 follow-ups fixed (N5, N4)
+
+| Fix | Layer | Change | Evidence |
+|---|---|---|---|
+| **N5** clause in a noun slot | G (semantic fallback surface) | `SemanticDeterministicResponseRealizer`: declarative and predicate-final targets get the generic acknowledgment; only noun phrases fill "X 부분이 / X 때문에 / X 생각이". This also stops verbatim parroting in the fallback. | 6/6 real-shape repros failed before and pass after; noun phrases keep the specific template. Two 10.3/10.3B tests that pinned the old behavior were updated with the reason. `3c61ba8` |
+| **N4** counseling routed to app guide | intent routing | `DeterministicAssistantIntentRouter.detect(counselingInProgress:)`: mid-session (`totalTurns > 0`) only an explicit usage question reaches the app guide, never a bare feature-name overlap. First-turn behavior is unchanged. The guide answer now picks 은/는 by batchim. | Router 7 tests with the real catalog; harness test with production wiring (mutation: disabling the flag fails it); particle test (mutation-checked). `lib/features/assistant/` was untracked and is now committed. `ff69db7` |
+
+N6 (verbatim quoting in the deterministic checkIn/intervention templates,
+and a stale intervention target) is **not** addressed here. It needs a
+realization-surface design (which states go through GPT, how to
+paraphrase without GPT). Recommended as its own phase.
+
+`flutter test` **1206/1206**, `flutter analyze` unchanged.
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
