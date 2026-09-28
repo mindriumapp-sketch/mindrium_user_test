@@ -383,7 +383,11 @@ class CounselingHarness {
               ? RealizationRequest.fromPlan(
                 plan: turnPlan,
                 retrievalSummary: planningContext.retrievalSummary,
-                recentConversation: recentMessages,
+                recentConversation: _withCurrentUserTurn(
+                  recentMessages,
+                  userMessage,
+                  session.sessionId,
+                ),
                 allowedCbtFacts: knowledge,
               )
               : null;
@@ -587,6 +591,34 @@ class CounselingHarness {
               .toList(),
       parseStatus: output.parseStatus,
     );
+  }
+
+  /// Phase 12.3 (N2 root cause): the realizer must see what the user just
+  /// said. `session.messages` only contains the current turn when the
+  /// provider synced it early (instant empathy, now disabled), so without
+  /// this the model saw a conversation ending on its own previous question
+  /// and repeated it. Only the realization request gets this view; selectors
+  /// keep reading history that ends on the previous assistant reply.
+  List<CounselingMessage> _withCurrentUserTurn(
+    List<CounselingMessage> history,
+    String userMessage,
+    String sessionId,
+  ) {
+    final current = userMessage.trim();
+    final alreadyThere = history.reversed
+        .where((m) => m.isUser)
+        .take(1)
+        .any((m) => m.text.trim() == current);
+    if (current.isEmpty || alreadyThere) return history;
+    return [
+      ...history,
+      CounselingMessage(
+        id: '${sessionId}_current_user',
+        role: 'user',
+        text: current,
+        createdAt: DateTime.now(),
+      ),
+    ];
   }
 
   List<CounselingMessage> _recentMessages(CounselingSessionState session) {
