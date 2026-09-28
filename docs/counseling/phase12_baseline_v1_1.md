@@ -30,11 +30,14 @@ infos.
 
 ## Known critical blockers before external rollout
 
-- **N1: Week 1–3 intervention deadlock.** No approved intervention exists
-  for weeks 1–3. The unavailable plan uses `DialogueAct.unknown`, which
+- **N1: intervention deadlock.** When no approved intervention is
+  eligible, the unavailable plan uses `DialogueAct.unknown`, which
   StatePolicy never counts as progress, so the session repeats the same
-  template until the 20-turn cap and never reaches closing. Affects every
-  new user.
+  template until the 20-turn cap and never reaches closing. This happens
+  in weeks 1–3 (no approved technique) **and, per the Phase 13.1 audit,
+  also in weeks 7–8 whenever their context gates fail** (5 of 8 weeks
+  with ordinary worry content). See
+  [`phase13_1_progression_audit.md`](phase13_1_progression_audit.md).
 - **N7: fixed turn budget causes premature closing.** Budgets are 1/1/2/1,
   so every session closes on user turn 6. The intervention question is
   never answered (the answer goes to closing), reflect never reaches the
