@@ -170,9 +170,46 @@ class RemoteLlmRealizer implements ResponseRealizer {
     // 상담사 두세 문장을 크게 벗어나면 새 내용을 지어냈을 가능성이 높다.
     if (reply.length > 400) violations.add('too_long');
 
+    // Phase 12.3 (N2): real dogfood showed the model ignoring the plan's
+    // question and copying the previous assistant turn's question, which
+    // is what triggered users' "왜 똑같은 말을 해?" complaints. Rejecting it
+    // falls back to the deterministic draft. Only flagged when the plan
+    // itself asked something new — following the plan is never rejected.
+    if (_repeatsPreviousQuestion(reply, request)) {
+      violations.add('repeats_previous_question');
+    }
+
     return RealizationValidationResult(
       isValid: violations.isEmpty,
       violations: violations,
     );
+  }
+
+  bool _repeatsPreviousQuestion(String reply, RealizationRequest request) {
+    final previous = request.recentConversation.lastWhere(
+      (m) => !m.isUser,
+      orElse: () => CounselingMessage(
+        id: '',
+        role: 'user',
+        text: '',
+        createdAt: DateTime(0),
+      ),
+    );
+    if (previous.isUser) return false;
+    final previousQuestion = _lastQuestion(previous.text);
+    final replyQuestion = _lastQuestion(reply);
+    if (previousQuestion == null || replyQuestion == null) return false;
+    if (replyQuestion != previousQuestion) return false;
+    final draftQuestion = _lastQuestion(request.deterministicDraft);
+    return draftQuestion != previousQuestion;
+  }
+
+  static String? _lastQuestion(String text) {
+    final matches = RegExp(r'[^.!?\n]*\?').allMatches(text).toList();
+    if (matches.isEmpty) return null;
+    final normalized = matches.last
+        .group(0)!
+        .replaceAll(RegExp(r'[\s.,!?“”"‘’]'), '');
+    return normalized.isEmpty ? null : normalized;
   }
 }
