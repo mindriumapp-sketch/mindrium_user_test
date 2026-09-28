@@ -7,6 +7,7 @@ import 'package:gad_app_team/data/counseling/retrieval_summary.dart';
 import 'package:gad_app_team/features/assistant/app_guide/local_app_guide_repository.dart';
 import 'package:gad_app_team/features/assistant/mindrium_assistant_harness.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
+import 'package:gad_app_team/features/counseling/counseling_state.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
@@ -360,6 +361,44 @@ void main() {
       // Safety가 작동하면 109가 나온다.
       expect(result.assistantMessage.text, contains('109'));
       expect(result.handledBySafety, isTrue);
+    });
+  });
+
+  // Phase 12.3 (N4): production wiring (router with the app-guide catalog).
+  group('mid-session routing (N4)', () {
+    MindRiumAssistantHarness wired() => MindRiumAssistantHarness(
+      counselingHarness: newHarness(),
+      intentRouter: DeterministicAssistantIntentRouter(repository: appGuideRepository),
+      appGuideKnowledgeRetriever: LocalAppGuideKnowledgeRetriever(
+        repository: appGuideRepository,
+      ),
+    );
+    const dogfood = '수업 과제도 해야하고 공모전 준비, 논문 작성, 융합연구 미팅준비 등 할게 진짜 많아';
+
+    test('mid-session counseling content is not answered by the app guide', () async {
+      final session = CounselingSessionState(
+        sessionId: 'n4',
+        currentWeek: 4,
+        state: CounselingState.reflect,
+        totalTurns: 2,
+      );
+      final result = await wired().handleTurn(session: session, userMessage: dogfood);
+      expect(result.assistantMessage.text.contains('→'), isFalse, reason: result.assistantMessage.text);
+      expect(result.assistantMessage.dialogueAct, isNotNull);
+    });
+
+    test('an explicit usage question mid-session still gets the app guide', () async {
+      final session = CounselingSessionState(
+        sessionId: 'n4b',
+        currentWeek: 4,
+        state: CounselingState.reflect,
+        totalTurns: 2,
+      );
+      final context = await wired().buildContext(
+        session: session,
+        userMessage: '알림 설정은 어떻게 바꿔?',
+      );
+      expect(context.intent.needsAppGuidance, isTrue);
     });
   });
 }
