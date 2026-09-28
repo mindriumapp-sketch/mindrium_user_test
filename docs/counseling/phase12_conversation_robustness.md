@@ -191,6 +191,53 @@ plus the four selectors in `lib/features/counseling/policy/selectors/`
 **Next, in order:** 12.1 device dogfood (needs you) → 12.3B F2 → 12.3C F1
 → 12.3D re-evaluation.
 
+## Phase 12.1 — dogfood log
+
+### Session 1 (week 1 account, build 7c202cc, Remote Realizer on)
+
+| # | Input | State | Result |
+|---|---|---|---|
+| 1 | 내일 발표를 해야되는데 준비를 아직 못해서 불안해 | checkIn | ok |
+| 2 | 7 | explore | ok (the bare SUD number re-reflects the prior concern) |
+| 3 | 준비를 못한게 티가나서 혼날 것 같아 | reflect | ok (evidence goal) |
+| 4 | 저번주 발표때 정말 열심히 준비했는데도 부족하다고 혼났어 | reflect | **N2**: the GPT reply repeats turn 3's question verbatim |
+| 5 | (turn 4 resent) | intervention | **N1** unavailable template |
+| 6 | 아까 말했잖아 지금 준비를 못해서 불안하다고 | intervention | **F2 miss** (real corpus item #1); N1 template again |
+| 7 | 빨리 집중해서 준비해야하는데 불안해서 집중이 잘 안돼 | intervention | N1 template again |
+
+**N1 — intervention dead end, weeks 1–3 (critical, predates Phase 11/12).**
+`ApprovedInterventionRegistry` only has weeks 4–8. In weeks 1–3,
+intervention produces `interventionUnavailable`, whose
+`requiredAct = DialogueAct.unknown`. `CounselingStatePolicy.next()`
+doesn't count unknown turns as progress, so the session never reaches
+closing: it repeats "“…”라고 느끼고 계시는군요. 지금 떠오르는 생각이나
+느낌을…" until the 20-turn cap, even after "고마워". I replayed the
+dogfood session deterministically and it reproduces on weeks 0–3 every
+time. Week 4 goes to closing normally. The 12.2 suite missed this because
+every scenario ran at week 4, which is an evaluation-design gap.
+→ **Promoted to Phase 13, Cumulative Intervention Policy:** an education
+corpus audit, a registry v2 keyed on `introducedWeek` (anything learned up
+to the current week, never future weeks), `microSupport` vs formal CBT,
+context-aware selection, and an explicit `noEligibleIntervention` outcome
+that goes to closing instead of `unknown`. The eval matrix is weeks
+1/2/3/4/6/8. It is not fixed in Phase 12, because StatePolicy is frozen
+here.
+→ **Dogfood workaround:** the local `mindrium_dogfood` DB now has an
+active week-4 `treatment_progress` doc for the test account
+(`note: phase12.1 dogfood: forced week 4`). Delete it to go back to
+week 1.
+
+**N2 — Remote Realizer repeated the previous turn verbatim (class G).**
+Deterministic replay gives the correct `alternative` question at turn 4.
+The GPT realization copied its own previous sentence, and validation
+didn't reject it. This is a wording-layer issue, which is frozen in
+Phase 12, so it's only recorded. Candidate later check: reject a
+realization identical to the previous assistant message.
+
+**F2 corpus (real, dogfood):**
+1. 아까 말했잖아 지금 준비를 못해서 불안하다고 (repeatedQuestion, mixed
+   with a content restatement, missed)
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
