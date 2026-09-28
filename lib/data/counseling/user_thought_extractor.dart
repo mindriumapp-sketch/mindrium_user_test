@@ -81,6 +81,35 @@ class UserThoughtExtractor {
     return null;
   }
 
+  /// [messages] without the user messages the system answered with an
+  /// interaction-repair turn. Those were about the conversation itself
+  /// (repetition, "stop asking", "what's the point"), not the user's worry,
+  /// so they must not become reflection/intervention/closing content. The
+  /// history itself is not changed; only content selectors read this view.
+  ///
+  /// A turn is judged by the assistant message that closes it (the last
+  /// assistant message before the next user message), so an instant-empathy
+  /// bubble in between doesn't hide the repair metadata.
+  static List<CounselingMessage> semanticContent(
+    List<CounselingMessage> messages,
+  ) {
+    final result = <CounselingMessage>[];
+    for (var i = 0; i < messages.length; i++) {
+      final message = messages[i];
+      if (message.isUser && _answeredWithRepair(messages, i)) continue;
+      result.add(message);
+    }
+    return result;
+  }
+
+  static bool _answeredWithRepair(List<CounselingMessage> messages, int i) {
+    CounselingMessage? reply;
+    for (var j = i + 1; j < messages.length && !messages[j].isUser; j++) {
+      reply = messages[j];
+    }
+    return reply?.interactionRepairReason != null;
+  }
+
   static String? latestUserMessage(List<CounselingMessage> messages) {
     for (final message in messages.reversed) {
       if (message.isUser && message.text.trim().isNotEmpty) {

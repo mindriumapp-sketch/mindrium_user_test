@@ -302,6 +302,14 @@ class _Metrics {
   /// user's thought (e.g. restructuring "아까도 물어봤잖아요").
   int metaTextUsedAsTarget = 0;
 
+  /// Subset of [metaTextUsedAsTarget] where the quoted turn WAS detected
+  /// (its reply carried interactionRepairReason). Phase 12.3A gate: 0.
+  int metaContentLeakage = 0;
+
+  /// The rest: the quoted turn was never detected (F2 miss or closing, F5),
+  /// so there is no metadata to exclude it by.
+  int untaggedMetaLeakage = 0;
+
   /// Intervention/closing replies that quote a low-info turn ("몰라요").
   int lowInfoTextUsedAsTarget = 0;
   final missedUnseen = <String>{};
@@ -321,6 +329,8 @@ class _Metrics {
     'maximumConsecutiveSameRecovery': maximumConsecutiveSameRecovery,
     'metaInClosingUnhandled': metaInClosingUnhandled,
     'metaTextUsedAsTarget': metaTextUsedAsTarget,
+    'metaContentLeakage': metaContentLeakage,
+    'untaggedMetaLeakage': untaggedMetaLeakage,
     'lowInfoTextUsedAsTarget': lowInfoTextUsedAsTarget,
   };
 }
@@ -394,6 +404,11 @@ void _score(_Scenario s, List<_Step> steps, _Metrics m) {
         if (prior.turn.isMeta) {
           m.metaTextUsedAsTarget++;
           m.targetedMeta.add('${s.id}: ${prior.turn.text}');
+          if (prior.reply?.interactionRepairReason != null) {
+            m.metaContentLeakage++;
+          } else {
+            m.untaggedMetaLeakage++;
+          }
         } else {
           m.lowInfoTextUsedAsTarget++;
         }
@@ -535,13 +550,21 @@ void main() {
       expect(metrics.missedUnseen, _knownDetectorMisses);
     });
 
-    test('F3 meta feedback quoted as the intervention/closing target', () {
+    // Phase 12.2 value, kept as the before-record:
+    //   M3a 아까도 물어봤잖아요. / M3b 우리 이 얘기 아까 하지 않았어요? /
+    //   M3c 이거 전에 대답했던 것 같은데 / M7 왜 똑같은 말을 반복하지? /
+    //   M8 또 같은 걸 물어보네요. / M8 이런 거 한다고 뭐가 달라질까 싶어요.
+    // Phase 12.3A excluded every detected repair utterance; what is left is
+    // only undetected meta (F2 misses, F5 closing).
+    test('F3 detected repair utterances never become semantic targets', () {
+      expect(metrics.metaContentLeakage, 0);
+    });
+
+    test('F3 residue: only undetected meta still leaks (F2/F5-owned)', () {
+      expect(metrics.untaggedMetaLeakage, 3);
       expect(metrics.targetedMeta, {
-        'M3a_repair_seen_phrase: 아까도 물어봤잖아요.',
         'M3b_repair_unseen_phrases: 우리 이 얘기 아까 하지 않았어요?',
         'M3c_repair_on_exhausted_reflect: 이거 전에 대답했던 것 같은데',
-        'M7_repair_at_reflect_budget_edge: 왜 똑같은 말을 반복하지?',
-        'M8_repair_then_intervention: 또 같은 걸 물어보네요.',
         'M8_repair_then_intervention: 이런 거 한다고 뭐가 달라질까 싶어요.',
       });
     });

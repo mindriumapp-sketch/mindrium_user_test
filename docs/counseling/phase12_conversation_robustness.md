@@ -140,6 +140,57 @@ today, while F2/F3 affect every session where a user complains.
 3. **F1** — make `_selectRecovery` avoid repeating the previous recovery.
 4. **F4** — skip low-info turns as intervention targets.
 
+## Phase 12.3A — F3 fixed (metadata content exclusion)
+
+**Root cause (confirmed in code):** every content selector read past user
+messages by text only:
+`InterventionDecisionSelector` (`latestUserMessage`),
+`ClosingDecisionSelector._summaryTarget`,
+`ReflectDecisionSelector` (`_explicitThoughtFromRecent`,
+`latestUserMessage`), and `ExploreDecisionSelector._previousConcern`
+(the SUD fallback). The repair metadata sits on the assistant message
+that *answers* the user turn, and no selector looked at that message.
+
+**Rule:** `UserThoughtExtractor.semanticContent(history)` drops the user
+messages whose turn was closed by an assistant reply carrying
+`interactionRepairReason`. "Closed by" means the last assistant message
+before the next user message, so an instant-empathy bubble in between
+doesn't hide the repair. The rule is metadata-only, with no string
+matching. It excludes all three reasons (`repeatedQuestion`,
+`stopQuestioning`, `processFrustration`), because the enum's contract is
+"redirected away from worry-content selection". Only content reads use
+this view. The goal-asked bookkeeping and `_selectRecovery` still read
+the full history, and the history itself is never modified.
+
+Known tradeoff: a message that mixes real worry with a stop request
+("발표가 무서운데 왜 자꾸 물어봐요") now loses its worry part as a future
+target. This is acceptable for now. Revisit it if 12.1 shows it happening.
+
+**Production files:** `lib/data/counseling/user_thought_extractor.dart`,
+plus the four selectors in `lib/features/counseling/policy/selectors/`
+(`intervention_`, `closing_`, `reflect_`, `explore_decision_selector.dart`).
+
+**Evidence:**
+- `test/counseling/semantic_content_eligibility_test.dart` (19 tests):
+  3 reasons x 4 selectors, a history-unchanged check, and normal-content
+  controls. 12 of them failed before the fix. The first run had 3 bogus
+  passes, caused by two weak inputs ("음..." isn't low-info, "7점이요"
+  isn't SUD by the existing regex). Both were corrected, and I confirmed
+  that reverting only the explore change makes exactly 3 tests fail again.
+- The frozen multi-turn suite, same scenarios: `metaTextUsedAsTarget`
+  went from 6 to 3, and **metaContentLeakage (detected repair utterances)
+  = 0**. The remaining 3 were never detected (M3b and M3c are F2 misses,
+  M8 is in closing, which is F5), so there is no metadata to exclude them
+  by. They move to F2/F5.
+- M3a, M7, M8 intervention now restructure the actual worry ("발표 중에
+  실수하면…") instead of the complaint.
+- Unchanged: F1 = 2, F2 miss set, F4 = 5 (no low-info heuristic added),
+  11.4 frozen_v1, StatePolicy, Realizer, and CBT registry.
+- `flutter test` **1169/1169**, `flutter analyze` unchanged (5 infos).
+
+**Next, in order:** 12.1 device dogfood (needs you) → 12.3B F2 → 12.3C F1
+→ 12.3D re-evaluation.
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each

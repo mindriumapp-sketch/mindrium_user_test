@@ -110,7 +110,9 @@ class InterventionDecisionSelector {
             ? effectiveIntervention?.label
             : null) ??
         diaryThought ??
-        UserThoughtExtractor.latestUserMessage(recentMessages) ??
+        UserThoughtExtractor.latestUserMessage(
+          UserThoughtExtractor.semanticContent(recentMessages),
+        ) ??
         userMessage.trim();
 
     if (target.isEmpty) {

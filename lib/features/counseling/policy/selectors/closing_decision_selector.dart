@@ -1,4 +1,5 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 
 import '../counselor_decision.dart';
 
@@ -40,7 +41,8 @@ class ClosingDecisionSelector {
   ) {
     final current = userMessage.trim();
     if (current.isNotEmpty && !_closingOnly.hasMatch(current)) return current;
-    for (final message in recentMessages.reversed) {
+    final content = UserThoughtExtractor.semanticContent(recentMessages);
+    for (final message in content.reversed) {
       final text = message.text.trim();
       if (message.isUser && text.isNotEmpty && !_closingOnly.hasMatch(text)) {
         return text;

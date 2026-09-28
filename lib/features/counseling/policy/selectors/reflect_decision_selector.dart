@@ -53,6 +53,9 @@ class ReflectDecisionSelector {
       // reflection-target selection below is unaffected by this change.
       ExhaustedReflectGoals() => true,
     };
+    // Content reads use the semantic view; goal/recovery bookkeeping above
+    // still reads the full history.
+    final content = UserThoughtExtractor.semanticContent(recentMessages);
     final currentText = userMessage.trim();
     final currentIsSubstantive = !_isLowInformationReply(currentText);
 
@@ -67,7 +70,7 @@ class ReflectDecisionSelector {
         UserThoughtExtractor.thoughtShaped(currentText) != null;
     final recentCandidate =
         !isFollowUp && explicitThought == null
-            ? _explicitThoughtFromRecent(recentMessages)
+            ? _explicitThoughtFromRecent(content)
             : null;
     final recentThought =
         recentCandidate != null &&
@@ -100,7 +103,7 @@ class ReflectDecisionSelector {
         recentThought ??
         diaryThought ??
         (currentIsSubstantive ? currentText : null) ??
-        UserThoughtExtractor.latestUserMessage(recentMessages) ??
+        UserThoughtExtractor.latestUserMessage(content) ??
         currentText;
 
     final hasRealThought =

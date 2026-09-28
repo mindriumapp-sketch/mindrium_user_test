@@ -1,4 +1,5 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 
 import '../counselor_decision.dart';
 
@@ -33,7 +34,12 @@ class ExploreDecisionSelector {
 
     final isSudResponse = _isSudResponse(current);
     final target =
-        isSudResponse ? (_previousConcern(recentMessages) ?? current) : current;
+        isSudResponse
+            ? (_previousConcern(
+                    UserThoughtExtractor.semanticContent(recentMessages),
+                  ) ??
+                  current)
+            : current;
 
     return CounselorDecision(
       selectedAction: DialogueAct.explore,
