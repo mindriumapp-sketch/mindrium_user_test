@@ -285,6 +285,32 @@ statement** ("아까 말했잖아", "방금 말했잖아", "~다고"), not to th
 counselor's question. The 11.2 detector only models "you asked the same
 question again", which is the core structural gap for 12.3B.
 
+### Session 3 (week 4, build 7c202cc, Remote Realizer on)
+
+| # | Input | State | Device reply | Deterministic replay |
+|---|---|---|---|---|
+| 1 | 내일 시험이 있어 | checkIn | ok | same |
+| 2 | 4 | explore | "내일 시험이 있다는 사실이… 구체적인 계기는 무엇인가요?" | "가장 걱정되는 순간은?" |
+| 3 | 내일 시험을 잘 못보면 어떡하지? | reflect | **N2**: turn 2 repeated **verbatim** | clarify-1 (N3 again) |
+| 4 | 왜 똑같은 말을해? | reflect | **F2 miss + N2**: turn 2 repeated verbatim a second time | clarify-2 |
+| 5 | 왜 똑같은 말 하냐고 | intervention | **F2 miss** + "“왜 똑같은 말을해”라는 생각을… 균형 있게 바꾼다면" | same |
+
+This is the worst outcome observed. The same sentence appeared 3 turns in
+a row, both complaints were ignored, and the CBT intervention then
+restructured the complaint itself. F3 couldn't prevent this, because
+exclusion needs the turn to be detected first. **F2 is a prerequisite for
+F3 to take effect.**
+
+- **N2 is now 3/3 sessions.** The deterministic plan asked a different
+  question each turn. Every repeat came from the GPT realization.
+- **N3 again.** "잘 못보면 어떡하지?" isn't extracted as a thought, so
+  both reflect turns went to clarify.
+
+**F2 corpus (real, dogfood):**
+4. 왜 똑같은 말을해? (explicit; 11.2 requires "…말을 반복", so a bare
+   "말을 해" misses)
+5. 왜 똑같은 말 하냐고 (explicit, quotative re-ask)
+
 ## Phase 12.1 — dogfood protocol (to be done on device)
 
 Build the same way as Phase 10.7E (local backend, SM A716S). Type each
