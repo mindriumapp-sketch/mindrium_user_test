@@ -51,11 +51,13 @@ typedef _Driver = _Turn Function(List<FlowStep> steps);
 enum _Asked { proposal, technique, question }
 
 _Asked _asked(List<FlowStep> steps) {
-  if (steps.last.reply.closingStep == ClosingStep.proposed)
+  if (steps.last.reply.closingStep == ClosingStep.proposed) {
     return _Asked.proposal;
+  }
   for (final s in steps.reversed) {
-    if (s.reply.interactionRepairReason != null && s.reply.closingStep == null)
+    if (s.reply.interactionRepairReason != null && s.reply.closingStep == null) {
       continue;
+    }
     return s.reply.interventionStep == InterventionStep.prompt
         ? _Asked.technique
         : _Asked.question;
