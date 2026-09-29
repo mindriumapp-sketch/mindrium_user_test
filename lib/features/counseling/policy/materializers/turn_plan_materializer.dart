@@ -732,7 +732,11 @@ class TurnPlanMaterializer {
         lowInfo
             ? '${previousOpensSame ? '지금 바로 답하기 어려우셔도 괜찮아요.' : _lowInfoAck} '
                 '이렇게 한 번 생각해 보려고 한 것만으로도 충분히 의미가 있어요.'
-            : !UserThoughtExtractor.isTechniqueAnswer(answer)
+            : !UserThoughtExtractor.isTechniqueAnswer(answer) ||
+                !UserThoughtExtractor.showsTechniqueMove(
+                  answer,
+                  policy.interventionType.name,
+                )
             ? notCreditedAck
             : _integrationFor(policy.interventionType);
     return CounselingTurnPlan(

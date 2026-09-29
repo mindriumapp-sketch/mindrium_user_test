@@ -296,13 +296,46 @@ class UserThoughtExtractor {
     r'(시네요|시네|세요|시는\s*거예요|시는데요?)[.!?~\s]*$',
   );
 
+  /// Phase 13.9E: evidence that a reply actually does what a technique asks,
+  /// by technique. Credit needs positive evidence, not just the absence of
+  /// a detected complaint: undetected meta ("얘기할수록 더 답답해지네요")
+  /// then can't be credited with a reframe it never made. Keys are
+  /// `InterventionType` names, so this layer needn't depend on features/.
+  static final Map<String, RegExp> _techniqueMove = {
+    // a reframe: contrast, possibility, limiting the catastrophe
+    'balancedThought': RegExp(
+      r'(지만|해도|어도|아도|라도|더라도|수도|수\s*있|가능|아니|않|기회|괜찮|다음|정도|충분|전부는|끝은|일\s*뿐|뿐이)',
+    ),
+    // placing the behavior between avoiding and facing it
+    'behaviorPatternReview': RegExp(
+      r'(피하|피해|피했|회피|마주|직면|미루|미뤄|도망|부딪|해보|해 보|하는\s*편|편이|편인)',
+    ),
+    // short-term relief vs the longer run
+    'consequenceReview': RegExp(
+      r'(당장|지금은|나중|오래|결국|길게|편하|편해|도움|안심|잠깐|순간|장기|단기)',
+    ),
+    // what avoiding gives now
+    'gainLossReview': RegExp(r'(좋은\s*점|편하|편해|안\s*해도|피하면|안심|덜\s*불안|이득|대신|잃|손해)'),
+    // when/where to keep the practice
+    'maintenanceReview': RegExp(
+      r'(매일|아침|저녁|밤|주말|시간|전에|후에|할\s*때|꾸준|계속|습관|자기\s*전|일어나)',
+    ),
+  };
+
+  static bool showsTechniqueMove(String value, String interventionType) =>
+      _techniqueMove[interventionType]?.hasMatch(value) ?? true;
+
   /// Phase 13.9D: may this reply be credited as the user's answer to a
   /// technique question? Content that isn't directed back at the counselor.
   static bool isTechniqueAnswer(String value) {
     final t = value.trim();
     if (!hasContent(t)) return false;
     if (_honorificToListener.hasMatch(t)) return false;
-    if (_questionBackEnding.hasMatch(t) && !_rhetorical.hasMatch(t)) return false;
+    for (final sentence in t.split(RegExp(r'(?<=[.!?])\s+'))) {
+      if (_questionBackEnding.hasMatch(sentence.trim()) && !_rhetorical.hasMatch(sentence)) {
+        return false;
+      }
+    }
     // A question word plus a talking ending ("무슨 기준인데", "왜 그래야 돼요").
     // "어떻게든 / 뭐든" are not questions.
     if (_whWord.hasMatch(t) && _talkingEnding.hasMatch(t) && !_rhetorical.hasMatch(t)) {

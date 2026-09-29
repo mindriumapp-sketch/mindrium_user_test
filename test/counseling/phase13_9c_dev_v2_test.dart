@@ -188,4 +188,39 @@ void main() {
       test('not an answer: $m', () => expect(UserThoughtExtractor.isTechniqueAnswer(m), isFalse));
     }
   });
+
+  group('13.9E: technique credit needs evidence of the technique', () {
+    const reframes = ['긴장돼도 연습한 만큼은 할 수 있을 거야', '한 번 떨어진다고 끝은 아니지'];
+    const noMove = ['오늘 따라 좀 피곤하네요', '이상하게 대화가 계속 겉도는 느낌'];
+    for (final m in reframes) {
+      test('reframe: $m', () => expect(UserThoughtExtractor.showsTechniqueMove(m, 'balancedThought'), isTrue));
+    }
+    for (final m in noMove) {
+      test('no reframe: $m', () => expect(UserThoughtExtractor.showsTechniqueMove(m, 'balancedThought'), isFalse));
+    }
+    test('a question back in the first sentence is not an answer', () {
+      expect(UserThoughtExtractor.isTechniqueAnswer('그게 정확히 뭔데요? 잘 모르겠네'), isFalse);
+    });
+  });
+
+  group('13.9E: a wish to continue at the proposal is not a complaint', () {
+    InteractionRepairReason? closingGuard(String m) => const DeterministicProcessSignalTurnPlanner()
+        .plan(TurnPlanningContext(
+          state: CounselingState.closing,
+          userMessage: m,
+          knowledge: const [],
+          recentMessages: [
+            CounselingMessage(
+              id: 'p',
+              role: 'assistant',
+              text: '오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?',
+              createdAt: DateTime(2026),
+              closingStep: ClosingStep.proposed,
+            ),
+          ],
+        ))
+        ?.interactionRepairReason;
+    test('continue: 끝내지 말고 조금 더 내 얘기 들어줘', () => expect(closingGuard('끝내지 말고 조금 더 내 얘기 들어줘'), isNull));
+    test('complaint still ends: 계속 똑같은 거만 물어보고 짜증나네', () => expect(closingGuard('계속 똑같은 거만 물어보고 짜증나네'), isNotNull));
+  });
 }

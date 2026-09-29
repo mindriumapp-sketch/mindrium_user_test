@@ -836,6 +836,10 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     );
   }
 
+  static final RegExp _wantsMoreAtProposal = RegExp(
+    r'(아직|좀\s*더|조금\s*더|더\s*(얘기|이야기|말|하고|할래|들어|해)|계속\s*(할|하고|얘기|이야기))',
+  );
+
   /// Phase 13.8 (P1): in closing the Hard Guard stays off, except that a
   /// closing proposal the user didn't understand is asked again plainly.
   /// The proposal stays pending, so the next answer goes to the handshake.
@@ -844,6 +848,11 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     if (_lastAssistant(context.recentMessages)?.closingStep != ClosingStep.proposed) {
       return null;
     }
+    // Phase 13.9E: "아직 정리할 기분 아냐 좀 더 들어줘" asks to keep going; a
+    // wish to continue goes to the handshake before the complaint rule
+    // below (whose "들어줘" cue it shares).
+    if (_wantsMoreAtProposal.hasMatch(current)) return null;
+
     // Phase 13.9A (B): a complaint about the questions themselves at the
     // proposal ("모르겠다고, 왜 계속 같은말해 짜증나게"). Its "계속" is not a
     // wish to continue, and asking anything again would repeat what the

@@ -28,11 +28,12 @@ void main() {
 
   // Holdout v3 FAILED on its first run (2026-09-30): nonAnswerCredited 5,
   // closingContinuationIgnored 3. Recorded; the gate moved to holdout v4.
-  const firstRun = {'nonAnswerCredited': 5, 'closingContinuationIgnored': 3};
-  group('holdout v3 result (recorded failure; the gate is not met)', () {
+  // Re-run after 13.9E on this now-seen set: all 0 (informational).
+  const seenSetRerun = <String, int>{};
+  group('holdout v3 (seen set): re-run recorded, not a pass', () {
     for (final metric in flowGateMetrics) {
       test(metric, () {
-        expect(result.metrics.counts[metric], firstRun[metric] ?? 0,
+        expect(result.metrics.counts[metric], seenSetRerun[metric] ?? 0,
             reason: 'holdout v3 changed; update the record deliberately.\n'
                 '${result.metrics.failures[metric]?.join('\n')}');
       });
