@@ -279,4 +279,47 @@ void main() {
       });
     }
   });
+
+  // Phase 13.9A found these on dev-set users (all phrasings from dogfood).
+  group('13.9A dev-set fixes', () {
+    InteractionRepairReason? detect(String m, [CounselingState state = CounselingState.reflect]) =>
+        const PolicyPipelineTurnPlanner()
+            .plan(TurnPlanningContext(state: state, userMessage: m, knowledge: const []))
+            ?.interactionRepairReason;
+
+    test('A: "왜 계속 물어봐" is a stop-questioning request', () {
+      expect(detect('짜증나게 왜 계속 물어봐'), InteractionRepairReason.stopQuestioning);
+    });
+
+    test('C: "아까도 이거 물어본 것 같은데" is a repetition complaint', () {
+      expect(detect('근데 아까도 이거 물어본 것 같은데'), InteractionRepairReason.repeatedQuestion);
+    });
+
+    test('C: worry content about being asked by others is not', () {
+      expect(detect('아까도 선생님이 물어본 것 같은데 대답을 못했어'), isNull);
+    });
+
+    test('B: a complaint at the closing proposal ends gently instead of reopening', () async {
+      final replies = await run([
+        '내일 발표가 있어서 불안해요',
+        '7점이요',
+        '발표하다가 말을 못 하면 어떡하지',
+        '예전에 발표하다 말이 막힌 적이 있어요',
+        '한 번 막혔다고 매번 그런 건 아닐 수도 있겠네요',
+        '긴장해도 준비한 만큼은 할 수 있을 것 같아요',
+        '모르겠다고, 왜 계속 같은말해 짜증나게',
+      ]);
+      expect(replies[replies.length - 2].closingStep, ClosingStep.proposed);
+      final last = replies.last;
+      expect(last.closingStep, ClosingStep.finalized, reason: last.text);
+      expect(last.interactionRepairReason, isNotNull);
+      expect(last.text.trim().endsWith('?'), isFalse, reason: 'no more questions: ${last.text}');
+    });
+
+    test('D: a clarify question never quotes a non-answer', () async {
+      final replies = await run(['내일 발표가 있어서 불안해요', '7점이요', '몰라']);
+      expect(replies.last.text.contains('“몰라”'), isFalse, reason: replies.last.text);
+      expect(replies.last.text.contains('“7점이요”'), isFalse, reason: replies.last.text);
+    });
+  });
 }

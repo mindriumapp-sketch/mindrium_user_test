@@ -413,7 +413,8 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
   static final RegExp _requestsEmpathy = RegExp(
     r'(그냥\s*(힘든\s*)?(얘기|이야기)?\s*좀?\s*들어(주세요|주시면|만)|'
     r'들어(만)?\s*주(세요|시면)|'
-    r'왜\s*자꾸\s*물어|'
+    // Phase 13.9A (A): "왜 계속 물어봐" as well as "왜 자꾸 물어봐".
+    r'왜\s*(자꾸|계속)\s*물어|'
     r'질문\s*(그만|말고)|'
     r'그만\s*(물어|질문)|'
     r'공감\s*(좀\s*)?(해주|해줘|해\s*주시)|'
@@ -444,7 +445,9 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
   static final RegExp _repeatsInteraction = RegExp(
     r'(왜\s*(똑같은|같은)\s*말(을|은)?\s*(계속\s*)?반복|'
     r'왜\s*(똑같은|같은)\s*질문(을|은)?\s*계속|'
-    r'아까도\s*(물어|여쭤)|'
+    // Phase 13.9A (C): one pointer word may sit between ("아까도 이거
+    // 물어본"); a named third party may not ("아까도 선생님이 물어본").
+    r'아까도\s*((이|그)(거|걸|것|얘기|이야기|질문)\S{0,1}\s*)?(물어|여쭤)|'
     r'방금도\s*(그\s*)?(질문|얘기)\s*(했|말했)|'
     r'그\s*얘기\s*방금도\s*(했|말했)|'
     r'또\s*같은\s*(거|것|걸)\s*물어|'
@@ -698,10 +701,42 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
   /// The proposal stays pending, so the next answer goes to the handshake.
   CounselingTurnPlan? _closingReask(TurnPlanningContext context) {
     final current = context.userMessage.trim();
-    if (_lastAssistant(context.recentMessages)?.closingStep != ClosingStep.proposed ||
-        !_assistantNotUnderstood(current)) {
+    if (_lastAssistant(context.recentMessages)?.closingStep != ClosingStep.proposed) {
       return null;
     }
+    // Phase 13.9A (B): a complaint about the questions themselves at the
+    // proposal ("모르겠다고, 왜 계속 같은말해 짜증나게"). Its "계속" is not a
+    // wish to continue, and asking anything again would repeat what the
+    // user is complaining about: apologize and end.
+    final complaint =
+        _requestsEmpathy.hasMatch(current) || _generalizedStop(current)
+            ? InteractionRepairReason.stopQuestioning
+            : _repeatsInteraction.hasMatch(current) || _generalizedRepeat(current)
+            ? InteractionRepairReason.repeatedQuestion
+            : null;
+    if (complaint != null) {
+      return CounselingTurnPlan(
+        reflectionTarget: current,
+        questionGoal: '불편을 인정하고 더 묻지 않고 마무리한다.',
+        reflectionSentence:
+            '같은 질문이 이어져서 답답하셨을 것 같아요. 오늘은 여기까지 할게요. 이야기 나눠 주셔서 감사합니다.',
+        questionSentence: '',
+        forbidden: defaultForbidden,
+        constraints: const [
+          TurnConstraint.requireReflection,
+          TurnConstraint.requireNoQuestion,
+          TurnConstraint.forbidAdvice,
+          TurnConstraint.forbidNewUserFacts,
+          TurnConstraint.forbidNewIntervention,
+        ],
+        requiredAct: DialogueAct.closing,
+        userContextIds: const [],
+        cbtContextIds: const [],
+        interactionRepairReason: complaint,
+        closingStep: ClosingStep.finalized,
+      );
+    }
+    if (!_assistantNotUnderstood(current)) return null;
     final variants = _repairSentences[InteractionRepairReason.assistantNotUnderstood]!;
     return CounselingTurnPlan(
       reflectionTarget: current,

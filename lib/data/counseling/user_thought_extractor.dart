@@ -192,7 +192,7 @@ class UserThoughtExtractor {
   static bool isLowInformation(String value) {
     final compact = value.trim().replaceAll(RegExp(r'[\s.!?,~]+'), '');
     if (compact.isEmpty) return true;
-    if (RegExp(r'^(?:[0-9]|10)(?:점|정도)?(?:이에요|예요|입니다|요)?$').hasMatch(compact)) {
+    if (RegExp(r'^(?:[0-9]|10)(?:점|정도)?(?:이에요|예요|입니다|이요|요)?$').hasMatch(compact)) {
       return true;
     }
     return RegExp(
@@ -249,6 +249,17 @@ class UserThoughtExtractor {
       }
     }
     return text;
+  }
+
+  /// Phase 13.9A (D): the latest user message that has content (not a
+  /// low-information reply), for fallbacks that quote or reflect it.
+  static String? latestContentMessage(List<CounselingMessage> messages) {
+    for (final message in messages.reversed) {
+      if (message.isUser && !isLowInformation(message.text)) {
+        return message.text.trim();
+      }
+    }
+    return null;
   }
 
   static String? latestUserMessage(List<CounselingMessage> messages) {

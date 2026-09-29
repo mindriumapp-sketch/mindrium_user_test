@@ -106,8 +106,11 @@ class ReflectDecisionSelector {
         recentThought ??
         diaryThought ??
         (currentIsSubstantive ? currentText : null) ??
-        UserThoughtExtractor.latestUserMessage(content) ??
-        currentText;
+        // Phase 13.9A (D): never fall back to a non-answer ("몰라", "7점이요").
+        // With nothing substantive, the target is empty and the clarify
+        // question reflects nothing verbatim.
+        UserThoughtExtractor.latestContentMessage(content) ??
+        '';
 
     final hasRealThought =
         explicitThought != null ||
