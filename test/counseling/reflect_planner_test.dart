@@ -138,7 +138,9 @@ void main() {
 
       expect(plan!.questionSentence, ReflectQuestionGoal.alternative.question);
       expect(plan.reflectionTarget, '예전에 한 번 막힌 적이 있어요.');
-      expect(plan.reflectionSentence, '“예전에 한 번 막힌 적이 있어요”라고 말씀해 주셨군요.');
+      // Phase 13.9D (b): an experience is reflected without quoting; only a
+      // worry thought is quoted.
+      expect(plan.reflectionSentence, '그 이야기를 들으니 지금 느끼시는 마음이 더 잘 이해가 돼요.');
       expect(plan.userContextIds, isEmpty);
     });
 

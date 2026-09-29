@@ -284,8 +284,9 @@ class DeterministicInputGuardTurnPlanner implements CounselingTurnPlanner {
 
   // Phase 13.9C: chat shorthand made of jamo is a real reply, not noise:
   // "ㅇㅇ" (yes), "ㅇㅋ" (ok), "ㄴㄴ" (no), "ㅋㅋ", "ㅠㅠ".
+  // Phase 13.9D: any 1–3 consonants is chat shorthand too ("ㅁㄹ", "ㄱㅊ").
   static final RegExp _chatJamo = RegExp(
-    r'^\s*(ㅇ+|ㅇㅋ+|ㄴㄴ+|ㄱㄱ+|ㅋ+|ㅎ+|ㅠ+|ㅜ+)\s*$',
+    r'^\s*(ㅇ+|ㅇㅋ+|ㄴㄴ+|ㄱㄱ+|ㅋ+|ㅎ+|ㅠ+|ㅜ+|[ㄱ-ㅎ]{1,3})\s*$',
   );
 
   static bool _isJamoNoise(String text) =>
@@ -457,7 +458,8 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     r'상담(이|은|을|해)|대화(가|는|를|해)|이렇게\s*(얘기|이야기|말))',
   );
   static final RegExp _noUse = RegExp(
-    r'(소용\s*없|의미\s*없|도움(이|은)?\s*(별로\s*|하나도\s*|전혀\s*)?(안|없)|'
+    r'(소용\s*없|의미\s*없|쓸모\s*없|필요\s*없|도움(이|은)?\s*(별로\s*|하나도\s*|전혀\s*)?(안|없)|'
+    r'(안|못)\s*와\s*닿|와닿지\s*(않|안)|'
     r'(뭐가|뭐|무엇이)\s*(바뀌|달라지))',
   );
 
@@ -642,8 +644,8 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
   //   N-E: judges the question itself ("질문이 너무 어려워요"), unless the
   //        question belongs to someone else ("교수님 질문이 너무 어려워서").
   static final RegExp _asksToRephrase = RegExp(
-    r'(쉽게|쉬운\s*말로|다시|천천히|한\s*번\s*더)\s*(좀\s*)?'
-    r'(말해|말씀해|설명해|물어봐|물어|얘기해|이야기해)\s*'
+    r'(쉽게|쉬운\s*말로|다시|천천히|한\s*번\s*더|짧게|간단히)\s*(좀\s*)?'
+    r'(말해|말씀해|설명해|물어봐|물어|얘기해|이야기해|해)\s*'
     r'(줘|주세요|주실래요|주실\s*수|줄래|줄\s*수|봐|주시겠)',
   );
   static final RegExp _relaysTheAsk = RegExp(
@@ -787,6 +789,8 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     var count = 0;
     for (final m in messages.reversed) {
       if (m.isUser || m.interactionRepairReason != null) continue;
+      // An unreadable-input turn asked nothing new; it doesn't reset the run.
+      if (m.dialogueAct == DialogueAct.unknown) continue;
       if (!m.isClarify) break;
       count++;
     }
@@ -911,8 +915,15 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     // clarify questions got nothing usable, whatever the user said, so offer
     // to wrap up instead of asking again. A net for non-answers the
     // low-information check doesn't recognize.
+    // Phase 13.9D (c): only when the round has no worry to work on — a
+    // cooperative user who already said one is never cut off.
+    final round = UserThoughtExtractor.currentRound(context.recentMessages);
     if (context.state == CounselingState.reflect &&
-        _trailingClarifies(UserThoughtExtractor.currentRound(context.recentMessages)) >= 2 &&
+        _trailingClarifies(round) >= 2 &&
+        UserThoughtExtractor.roundWorryThought(
+              UserThoughtExtractor.semanticContent(round),
+            ) ==
+            null &&
         const ReflectDecisionSelector().wouldClarify(
           userMessage: current,
           recentMessages: context.recentMessages,

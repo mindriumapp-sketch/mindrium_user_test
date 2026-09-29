@@ -90,7 +90,7 @@ class TurnPlanMaterializer {
     return CounselingTurnPlan(
       reflectionTarget: target,
       questionGoal: '현재 사용자가 느끼는 불안의 주관적 정도를 0에서 10 사이로 확인한다.',
-      reflectionSentence: UserThoughtExtractor.isQuotable(clean)
+      reflectionSentence: UserThoughtExtractor.hasContent(clean)
           ? '“$clean”라고 말씀해 주셨군요.'
           : '말씀해 주셔서 고마워요.',
       questionSentence: '지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?',
@@ -255,7 +255,7 @@ class TurnPlanMaterializer {
       reflectionSentence: surfaceVariation.select(
         candidates: [
           // Phase 13.9C (S1): never quote a non-answer or a question back.
-          if (UserThoughtExtractor.isQuotable(target)) ...[
+          if (UserThoughtExtractor.hasContent(target)) ...[
             '“${_withoutTerminalPunctuation(target)}”라고 느끼고 계시는군요.',
             '말씀을 들어보니 “${_withoutTerminalPunctuation(target)}”라는 부분이 마음에 걸리시는 것 같아요.',
             '지금은 “${_withoutTerminalPunctuation(target)}”라는 점이 가장 신경 쓰이시는군요.',
@@ -265,7 +265,7 @@ class TurnPlanMaterializer {
         recentMessages: recentMessages,
         seed: target,
         repetitionMarkers: [
-          if (UserThoughtExtractor.isQuotable(target)) ...const [
+          if (UserThoughtExtractor.hasContent(target)) ...const [
             '라고 느끼고 계시는군요',
             '말씀을 들어보니',
             '가장 신경 쓰이시는군요',
@@ -675,6 +675,10 @@ class TurnPlanMaterializer {
 
   static const String _lowInfoAck = '바로 떠오르지 않아도 괜찮아요.';
 
+  /// Phase 13.9D: for a reply that isn't an answer to the technique
+  /// question; claims no outcome.
+  static const String notCreditedAck = '말씀해 주셔서 고마워요. 이렇게 함께 살펴본 것만으로도 의미가 있어요.';
+
   static final RegExp _lowInfoAnswer = RegExp(
     r'^(몰라|모르겠|잘\s*모르|글쎄|그냥|음+|네|응|아니)',
   );
@@ -715,17 +719,21 @@ class TurnPlanMaterializer {
     final lowInfo =
         _lowInfoAnswer.hasMatch(answer.trim()) ||
         _wantsToStop.hasMatch(answer) ||
-        !UserThoughtExtractor.isQuotable(answer);
+        !UserThoughtExtractor.hasContent(answer);
     // Phase 13.7 (E1): the prompt may already have opened with "바로 떠오르지
     // 않아도 괜찮아요" (a low-info reflect answer); don't say it twice in a row.
     final previousOpensSame = recentMessages.reversed
         .where((m) => !m.isUser)
         .take(1)
         .any((m) => m.text.startsWith(_lowInfoAck));
+    // Phase 13.9D: content that talks back to the counselor instead of
+    // answering is thanked, not credited with the technique's outcome.
     final reflection =
         lowInfo
             ? '${previousOpensSame ? '지금 바로 답하기 어려우셔도 괜찮아요.' : _lowInfoAck} '
                 '이렇게 한 번 생각해 보려고 한 것만으로도 충분히 의미가 있어요.'
+            : !UserThoughtExtractor.isTechniqueAnswer(answer)
+            ? notCreditedAck
             : _integrationFor(policy.interventionType);
     return CounselingTurnPlan(
       reflectionTarget: answer,

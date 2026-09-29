@@ -208,6 +208,9 @@ class UserThoughtExtractor {
     ).hasMatch(compact)) {
       return true;
     }
+    // Phase 13.9D: consonant-only chat shorthand of 1–3 letters ("ㅇㅇ",
+    // "ㄴㄴ", "ㅁㄹ") carries no content either.
+    if (RegExp(r'^[ㄱ-ㅎ]{1,3}$').hasMatch(compact)) return true;
     return _onlyNothingTokens(value);
   }
 
@@ -224,7 +227,7 @@ class UserThoughtExtractor {
   static final RegExp _nothingPredicate = RegExp(
     r'^(모르겠\S*|몰라\S*|모름|몰루|없\S*|나|나요|나네|나네요|떠올라\S*|떠오르지|떠오르는게|'
     r'생각나\S*|그래|그래요|그렇\S*|글쎄\S*|ㅇㅇ+|ㅇㅋ|ㅇ|응+|웅|네|넵|예|아니\S*|아뇨|노|'
-    r'그냥|그냥요|별로|별로요|딱히|딱히요)$',
+    r'그냥|그냥요|별로|별로요|딱히|딱히요|[ㄱ-ㅎ]{1,3})$',
   );
 
   static bool _onlyNothingTokens(String value) {
@@ -256,6 +259,9 @@ class UserThoughtExtractor {
     return RegExp(
       r'(쉽게|쉬운\s*말|다시|천천히)\s*(좀\s*)?(말|설명|얘기|이야기|물어)|'
       r'설명해|예시|예를\s*들|'
+      // Phase 13.9D: a request aimed at how the counselor talks ("말을 좀
+      // 쉽게 해줘", "짧게 말해 주세요").
+      r'(쉽게|짧게|간단히|천천히)\s*(좀\s*)?(해|말해|얘기해)\s*(줘|주세요|봐|주면|줄래)|'
       r'뭘\s*(대답|말하|물어|하라|원하)|뭐라고\s*(대답|답|말)해야|'
       r'(하라는|말하라는|대답하라는|답하라는)\s*(거|건|게|말)|'
       r'무슨\s*(뜻|말|소리|질문|의도)|뭔\s*(소리|말|뜻)|'
@@ -266,7 +272,49 @@ class UserThoughtExtractor {
   /// Phase 13.9C (S1): may this utterance be quoted back or used as the
   /// thing a sentence is about? Not a non-answer, not addressed to the
   /// counselor. A safety net for when the meta detector misses.
-  static bool isQuotable(String value) {
+  ///
+  /// Phase 13.9D (b): only a worry thought is quoted. A situation, a
+  /// feeling, or anything the detectors didn't classify is reflected
+  /// without quoting, so an undetected non-answer or complaint can't be
+  /// quoted back as content (holdout v2), and quotes stay rare (dogfood
+  /// feedback that quoting read awkwardly).
+  static bool isQuotable(String value) =>
+      hasContent(value) &&
+      targetEligibility(thoughtSentence(value.trim())) == TargetEligibility.worryThought;
+
+  // Phase 13.9D: sentence shapes that talk *to* the counselor rather than
+  // answer its question — a question back ("…그게 뭔데", "…맞죠?"), unless
+  // rhetorical ("끝나진 않겠죠..?"), or an honorific verb ending aimed at the
+  // listener ("…하시네요").
+  static final RegExp _questionBackEnding = RegExp(
+    r'(\?|뭔데|건데|거야|뭐야|뭔가요|맞죠|인가요|건가요|나요|는데요\?)[.!?~ㅋㅎ\s]*$',
+  );
+  static final RegExp _whWord = RegExp(r'(무슨|뭔|뭐(?!든)|뭘|어떤|어떻게(?!든)|왜)');
+  static final RegExp _talkingEnding = RegExp(r'(데|야|냐|니|돼요|되나요)[.!?~ㅋㅎ\s]*$');
+  static final RegExp _rhetorical = RegExp(r'(겠죠|겠지|잖아|지\s*않을까|을까|ㄹ까|려나)');
+  static final RegExp _honorificToListener = RegExp(
+    r'(시네요|시네|세요|시는\s*거예요|시는데요?)[.!?~\s]*$',
+  );
+
+  /// Phase 13.9D: may this reply be credited as the user's answer to a
+  /// technique question? Content that isn't directed back at the counselor.
+  static bool isTechniqueAnswer(String value) {
+    final t = value.trim();
+    if (!hasContent(t)) return false;
+    if (_honorificToListener.hasMatch(t)) return false;
+    if (_questionBackEnding.hasMatch(t) && !_rhetorical.hasMatch(t)) return false;
+    // A question word plus a talking ending ("무슨 기준인데", "왜 그래야 돼요").
+    // "어떻게든 / 뭐든" are not questions.
+    if (_whWord.hasMatch(t) && _talkingEnding.hasMatch(t) && !_rhetorical.hasMatch(t)) {
+      return false;
+    }
+    return true;
+  }
+
+  /// Phase 13.9C: carries content — not a non-answer, not addressed to the
+  /// counselor. What may be credited as a technique answer or used as a
+  /// fallback target; quoting in reflect needs the stricter [isQuotable].
+  static bool hasContent(String value) {
     final t = value.trim();
     if (t.isEmpty || isLowInformation(t) || addressesCounselor(t)) return false;
     return t.replaceAll(RegExp(r'[\s.!?,~]'), '').length >= 4;
@@ -327,7 +375,7 @@ class UserThoughtExtractor {
   /// low-information reply), for fallbacks that quote or reflect it.
   static String? latestContentMessage(List<CounselingMessage> messages) {
     for (final message in messages.reversed) {
-      if (message.isUser && isQuotable(message.text)) {
+      if (message.isUser && hasContent(message.text)) {
         return message.text.trim();
       }
     }

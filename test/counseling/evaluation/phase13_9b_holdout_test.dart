@@ -26,8 +26,9 @@ void main() {
     expect(result.runs, hasLength(result.familyCount * 8));
   });
 
-  // Re-run after the 13.9C safety nets and dev-v2 widening.
-  const seenSetRerun = {'metaAsTarget': 3};
+  // Re-run after 13.9D (seen set, informational). After 13.9C it was
+  // metaAsTarget 3; now all 0.
+  const seenSetRerun = <String, int>{};
   group('holdout v1 (seen set): re-run recorded, not a pass', () {
     for (final metric in flowGateMetrics) {
       test(metric, () {

@@ -32,15 +32,14 @@ void main() {
   // repeatedClarifyRun 14, nonAnswerCredited 2. Recorded here; the gate is
   // not met. Now seen, v2 can no longer certify a fix either. See
   // docs/counseling/phase13_status_and_plan.md, "holdout v2".
-  const firstRun = {
-    'metaAsTarget': 33,
-    'repeatedClarifyRun': 14,
-    'nonAnswerCredited': 2,
-  };
-  group('holdout v2 result (recorded failure; the gate is not met)', () {
+  //
+  // Re-run after 13.9D on this now-seen set: all 0. Informational only; the
+  // gate moved to holdout v3.
+  const seenSetRerun = <String, int>{};
+  group('holdout v2 (seen set): re-run recorded, not a pass', () {
     for (final metric in flowGateMetrics) {
       test(metric, () {
-        expect(result.metrics.counts[metric], firstRun[metric] ?? 0,
+        expect(result.metrics.counts[metric], seenSetRerun[metric] ?? 0,
             reason: 'holdout v2 changed; update the record deliberately.\n'
                 '${result.metrics.failures[metric]?.join('\n')}');
       });

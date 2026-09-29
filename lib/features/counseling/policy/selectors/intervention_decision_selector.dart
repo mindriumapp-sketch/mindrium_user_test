@@ -103,7 +103,7 @@ class InterventionDecisionSelector {
             // otherwise it asks about behavior around the worry (the
             // materializer words the question by the target's shape).
             ? (InterventionEligibilityPredicates.looksLikeBehavior(userMessage) &&
-                    UserThoughtExtractor.isQuotable(userMessage)
+                    UserThoughtExtractor.hasContent(userMessage)
                 ? userMessage.trim()
                 : roundWorry ??
                     UserThoughtExtractor.latestContentMessage(

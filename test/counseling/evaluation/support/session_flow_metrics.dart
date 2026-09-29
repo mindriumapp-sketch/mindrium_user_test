@@ -100,7 +100,12 @@ class FlowMetrics {
 
 const _policy = CounselingStatePolicy();
 const _registry = ApprovedInterventionRegistry();
-const _lowInfoAcks = ['바로 떠오르지 않아도 괜찮아요', '지금 바로 답하기 어려우셔도 괜찮아요'];
+/// Integration openings that claim no technique outcome.
+const _lowInfoAcks = [
+  '바로 떠오르지 않아도 괜찮아요',
+  '지금 바로 답하기 어려우셔도 괜찮아요',
+  '말씀해 주셔서 고마워요. 이렇게 함께 살펴본 것만으로도',
+];
 
 /// Asks something: a question, or an explicit invitation to speak ("편하게
 /// 말씀해 주세요").
@@ -243,10 +248,11 @@ void scoreFlow(FlowRun run, FlowMetrics m) {
     // ── 13.9 metrics ──────────────────────────────────────────────────
     // nonAnswerCredited: a non-answer or a meta turn integrated as if it
     // answered the technique question (P1: "뭐라는거야" credited).
+    // Credited = acknowledged with the technique's outcome sentence; a
+    // no-pressure or neutral acknowledgment claims nothing.
     if (r.interventionStep == InterventionStep.integration) {
-      final lowInfoAck = _lowInfoAcks.any(r.text.contains);
-      if (s.intent == Intent.meta ||
-          (s.intent == Intent.nonAnswer && !lowInfoAck)) {
+      final noCreditAck = _lowInfoAcks.any(r.text.contains);
+      if ((s.intent == Intent.meta || s.intent == Intent.nonAnswer) && !noCreditAck) {
         m.hit('nonAnswerCredited', run, '"${s.user}" -> ${r.text}');
       }
     }

@@ -100,11 +100,25 @@ class ReflectDecisionSelector {
             ? diaryCandidate
             : null;
 
+    // Phase 13.9D (a): the worry this round is about, wherever it was said
+    // (often the opening message: "…망칠 것 같아"). Without it, a user who
+    // stated the thought up front and then answered cooperatively kept
+    // getting clarify questions.
+    final roundThought =
+        !isFollowUp &&
+                explicitThought == null &&
+                recentThought == null &&
+                diaryThought == null &&
+                !currentHasOwnThought
+            ? UserThoughtExtractor.roundWorryThought(content)
+            : null;
+
     final target =
         (isFollowUp && currentIsSubstantive ? currentText : null) ??
         explicitThought ??
         recentThought ??
         diaryThought ??
+        roundThought ??
         (currentIsSubstantive ? currentText : null) ??
         // Phase 13.9A (D): never fall back to a non-answer ("몰라", "7점이요").
         // With nothing substantive, the target is empty and the clarify
@@ -116,6 +130,7 @@ class ReflectDecisionSelector {
         explicitThought != null ||
         recentThought != null ||
         diaryThought != null ||
+        roundThought != null ||
         (!isFollowUp && UserThoughtExtractor.thoughtShaped(target) != null);
 
     if (!isFollowUp && !hasRealThought) {

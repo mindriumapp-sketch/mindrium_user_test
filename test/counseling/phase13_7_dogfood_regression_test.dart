@@ -196,14 +196,19 @@ void main() {
     }
   });
 
+  // Since 13.9D the first round is one turn shorter (the opening worry is
+  // recognized), so this replay's later turns land differently; what E3
+  // guards is that the reopened round never falls back on the first
+  // round's worry, and that it ends with a proposal.
   test('E3: the reopened round works on its own worry', () async {
     final replies = await run(session3);
-    final second = replies
-        .where((m) => m.interventionStep == InterventionStep.prompt ||
-            m.interventionStep == InterventionStep.noEligible)
-        .skip(1)
-        .firstOrNull;
-    expect(second, isNotNull);
-    expect(second!.text.contains('찍은 문제가'), isFalse, reason: second.text);
+    final reopen = replies.indexWhere((m) => m.closingStep == ClosingStep.continued);
+    expect(reopen, greaterThan(0));
+    final after = replies.skip(reopen + 1).toList();
+    for (final m in after) {
+      expect(m.text.contains('찍은 문제가'), isFalse, reason: m.text);
+    }
+    expect(after.map((m) => m.closingStep), contains(ClosingStep.proposed),
+        reason: after.map((m) => m.text).join('\n'));
   });
 }
