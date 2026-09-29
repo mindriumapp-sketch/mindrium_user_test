@@ -145,24 +145,50 @@ class UserThoughtExtractor {
   /// goal question has been asked. Pass [semanticContent] so repair turns
   /// are skipped.
   static String? roundWorryThought(List<CounselingMessage> messages) {
-    var start = 0;
-    for (var i = messages.length - 1; i >= 0; i--) {
-      if (!messages[i].isUser && messages[i].closingStep == ClosingStep.continued) {
-        start = i + 1;
-        break;
-      }
-    }
-    for (var i = start; i < messages.length; i++) {
-      final message = messages[i];
+    final round = currentRound(messages);
+    for (var i = 0; i < round.length; i++) {
+      final message = round[i];
       if (message.isUser || message.dialogueGoalId == null) continue;
-      for (var j = i - 1; j >= start; j--) {
-        if (messages[j].isUser && messages[j].text.trim().isNotEmpty) {
-          return messages[j].text.trim();
+      for (var j = i - 1; j >= 0; j--) {
+        if (round[j].isUser && round[j].text.trim().isNotEmpty) {
+          return thoughtSentence(round[j].text.trim());
         }
       }
       return null;
     }
     return null;
+  }
+
+  /// Phase 13.7 (E3): the messages of the current conversation round — since
+  /// the last closing continuation, or the whole history if there was none.
+  /// A reopened round is about a new worry, so its reflective goals and
+  /// content are counted afresh.
+  static List<CounselingMessage> currentRound(List<CounselingMessage> messages) {
+    for (var i = messages.length - 1; i >= 0; i--) {
+      if (!messages[i].isUser && messages[i].closingStep == ClosingStep.continued) {
+        return messages.sublist(i + 1);
+      }
+    }
+    return messages;
+  }
+
+  /// Phase 13.7 (E2): the sentence that carries the thought, when a message
+  /// has several ("처음 해보는 발표라 떨려. 실수할까봐 걱정돼" → "실수할까봐
+  /// 걱정돼"). The last thought-shaped sentence wins; a message with one
+  /// sentence, or none thought-shaped, is returned whole.
+  static String thoughtSentence(String text) {
+    final sentences = text
+        .split(RegExp(r'(?<=[.!?])\s+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (sentences.length < 2) return text;
+    for (final sentence in sentences.reversed) {
+      if (_hasThoughtShape(sentence)) {
+        return sentence.replaceFirst(RegExp(r'[.!?]+$'), '');
+      }
+    }
+    return text;
   }
 
   static String? latestUserMessage(List<CounselingMessage> messages) {

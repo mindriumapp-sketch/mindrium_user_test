@@ -632,6 +632,8 @@ class TurnPlanMaterializer {
   static const String closingProposalQuestion =
       '오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?';
 
+  static const String _lowInfoAck = '바로 떠오르지 않아도 괜찮아요.';
+
   static final RegExp _lowInfoAnswer = RegExp(
     r'^(몰라|모르겠|잘\s*모르|글쎄|그냥|음+|네|응|아니)',
   );
@@ -667,9 +669,16 @@ class TurnPlanMaterializer {
     final answer = _requireText(decision.reflectionTarget, 'interventionIntegration');
     final lowInfo =
         _lowInfoAnswer.hasMatch(answer.trim()) || _wantsToStop.hasMatch(answer);
+    // Phase 13.7 (E1): the prompt may already have opened with "바로 떠오르지
+    // 않아도 괜찮아요" (a low-info reflect answer); don't say it twice in a row.
+    final previousOpensSame = recentMessages.reversed
+        .where((m) => !m.isUser)
+        .take(1)
+        .any((m) => m.text.startsWith(_lowInfoAck));
     final reflection =
         lowInfo
-            ? '바로 떠오르지 않아도 괜찮아요. 이렇게 한 번 생각해 보려고 한 것만으로도 충분히 의미가 있어요.'
+            ? '${previousOpensSame ? '지금 바로 답하기 어려우셔도 괜찮아요.' : _lowInfoAck} '
+                '이렇게 한 번 생각해 보려고 한 것만으로도 충분히 의미가 있어요.'
             : _integrationFor(policy.interventionType);
     return CounselingTurnPlan(
       reflectionTarget: answer,
@@ -838,7 +847,7 @@ class TurnPlanMaterializer {
       return sentence;
     }
     final ack = _lowInfoAnswer.hasMatch(answer)
-        ? '바로 떠오르지 않아도 괜찮아요.'
+        ? _lowInfoAck
         : switch (ReflectQuestionGoal.values.asNameMap()[goalId]) {
             ReflectQuestionGoal.evidence => '그 걱정이 어디서 오는지 조금 더 알 것 같아요.',
             ReflectQuestionGoal.alternative => '말씀해 주신 생각도 함께 담아 둘게요.',

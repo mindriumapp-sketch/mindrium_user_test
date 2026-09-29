@@ -7,6 +7,13 @@
 //       of finalizing it.
 //   D3: "혼날것같아" (no space in "것 같") wasn't recognized as a thought, so
 //       reflect clarified once more.
+// Sessions 2 and 3 (same day):
+//   E1: two low-info answers in a row got the same opening sentence twice.
+//   E2: a two-sentence worry message was quoted whole as "the thought".
+//   E3: after a closing continuation the reflect goals were already used up
+//       session-wide, so the new round jumped to a no-question recovery that
+//       quoted "잘 모르겠어" (a 반말 low-info reply the detector missed); the
+//       user could only answer "네?".
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -122,5 +129,81 @@ void main() {
     for (final t in ['다음에는 더 잘할 수 있을 것 같아요', '한 번 실수해도 그만큼 배울 수 있어요']) {
       test('answer: $t', () async => expect((await integrationFor(t)).contains('바로 떠오르지 않아도'), isFalse));
     }
+  });
+
+  // Session 2: the second low-info answer, and the worry quote.
+  const session2 = [
+    '내일 발표시험이 있어',
+    '8',
+    '처음 해보는 발표 시험이라 너무 긴장되고 떨려. 실수할까봐 걱정돼',
+    '내가 사람들한테 집중당하는걸 무서워해서 발표를 잘 못해. 그런데 이런 발표로 시험까지 봐야하니까 너무 걱정돼',
+    '몰라',
+    '모르겠어',
+    '정리하자',
+  ];
+
+  String firstSentence(String text) => text.split(RegExp(r'(?<=[.!?])\s')).first;
+
+  test('E1: consecutive low-info answers do not get the same opening twice', () async {
+    final replies = await run(session2);
+    final prompt = replies.firstWhere((m) => m.interventionStep == InterventionStep.prompt);
+    final integration = replies.firstWhere((m) => m.interventionStep == InterventionStep.integration);
+    expect(firstSentence(integration.text), isNot(firstSentence(prompt.text)),
+        reason: '${prompt.text}\n${integration.text}');
+    expect(replies.last.closingStep, ClosingStep.finalized);
+  });
+
+  test('E2: only the thought sentence of a multi-sentence worry is quoted', () async {
+    final replies = await run(session2);
+    final prompt = replies.firstWhere((m) => m.interventionStep == InterventionStep.prompt);
+    expect(prompt.text, contains('“실수할까봐 걱정돼”'), reason: prompt.text);
+  });
+
+  // Session 3: continue at closing, then a new round.
+  const session3 = [
+    '오늘 시험을 봤는데 잘 못본 것 같아',
+    '9',
+    '모르는 문제가 너무 많아서 못풀었어',
+    '내가 찍은 문제가 다 틀려서 망할까봐 걱정돼',
+    '딱히 없어. 그냥 불안해',
+    '공부를 열심히 했으면 잘 봤겠지만 그렇지 못해서 망한 것 같아',
+    '문제를 다 틀려도 망한 것은 아니야. 다음에도 기회가 있어',
+    '더 이야기하자',
+    '내일 시험은 잘 볼 수 있을까',
+    '잘 모르겠어',
+    '내일 시험도 망할까봐 무서워',
+    '예전에도 연달아 망친 적이 있어',
+    '한 번 망쳤다고 내일도 망하는 건 아니야',
+    '정리하자',
+  ];
+
+  test('E3: a reopened round asks its own questions, never a dead-end statement', () async {
+    final replies = await run(session3);
+    final reopen = replies.indexWhere((m) => m.closingStep == ClosingStep.continued);
+    expect(reopen, greaterThan(0));
+    for (final m in replies.skip(reopen + 1)) {
+      if (m.closingStep == ClosingStep.finalized) continue;
+      expect(m.goalExhaustionRecovery, isNull, reason: m.text);
+      expect(m.text.trim().endsWith('?'), isTrue, reason: 'no question: ${m.text}');
+    }
+    expect(replies.last.closingStep, ClosingStep.finalized, reason: replies.last.text);
+  });
+
+  test('E3: a 반말 low-info reply is never quoted', () async {
+    final replies = await run(session3);
+    for (final m in replies) {
+      expect(m.text.contains('잘 모르겠어”'), isFalse, reason: m.text);
+    }
+  });
+
+  test('E3: the reopened round works on its own worry', () async {
+    final replies = await run(session3);
+    final second = replies
+        .where((m) => m.interventionStep == InterventionStep.prompt ||
+            m.interventionStep == InterventionStep.noEligible)
+        .skip(1)
+        .firstOrNull;
+    expect(second, isNotNull);
+    expect(second!.text.contains('찍은 문제가'), isFalse, reason: second.text);
   });
 }

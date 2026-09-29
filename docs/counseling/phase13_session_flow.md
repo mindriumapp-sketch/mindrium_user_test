@@ -184,6 +184,26 @@ New defects. Each was reproduced as a failing test first
 | D2 | "정리해보자" at the proposal reopened the session: "좋아요, 조금 더 이야기해 볼게요" | Agreement was matched only at the start of the reply, and anything else defaulted to "continue" | Taking up the proposal's own words (정리, 마무리, 여기까지, 끝내…) anywhere finalizes. Explicit "continue" words are still checked first ("아직 정리하기엔 이른 것 같아요" continues) |
 | D3 | "내일 시험을 못봐서 혼날것같아" got one more clarify question | Thought shape required "것 같" with a space | Match `것\s*같` |
 
+### Sessions 2–3 (week 4, 2026-09-29)
+
+Confirmed on device: D1 (a balanced thought with "다음에" is integrated),
+D2 ("정리하자" finalizes, end notice only after that), continue at closing
+reopens once, and the low-info path works.
+
+| | What the user saw | Cause | Fix |
+|---|---|---|---|
+| E1 | Two low-info answers in a row got "바로 떠오르지 않아도 괜찮아요" twice in a row | The reflect-answer acknowledgment and the integration used the same sentence | The integration uses "지금 바로 답하기 어려우셔도 괜찮아요." when the previous reply opened with it |
+| E2 | A two-sentence message ("…너무 긴장되고 떨려. 실수할까봐 걱정돼") was quoted whole as "the thought" | The round worry was taken message by message | `UserThoughtExtractor.thoughtSentence` picks the thought-shaped sentence |
+| E3 | After continuing at closing: "잘 모르겠어" → "지금까지 '잘 모르겠어'라는 이야기를 중심으로 함께 살펴보았습니다." → user: "네?" | (1) Reflect goals were counted for the whole session, so the reopened round was left with one goal and then fell into the no-question recovery. (2) The low-info set held only polite forms, so "잘 모르겠어" was treated as content and quoted (F4 on device) | Goals and reflect content are counted per round (`currentRound`) in both the selector and the boundary. The low-info check covers 반말 forms. A recovery never summarizes a low-info reply; it uses the round's worry |
+
+Now the reopened round asks its own clarify, evidence, and alternative
+questions, then a summary with the proposal. There is no statement left
+without a question.
+
+Not fixed (realizer frozen, N6 backlog): the remote realizer once asked
+two questions in one reflect turn ("두려운 이유는 무엇인지, 그 감정을 다른
+시각에서 어떻게 해석할 수 있을지").
+
 ## Open
 
 - 13.7 real-device dogfood, then tag `counseling-v1.2-session-flow`.

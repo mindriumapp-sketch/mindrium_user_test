@@ -176,7 +176,11 @@ class DeterministicPolicyBoundaryBuilder implements PolicyBoundaryBuilder {
   // ───────────────────────────────────────────────────────────────────
 
   PolicyBoundary _buildReflectBoundary(PolicyBoundaryRequest request) {
-    final askedGoalIds = _askedGoalIds(request.recentMessages);
+    // Phase 13.7 (E3): per round, the same way ReflectDecisionSelector
+    // counts them, so the boundary and the decision agree.
+    final askedGoalIds = _askedGoalIds(
+      UserThoughtExtractor.currentRound(request.recentMessages),
+    );
     final candidateGoals = _candidateGoals(askedGoalIds);
 
     final diary = UserThoughtExtractor.firstDiary(request.userContext);

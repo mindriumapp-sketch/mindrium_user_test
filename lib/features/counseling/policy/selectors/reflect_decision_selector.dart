@@ -45,7 +45,10 @@ class ReflectDecisionSelector {
     required List<CounselingMessage> recentMessages,
     required MindriumCounselingContext? userContext,
   }) {
-    final goalSelection = _selectGoalOrRecover(recentMessages);
+    // Phase 13.7 (E3): a round reopened at closing is about a new worry, so
+    // goals and content are read from the current round only.
+    final roundMessages = UserThoughtExtractor.currentRound(recentMessages);
+    final goalSelection = _selectGoalOrRecover(roundMessages);
     final isFollowUp = switch (goalSelection) {
       SelectedReflectGoal(:final goal) => goal != ReflectQuestionGoal.evidence,
       // Exhausted goals means this is never the first (evidence) question —
@@ -55,7 +58,7 @@ class ReflectDecisionSelector {
     };
     // Content reads use the semantic view; goal/recovery bookkeeping above
     // still reads the full history.
-    final content = UserThoughtExtractor.semanticContent(recentMessages);
+    final content = UserThoughtExtractor.semanticContent(roundMessages);
     final currentText = userMessage.trim();
     final currentIsSubstantive = !_isLowInformationReply(currentText);
 
@@ -125,10 +128,15 @@ class ReflectDecisionSelector {
       // phase — take an explicit recovery action instead of re-asking one.
       // `DialogueAct.reflect` (not `.socraticQuestion`, and specifically
       // not `.summarize`) is required here; see the class doc.
+      // Phase 13.7 (E3): a low-info reply is never the thing summarized; the
+      // round's worry is.
+      final recoveryTarget = currentIsSubstantive
+          ? target
+          : UserThoughtExtractor.roundWorryThought(content) ?? target;
       return CounselorDecision(
         selectedAction: DialogueAct.reflect,
         goalExhaustionRecovery: _selectRecovery(recentMessages),
-        reflectionTarget: ReflectionTarget.text(target),
+        reflectionTarget: ReflectionTarget.text(recoveryTarget),
         usedFactIds: diaryThought != null ? [selectedUserItem!.id] : const [],
       );
     }
@@ -226,15 +234,11 @@ class ReflectDecisionSelector {
     if (RegExp(r'^(?:[0-9]|10)(?:점|정도)?(?:이에요|예요|입니다|요)?$').hasMatch(compact)) {
       return true;
     }
-    return const {
-      '네',
-      '아니요',
-      '맞아요',
-      '모르겠어요',
-      '잘모르겠어요',
-      '그냥요',
-      '글쎄요',
-    }.contains(compact);
+    // Phase 13.7 (E3): 반말 forms too ("잘 모르겠어", "몰라", "그냥").
+    return RegExp(
+      r'^(네|넵|응|어|음+|아니요?|맞아요?|(잘)?모르겠(어|어요|네|네요)|'
+      r'(잘)?몰라(요)?|그냥(요)?|글쎄(요)?|딱히(요)?)$',
+    ).hasMatch(compact);
   }
 
   bool _sharesTopic(String left, String right) {
