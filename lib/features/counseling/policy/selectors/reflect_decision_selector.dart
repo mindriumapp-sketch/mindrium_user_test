@@ -203,7 +203,9 @@ class ReflectDecisionSelector {
       InteractionRepairReason.repeatedQuestion ||
       InteractionRepairReason.stopQuestioning =>
         GoalExhaustionRecovery.listenWithoutQuestion,
-      InteractionRepairReason.processFrustration || null =>
+      InteractionRepairReason.processFrustration ||
+      InteractionRepairReason.assistantNotUnderstood ||
+      null =>
         GoalExhaustionRecovery.summarize,
     };
     // Phase 12.3C (F1): never the same recovery twice in a row. Read from

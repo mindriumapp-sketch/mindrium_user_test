@@ -521,6 +521,85 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
       (!_beingAskedByOthers.hasMatch(text) &&
           _matchesAsInteraction(_questionRepeats, text));
 
+  // Phase 13.8 (P1): the user didn't understand the counselor. Composed
+  // from two cue families, never a single keyword: something that points at
+  // the counselor's words, plus non-understanding. A bare "잘 모르겠어" has
+  // no pointer and stays a low-information answer; "선생님이 무슨 말 하는지
+  // 모르겠어" points at a third party and stays worry content.
+
+  /// Points at the counselor or what it just said.
+  static final RegExp _pointsAtCounselor = RegExp(
+    r'(^|\s)(너|네가|니가|너가|당신)(가|는)?\s|'
+    r'(방금|아까)\s*(한|하신|그)?\s*(말|질문|얘기|이야기|설명)|'
+    r'(그|이)\s*(말|질문|설명)(이|은|을)?|'
+    r'^그게\s|^그건\s|'
+    r'^질문(이|을|은)?\s|^설명(이|을|은)?\s',
+  );
+
+  /// Says it wasn't understood.
+  static final RegExp _notUnderstood = RegExp(
+    r'(모르겠|이해(가|를)?\s*(안|못)|헷갈|무슨\s*(뜻|의미|말|소리)|'
+    r'뭔\s*(뜻|말|소리)|뭐라는|뭔지\s*모르)',
+  );
+
+  /// A short question that is about the counselor's words by itself:
+  /// "무슨 말이야", "뭐라는거야", "무슨 소리예요", "지금 무슨 이야기를 하는거야".
+  static final RegExp _bareNotUnderstood = RegExp(
+    r'^(지금\s*)?(무슨|뭔)\s*(말|소리|얘기|이야기)(이야|이에요|예요|야|이지|이죠|인데|이냐|임|씀|를\s*하는\s*(거|건)\S*|을\s*하는\s*(거|건)\S*)?$|'
+    r'^뭐라는\s*(거|건|게)?\S*$|'
+    r'^뭔\s*소리\S*$',
+  );
+
+  static bool _assistantNotUnderstood(String text) {
+    final t = text.trim().replaceFirst(RegExp(r'[?.!~\s]+$'), '');
+    if (_bareNotUnderstood.hasMatch(t)) return true;
+    return _pointsAtCounselor.hasMatch(t) && _notUnderstood.hasMatch(t);
+  }
+
+  /// Phase 13.8 (P1): the question the user didn't understand, asked again
+  /// in plainer words. Read from the last substantive assistant turn's
+  /// metadata (never its text): a pending technique prompt, a reflective
+  /// goal, or otherwise a general "what worries you most".
+  static String _simplerReask(List<CounselingMessage> messages) {
+    CounselingMessage? pending;
+    for (final m in messages.reversed) {
+      if (m.isUser || m.interactionRepairReason != null) continue;
+      pending = m;
+      break;
+    }
+    if (pending?.interventionStep == InterventionStep.prompt &&
+        pending!.referencedCbtIds.isNotEmpty) {
+      final type = const ApprovedInterventionRegistry()
+          .policyForItemId(pending.referencedCbtIds.first)
+          ?.interventionType;
+      switch (type) {
+        case InterventionType.balancedThought:
+          return '그 걱정을 조금 더 균형 있게, 덜 겁나게 바꿔 말해 본다면 어떤 문장이 될까요?';
+        case InterventionType.behaviorPatternReview:
+          return '그 걱정이 들 때 주로 피하는 편인가요, 아니면 마주하는 편인가요?';
+        case InterventionType.consequenceReview:
+          return '그 걱정이 들 때 하는 행동이 당장은 편하게 해 주는지, 나중에도 도움이 되는지 어떤가요?';
+        case InterventionType.gainLossReview:
+          return '피했을 때 당장 좋은 점이 있다면 무엇인가요?';
+        case InterventionType.maintenanceReview:
+          return '그 방법을 언제 다시 해 볼 수 있을까요?';
+        case InterventionType.valueBasedChoice:
+        case null:
+          break;
+      }
+    }
+    switch (ReflectQuestionGoal.values.asNameMap()[pending?.dialogueGoalId]) {
+      case ReflectQuestionGoal.evidence:
+        return '그렇게 생각하게 된 일이 있었다면 하나만 말씀해 주시겠어요?';
+      case ReflectQuestionGoal.alternative:
+        return '그 일을 조금 다르게 볼 수도 있을까요?';
+      case ReflectQuestionGoal.probability:
+        return '그 일이 실제로 일어날 것 같은 정도는 어느 정도인가요?';
+      case null:
+        return '지금 가장 걱정되는 것 한 가지만 편하게 말씀해 주시겠어요?';
+    }
+  }
+
   static const Map<InteractionRepairReason, List<String>> _repairSentences = {
     InteractionRepairReason.stopQuestioning: [
       '질문보다 지금 마음을 그대로 들어드리는 게 먼저인 것 같아요. 편하게 이야기해 주세요.',
@@ -529,6 +608,10 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     InteractionRepairReason.processFrustration: [
       '이 대화가 정말 도움이 될지 확신이 안 서는 마음, 자연스러운 거예요.',
       '지금은 이 대화가 잘 와닿지 않으실 수 있어요. 그런 마음이 드는 것도 충분히 이해돼요.',
+    ],
+    InteractionRepairReason.assistantNotUnderstood: [
+      '제 말이 헷갈리게 들렸나 봐요. 쉽게 다시 여쭤볼게요.',
+      '제 말이 헷갈리게 들렸나 봐요. 더 짧게 여쭤볼게요.',
     ],
     InteractionRepairReason.repeatedQuestion: [
       '맞아요, 비슷한 질문을 반복해서 드렸네요. 같은 내용을 다시 여쭙지 않고 지금 말씀해 주신 내용을 기준으로 이어갈게요.',
@@ -565,15 +648,24 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
         !wantsEmpathy &&
         !resists &&
         (_repeatsInteraction.hasMatch(current) || _generalizedRepeat(current));
-    if (!wantsEmpathy && !resists && !repeatsInteraction) return null;
+    final notUnderstood =
+        !wantsEmpathy &&
+        !resists &&
+        !repeatsInteraction &&
+        _assistantNotUnderstood(current);
+    if (!wantsEmpathy && !resists && !repeatsInteraction && !notUnderstood) {
+      return null;
+    }
 
     final InteractionRepairReason reason;
     if (wantsEmpathy) {
       reason = InteractionRepairReason.stopQuestioning;
     } else if (resists) {
       reason = InteractionRepairReason.processFrustration;
-    } else {
+    } else if (repeatsInteraction) {
       reason = InteractionRepairReason.repeatedQuestion;
+    } else {
+      reason = InteractionRepairReason.assistantNotUnderstood;
     }
     // Phase 12.3D (F6): a second complaint in a row must not get the same
     // acknowledgment word for word. Alternate by how many immediately
@@ -584,15 +676,24 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
         variants[_consecutiveRepairs(context.recentMessages, reason) %
             variants.length];
 
+    // Phase 13.8 (P1): not understanding is the one repair that asks again —
+    // the same question in plainer words, so the user can still answer it.
+    final reasks = reason == InteractionRepairReason.assistantNotUnderstood;
     return CounselingTurnPlan(
       reflectionTarget: current,
-      questionGoal: '상담 내용보다 지금 표현한 요청/반응을 먼저 인정한다.',
+      questionGoal: reasks
+          ? '헷갈리게 한 것을 인정하고 방금 질문을 더 쉬운 말로 다시 묻는다.'
+          : '상담 내용보다 지금 표현한 요청/반응을 먼저 인정한다.',
       reflectionSentence: reflectionSentence,
-      questionSentence: '',
-      forbidden: defaultForbidden,
-      constraints: const [
+      questionSentence: reasks ? _simplerReask(context.recentMessages) : '',
+      forbidden: reasks
+          ? defaultForbidden.where((f) => f != '질문을 하지 않는다.').toList()
+          : defaultForbidden,
+      constraints: [
         TurnConstraint.requireReflection,
-        TurnConstraint.requireNoQuestion,
+        reasks
+            ? TurnConstraint.requireExactlyOneQuestion
+            : TurnConstraint.requireNoQuestion,
         TurnConstraint.forbidAdvice,
         TurnConstraint.forbidNewUserFacts,
         TurnConstraint.forbidStageAdvance,

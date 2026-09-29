@@ -176,6 +176,12 @@ enum InteractionRepairReason {
   /// "뭐가 달라질까" / "소용 없어" / "의미 없어". Detected since before
   /// Phase 11 via `_showsProcessResistance`.
   processFrustration,
+
+  /// Phase 13.8 (P1): "무슨 말이야" / "뭐라는거야" / "너가 무슨말 하는지
+  /// 모르겠어" — the user didn't understand what the counselor said.
+  /// Distinct from a low-information answer ("잘 모르겠어"), which is about
+  /// the user's own worry, not the counselor's words.
+  assistantNotUnderstood,
 }
 
 /// Phase 11.1/11.3: names the recovery actions available once every
