@@ -60,7 +60,7 @@ class ReflectDecisionSelector {
     // still reads the full history.
     final content = UserThoughtExtractor.semanticContent(roundMessages);
     final currentText = userMessage.trim();
-    final currentIsSubstantive = !_isLowInformationReply(currentText);
+    final currentIsSubstantive = !UserThoughtExtractor.isLowInformation(currentText);
 
     // 반영 대상 우선순위:
     //   1. 현재 발화에 드러난 명시적 핵심 생각
@@ -226,19 +226,6 @@ class ReflectDecisionSelector {
       if (thought != null) return thought;
     }
     return null;
-  }
-
-  bool _isLowInformationReply(String value) {
-    final compact = value.trim().replaceAll(RegExp(r'[\s.!?]+'), '');
-    if (compact.isEmpty) return true;
-    if (RegExp(r'^(?:[0-9]|10)(?:점|정도)?(?:이에요|예요|입니다|요)?$').hasMatch(compact)) {
-      return true;
-    }
-    // Phase 13.7 (E3): 반말 forms too ("잘 모르겠어", "몰라", "그냥").
-    return RegExp(
-      r'^(네|넵|응|어|음+|아니요?|맞아요?|(잘)?모르겠(어|어요|네|네요)|'
-      r'(잘)?몰라(요)?|그냥(요)?|글쎄(요)?|딱히(요)?)$',
-    ).hasMatch(compact);
   }
 
   bool _sharesTopic(String left, String right) {

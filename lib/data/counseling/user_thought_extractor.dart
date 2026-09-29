@@ -7,6 +7,21 @@ import 'counseling_models.dart';
 /// 생각 판별기가 둘인 것은 의도적이다. 개입 단계는 대상 행동/생각을 넓게 잡아도
 /// 되지만, 되짚기 단계는 상황 서술("답하지 못할까 봐 걱정")을 생각으로 승격시키면
 /// 사용자가 하지 않은 평가를 상담자가 대신 만들어내게 된다.
+/// Phase 13.8 (P2): what a user utterance may be used for as CBT content.
+enum TargetEligibility {
+  /// A thought about a feared outcome or oneself: may be a technique target.
+  worryThought,
+
+  /// A situation or feeling without a thought: context, not a thought target.
+  situation,
+
+  /// About the conversation itself (answered with a repair): never content.
+  interaction,
+
+  /// No content ("몰라", "응", "7"): never content.
+  lowInformation,
+}
+
 class UserThoughtExtractor {
   const UserThoughtExtractor._();
 
@@ -144,19 +159,58 @@ class UserThoughtExtractor {
   /// one, so they must not become an intervention's target. Null when no
   /// goal question has been asked. Pass [semanticContent] so repair turns
   /// are skipped.
+  ///
+  /// Phase 13.8 (P2): the message right before that question is not
+  /// necessarily the worry — on device it was "너가 무슨말 하는지 모르겠어".
+  /// The worry is the latest user utterance up to that question that is
+  /// eligible as a worry thought ([targetEligibility]).
+  ///
+  /// When reflect ended without any goal question (clarify and repair turns
+  /// used up its turns, as in dogfood session 4), the worry is the latest
+  /// eligible utterance of the round.
   static String? roundWorryThought(List<CounselingMessage> messages) {
     final round = currentRound(messages);
-    for (var i = 0; i < round.length; i++) {
-      final message = round[i];
-      if (message.isUser || message.dialogueGoalId == null) continue;
-      for (var j = i - 1; j >= 0; j--) {
-        if (round[j].isUser && round[j].text.trim().isNotEmpty) {
-          return thoughtSentence(round[j].text.trim());
-        }
+    final firstGoal = round.indexWhere(
+      (m) => !m.isUser && m.dialogueGoalId != null,
+    );
+    final end = firstGoal < 0 ? round.length : firstGoal;
+    for (var j = end - 1; j >= 0; j--) {
+      final candidate = round[j];
+      if (!candidate.isUser) continue;
+      final sentence = thoughtSentence(candidate.text.trim());
+      if (targetEligibility(sentence) == TargetEligibility.worryThought) {
+        return sentence;
       }
-      return null;
     }
     return null;
+  }
+
+  /// Phase 13.8 (P2): whether a user utterance carries no content to work
+  /// with — a bare number, a filler, or "I don't know" in any register
+  /// ("잘 모르겠어", "몰라요", "모르겠다니까"). Judged on the whole utterance:
+  /// "모르겠어, 발표 망칠까 봐 걱정돼" has content.
+  static bool isLowInformation(String value) {
+    final compact = value.trim().replaceAll(RegExp(r'[\s.!?,~]+'), '');
+    if (compact.isEmpty) return true;
+    if (RegExp(r'^(?:[0-9]|10)(?:점|정도)?(?:이에요|예요|입니다|요)?$').hasMatch(compact)) {
+      return true;
+    }
+    return RegExp(
+      r'^(네|넵|응|웅|어|음+|아니요?|맞아요?|(잘)?모르겠(어|어요|네|네요|다니까|다고|는데)|'
+      r'(잘)?몰라(요)?|그냥(요)?|글쎄(요)?|딱히(요)?)$',
+    ).hasMatch(compact);
+  }
+
+  /// Phase 13.8 (P2): what a user utterance can be used for as CBT content.
+  /// The contract every content selector follows: only a worry thought may
+  /// become a technique's target; interaction/meta and low-information
+  /// utterances never may. [interaction] is known from the reply's repair
+  /// metadata (see [semanticContent]), so an utterance judged alone is one
+  /// of the other three.
+  static TargetEligibility targetEligibility(String text) {
+    if (isLowInformation(text)) return TargetEligibility.lowInformation;
+    if (_hasThoughtShape(text.trim())) return TargetEligibility.worryThought;
+    return TargetEligibility.situation;
   }
 
   /// Phase 13.7 (E3): the messages of the current conversation round — since
