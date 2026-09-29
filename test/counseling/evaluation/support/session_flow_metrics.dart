@@ -25,6 +25,11 @@ enum Intent {
 
   /// Agrees to wrap up at a closing proposal.
   wrapUp,
+
+  /// Meta and worry content in one utterance ("그 질문 이해 안 가요 근데
+  /// 면접날 머리 하얘질까 봐 걱정돼요"). Either repairing it or taking the
+  /// content is acceptable, so detector metrics skip it.
+  mixed,
 }
 
 class FlowStep {
@@ -75,10 +80,11 @@ const flowGateMetrics = [
   'deadTurnStatement',
 ];
 
-/// Reported separately: a meta turn outside closing that got no repair. On
-/// the 13.9A dev set it must be 0; on the holdout it measures detector
-/// coverage.
-const flowDetectorMetrics = ['metaIgnored'];
+/// Reported separately, as detector coverage: a meta turn outside closing
+/// that got no repair (metaIgnored), and a content turn outside closing
+/// that got one (metaFalsePositive). Both must be 0 on the 13.9A dev set;
+/// on the holdout they are measured, not gated.
+const flowDetectorMetrics = ['metaIgnored', 'metaFalsePositive'];
 
 class FlowMetrics {
   final counts = <String, int>{
@@ -279,11 +285,17 @@ void scoreFlow(FlowRun run, FlowMetrics m) {
       m.hit('deadTurnStatement', run, '${s.before.name}: ${r.text}');
     }
 
-    // metaIgnored (detector coverage, reported separately).
+    // Detector coverage (reported separately). A wrap-up offered for a
+    // second non-answer is not a repair of the utterance itself.
     if (s.intent == Intent.meta &&
         s.before != CounselingState.closing &&
         r.interactionRepairReason == null) {
       m.hit('metaIgnored', run, '"${s.user}" -> ${r.text}');
+    }
+    if (s.intent == Intent.content &&
+        s.before != CounselingState.closing &&
+        r.interactionRepairReason != null) {
+      m.hit('metaFalsePositive', run, '"${s.user}" -> ${r.interactionRepairReason!.name}');
     }
   }
 

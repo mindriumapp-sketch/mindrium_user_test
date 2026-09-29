@@ -340,4 +340,9 @@ void main() {
   test('dev-set meta phrasings are all detected (outside closing)', () {
     expect(metrics.counts['metaIgnored'], 0, reason: metrics.failures['metaIgnored']?.join('\n'));
   });
+
+  test('dev-set worry content is never taken for meta', () {
+    expect(metrics.counts['metaFalsePositive'], 0,
+        reason: metrics.failures['metaFalsePositive']?.join('\n'));
+  });
 }
