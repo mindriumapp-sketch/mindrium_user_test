@@ -80,6 +80,37 @@ const flowGateMetrics = [
   'deadTurnStatement',
 ];
 
+/// Phase 13.9F: the gate in two tiers (decided 2026-09-30, before holdout
+/// v5 was written).
+///
+/// Tier A — structure. Must be 0: these don't depend on recognizing what
+/// the user meant.
+const flowStructuralMetrics = [
+  'interventionDeadlock',
+  'prematureClosing',
+  'interventionResponseDropped',
+  'futureWeekTechniqueLeakage',
+  'unauthorizedCbt',
+  'noEligibleInterventionDeadlock',
+  'closingContinuationIgnored',
+  'sessionCompletedTooEarly',
+  'stateLoop',
+  'sessionNotFinalized',
+  'remoteOnRepair',
+  'deadTurnStatement',
+];
+
+/// Tier B — depends on recognizing unseen meta/non-answer surfaces, a known
+/// limit of the rule-based detectors (holdouts v1–v4). Their combined hits
+/// must stay at or below [detectionDependentMaxRate] of user turns. Closing
+/// it fully is Phase 14 (model-based intent classification).
+const flowDetectionDependentMetrics = [
+  'nonAnswerCredited',
+  'metaAsTarget',
+  'repeatedClarifyRun',
+];
+const detectionDependentMaxRate = 0.01;
+
 /// Reported separately, as detector coverage: a meta turn outside closing
 /// that got no repair (metaIgnored), and a content turn outside closing
 /// that got one (metaFalsePositive). Both must be 0 on the 13.9A dev set;
