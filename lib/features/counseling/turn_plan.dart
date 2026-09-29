@@ -98,6 +98,9 @@ class CounselingTurnPlan {
   /// Phase 13.8: see `CounselingMessage.earlyWrapUp`.
   final EarlyWrapUp? earlyWrapUp;
 
+  /// Phase 13.9C: see `CounselingMessage.isClarify`.
+  final bool isClarify;
+
   const CounselingTurnPlan({
     required this.reflectionTarget,
     required this.questionGoal,
@@ -119,6 +122,7 @@ class CounselingTurnPlan {
     this.interventionStep,
     this.closingStep,
     this.earlyWrapUp,
+    this.isClarify = false,
   });
 
   String get deterministicReply => [
@@ -278,6 +282,15 @@ class DeterministicInputGuardTurnPlanner implements CounselingTurnPlanner {
   // 자판을 무의미하게 눌렀을 가능성이 높다.
   static final RegExp _isolatedJamoOnly = RegExp(r'^[ㄱ-ㅎㅏ-ㅣ\s]{2,}$');
 
+  // Phase 13.9C: chat shorthand made of jamo is a real reply, not noise:
+  // "ㅇㅇ" (yes), "ㅇㅋ" (ok), "ㄴㄴ" (no), "ㅋㅋ", "ㅠㅠ".
+  static final RegExp _chatJamo = RegExp(
+    r'^\s*(ㅇ+|ㅇㅋ+|ㄴㄴ+|ㄱㄱ+|ㅋ+|ㅎ+|ㅠ+|ㅜ+)\s*$',
+  );
+
+  static bool _isJamoNoise(String text) =>
+      _isolatedJamoOnly.hasMatch(text) && !_chatJamo.hasMatch(text);
+
   // 흔한 키보드 연타/테스트 입력 패턴.
   static final RegExp _keyboardMash = RegExp(
     r'(asdf|qwer|zxcv|ㅁㄴㅇㄹ|ㅋㅌㅊㅍ|qwerty|zzzzz|test123)',
@@ -324,7 +337,7 @@ class DeterministicInputGuardTurnPlanner implements CounselingTurnPlanner {
     final isRepeatedChar =
         compact.length >= 6 && RegExp(r'^(.)\1+$').hasMatch(compact);
     final isGibberish =
-        _isolatedJamoOnly.hasMatch(current) ||
+        _isJamoNoise(current) ||
         _keyboardMash.hasMatch(current) ||
         isRepeatedChar;
 
@@ -343,7 +356,7 @@ class DeterministicInputGuardTurnPlanner implements CounselingTurnPlanner {
     final isRepeatedChar =
         compact.length >= 6 && RegExp(r'^(.)\1+$').hasMatch(compact);
     final isGibberish =
-        _isolatedJamoOnly.hasMatch(current) ||
+        _isJamoNoise(current) ||
         _keyboardMash.hasMatch(current) ||
         isRepeatedChar;
     final isAbusive = _abusiveTowardBot.hasMatch(current);
@@ -370,11 +383,25 @@ class DeterministicInputGuardTurnPlanner implements CounselingTurnPlanner {
       question = '지금 느끼시는 마음을 편하게 다시 한 번 말씀해 주시겠어요?';
     }
 
+    // Phase 13.9C (S4): at a pending closing proposal, ask the proposal
+    // again and keep it pending, so the next answer still goes to the
+    // handshake instead of ending the session unasked.
+    CounselingMessage? lastAssistant;
+    for (final m in context.recentMessages.reversed) {
+      if (!m.isUser) {
+        lastAssistant = m;
+        break;
+      }
+    }
+    final proposalPending = context.state == CounselingState.closing &&
+        lastAssistant?.closingStep == ClosingStep.proposed;
+
     return CounselingTurnPlan(
       reflectionTarget: current,
       questionGoal: '상담 내용으로 다룰 수 없는 입력이므로 다시 답을 청한다.',
       reflectionSentence: reflection,
-      questionSentence: question,
+      questionSentence:
+          proposalPending ? '오늘은 여기서 마칠까요, 아니면 조금 더 이야기할까요?' : question,
       forbidden: defaultForbidden,
       constraints: const [
         TurnConstraint.requireReflection,
@@ -387,6 +414,7 @@ class DeterministicInputGuardTurnPlanner implements CounselingTurnPlanner {
       userContextIds: const [],
       cbtContextIds: const [],
       planningStatus: TurnPlanningStatus.unavailable,
+      closingStep: proposalPending ? ClosingStep.proposed : null,
     );
   }
 }
@@ -421,10 +449,23 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     r'위로\s*(좀\s*)?(해주|해줘|해\s*주시))',
   );
 
+  // Phase 13.9C: "소용없다 / 의미없다 / 도움 안 된다" is about the
+  // conversation only when it points at it ("이런 거", "이 상담", "이거",
+  // "이렇게 얘기해도"). "공부를 해봤자 소용없을 것 같아요" is a worry.
+  static final RegExp _pointsAtConversation = RegExp(
+    r'(이런\s*(거|걸|것|대화|상담|얘기)|이거|이걸|이것|이\s*(상담|대화|앱|채팅)|'
+    r'상담(이|은|을|해)|대화(가|는|를|해)|이렇게\s*(얘기|이야기|말))',
+  );
+  static final RegExp _noUse = RegExp(
+    r'(소용\s*없|의미\s*없|도움(이|은)?\s*(별로\s*|하나도\s*|전혀\s*)?(안|없)|'
+    r'(뭐가|뭐|무엇이)\s*(바뀌|달라지))',
+  );
+
+  static bool _conversationIsPointless(String text) =>
+      _pointsAtConversation.hasMatch(text) && _noUse.hasMatch(text);
+
   static final RegExp _showsProcessResistance = RegExp(
     r'(뭐가\s*달라질까|'
-    r'소용\s*없|'
-    r'의미\s*없|'
     r'해결되는\s*것도\s*아니|'
     r'그냥\s*하라고\s*해서|'
     r'설명\s*필요\s*없고|'
@@ -522,7 +563,39 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
       _matchesAsInteraction(_asksToStopQuestions, text) &&
       !RegExp(r'안\s*들어').hasMatch(text);
 
+  // Phase 13.9C: more ways to say "you keep asking the same thing".
+  //   R-D: the same thing named, then that it keeps coming ("같은 거 계속
+  //        물어보네", "같은 질문 몇 번째").
+  //   R-E: what was already said is being said again ("했던 말 또 하네").
+  //   R-F: how many times ("몇 번을 말해야 돼"), or a loop ("무한반복").
+  static final RegExp _sameThingAgain = RegExp(
+    r'(같은|똑같은|비슷한)\s*(거|것|걸|말|질문|얘기|소리)\S{0,2}\s*'
+    r'(계속|자꾸|또|몇\s*번|반복|맨날)',
+  );
+  static final RegExp _saidBeforeAgain = RegExp(
+    r'(했던|한|물었던|물어본)\s*(말|질문|얘기|거)\S{0,2}\s*(또|계속|자꾸|다시)',
+  );
+  static final RegExp _howManyTimes = RegExp(
+    r'몇\s*번(을|이나|째)?\s*(말해|얘기해|대답해|물어|해야)|무한\s*반복|도돌이표',
+  );
+
+  /// R-D/E/F describe what the counselor keeps doing, so neither a third
+  /// party nor the user may be the one doing it ("제가 왜 같은 말을 자꾸
+  /// 하는지", "면접에서 같은 질문을 또 받을까 봐").
+  static bool _counselorRepeats(RegExp pattern, String text) {
+    if (_beingAskedByOthers.hasMatch(text)) return false;
+    for (final match in pattern.allMatches(text)) {
+      final prefix = text.substring(0, match.start);
+      if (_subjectMarker.hasMatch(prefix)) continue;
+      return true;
+    }
+    return false;
+  }
+
   static bool _generalizedRepeat(String text) =>
+      _counselorRepeats(_sameThingAgain, text) ||
+      _counselorRepeats(_saidBeforeAgain, text) ||
+      _counselorRepeats(_howManyTimes, text) ||
       _matchesAsInteraction(_refersToOwnStatement, text) ||
       _matchesAsInteraction(_topicAlreadyCovered, text) ||
       _matchesAsInteraction(_saysSameThing, text) ||
@@ -558,9 +631,59 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     r'^뭔\s*소리\S*$',
   );
 
+  // Phase 13.9C: families beyond "pointer + non-understanding".
+  //   N-A: asks the counselor to say it again or more simply, as a request
+  //        ("다시 설명해 줘", "쉽게 물어봐 줄 수 있어?"). A reported request
+  //        ("다시 설명해 달라고 하면") is not addressed to the counselor.
+  //   N-B: relays the counselor's ask back ("뭘 말하라는 건지", "내가 뭘
+  //        하면 되는데?").
+  //   N-C: a short reaction on its own ("이해가 잘 안 가요", "뭔 소린지").
+  //   N-D: asks what a word the counselor used means ("근거라는 게 뭐예요?").
+  //   N-E: judges the question itself ("질문이 너무 어려워요"), unless the
+  //        question belongs to someone else ("교수님 질문이 너무 어려워서").
+  static final RegExp _asksToRephrase = RegExp(
+    r'(쉽게|쉬운\s*말로|다시|천천히|한\s*번\s*더)\s*(좀\s*)?'
+    r'(말해|말씀해|설명해|물어봐|물어|얘기해|이야기해)\s*'
+    r'(줘|주세요|주실래요|주실\s*수|줄래|줄\s*수|봐|주시겠)',
+  );
+  static final RegExp _relaysTheAsk = RegExp(
+    r'(뭘|무엇을|뭐를)\s*(말하|대답하|답하|하|적)라는|'
+    r'(말하|대답하|답하|적)라는\s*(거|건|게|말)|'
+    r'내가\s*뭘\s*하면\s*(되는데|돼|되나|될까)',
+  );
+  static final RegExp _shortNotUnderstood = RegExp(
+    r'^(이해(가|를)?\s*(잘\s*)?(안|못)\s*(가|감|돼|되|했|하겠)\S*|'
+    r'뭔\s*소린지\S*|뭔\s*말인지\S*|무슨\s*말인지\S*)$',
+  );
+  static final RegExp _asksWhatTermMeans = RegExp(
+    r'\S+(라는|란)\s*(게|건|말은|말이|것은|것이)\s*(뭐|뭔|무슨|어떤|정확히)',
+  );
+  static final RegExp _judgesTheQuestion = RegExp(
+    r'(^|(그|이|방금|아까|네|니|너의|방금\s*한)\s+)?질문(이|은|을)?\s*'
+    r'((너무|좀|잘|되게|진짜)\s*)?(어려|애매|이상|헷갈|이해\s*(가\s*)?안|뭐야|뭔데|뭐예요)',
+  );
+  static const _questionOwners = {
+    '교수님', '선생님', '면접관', '친구', '엄마', '아빠', '부모님', '사람들', '면접',
+    '시험', '발표', '강의', '수업', '교수', '선생', '상사', '팀장님', '선배',
+  };
+
+  static bool _judgesThisQuestion(String t) {
+    for (final m in _judgesTheQuestion.allMatches(t)) {
+      final before = t.substring(0, m.start).trim().split(RegExp(r'\s+')).lastOrNull;
+      if (before != null && _questionOwners.contains(before)) continue;
+      return true;
+    }
+    return false;
+  }
+
   static bool _assistantNotUnderstood(String text) {
     final t = text.trim().replaceFirst(RegExp(r'[?.!~\s]+$'), '');
     if (_bareNotUnderstood.hasMatch(t)) return true;
+    if (_shortNotUnderstood.hasMatch(t)) return true;
+    if (_matchesAsInteraction(_asksToRephrase, t)) return true;
+    if (_matchesAsInteraction(_relaysTheAsk, t)) return true;
+    if (_matchesAsInteraction(_asksWhatTermMeans, t) && t.length <= 30) return true;
+    if (_judgesThisQuestion(t)) return true;
     return _pointsAtCounselor.hasMatch(t) && _notUnderstood.hasMatch(t);
   }
 
@@ -648,6 +771,8 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
         '지금은 바로 떠오르지 않을 수 있어요. 억지로 떠올리지 않아도 괜찮아요.',
     EarlyWrapUp.notUnderstood:
         '제 말이 계속 헷갈리게 들렸다면 미안해요. 억지로 답하지 않으셔도 괜찮아요.',
+    EarlyWrapUp.noProgress:
+        '지금은 딱 떠오르는 게 없을 수 있어요. 억지로 찾지 않아도 괜찮아요.',
   };
 
   static CounselingMessage? _lastAssistant(List<CounselingMessage> messages) {
@@ -655,6 +780,17 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
       if (!m.isUser) return m;
     }
     return null;
+  }
+
+  /// Clarify turns at the end of [messages], skipping repair turns.
+  static int _trailingClarifies(List<CounselingMessage> messages) {
+    var count = 0;
+    for (final m in messages.reversed) {
+      if (m.isUser || m.interactionRepairReason != null) continue;
+      if (!m.isClarify) break;
+      count++;
+    }
+    return count;
   }
 
   static CounselingMessage? _lastUser(List<CounselingMessage> messages) {
@@ -771,6 +907,20 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     final current = context.userMessage.trim();
     if (current.isEmpty) return null;
 
+    // Phase 13.9C (S3): reflect would clarify a third time in a row. Two
+    // clarify questions got nothing usable, whatever the user said, so offer
+    // to wrap up instead of asking again. A net for non-answers the
+    // low-information check doesn't recognize.
+    if (context.state == CounselingState.reflect &&
+        _trailingClarifies(UserThoughtExtractor.currentRound(context.recentMessages)) >= 2 &&
+        const ReflectDecisionSelector().wouldClarify(
+          userMessage: current,
+          recentMessages: context.recentMessages,
+          userContext: context.userContext,
+        )) {
+      return _wrapUpPlan(context, EarlyWrapUp.noProgress);
+    }
+
     // Phase 13.8 (P4): a second non-answer in a row, in explore/reflect.
     // Intervention has its own no-pressure integration for "모르겠어".
     final previousUser = _lastUser(context.recentMessages);
@@ -784,7 +934,9 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
 
     final wantsEmpathy =
         _requestsEmpathy.hasMatch(current) || _generalizedStop(current);
-    final resists = !wantsEmpathy && _showsProcessResistance.hasMatch(current);
+    final resists = !wantsEmpathy &&
+        (_showsProcessResistance.hasMatch(current) ||
+            _conversationIsPointless(current));
     final repeatsInteraction =
         !wantsEmpathy &&
         !resists &&

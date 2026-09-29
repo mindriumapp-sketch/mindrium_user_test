@@ -284,16 +284,17 @@ void main() {
   // can no longer certify a fix. Fixes are developed on a new dev set and
   // the gate moves to a fresh blind holdout (v2). See
   // docs/counseling/phase13_status_and_plan.md, "13.9B holdout v1".
-  const firstRun = {
-    'stateLoop': 2,
-    'nonAnswerCredited': 17,
-    'metaAsTarget': 54,
-    'repeatedClarifyRun': 30,
-  };
-  group('holdout v1 result (recorded failure; the gate is not met)', () {
+  //
+  // First run (3f9f3d4): stateLoop 2, nonAnswerCredited 17, metaAsTarget 54,
+  // repeatedClarifyRun 30. The values below are the re-run after the 13.9C
+  // safety nets and dev-v2 widening, on a set that is no longer blind:
+  // informational only, never a pass. Remaining v1 misses are not fixed
+  // from v1.
+  const seenSetRerun = {'metaAsTarget': 3};
+  group('holdout v1 (seen set): re-run recorded, not a pass', () {
     for (final metric in flowGateMetrics) {
       test(metric, () {
-        expect(metrics.counts[metric], firstRun[metric] ?? 0,
+        expect(metrics.counts[metric], seenSetRerun[metric] ?? 0,
             reason: 'holdout v1 changed; update the record deliberately.\n'
                 '${metrics.failures[metric]?.join('\n')}');
       });

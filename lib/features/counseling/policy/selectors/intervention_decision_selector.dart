@@ -102,9 +102,14 @@ class InterventionDecisionSelector {
             // A behavior technique examines a behavior the user described;
             // otherwise it asks about behavior around the worry (the
             // materializer words the question by the target's shape).
-            ? (InterventionEligibilityPredicates.looksLikeBehavior(userMessage)
+            ? (InterventionEligibilityPredicates.looksLikeBehavior(userMessage) &&
+                    UserThoughtExtractor.isQuotable(userMessage)
                 ? userMessage.trim()
-                : roundWorry ?? userMessage.trim())
+                : roundWorry ??
+                    UserThoughtExtractor.latestContentMessage(
+                      UserThoughtExtractor.semanticContent(recentMessages),
+                    ) ??
+                    userMessage.trim())
             : policy.interventionType == InterventionType.balancedThought
             ? roundWorry ?? UserThoughtExtractor.thoughtShaped(userMessage)
             : policy.interventionType == InterventionType.maintenanceReview
@@ -128,7 +133,8 @@ class InterventionDecisionSelector {
             ? effectiveIntervention?.label
             : null) ??
         diaryThought ??
-        UserThoughtExtractor.latestUserMessage(
+        // Phase 13.9C (S1): never a non-answer or a question to the counselor.
+        UserThoughtExtractor.latestContentMessage(
           UserThoughtExtractor.semanticContent(recentMessages),
         ) ??
         userMessage.trim();

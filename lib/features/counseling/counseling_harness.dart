@@ -518,6 +518,7 @@ class CounselingHarness {
       interventionStep: turnPlan.interventionStep,
       closingStep: turnPlan.closingStep,
       earlyWrapUp: turnPlan.earlyWrapUp,
+      isClarify: turnPlan.isClarify,
     );
 
     _advance(session, nextState);

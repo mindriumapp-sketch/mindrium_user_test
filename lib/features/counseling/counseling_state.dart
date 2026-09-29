@@ -203,7 +203,15 @@ class CounselingStatePolicy {
     if (totalTurns >= maxSessionTurns) return CounselingState.closing;
 
     // 무엇을 했는지 모르는 턴(파싱 실패 등)은 진행으로 세지 않는다.
-    if (lastAct == DialogueAct.unknown) return current;
+    // Phase 13.9C (S4): 다만 explore/reflect 에서 그런 턴이 이어져 단계
+    // 상한에 닿으면 넘어간다. 그렇지 않으면 알아볼 수 없는 입력이 계속될 때
+    // 같은 단계에 끝없이 머문다(holdout v1 stateLoop).
+    if (lastAct == DialogueAct.unknown) {
+      final atCap = turnsInCurrentState + 1 >= budgetFor(current);
+      final capBound = current == CounselingState.explore ||
+          current == CounselingState.reflect;
+      return atCap && capBound ? _advance(current) : current;
+    }
 
     // Phase 13.8 (P4): the turn offered to wrap up early; the answer to that
     // proposal is handled in closing like any other proposal.

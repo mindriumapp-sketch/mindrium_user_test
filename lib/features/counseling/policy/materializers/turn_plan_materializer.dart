@@ -1,4 +1,5 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 
 import '../../intervention_registry.dart';
 import '../../surface_variation.dart';
@@ -89,7 +90,9 @@ class TurnPlanMaterializer {
     return CounselingTurnPlan(
       reflectionTarget: target,
       questionGoal: '현재 사용자가 느끼는 불안의 주관적 정도를 0에서 10 사이로 확인한다.',
-      reflectionSentence: '“$clean”라고 말씀해 주셨군요.',
+      reflectionSentence: UserThoughtExtractor.isQuotable(clean)
+          ? '“$clean”라고 말씀해 주셨군요.'
+          : '말씀해 주셔서 고마워요.',
       questionSentence: '지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?',
       forbidden: checkInForbidden,
       constraints: const [
@@ -251,17 +254,22 @@ class TurnPlanMaterializer {
       questionGoal: questionGoalText,
       reflectionSentence: surfaceVariation.select(
         candidates: [
-          '“${_withoutTerminalPunctuation(target)}”라고 느끼고 계시는군요.',
-          '말씀을 들어보니 “${_withoutTerminalPunctuation(target)}”라는 부분이 마음에 걸리시는 것 같아요.',
-          '지금은 “${_withoutTerminalPunctuation(target)}”라는 점이 가장 신경 쓰이시는군요.',
+          // Phase 13.9C (S1): never quote a non-answer or a question back.
+          if (UserThoughtExtractor.isQuotable(target)) ...[
+            '“${_withoutTerminalPunctuation(target)}”라고 느끼고 계시는군요.',
+            '말씀을 들어보니 “${_withoutTerminalPunctuation(target)}”라는 부분이 마음에 걸리시는 것 같아요.',
+            '지금은 “${_withoutTerminalPunctuation(target)}”라는 점이 가장 신경 쓰이시는군요.',
+          ],
           '방금 하신 이야기가 계속 마음에 남아 있는 것 같아요.',
         ],
         recentMessages: recentMessages,
         seed: target,
-        repetitionMarkers: const [
-          '라고 느끼고 계시는군요',
-          '말씀을 들어보니',
-          '가장 신경 쓰이시는군요',
+        repetitionMarkers: [
+          if (UserThoughtExtractor.isQuotable(target)) ...const [
+            '라고 느끼고 계시는군요',
+            '말씀을 들어보니',
+            '가장 신경 쓰이시는군요',
+          ],
           '계속 마음에 남아 있는 것 같아요',
         ],
       ),
@@ -363,6 +371,7 @@ class TurnPlanMaterializer {
         realizationSpec: RealizationSpecBuilder.reflectClarify(decision),
         // Phase 13.4: no usable thought yet, so reflect isn't done.
         stageProgress: StageProgress.inProgress,
+        isClarify: true,
       );
     }
 
@@ -425,7 +434,7 @@ class TurnPlanMaterializer {
       case GoalExhaustionRecovery.summarize:
         questionGoal = '새로운 질문 없이 지금까지 나눈 내용을 짧게 정리한다.';
         reflectionSentence =
-            clean.isEmpty
+            clean.isEmpty || !UserThoughtExtractor.isQuotable(clean)
                 ? '지금까지 나눈 이야기를 여기서 한 번 정리하고 갈게요.'
                 : '지금까지 “$clean”라는 이야기를 중심으로 함께 살펴봤어요. 여기서 한 번 정리하고 갈게요.';
       case GoalExhaustionRecovery.listenWithoutQuestion:
@@ -475,7 +484,7 @@ class TurnPlanMaterializer {
     List<CounselingMessage> recentMessages,
   ) {
     final clean = target.trim().replaceFirst(RegExp(r'[.!?]+$'), '');
-    if (clean.isEmpty) {
+    if (clean.isEmpty || !UserThoughtExtractor.isQuotable(clean)) {
       return surfaceVariation.select(
         candidates: const ['지금 조금 힘드신 것 같아요.', '말씀해 주신 부분을 조금 더 들어보고 싶어요.'],
         recentMessages: recentMessages,
@@ -511,6 +520,14 @@ class TurnPlanMaterializer {
     String target,
     List<CounselingMessage> recentMessages,
   ) {
+    if (!UserThoughtExtractor.isQuotable(target)) {
+      return surfaceVariation.select(
+        candidates: const ['지금 마음에 걸리는 그 걱정을 함께 살펴볼게요.', '말씀해 주신 걱정을 조금 더 들여다볼게요.'],
+        recentMessages: recentMessages,
+        seed: target,
+        repetitionMarkers: const ['그 걱정을 함께 살펴볼게요', '조금 더 들여다볼게요'],
+      );
+    }
     var sentence = target.trim().replaceFirst(RegExp(r'[.!?]+$'), '');
     sentence = sentence
         .replaceAll('답을 못하면', '답하지 못하면')
@@ -535,20 +552,23 @@ class TurnPlanMaterializer {
     List<CounselingMessage> recentMessages,
   ) {
     final clean = target.trim().replaceFirst(RegExp(r'[.!?]+$'), '');
+    final quotable = UserThoughtExtractor.isQuotable(clean);
     return surfaceVariation.select(
       candidates: [
-        '“$clean”라고 말씀해 주셨군요.',
+        if (quotable) '“$clean”라고 말씀해 주셨군요.',
         '그 이야기를 들으니 지금 느끼시는 마음이 더 잘 이해가 돼요.',
-        '그 경험이 있어서 “$clean”라고 느끼시는군요.',
-        '말씀하신 “$clean”라는 부분을 함께 살펴볼게요.',
+        if (quotable) '그 경험이 있어서 “$clean”라고 느끼시는군요.',
+        if (quotable) '말씀하신 “$clean”라는 부분을 함께 살펴볼게요.',
+        if (!quotable) '말씀해 주셔서 고마워요.',
       ],
       recentMessages: recentMessages,
       seed: target,
-      repetitionMarkers: const [
-        '라고 말씀해 주셨군요',
+      repetitionMarkers: [
+        if (quotable) '라고 말씀해 주셨군요',
         '더 잘 이해가 돼요',
-        '그 경험이 있어서',
-        '함께 살펴볼게요',
+        if (quotable) '그 경험이 있어서',
+        if (quotable) '함께 살펴볼게요',
+        if (!quotable) '말씀해 주셔서 고마워요',
       ],
     );
   }
@@ -688,8 +708,14 @@ class TurnPlanMaterializer {
         registry.policyForItemId(selected.id) ??
         registry.policyForWeek(currentWeek)!;
     final answer = _requireText(decision.reflectionTarget, 'interventionIntegration');
+    // Phase 13.9C (S2): only a content answer is credited with the
+    // technique's outcome. A non-answer, or a question back to the
+    // counselor ("뭘 대답하라는 건지"), gets the no-pressure acknowledgment
+    // even when the meta detector missed it.
     final lowInfo =
-        _lowInfoAnswer.hasMatch(answer.trim()) || _wantsToStop.hasMatch(answer);
+        _lowInfoAnswer.hasMatch(answer.trim()) ||
+        _wantsToStop.hasMatch(answer) ||
+        !UserThoughtExtractor.isQuotable(answer);
     // Phase 13.7 (E1): the prompt may already have opened with "바로 떠오르지
     // 않아도 괜찮아요" (a low-info reflect answer); don't say it twice in a row.
     final previousOpensSame = recentMessages.reversed

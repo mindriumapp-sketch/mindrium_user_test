@@ -277,6 +277,11 @@ enum EarlyWrapUp {
 
   /// Two "I don't understand you" turns in a row.
   notUnderstood,
+
+  /// Phase 13.9C (S3): two clarify questions in a row got nothing to work
+  /// with, whatever the user said — a net for non-answers the detector
+  /// doesn't recognize.
+  noProgress,
 }
 
 /// 모델 출력을 어떤 경로로 읽어냈는지. 실제 모델 벤치에서 평가 지표가 된다.
@@ -361,6 +366,10 @@ class CounselingMessage {
   /// Phase 13.8 (P4): set when this turn proposed wrapping up early.
   final EarlyWrapUp? earlyWrapUp;
 
+  /// Phase 13.9C (S3): this reflect turn asked a clarify question because no
+  /// usable thought was found yet.
+  final bool isClarify;
+
   const CounselingMessage({
     required this.id,
     required this.role,
@@ -377,6 +386,7 @@ class CounselingMessage {
     this.interventionStep,
     this.closingStep,
     this.earlyWrapUp,
+    this.isClarify = false,
   });
 
   bool get isUser => role == 'user';

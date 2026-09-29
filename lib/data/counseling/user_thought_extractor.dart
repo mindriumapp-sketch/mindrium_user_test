@@ -47,11 +47,18 @@ class UserThoughtExtractor {
   // Phase 13.7 (D3): "것같아" is often typed without the space.
   static final RegExp _seemsLike = RegExp(r'것\s*같');
 
+  // Phase 13.9C: "생각" alone is not a thought — "별로 생각나는 게 없어요"
+  // says there is none. It counts when it names one ("…라는 생각",
+  // "생각이 들어", "생각뿐", "…하는 생각").
+  static final RegExp _namesAThought = RegExp(
+    r'(라는|하는|다는|는)\s*생각|생각(이|만)?\s*(들|뿐|자꾸|계속)',
+  );
+
   static bool _hasThoughtShape(String text) =>
       _seemsLike.hasMatch(text) ||
       text.contains('것이다') ||
       text.contains('보일') ||
-      text.contains('생각') ||
+      _namesAThought.hasMatch(text) ||
       _hasWorryThoughtForm(text);
 
   // Phase 12.3 (N3): common worry-thought forms that name a feared outcome
@@ -195,10 +202,74 @@ class UserThoughtExtractor {
     if (RegExp(r'^(?:[0-9]|10)(?:점|정도)?(?:이에요|예요|입니다|이요|요)?$').hasMatch(compact)) {
       return true;
     }
-    return RegExp(
+    if (RegExp(
       r'^(네|넵|응|웅|어|음+|아니요?|맞아요?|(잘)?모르겠(어|어요|네|네요|다니까|다고|는데)|'
       r'(잘)?몰라(요)?|그냥(요)?|글쎄(요)?|딱히(요)?)$',
-    ).hasMatch(compact);
+    ).hasMatch(compact)) {
+      return true;
+    }
+    return _onlyNothingTokens(value);
+  }
+
+  // Phase 13.9C: a non-answer judged token by token. Every token is either
+  // filler ("음", "그냥", "별로", "아무", "생각도") or a nothing/assent
+  // predicate ("모르겠네요", "없는데", "안 나", "그래", "ㅇㅇ"), and at least
+  // one is a predicate. Any other word — a topic, a person, a feeling — is
+  // content, so "시험이 없어서 다행이에요" is not a non-answer.
+  static final Set<String> _fillerTokens = {
+    '음', '흠', '어', '아', '엥', '음음', '그냥', '별로', '딱히', '잘', '진짜', '정말', '좀',
+    '뭐', '아무', '아무것도', '아무거나', '생각', '생각도', '생각이', '생각은', '생각나는', '떠오르는',
+    '딱', '특별히', '게', '건', '것도', '거', '것', '안', '못', '그런', '거는', '것은', '이',
+  };
+  static final RegExp _nothingPredicate = RegExp(
+    r'^(모르겠\S*|몰라\S*|모름|몰루|없\S*|나|나요|나네|나네요|떠올라\S*|떠오르지|떠오르는게|'
+    r'생각나\S*|그래|그래요|그렇\S*|글쎄\S*|ㅇㅇ+|ㅇㅋ|ㅇ|응+|웅|네|넵|예|아니\S*|아뇨|노|'
+    r'그냥|그냥요|별로|별로요|딱히|딱히요)$',
+  );
+
+  static bool _onlyNothingTokens(String value) {
+    final tokens = value
+        .replaceAll(RegExp(r'[.!?,~…ㅠㅜ]+'), ' ')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (tokens.isEmpty || tokens.length > 6) return false;
+    var predicate = false;
+    for (final raw in tokens) {
+      final t = raw.endsWith('요') && raw.length > 1 && _fillerTokens.contains(raw.substring(0, raw.length - 1))
+          ? raw.substring(0, raw.length - 1)
+          : raw;
+      if (_nothingPredicate.hasMatch(t)) {
+        predicate = true;
+      } else if (!_fillerTokens.contains(t)) {
+        return false;
+      }
+    }
+    return predicate;
+  }
+
+  /// Phase 13.9C (S2): addressed to the counselor rather than an answer —
+  /// asking what it means, what it wants, or to say it more simply.
+  static bool addressesCounselor(String value) {
+    final t = value.trim();
+    return RegExp(
+      r'(쉽게|쉬운\s*말|다시|천천히)\s*(좀\s*)?(말|설명|얘기|이야기|물어)|'
+      r'설명해|예시|예를\s*들|'
+      r'뭘\s*(대답|말하|물어|하라|원하)|뭐라고\s*(대답|답|말)해야|'
+      r'(하라는|말하라는|대답하라는|답하라는)\s*(거|건|게|말)|'
+      r'무슨\s*(뜻|말|소리|질문|의도)|뭔\s*(소리|말|뜻)|'
+      r'이해\s*(가|를)?\s*(안|못)|헷갈|애매|감이\s*안',
+    ).hasMatch(t);
+  }
+
+  /// Phase 13.9C (S1): may this utterance be quoted back or used as the
+  /// thing a sentence is about? Not a non-answer, not addressed to the
+  /// counselor. A safety net for when the meta detector misses.
+  static bool isQuotable(String value) {
+    final t = value.trim();
+    if (t.isEmpty || isLowInformation(t) || addressesCounselor(t)) return false;
+    return t.replaceAll(RegExp(r'[\s.!?,~]'), '').length >= 4;
   }
 
   /// Phase 13.8 (P4): a reply that doesn't answer an open question — low
@@ -215,6 +286,7 @@ class UserThoughtExtractor {
   /// of the other three.
   static TargetEligibility targetEligibility(String text) {
     if (isLowInformation(text)) return TargetEligibility.lowInformation;
+    if (addressesCounselor(text)) return TargetEligibility.interaction;
     if (_hasThoughtShape(text.trim())) return TargetEligibility.worryThought;
     return TargetEligibility.situation;
   }
@@ -255,7 +327,7 @@ class UserThoughtExtractor {
   /// low-information reply), for fallbacks that quote or reflect it.
   static String? latestContentMessage(List<CounselingMessage> messages) {
     for (final message in messages.reversed) {
-      if (message.isUser && !isLowInformation(message.text)) {
+      if (message.isUser && isQuotable(message.text)) {
         return message.text.trim();
       }
     }
