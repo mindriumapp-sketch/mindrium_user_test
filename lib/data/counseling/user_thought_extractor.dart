@@ -201,6 +201,12 @@ class UserThoughtExtractor {
     ).hasMatch(compact);
   }
 
+  /// Phase 13.8 (P4): a reply that doesn't answer an open question — low
+  /// information other than a number (a number answers the 0–10 rating).
+  static bool isNonAnswer(String value) =>
+      isLowInformation(value) &&
+      !RegExp(r'^\s*(?:[0-9]|10)').hasMatch(value);
+
   /// Phase 13.8 (P2): what a user utterance can be used for as CBT content.
   /// The contract every content selector follows: only a worry thought may
   /// become a technique's target; interaction/meta and low-information

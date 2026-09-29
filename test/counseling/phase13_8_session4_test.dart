@@ -8,6 +8,10 @@
 //       not understanding the counselor) were treated as worry content.
 //       "뭐라는거야" was even credited as the answer to the technique
 //       question ("그렇게 보면 … 현실적으로 바라볼 수 있겠네요").
+//   P4: after continuing at closing, "잘 모르겠어 / 모르겠어 / 모르겠다니까"
+//       got three near-identical clarify questions until the user wrote
+//       "짜증나게". Two non-answers in a row now get a no-pressure wrap-up
+//       proposal instead of another question.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -183,7 +187,11 @@ void main() {
       }
       final r = replies[i];
       expect(r.interactionRepairReason, InteractionRepairReason.assistantNotUnderstood, reason: '$t -> ${r.text}');
-      expect(r.text, startsWith('제 말이 헷갈리게 들렸나 봐요.'), reason: r.text);
+      // The first one re-asks plainly; from the second on (P4) it's the
+      // wrap-up proposal, then the proposal asked again plainly.
+      if (t == '무슨 말이야') {
+        expect(r.text, startsWith('제 말이 헷갈리게 들렸나 봐요.'), reason: r.text);
+      }
       expect(r.text.trim().endsWith('?'), isTrue, reason: 'no re-ask: ${r.text}');
       expect(r.interventionStep, isNot(InterventionStep.integration), reason: r.text);
     }
@@ -206,5 +214,69 @@ void main() {
     expect(confused.text, contains('균형'), reason: 'the re-ask is about the same technique: ${confused.text}');
     expect(replies[6].interventionStep, InterventionStep.integration);
   });
-}
 
+  group('P4: two non-answers in a row offer to wrap up', () {
+    const cooperative = [
+      '오늘 시험을 봤는데 잘 못본 것 같아',
+      '9',
+      '내가 찍은 문제가 다 틀려서 망할까봐 걱정돼',
+      '딱히 없어. 그냥 불안해',
+      '공부를 열심히 했으면 잘 봤겠지만 그렇지 못해서 망한 것 같아',
+      '문제를 다 틀려도 망한 것은 아니야. 다음에도 기회가 있어',
+    ];
+
+    test('session 4 after continuing: the second non-answer gets the proposal, not a third question', () async {
+      final replies = await run([
+        ...cooperative,
+        '더 이야기 하자',
+        '잘 모르겠어',
+        '모르겠어',
+        '모르겠다니까',
+      ]);
+      final reopen = replies.indexWhere((m) => m.closingStep == ClosingStep.continued);
+      expect(reopen, 6);
+      final first = replies[reopen + 1];
+      expect(first.earlyWrapUp, isNull, reason: 'one more try after the first non-answer');
+      expect(first.text.trim().endsWith('?'), isTrue);
+      final second = replies[reopen + 2];
+      expect(second.earlyWrapUp, EarlyWrapUp.lowInformation, reason: second.text);
+      expect(second.closingStep, ClosingStep.proposed);
+      expect(second.text, contains('오늘은 여기까지 정리해 볼까요'));
+      expect(replies.last.closingStep, ClosingStep.finalized, reason: replies.last.text);
+    });
+
+    test('a number (the SUD answer) does not start a streak', () async {
+      final replies = await run(['내일 시험이 있어', '7', '몰라']);
+      expect(replies.last.earlyWrapUp, isNull, reason: replies.last.text);
+    });
+
+    test('two not-understood turns in a row offer to wrap up', () async {
+      final replies = await run(session4.take(6).toList());
+      expect(replies[4].interactionRepairReason, InteractionRepairReason.assistantNotUnderstood);
+      expect(replies[4].earlyWrapUp, isNull);
+      expect(replies[5].earlyWrapUp, EarlyWrapUp.notUnderstood, reason: replies[5].text);
+      expect(replies[5].closingStep, ClosingStep.proposed);
+    });
+
+    test('not understanding the proposal re-asks it plainly; then an answer finalizes', () async {
+      final replies = await run([...session4.take(6), '무슨 말이야', '응']);
+      final reask = replies[6];
+      expect(reask.interactionRepairReason, InteractionRepairReason.assistantNotUnderstood);
+      expect(reask.closingStep, ClosingStep.proposed, reason: reask.text);
+      expect(reask.text.trim().endsWith('?'), isTrue);
+      expect(replies.last.closingStep, ClosingStep.finalized, reason: replies.last.text);
+    });
+
+    for (final (answer, step) in [
+      ('몰라', ClosingStep.finalized),
+      ('잘 모르겠어', ClosingStep.finalized),
+      ('아니, 조금 더 할래', ClosingStep.continued),
+    ]) {
+      test('answer to a proposal "$answer" → ${step.name}', () async {
+        final replies = await run([...cooperative, answer]);
+        expect(replies[replies.length - 2].closingStep, ClosingStep.proposed);
+        expect(replies.last.closingStep, step, reason: replies.last.text);
+      });
+    }
+  });
+}

@@ -74,8 +74,12 @@ class ClosingDecisionSelector {
 
     final text = userMessage.trim();
     if (_wantsToContinue.hasMatch(text)) return ClosingStep.continued;
+    // Phase 13.8 (P4): "몰라" to "정리할까요, 더 이야기할까요?" is not a wish
+    // to keep talking; reopening would ask the same kind of question again.
+    // An explicit "아니" was already read as continue above.
     if (_agrees.hasMatch(text) ||
         _wrapsUp.hasMatch(text) ||
+        UserThoughtExtractor.isLowInformation(text) ||
         _closingOnly.hasMatch(text) ||
         text.isEmpty) {
       return ClosingStep.finalized;

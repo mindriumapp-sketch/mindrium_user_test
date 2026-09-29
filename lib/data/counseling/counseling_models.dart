@@ -236,6 +236,11 @@ enum StageProgress {
   /// Closing only: the user wants to keep talking. One controlled return
   /// to reflect.
   reopen,
+
+  /// Phase 13.8 (P4): the user can't engage right now (see [EarlyWrapUp]).
+  /// The turn proposed wrapping up, so the session goes to closing from any
+  /// stage.
+  wrapUp,
 }
 
 /// Phase 13.3: where an intervention turn sits in ask → answer → integrate.
@@ -260,6 +265,18 @@ enum ClosingStep {
 
   /// The user wanted to keep talking. Used at most once per session.
   continued,
+}
+
+/// Phase 13.8 (P4): why a closing proposal came before any intervention
+/// outcome. Asking the same kind of question again was what made the device
+/// user angry in session 4, so after two such turns in a row the counselor
+/// offers to wrap up instead.
+enum EarlyWrapUp {
+  /// Two low-information answers in a row ("잘 모르겠어", "모르겠어").
+  lowInformation,
+
+  /// Two "I don't understand you" turns in a row.
+  notUnderstood,
 }
 
 /// 모델 출력을 어떤 경로로 읽어냈는지. 실제 모델 벤치에서 평가 지표가 된다.
@@ -341,6 +358,9 @@ class CounselingMessage {
   /// Phase 13.5: this assistant turn's place in the closing handshake.
   final ClosingStep? closingStep;
 
+  /// Phase 13.8 (P4): set when this turn proposed wrapping up early.
+  final EarlyWrapUp? earlyWrapUp;
+
   const CounselingMessage({
     required this.id,
     required this.role,
@@ -356,6 +376,7 @@ class CounselingMessage {
     this.goalExhaustionRecovery,
     this.interventionStep,
     this.closingStep,
+    this.earlyWrapUp,
   });
 
   bool get isUser => role == 'user';

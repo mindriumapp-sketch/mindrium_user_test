@@ -1,5 +1,6 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/data/counseling/retrieval_summary.dart';
+import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 
 import 'activity_recommendation.dart';
 import 'counseling_state.dart';
@@ -94,6 +95,9 @@ class CounselingTurnPlan {
   /// Phase 13.5: see `CounselingMessage.closingStep`.
   final ClosingStep? closingStep;
 
+  /// Phase 13.8: see `CounselingMessage.earlyWrapUp`.
+  final EarlyWrapUp? earlyWrapUp;
+
   const CounselingTurnPlan({
     required this.reflectionTarget,
     required this.questionGoal,
@@ -114,6 +118,7 @@ class CounselingTurnPlan {
     this.stageProgress,
     this.interventionStep,
     this.closingStep,
+    this.earlyWrapUp,
   });
 
   String get deterministicReply => [
@@ -634,12 +639,113 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
 
   const DeterministicProcessSignalTurnPlanner();
 
+  // Phase 13.8 (P4): wrap-up sentences, then the usual closing proposal.
+  static const Map<EarlyWrapUp, String> _wrapUpSentences = {
+    EarlyWrapUp.lowInformation:
+        '지금은 바로 떠오르지 않을 수 있어요. 억지로 떠올리지 않아도 괜찮아요.',
+    EarlyWrapUp.notUnderstood:
+        '제 말이 계속 헷갈리게 들렸다면 미안해요. 억지로 답하지 않으셔도 괜찮아요.',
+  };
+
+  static CounselingMessage? _lastAssistant(List<CounselingMessage> messages) {
+    for (final m in messages.reversed) {
+      if (!m.isUser) return m;
+    }
+    return null;
+  }
+
+  static CounselingMessage? _lastUser(List<CounselingMessage> messages) {
+    for (final m in messages.reversed) {
+      if (m.isUser) return m;
+    }
+    return null;
+  }
+
+  /// Phase 13.8 (P4): no more questions after two non-answers in a row (or
+  /// two "I don't understand you" turns); offer to wrap up instead.
+  CounselingTurnPlan _wrapUpPlan(TurnPlanningContext context, EarlyWrapUp why) {
+    return CounselingTurnPlan(
+      reflectionTarget: context.userMessage.trim(),
+      questionGoal: '더 묻지 않고 부담 없이 받아 준 뒤 마무리를 제안한다.',
+      reflectionSentence: _wrapUpSentences[why]!,
+      questionSentence: TurnPlanMaterializer.closingProposalQuestion,
+      forbidden: defaultForbidden.where((f) => f != '질문을 하지 않는다.').toList(),
+      constraints: const [
+        TurnConstraint.requireReflection,
+        TurnConstraint.requireExactlyOneQuestion,
+        TurnConstraint.forbidAdvice,
+        TurnConstraint.forbidNewUserFacts,
+        TurnConstraint.forbidNewIntervention,
+      ],
+      requiredAct:
+          context.state == CounselingState.explore
+              ? DialogueAct.explore
+              : DialogueAct.reflect,
+      userContextIds: const [],
+      cbtContextIds: const [],
+      interactionRepairReason:
+          why == EarlyWrapUp.notUnderstood
+              ? InteractionRepairReason.assistantNotUnderstood
+              : null,
+      stageProgress: StageProgress.wrapUp,
+      closingStep: ClosingStep.proposed,
+      earlyWrapUp: why,
+    );
+  }
+
+  /// Phase 13.8 (P1): in closing the Hard Guard stays off, except that a
+  /// closing proposal the user didn't understand is asked again plainly.
+  /// The proposal stays pending, so the next answer goes to the handshake.
+  CounselingTurnPlan? _closingReask(TurnPlanningContext context) {
+    final current = context.userMessage.trim();
+    if (_lastAssistant(context.recentMessages)?.closingStep != ClosingStep.proposed ||
+        !_assistantNotUnderstood(current)) {
+      return null;
+    }
+    final variants = _repairSentences[InteractionRepairReason.assistantNotUnderstood]!;
+    return CounselingTurnPlan(
+      reflectionTarget: current,
+      questionGoal: '헷갈리게 한 것을 인정하고 마무리 제안을 더 쉬운 말로 다시 묻는다.',
+      reflectionSentence:
+          variants[_consecutiveRepairs(
+                context.recentMessages,
+                InteractionRepairReason.assistantNotUnderstood,
+              ) %
+              variants.length],
+      questionSentence: '오늘은 여기서 마칠까요, 아니면 조금 더 이야기할까요?',
+      forbidden: defaultForbidden.where((f) => f != '질문을 하지 않는다.').toList(),
+      constraints: const [
+        TurnConstraint.requireReflection,
+        TurnConstraint.requireExactlyOneQuestion,
+        TurnConstraint.forbidAdvice,
+        TurnConstraint.forbidNewUserFacts,
+        TurnConstraint.forbidNewIntervention,
+      ],
+      requiredAct: DialogueAct.closing,
+      userContextIds: const [],
+      cbtContextIds: const [],
+      interactionRepairReason: InteractionRepairReason.assistantNotUnderstood,
+      closingStep: ClosingStep.proposed,
+    );
+  }
+
   @override
   CounselingTurnPlan? plan(TurnPlanningContext context) {
-    if (context.state == CounselingState.closing) return null;
+    if (context.state == CounselingState.closing) return _closingReask(context);
 
     final current = context.userMessage.trim();
     if (current.isEmpty) return null;
+
+    // Phase 13.8 (P4): a second non-answer in a row, in explore/reflect.
+    // Intervention has its own no-pressure integration for "모르겠어".
+    final previousUser = _lastUser(context.recentMessages);
+    if ((context.state == CounselingState.explore ||
+            context.state == CounselingState.reflect) &&
+        UserThoughtExtractor.isNonAnswer(current) &&
+        previousUser != null &&
+        UserThoughtExtractor.isNonAnswer(previousUser.text)) {
+      return _wrapUpPlan(context, EarlyWrapUp.lowInformation);
+    }
 
     final wantsEmpathy =
         _requestsEmpathy.hasMatch(current) || _generalizedStop(current);
@@ -667,6 +773,14 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     } else {
       reason = InteractionRepairReason.assistantNotUnderstood;
     }
+    // Phase 13.8 (P4): a second "I don't understand you" in a row — asking
+    // once more in other words didn't help, so offer to wrap up.
+    if (reason == InteractionRepairReason.assistantNotUnderstood &&
+        _lastAssistant(context.recentMessages)?.interactionRepairReason ==
+            InteractionRepairReason.assistantNotUnderstood) {
+      return _wrapUpPlan(context, EarlyWrapUp.notUnderstood);
+    }
+
     // Phase 12.3D (F6): a second complaint in a row must not get the same
     // acknowledgment word for word. Alternate by how many immediately
     // preceding assistant turns were repairs for the same reason (metadata,
@@ -764,7 +878,10 @@ class DeterministicClosingTurnPlanner implements CounselingTurnPlanner {
       userMessage: context.userMessage,
       recentMessages: context.recentMessages,
     );
-    return materializer.closing(decision);
+    return materializer.closing(
+      decision,
+      recentMessages: context.recentMessages,
+    );
   }
 }
 

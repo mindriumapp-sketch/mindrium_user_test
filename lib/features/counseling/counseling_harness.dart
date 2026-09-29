@@ -517,6 +517,7 @@ class CounselingHarness {
       goalExhaustionRecovery: turnPlan.goalExhaustionRecovery,
       interventionStep: turnPlan.interventionStep,
       closingStep: turnPlan.closingStep,
+      earlyWrapUp: turnPlan.earlyWrapUp,
     );
 
     _advance(session, nextState);

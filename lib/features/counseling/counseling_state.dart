@@ -205,6 +205,10 @@ class CounselingStatePolicy {
     // 무엇을 했는지 모르는 턴(파싱 실패 등)은 진행으로 세지 않는다.
     if (lastAct == DialogueAct.unknown) return current;
 
+    // Phase 13.8 (P4): the turn offered to wrap up early; the answer to that
+    // proposal is handled in closing like any other proposal.
+    if (progress == StageProgress.wrapUp) return CounselingState.closing;
+
     // Phase 13.5: closing → one controlled return when the user wants to
     // keep talking. The closing selector enforces "at most once".
     if (current == CounselingState.closing) {

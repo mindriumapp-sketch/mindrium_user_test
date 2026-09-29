@@ -119,7 +119,10 @@ class TurnPlanAdapter {
         // crashed instead of being treated as "no plan", exactly like the
         // other four states already handle it.
         if (decision.isUnavailable) return null;
-        return materializer.closing(decision);
+        return materializer.closing(
+      decision,
+      recentMessages: request.recentMessages,
+    );
     }
   }
 }

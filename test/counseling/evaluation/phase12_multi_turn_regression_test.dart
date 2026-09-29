@@ -774,9 +774,10 @@ void main() {
     });
 
     test('F4 low-info reply quoted as the intervention/closing target', () {
-      // 12.2 value was 5. Phase 13's non-quoting closing removed 4; the one
-      // left is reflect's recovery quoting "네" (F4 backlog).
-      expect(metrics.lowInfoTextUsedAsTarget, 1);
+      // 12.2 value was 5. Phase 13's non-quoting closing removed 4; the last
+      // one (reflect's recovery quoting "네") went with 13.7 E3 / 13.8 P2:
+      // a low-info reply is never a recovery or technique target.
+      expect(metrics.lowInfoTextUsedAsTarget, 0);
     });
 
     // Not a fix: the Hard Guard is still off in closing. Phase 13 shifted

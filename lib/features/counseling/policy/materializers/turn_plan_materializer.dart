@@ -143,10 +143,29 @@ class TurnPlanMaterializer {
   }
 
   /// Mirrors `DeterministicClosingTurnPlanner.plan`'s realization.
-  CounselingTurnPlan closing(CounselorDecision decision) {
+  /// Phase 13.8: after the session was finalized, further messages get a
+  /// short pointer to starting a new session, alternating so the same line
+  /// is never shown twice in a row (the final closing itself was).
+  static const List<String> afterFinalizedSentences = [
+    '오늘 상담은 여기까지예요. 새로운 이야기를 하고 싶으시면 오른쪽 위 새로고침 버튼을 눌러 주세요.',
+    '이번 상담은 마무리되었어요. 새로고침 버튼을 누르면 새로 이야기를 시작할 수 있어요.',
+  ];
+
+  CounselingTurnPlan closing(
+    CounselorDecision decision, {
+    List<CounselingMessage> recentMessages = const [],
+  }) {
     if (decision.closingStep == ClosingStep.continued) {
       return closingContinuation(decision);
     }
+    CounselingMessage? previous;
+    for (final m in recentMessages.reversed) {
+      if (!m.isUser) {
+        previous = m;
+        break;
+      }
+    }
+    final afterFinalized = previous?.closingStep == ClosingStep.finalized;
     final target = switch (decision.reflectionTarget!) {
       ReflectionTargetText(:final value) => value,
       ReflectionTargetNone() => null,
@@ -158,7 +177,9 @@ class TurnPlanMaterializer {
       reflectionTarget: target ?? '',
       questionGoal: '새로운 내용을 추가하지 않고 현재 대화를 마무리한다.',
       reflectionSentence:
-          '오늘 이야기 나눠 주셔서 감사합니다. 오늘 함께 살펴본 생각을 필요할 때 다시 떠올려 보세요.',
+          afterFinalized
+              ? afterFinalizedSentences[previous!.text == afterFinalizedSentences.first ? 1 : 0]
+              : '오늘 이야기 나눠 주셔서 감사합니다. 오늘 함께 살펴본 생각을 필요할 때 다시 떠올려 보세요.',
       questionSentence: '',
       forbidden: closingForbidden,
       constraints: const [
