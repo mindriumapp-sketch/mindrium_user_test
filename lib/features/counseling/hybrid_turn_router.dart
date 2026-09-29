@@ -98,6 +98,19 @@ class HybridTurnRouter {
       // 표현만 다듬는 여지가 있어 모델 사용을 허용할 수 있다.
       case CounselingState.explore:
       case CounselingState.reflect:
+        // Phase 13.8 (P3): what the turn is decides remote eligibility, not
+        // the state it happens in. Only an ordinary counseling turn (one
+        // with a realization spec) may be rewritten. Interaction-repair and
+        // goal-exhaustion recovery turns answer the conversation itself with
+        // reviewed deterministic sentences; on device the remote realizer
+        // turned a repair into "…의지를 보이셨습니다".
+        if (!_isOrdinaryCounselingTurn(plan)) {
+          return const TurnRoutingDecision(
+            complexity: TurnComplexity.low,
+            allowLlm: false,
+            reason: 'repair_or_recovery',
+          );
+        }
         return TurnRoutingDecision(
           complexity: TurnComplexity.medium,
           allowLlm: llmEnabled,
@@ -122,4 +135,9 @@ class HybridTurnRouter {
         );
     }
   }
+
+  static bool _isOrdinaryCounselingTurn(CounselingTurnPlan plan) =>
+      plan.realizationSpec != null &&
+      plan.interactionRepairReason == null &&
+      plan.goalExhaustionRecovery == null;
 }

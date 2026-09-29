@@ -7,12 +7,19 @@ import 'package:gad_app_team/features/counseling/llm_service.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/features/counseling/counseling_state.dart';
 import 'package:gad_app_team/features/counseling/hybrid_turn_router.dart';
+import 'package:gad_app_team/features/counseling/policy/counselor_decision.dart';
+import 'package:gad_app_team/features/counseling/policy/materializers/realization_spec_builder.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 import 'package:gad_app_team/features/counseling/turn_plan.dart';
 
+/// An ordinary counseling plan carries a realization spec, as every
+/// materialized explore/reflect plan does (Phase 13.8: the router only lets
+/// such turns reach the model).
 CounselingTurnPlan _plan({
   InterventionPlan? intervention,
   TurnPlanningStatus status = TurnPlanningStatus.planned,
+  InteractionRepairReason? repair,
+  GoalExhaustionRecovery? recovery,
 }) => CounselingTurnPlan(
   reflectionTarget: '무능해 보일 것이다',
   questionGoal: '근거 탐색',
@@ -25,6 +32,16 @@ CounselingTurnPlan _plan({
   cbtContextIds: const [],
   interventionPlan: intervention,
   planningStatus: status,
+  interactionRepairReason: repair,
+  goalExhaustionRecovery: recovery,
+  realizationSpec: repair == null && recovery == null
+      ? RealizationSpecBuilder.reflectClarify(
+          const CounselorDecision(
+            selectedAction: DialogueAct.explore,
+            reflectionTarget: ReflectionTarget.text('무능해 보일 것이다'),
+          ),
+        )
+      : null,
 );
 
 const _intervention = InterventionPlan(
@@ -138,6 +155,24 @@ void main() {
         // 제품 기본값은 결정론이다.
         expect(decision.allowLlm, isFalse, reason: state.name);
         expect(decision.reason, 'llm_disabled');
+      }
+    });
+
+    // Phase 13.8 (P3): turn semantics, not state, decide remote eligibility.
+    test('복구 턴(메타 발화·목표 소진)은 탐색·되짚기여도 모델을 쓰지 않는다', () {
+      for (final state in [CounselingState.explore, CounselingState.reflect]) {
+        for (final plan in [
+          _plan(repair: InteractionRepairReason.repeatedQuestion),
+          _plan(recovery: GoalExhaustionRecovery.summarize),
+        ]) {
+          final decision = enabled.route(
+            state: state,
+            safetyLevel: SafetyLevel.normal,
+            plan: plan,
+          );
+          expect(decision.allowLlm, isFalse, reason: state.name);
+          expect(decision.reason, 'repair_or_recovery');
+        }
       }
     });
 
