@@ -29,6 +29,12 @@ class ClosingDecisionSelector {
     r'^(네|넵|응|웅|어|그래|좋아|괜찮|알겠|고마워|고맙|감사|그만|마칠|마무리|여기까지|됐어|끝낼|끝내요|그렇게)',
   );
 
+  /// Phase 13.7 (D2): taking up the proposal's own words ("정리해보자",
+  /// "여기까지 할게") anywhere in the reply, not only at its start.
+  static final RegExp _wrapsUp = RegExp(
+    r'(정리|마무리|여기까지|그만\s*(할|하|두|해)|마칠|끝내|끝낼)',
+  );
+
   CounselorDecision select({
     required String userMessage,
     required List<CounselingMessage> recentMessages,
@@ -68,7 +74,10 @@ class ClosingDecisionSelector {
 
     final text = userMessage.trim();
     if (_wantsToContinue.hasMatch(text)) return ClosingStep.continued;
-    if (_agrees.hasMatch(text) || _closingOnly.hasMatch(text) || text.isEmpty) {
+    if (_agrees.hasMatch(text) ||
+        _wrapsUp.hasMatch(text) ||
+        _closingOnly.hasMatch(text) ||
+        text.isEmpty) {
       return ClosingStep.finalized;
     }
     return ClosingStep.continued;

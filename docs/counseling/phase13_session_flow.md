@@ -165,6 +165,25 @@ technique question's anchor did.
 Mutation checks: removing the round-worry target fails the Q2 checks;
 removing the acknowledgment fails the Q1 checks.
 
+## 13.7 Device dogfood
+
+### Session 1 (week 4, 2026-09-29)
+
+What went as intended:
+- The reflect answer was acknowledged ("말씀해 주신 생각도 함께 담아
+  둘게요.") before the technique question (Q1).
+- The technique targeted the worry thought, not the latest answer (Q2).
+- One closing proposal after the integration.
+
+New defects. Each was reproduced as a failing test first
+(`test/counseling/phase13_7_dogfood_regression_test.dart`), then fixed:
+
+| | What the user saw | Cause | Fix |
+|---|---|---|---|
+| D1 | A real balanced thought, "선생님한테 혼나도 괜찮아, 다음에 더 열심히 하면 돼", got the low-info acknowledgment "바로 떠오르지 않아도 괜찮아요" | The stop-request pattern contained a bare "다음에" (and "그만", which also matches "그만큼") | Count them only with a verb of stopping or postponing: "그만할", "다음에 이야기할게" |
+| D2 | "정리해보자" at the proposal reopened the session: "좋아요, 조금 더 이야기해 볼게요" | Agreement was matched only at the start of the reply, and anything else defaulted to "continue" | Taking up the proposal's own words (정리, 마무리, 여기까지, 끝내…) anywhere finalizes. Explicit "continue" words are still checked first ("아직 정리하기엔 이른 것 같아요" continues) |
+| D3 | "내일 시험을 못봐서 혼날것같아" got one more clarify question | Thought shape required "것 같" with a space | Match `것\s*같` |
+
 ## Open
 
 - 13.7 real-device dogfood, then tag `counseling-v1.2-session-flow`.

@@ -639,7 +639,14 @@ class TurnPlanMaterializer {
   /// An answer that asks to stop rather than attempting the technique
   /// ("오늘은 여기까지 할게요"). Crediting it with a technique outcome would put
   /// words in the user's mouth.
-  static final RegExp _wantsToStop = RegExp(r'(여기까지|그만|마칠|마무리|끝낼|다음에)');
+  ///
+  /// Phase 13.7 (D1): "다음에" and "그만" alone are not stop requests ("다음에
+  /// 더 열심히 하면 돼" is a balanced thought, "그만큼" is not "그만"); they
+  /// count only with a verb of stopping or postponing the talk.
+  static final RegExp _wantsToStop = RegExp(
+    r'(여기까지|그만\s*(할|하|둘|두|해)|마칠|마무리|끝낼|끝내|'
+    r'다음에\s*(할게|하자|해요|이야기|얘기|말할))',
+  );
 
   /// Phase 13.3: integrate the user's answer to the technique's question,
   /// then propose closing. The answer is acknowledged in the technique's own

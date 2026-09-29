@@ -29,8 +29,11 @@ class UserThoughtExtractor {
     return hasEvaluation && _hasThoughtShape(text) ? text : null;
   }
 
+  // Phase 13.7 (D3): "것같아" is often typed without the space.
+  static final RegExp _seemsLike = RegExp(r'것\s*같');
+
   static bool _hasThoughtShape(String text) =>
-      text.contains('것 같') ||
+      _seemsLike.hasMatch(text) ||
       text.contains('것이다') ||
       text.contains('보일') ||
       text.contains('생각') ||
