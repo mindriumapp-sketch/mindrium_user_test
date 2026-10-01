@@ -79,7 +79,17 @@ class UserThoughtExtractor {
     r'(마음에\s*걸|신경\s*쓰)',
   );
 
+  // Phase 13.10: doubt-form worries — "…건 아닐까 걱정돼", "몸이 안좋은걸까",
+  // "떨어지는 건 아닌가 싶어". The doubt is about a state or outcome (건/게/걸),
+  // so "점심 뭐 먹을까" stays a plain question.
+  static final RegExp _doubtWorry = RegExp(
+    r'(건|게|걸|것)\s*(아닐까|아닌가|아닐지|일까|인가)|'
+    r'(안\s*좋은|나쁜|잘못된|문제가\s*생긴|문제\s*있는)\s*(건|게|걸|것)\S*\s*(까|가|지)|'
+    r'(아닐까|아닌가)\s*(걱정|무서|불안|싶|두려)',
+  );
+
   static bool _hasWorryThoughtForm(String text) =>
+      _doubtWorry.hasMatch(text) ||
       (_fearedOutcome.hasMatch(text) && !_tryingIntent.hasMatch(text)) ||
       _whatIf.hasMatch(text) ||
       _namedConcern.hasMatch(text);

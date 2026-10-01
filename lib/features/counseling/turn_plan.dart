@@ -806,6 +806,12 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
 
   /// Phase 13.8 (P4): no more questions after two non-answers in a row (or
   /// two "I don't understand you" turns); offer to wrap up instead.
+  static bool _voicesWorry(String text) {
+    final t = text.trim();
+    return t.replaceAll(RegExp(r'\s'), '').length >= 12 &&
+        RegExp(r'(걱정|불안|무서|무섭|두려|겁나|겁이|초조|긴장|스트레스)').hasMatch(t);
+  }
+
   static bool _complains(String text) {
     final t = text.trim();
     return _requestsEmpathy.hasMatch(t) ||
@@ -940,8 +946,12 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     // Phase 13.9D (c): only when the round has no worry to work on — a
     // cooperative user who already said one is never cut off.
     final round = UserThoughtExtractor.currentRound(context.recentMessages);
+    // Phase 13.10: and never on a substantive message that voices worry
+    // ("…건 아닐까 걱정되네"), even if its thought form isn't recognized —
+    // cutting off a cooperative user is worse than one more question.
     if (context.state == CounselingState.reflect &&
         _trailingClarifies(round) >= 2 &&
+        !_voicesWorry(current) &&
         UserThoughtExtractor.roundWorryThought(
               UserThoughtExtractor.semanticContent(round),
             ) ==

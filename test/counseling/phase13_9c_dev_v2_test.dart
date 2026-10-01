@@ -284,4 +284,44 @@ void main() {
       expect(last.text, startsWith('더 이야기 나누고 싶은 마음 잘 알겠어요.'));
     });
   });
+
+  // 13.10 dogfood session 2 (2026-10-02): a cooperative user who stated a
+  // doubt-form worry ("…건 아닐까 걱정되네") was offered a wrap-up twice.
+  group('13.10: doubt-form worries are worries', () {
+    for (final m in [
+      '계속 피곤한게 건강에 문제가 생긴건 아닐까 걱정되네',
+      '요즘 피곤한데 몸이 안좋은게 아닐까 걱정된다고',
+      '요즘 너무 피곤해, 내 몸이 안좋은걸까',
+      '이번에도 떨어지는 건 아닌가 싶어요',
+    ]) {
+      test(m, () => expect(UserThoughtExtractor.thoughtShaped(m), isNotNull));
+    }
+    for (final m in ['오늘 날씨가 좋을까', '점심 뭐 먹을까']) {
+      test('not a worry: $m', () => expect(UserThoughtExtractor.thoughtShaped(m), isNull));
+    }
+
+    late LocalCbtKnowledgeRepository repo;
+    setUpAll(() async {
+      repo = LocalCbtKnowledgeRepository(loadAsset: (p) => File(p).readAsString());
+      await repo.initialize();
+    });
+    test('the device session is not cut off', () async {
+      final h = CounselingHarness.deterministic(
+        llm: MockLlmService(), safetyGate: const KeywordSafetyGate(), knowledgeRepository: repo);
+      final s = CounselingSessionState(sessionId: 'd10c', currentWeek: 4);
+      final out = <CounselingMessage>[];
+      for (final (i, t) in [
+        '요즘 너무 피곤해, 내 몸이 안좋은걸까', '7', '잠을 많이 자는데도 피곤하고 일에 집중을 잘 못해',
+        '모르겠어', '계속 피곤한게 건강에 문제가 생긴건 아닐까 걱정되네',
+      ].indexed) {
+        final r = await h.handleTurn(session: s, userMessage: t);
+        s.messages
+          ..add(CounselingMessage(id: 'u$i', role: 'user', text: t, createdAt: DateTime(2026)))
+          ..add(r.assistantMessage);
+        out.add(r.assistantMessage);
+      }
+      expect(out.map((m) => m.earlyWrapUp).whereType<EarlyWrapUp>(), isEmpty,
+          reason: out.map((m) => m.text).join('\n'));
+    });
+  });
 }
