@@ -223,4 +223,65 @@ void main() {
     test('continue: 끝내지 말고 조금 더 내 얘기 들어줘', () => expect(closingGuard('끝내지 말고 조금 더 내 얘기 들어줘'), isNull));
     test('complaint still ends: 계속 똑같은 거만 물어보고 짜증나네', () => expect(closingGuard('계속 똑같은 거만 물어보고 짜증나네'), isNotNull));
   });
+
+  group('13.10 dogfood (2026-10-02)', () {
+    late LocalCbtKnowledgeRepository repo;
+    setUpAll(() async {
+      repo = LocalCbtKnowledgeRepository(loadAsset: (p) => File(p).readAsString());
+      await repo.initialize();
+    });
+    Future<List<CounselingMessage>> run(List<String> turns) async {
+      final h = CounselingHarness.deterministic(
+        llm: MockLlmService(), safetyGate: const KeywordSafetyGate(), knowledgeRepository: repo);
+      final s = CounselingSessionState(sessionId: 'd10', currentWeek: 4);
+      final out = <CounselingMessage>[];
+      for (final (i, t) in turns.indexed) {
+        final r = await h.handleTurn(session: s, userMessage: t);
+        s.messages
+          ..add(CounselingMessage(id: 'u$i', role: 'user', text: t, createdAt: DateTime(2026)))
+          ..add(r.assistantMessage);
+        out.add(r.assistantMessage);
+      }
+      return out;
+    }
+
+    test('a complaint in the wrap-up turn is acknowledged', () async {
+      final r = await run(['내일 회의때 발표를 해야되는데 긴장돼', '8', '모르겠어', '아니 이유를 딱히 모르겠다고', '모른다니까 왜 계속 물어봐']);
+      final wrap = r.lastWhere((m) => m.earlyWrapUp != null, orElse: () => r.last);
+      expect(wrap.earlyWrapUp, isNotNull, reason: r.map((m) => m.text).join('\n'));
+      expect(wrap.text, startsWith('계속 질문이 이어져서 답답하셨을 것 같아요.'));
+    });
+
+    test('asking for more after the one continuation ends with that wish acknowledged', () async {
+      final h = CounselingHarness.deterministic(
+        llm: MockLlmService(), safetyGate: const KeywordSafetyGate(), knowledgeRepository: repo);
+      final s = CounselingSessionState(sessionId: 'd10b', currentWeek: 4);
+      final answers = [
+        '내일 발표가 있어서 불안해요', '7점이요', '발표하다가 말을 못 하면 어떡하지',
+        '예전에 발표하다 말이 막힌 적이 있어요', '한 번 막혔다고 매번 그런 건 아닐 수도 있겠네요',
+        '교수님이 실망하실 것 같아', '전에 한 번 지적받은 적 있어', '실수해도 다음에 만회할 수 있어',
+      ];
+      var a = 0;
+      var proposals = 0;
+      CounselingMessage? last;
+      for (var t = 0; t < 18; t++) {
+        final String text;
+        if (last?.closingStep == ClosingStep.proposed) {
+          proposals++;
+          text = proposals == 1 ? '더 이야기하고 싶어' : '너가 예시로 설명해주면 도움이 될 것 같아';
+        } else {
+          text = answers[a++ % answers.length];
+        }
+        final r = await h.handleTurn(session: s, userMessage: text);
+        s.messages
+          ..add(CounselingMessage(id: 'u$t', role: 'user', text: text, createdAt: DateTime(2026)))
+          ..add(r.assistantMessage);
+        last = r.assistantMessage;
+        if (last.closingStep == ClosingStep.finalized) break;
+      }
+      expect(proposals, 2);
+      expect(last!.closingStep, ClosingStep.finalized);
+      expect(last.text, startsWith('더 이야기 나누고 싶은 마음 잘 알겠어요.'));
+    });
+  });
 }

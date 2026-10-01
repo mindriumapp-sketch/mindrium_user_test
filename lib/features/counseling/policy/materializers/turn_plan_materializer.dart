@@ -182,6 +182,8 @@ class TurnPlanMaterializer {
       reflectionSentence:
           afterFinalized
               ? afterFinalizedSentences[previous!.text == afterFinalizedSentences.first ? 1 : 0]
+              : decision.continuationDeclined
+              ? '더 이야기 나누고 싶은 마음 잘 알겠어요. 오늘은 여기서 정리하고, 이어서 이야기하고 싶으시면 오른쪽 위 새로고침으로 새 상담을 시작해 주세요. 오늘 이야기 나눠 주셔서 감사합니다.'
               : '오늘 이야기 나눠 주셔서 감사합니다. 오늘 함께 살펴본 생각을 필요할 때 다시 떠올려 보세요.',
       questionSentence: '',
       forbidden: closingForbidden,

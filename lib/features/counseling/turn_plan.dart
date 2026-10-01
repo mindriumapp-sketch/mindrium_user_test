@@ -806,11 +806,24 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
 
   /// Phase 13.8 (P4): no more questions after two non-answers in a row (or
   /// two "I don't understand you" turns); offer to wrap up instead.
+  static bool _complains(String text) {
+    final t = text.trim();
+    return _requestsEmpathy.hasMatch(t) ||
+        _generalizedStop(t) ||
+        _repeatsInteraction.hasMatch(t) ||
+        _generalizedRepeat(t);
+  }
+
   CounselingTurnPlan _wrapUpPlan(TurnPlanningContext context, EarlyWrapUp why) {
     return CounselingTurnPlan(
       reflectionTarget: context.userMessage.trim(),
       questionGoal: '더 묻지 않고 부담 없이 받아 준 뒤 마무리를 제안한다.',
-      reflectionSentence: _wrapUpSentences[why]!,
+      // Phase 13.10: a complaint in the same turn ("모른다니까 왜 계속
+      // 물어봐") is acknowledged before the wrap-up offer.
+      reflectionSentence: _complains(context.userMessage) &&
+              why != EarlyWrapUp.notUnderstood
+          ? '계속 질문이 이어져서 답답하셨을 것 같아요. ${_wrapUpSentences[why]!}'
+          : _wrapUpSentences[why]!,
       questionSentence: TurnPlanMaterializer.closingProposalQuestion,
       forbidden: defaultForbidden.where((f) => f != '질문을 하지 않는다.').toList(),
       constraints: const [

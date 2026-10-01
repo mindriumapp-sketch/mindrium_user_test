@@ -47,6 +47,7 @@ class ClosingDecisionSelector {
               ? ReflectionTarget.text(target)
               : const ReflectionTarget.none(),
       closingStep: _closingStep(userMessage, recentMessages),
+      continuationDeclined: _continuationDeclined(userMessage, recentMessages),
     );
   }
 
@@ -55,6 +56,18 @@ class ClosingDecisionSelector {
   /// session). A substantive new message counts as wanting to continue. With
   /// no pending proposal (e.g. the session-length cap), or once the
   /// continuation is used, the session is finalized.
+  // Phase 13.10: wants more ("더", "예시로 설명해주면") at a proposal after
+  // the one continuation was used.
+  static final RegExp _asksForMore = RegExp(r'(설명해|예시|알려\s*줘|도와\s*줘|도움이\s*될)');
+
+  bool _continuationDeclined(String userMessage, List<CounselingMessage> recentMessages) {
+    final previous = recentMessages.reversed.where((m) => !m.isUser).firstOrNull;
+    if (previous?.closingStep != ClosingStep.proposed) return false;
+    final used = recentMessages.any((m) => !m.isUser && m.closingStep == ClosingStep.continued);
+    final text = userMessage.trim();
+    return used && (_wantsToContinue.hasMatch(text) || _asksForMore.hasMatch(text));
+  }
+
   ClosingStep _closingStep(
     String userMessage,
     List<CounselingMessage> recentMessages,

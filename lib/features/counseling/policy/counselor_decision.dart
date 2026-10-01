@@ -99,6 +99,11 @@ class CounselorDecision {
   /// this turn is (finalize, or the one allowed continuation).
   final ClosingStep? closingStep;
 
+  /// Phase 13.10: closing only — the user asked to keep going, but the one
+  /// continuation was already used, so the session ends with that wish
+  /// acknowledged.
+  final bool continuationDeclined;
+
   const CounselorDecision({
     required this.selectedAction,
     this.selectedGoalId,
@@ -108,5 +113,6 @@ class CounselorDecision {
     this.isUnavailable = false,
     this.goalExhaustionRecovery,
     this.closingStep,
+    this.continuationDeclined = false,
   });
 }
