@@ -1,5 +1,5 @@
 {
-  "_provenance": "Phase 13.9 holdout v3, the gate after holdouts v1 and v2 were seen. Written 2026-09-30 by a new agent told not to read the repository or any code, given the chatbot description and all 264 phrasings used so far to avoid. Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/phase13_status_and_plan.md. Known overlap: non_answer '글쎄요' also appears in dev v1 (kept as written).",
+  "_provenance": "Phase 13.9 holdout v3, the gate after holdouts v1 and v2 were seen. Written 2026-09-30 by a new agent told not to read the repository or any code, given the chatbot description and all 264 phrasings used so far to avoid. Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/chatbot_system.md. Known overlap: non_answer '글쎄요' also appears in dev v1 (kept as written).",
   "not_understood": [
     "재구성이 뭐예요? 처음 들어봐요",
     "앞에 질문 뭐였는지 까먹었어요 한번만 더요",

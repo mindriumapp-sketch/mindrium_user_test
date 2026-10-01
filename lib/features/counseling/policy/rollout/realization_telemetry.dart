@@ -1,5 +1,5 @@
 /// Phase 10.6B: structural-only telemetry for a real turn's realization
-/// outcome, per `docs/counseling/phase10_6a_canary_rollout_spec.md`'s
+/// outcome, per `docs/counseling/chatbot_system.md`'s
 /// telemetry section. Modeled directly on the already-shipped,
 /// already-tested discipline in
 /// `lib/features/counseling/_archive_phase9_decision_agent/remote_counselor_shadow_runner.dart`'s

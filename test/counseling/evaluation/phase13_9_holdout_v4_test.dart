@@ -1,5 +1,5 @@
 // Phase 13.9 — holdout v4: the session-flow gate on unseen users. See
-// docs/counseling/phase13_status_and_plan.md.
+// docs/counseling/chatbot_system.md.
 //
 // fixtures/phase13_9_holdout_v4.json was written by an agent without
 // access to the code, avoiding the 355 phrasings used before, and frozen
@@ -29,7 +29,7 @@ void main() {
   // Holdout v4 FAILED on its first run (2026-09-30): repeatedClarifyRun 5,
   // nonAnswerCredited 1, metaAsTarget 1 (7 hits in 587 turns). All three
   // come from utterances the detectors don't recognize. Recorded; see
-  // "holdout v4" and the decision in docs/counseling/phase13_status_and_plan.md.
+  // "holdout v4" and the decision in docs/counseling/chatbot_system.md.
   const firstRun = {'repeatedClarifyRun': 5, 'nonAnswerCredited': 1, 'metaAsTarget': 1};
   group('holdout v4 result (recorded failure; the gate is not met)', () {
     for (final metric in flowGateMetrics) {

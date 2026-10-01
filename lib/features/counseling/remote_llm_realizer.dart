@@ -40,7 +40,7 @@ class RemoteLlmRealizer implements ResponseRealizer {
   );
 
   /// 질문을 반드시 포함해야 하는 행위. 질문 개수 검증 기준이 된다.
-  /// docs/counseling/adaptive_dialogue_policy.md 4절.
+  /// docs/counseling/chatbot_system.md 4절.
   static const Set<DialogueAct> _questionBearingActs = {
     DialogueAct.explore,
     DialogueAct.socraticQuestion,

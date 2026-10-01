@@ -1,40 +1,19 @@
-# Counseling chatbot docs
+# 상담 챗봇 문서
 
-**Start here: [`chatbot_architecture.md`](chatbot_architecture.md)** — the
-current-state source of truth for the whole `디지털 CBT 상담` feature
-(code structure, realization contract, canary rollout, known
-limitations). Everything else in this directory either supports it or
-is historical record.
+**시작점: [`chatbot_system.md`](chatbot_system.md).** 디지털 CBT 상담 챗봇의 구조, 기능, 테스트 체계,
+알려진 한계를 정리한 기준 문서입니다(태그 `counseling-v1.2-session-flow`).
 
-## Active
+| 문서 | 내용 |
+|---|---|
+| [`chatbot_system.md`](chatbot_system.md) | 전체 구조와 기능 (기준 문서) |
+| [`remote_gpt_realizer_integration.md`](remote_gpt_realizer_integration.md) | 원격 GPT 표현 계층 연동 계약 |
+| [`session_summary_schema.md`](session_summary_schema.md) | 세션 요약 JSON 형식 |
+| [`affective_system.md`](affective_system.md) | 아바타 표정·감정 신호 체계 |
 
-- [`chatbot_architecture.md`](chatbot_architecture.md) — current architecture, updated as the system changes.
-- [`phase10_7_baseline.md`](phase10_7_baseline.md) — the frozen `counseling-v1-clean-baseline` snapshot Phase 11 builds on top of (deterministic selection + validated Remote wording + safe fallback + rollout infra + cleaned production tree).
-- [`phase11_1_selection_interaction_repair_design.md`](phase11_1_selection_interaction_repair_design.md) — Selection Policy & Interaction Repair, problem/contract freeze.
-- [`phase11_2_meta_conversation_detection.md`](phase11_2_meta_conversation_detection.md) — repeated-question detection, complete.
-- [`phase11_3_goal_exhaustion_recovery.md`](phase11_3_goal_exhaustion_recovery.md) — goal exhaustion recovery (replaces `repeatLast`), complete.
-- [`phase11_4_selection_regression.md`](phase11_4_selection_regression.md) — frozen-scenario selection regression, all four metrics at 0. Phase 11 closed.
-- [`phase12_conversation_robustness.md`](phase12_conversation_robustness.md) — Phase 12 full record: multi-turn evaluation, device dogfood (6 sessions), failure corpus and fixes.
-- [`phase13_status_and_plan.md`](phase13_status_and_plan.md) — **start here**: Phase 13 status, open device defects P1–P4, plan 13.8–13.10 and the v1.2 tag criteria.
-- [`phase13_session_flow.md`](phase13_session_flow.md) — **current phase**: Phase 13.2–13.6. Cumulative interventions, completion-driven progression, closing handshake, week × multi-turn gate (all 0), findings Q1/Q2 fixed (13.6b).
-- [`phase13_1_progression_audit.md`](phase13_1_progression_audit.md) — Phase 13.1 audit: N1/N7 root causes, week 1–8 measurements, corpus audit.
-- [`phase12_baseline_v1_1.md`](phase12_baseline_v1_1.md) — **latest baseline**: `counseling-v1.1-selection-repair` (selection repair validated; N1/N7 are open critical blockers → Phase 13).
-- [`adaptive_dialogue_policy.md`](adaptive_dialogue_policy.md) — forward-looking design for expanding GPT's role beyond wording-only.
-- [`affective_system.md`](affective_system.md) — avatar/affect-cue subsystem reference.
-- [`remote_gpt_realizer_integration.md`](remote_gpt_realizer_integration.md) — the original GPT-realizer integration contract (referenced from `chatbot_architecture.md`).
-- [`session_summary_schema.md`](session_summary_schema.md) — session summary JSON contract.
-- [`context_feature_gap.md`](context_feature_gap.md) — legacy-context vs current-retrieval gap analysis.
+Phase 8~13의 단계별 설계, 평가, dogfood 기록은 2026-10-02 정리 때 이 폴더에서 지웠습니다. git 기록에서 볼 수
+있습니다.
 
-## Archive
-
-[`archive/`](archive/) holds phase-by-phase build/evaluation history —
-Phase 8 (selection architecture), Phase 9 (remote-decision-agent
-evaluation, NO-GO), Phase 10 (realization quality: failure taxonomy,
-semantic realization contract, LLM-realization dev/holdout evaluation,
-canary rollout spec/infra/Stage 1 activation, dogfooding, production
-cleanup — now closed as of `counseling-v1-clean-baseline`, 2026-09-28).
-Every current fact from these has already been consolidated into
-`chatbot_architecture.md`/`phase10_7_baseline.md`. Kept for provenance
-(why the current design is what it is, what was tried and rejected), not
-as something a new contributor needs to read to understand the system
-today.
+```bash
+git log --oneline -- docs/counseling
+git show counseling-v1.2-session-flow:docs/counseling/phase13_status_and_plan.md
+```

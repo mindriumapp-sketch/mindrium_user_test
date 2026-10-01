@@ -2,7 +2,7 @@
 // snapshot, BEFORE any Phase 10.2 wording/structure change. This test is
 // deliberately not "should" — it records what current production actually
 // says, including the verbatim-quoting and abrupt-transition patterns named
-// in docs/counseling/phase10_1_failure_taxonomy.md (R1/R3/R8). A failing
+// in docs/counseling/chatbot_system.md (R1/R3/R8). A failing
 // assertion here after Phase 10.2 work starts is expected and desired: it
 // means behavior intentionally changed, and this file's expectations should
 // be updated deliberately (not silently) to describe the new baseline.

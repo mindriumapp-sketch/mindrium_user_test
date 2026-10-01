@@ -584,7 +584,7 @@ class CounselingHarness {
     // actOverride는 RemoteLlmRealizer가 이미 allowedActsForTurn 안에서
     // 검증한 GPT의 선택이다. 여기서도 state.allowedActs로 다시 확인해 이중
     // 방어선을 둔다 — Adaptive Dialogue Policy Phase 1
-    // (docs/counseling/adaptive_dialogue_policy.md 4절).
+    // (docs/counseling/chatbot_system.md 4절).
     final act =
         (actOverride != null && state.allowedActs.contains(actOverride))
             ? actOverride

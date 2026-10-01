@@ -1,5 +1,5 @@
 {
-  "_provenance": "Phase 13.9 holdout v2, the gate after holdout v1 was seen. Written 2026-09-30 by a new agent told not to read the repository or any code, given the chatbot description and every phrasing already used (dev v1, holdout v1, dev v2) to avoid. Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/phase13_status_and_plan.md. Known overlap: want_to_continue '아직 할 말 남았어' also appears in holdout v1 (kept as written).",
+  "_provenance": "Phase 13.9 holdout v2, the gate after holdout v1 was seen. Written 2026-09-30 by a new agent told not to read the repository or any code, given the chatbot description and every phrasing already used (dev v1, holdout v1, dev v2) to avoid. Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/chatbot_system.md. Known overlap: want_to_continue '아직 할 말 남았어' also appears in holdout v1 (kept as written).",
   "not_understood": [
     "어? 뭘 물어보신 건지 놓쳤어요",
     "그 말 무슨 의미예요",

@@ -1,5 +1,5 @@
 {
-  "_provenance": "Phase 13.9 holdout v4, the gate after v1-v3 were seen. Written 2026-09-30 by a new agent told not to read the repository or any code; it read only the list of the 355 phrasings already used, to avoid them. (An earlier v4 attempt got a broken prompt with no avoid list; its output was discarded unused.) Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/phase13_status_and_plan.md.",
+  "_provenance": "Phase 13.9 holdout v4, the gate after v1-v3 were seen. Written 2026-09-30 by a new agent told not to read the repository or any code; it read only the list of the 355 phrasings already used, to avoid them. (An earlier v4 attempt got a broken prompt with no avoid list; its output was discarded unused.) Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/chatbot_system.md.",
   "not_understood": [
     "방금 그 문장 두 번 읽었는데도 뭔 뜻인지 모르겠어요",
     "피하냐 맞서냐가 어떤 상황 기준인지 모르겠어",

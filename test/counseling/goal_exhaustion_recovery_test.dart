@@ -4,7 +4,7 @@
 // (`ReflectGoalSelection`/`GoalExhaustionRecovery`).
 //
 // Three groups, per the phase's own frozen test plan
-// (docs/counseling/phase11_1_selection_interaction_repair_design.md):
+// (docs/counseling/chatbot_system.md):
 //   A. normal progression is unchanged — no recovery until goals are
 //      actually exhausted, byte-identical goal sequencing to before.
 //   B. exhaustion recovery invariants — recovery metadata present, zero

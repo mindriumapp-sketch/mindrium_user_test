@@ -1,5 +1,5 @@
 // Phase 13.9A — known-failure regression on uncooperative users. See
-// docs/counseling/phase13_status_and_plan.md.
+// docs/counseling/chatbot_system.md.
 //
 // The 13.6 simulated user answers every question as asked. Device users
 // didn't: they got confused, gave non-answers, complained, got angry, and

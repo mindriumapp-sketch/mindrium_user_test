@@ -160,7 +160,7 @@ enum DialogueAct {
 /// policy/`) for the same reason [DialogueAct] does: it needs to appear on
 /// both [CounselingTurnPlan] (features layer) and [CounselingMessage]
 /// (this file), so the data layer can't depend on features/ to define it.
-/// See `docs/counseling/phase11_1_selection_interaction_repair_design.md`.
+/// See `docs/counseling/chatbot_system.md`.
 enum InteractionRepairReason {
   /// "왜 똑같은 말을 반복하지?" / "아까도 물어봤잖아" — the complaint is
   /// specifically that the same thing keeps being asked. Distinct from

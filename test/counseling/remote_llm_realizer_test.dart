@@ -135,7 +135,7 @@ void main() {
 
   test('allowedActs 안에서 고른 다른 행위는 그 행위 기준으로 검증한다', () async {
     // explore 상태: 초안은 질문 1개(explore)지만, GPT가 반영만 하는 reflect를
-    // 고르면 질문 0개여야 유효하다. docs/counseling/adaptive_dialogue_policy.md
+    // 고르면 질문 0개여야 유효하다. docs/counseling/chatbot_system.md
     // 4절 Phase 1.
     final realizer = RemoteLlmRealizer(
       api: _FakeRealizeApi(

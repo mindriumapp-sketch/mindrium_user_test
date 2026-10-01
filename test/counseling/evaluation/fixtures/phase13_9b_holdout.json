@@ -1,5 +1,5 @@
 {
-  "_provenance": "Phase 13.9B frozen holdout. Written 2026-09-30 by a separate agent that was told not to read the repository or any detector code, given only a description of the chatbot and the dev-set phrasings to avoid. Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/phase13_status_and_plan.md.",
+  "_provenance": "Phase 13.9B frozen holdout. Written 2026-09-30 by a separate agent that was told not to read the repository or any detector code, given only a description of the chatbot and the dev-set phrasings to avoid. Committed before the first run. Never edit these utterances; label corrections go to the errata list in docs/counseling/chatbot_system.md.",
   "not_understood": [
     "네? 질문을 다시 말해줄래요?",
     "엥? 그게 뭔소리임",

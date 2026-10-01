@@ -82,7 +82,7 @@ void main() {
       isTrue,
     );
     expect(
-      File('docs/counseling/context_feature_gap.md').existsSync(),
+      File('docs/counseling/chatbot_system.md').existsSync(),
       isTrue,
     );
   });

@@ -4,7 +4,7 @@ import '../counselor_decision.dart';
 /// Phase 10.2: the semantic half of what used to be fused inside
 /// `TurnPlanMaterializer`'s finished-sentence strings.
 ///
-/// Per `docs/counseling/phase10_1_realization_inventory.md`, today's
+/// Per `docs/counseling/chatbot_system.md`, today's
 /// `TurnPlanMaterializer` both (a) decides *what this turn means* — how the
 /// reflection connects to the next question, why an intervention starts now
 /// — and (b) writes the final Korean sentence for it, in the same string.
@@ -15,7 +15,7 @@ import '../counselor_decision.dart';
 ///
 /// This class and everything in it is purely additive: it does not replace
 /// `reflectionSentence`/`questionSentence`/`deterministicReply`, which stay
-/// exactly as they are (`docs/counseling/phase10_realization_quality.md`'s
+/// exactly as they are (`docs/counseling/chatbot_system.md`'s
 /// compatibility-path requirement). Nothing in this file changes what any
 /// user sees.
 enum TransitionIntent {

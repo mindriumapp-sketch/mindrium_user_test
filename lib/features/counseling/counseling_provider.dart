@@ -34,7 +34,7 @@ class CounselingProvider extends ChangeNotifier {
   /// 계산되어 [AssistantContext]에 실리지만(shadow routing), 모든 턴은
   /// 여전히 그대로 [CounselingHarness]로 넘어가 동작을 바꾸지 않는다 —
   /// appGuide/mixed 전용 응답 경로는 Phase 7B 이후의 일이다.
-  /// docs/counseling/adaptive_dialogue_policy.md 참고.
+  /// docs/counseling/chatbot_system.md 참고.
   late final MindRiumAssistantHarness _assistantHarness =
       MindRiumAssistantHarness(
         counselingHarness: harness,

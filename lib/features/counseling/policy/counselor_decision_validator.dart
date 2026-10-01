@@ -45,7 +45,7 @@ class CounselorDecisionValidator {
       // empty user message) — restricting this to
       // `policy.allowedActions.isEmpty` would reject decisions the
       // deterministic path has always produced. See
-      // `docs/counseling/phase9_2_activation_criteria.md`'s Pass 2
+      // `docs/counseling/chatbot_system.md`'s Pass 2
       // findings for why the real fix for "no valid action exists" belongs
       // at the wire/prompt layer (an explicit unavailable outcome the
       // model can choose), not here.

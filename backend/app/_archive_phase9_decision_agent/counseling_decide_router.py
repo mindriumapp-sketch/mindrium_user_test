@@ -23,7 +23,7 @@ _MAX_OUTPUT_TOKENS = 200
 # Phase 9.2D: bump this whenever _SYSTEM_PROMPT's wording/rules change, so
 # shadow-evaluation logs can tell which prompt version produced a decision.
 #
-# v1 -> v2 changes (see docs/counseling/phase9_2_activation_criteria.md's
+# v1 -> v2 changes (see docs/counseling/chatbot_system.md's
 # Pass 2 real-evaluation findings for why): v1 never told the model what
 # `reflectionTarget`/`selectedGoalId` shape each state actually requires
 # (`TurnPlanMaterializer` force-casts assumed text/goal presence the

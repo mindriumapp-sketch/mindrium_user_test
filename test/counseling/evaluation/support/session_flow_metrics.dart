@@ -2,7 +2,7 @@
 // suite (13.9A) and the frozen adversarial holdout (13.9B). A scenario
 // driver records what the simulated user *meant* by each turn ([Intent]);
 // the scorer compares that with what the counselor did. See
-// docs/counseling/phase13_status_and_plan.md.
+// docs/counseling/chatbot_system.md.
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/features/counseling/counseling_state.dart';
 import 'package:gad_app_team/features/counseling/intervention_registry.dart';

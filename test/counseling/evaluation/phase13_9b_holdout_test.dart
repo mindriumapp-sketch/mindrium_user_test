@@ -1,5 +1,5 @@
 // Phase 13.9B — holdout v1, now a seen set. See
-// docs/counseling/phase13_status_and_plan.md.
+// docs/counseling/chatbot_system.md.
 //
 // The utterances in fixtures/phase13_9b_holdout.json were written blind and
 // frozen before the first run (3f714c2). That first run failed the flow

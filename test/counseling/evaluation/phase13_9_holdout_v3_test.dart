@@ -1,5 +1,5 @@
 // Phase 13.9 — holdout v3: the session-flow gate on unseen users. See
-// docs/counseling/phase13_status_and_plan.md.
+// docs/counseling/chatbot_system.md.
 //
 // fixtures/phase13_9_holdout_v3.json was written by an agent without
 // access to the code, avoiding all 264 phrasings used before, and frozen

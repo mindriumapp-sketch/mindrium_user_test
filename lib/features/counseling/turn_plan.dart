@@ -50,7 +50,7 @@ class CounselingTurnPlan {
   /// 이번 턴에 [requiredAct] 대신 realizer(GPT)가 자연스럽다고 판단하는 다른
   /// 행위를 골라도 되는 후보 집합. 비어 있으면(기본값) 기존과 동일하게
   /// [requiredAct] 하나로 고정된다 — Adaptive Dialogue Policy Phase 1 설계
-  /// (docs/counseling/adaptive_dialogue_policy.md 4절) 에서만 채운다.
+  /// (docs/counseling/chatbot_system.md 4절) 에서만 채운다.
   /// 여기 담기는 값은 항상 [requiredAct] 자체 또는 해당 state의
   /// `allowedActs` 부분집합이어야 한다.
   final List<DialogueAct> allowedActsForTurn;
@@ -63,7 +63,7 @@ class CounselingTurnPlan {
 
   /// Phase 10.2: the semantic realization contract for this turn, produced
   /// alongside (never instead of) [reflectionSentence]/[questionSentence]/
-  /// [deterministicReply] — see `docs/counseling/phase10_realization_quality.md`.
+  /// [deterministicReply] — see `docs/counseling/chatbot_system.md`.
   /// `null` for plans built by the legacy `Deterministic*TurnPlanner`
   /// classes below, which predate this contract and are not part of this
   /// phase's scope. No current `ResponseRealizer` reads this field; it

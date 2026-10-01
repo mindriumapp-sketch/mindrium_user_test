@@ -1,6 +1,6 @@
 // Phase 11.2: DeterministicProcessSignalTurnPlanner's new
 // InteractionRepairReason.repeatedQuestion coverage — extends detection
-// only, per docs/counseling/phase11_1_selection_interaction_repair_design.md.
+// only, per docs/counseling/chatbot_system.md.
 //
 // Four groups, per the phase's own test plan:
 //   A. existing process-signal behavior is unchanged

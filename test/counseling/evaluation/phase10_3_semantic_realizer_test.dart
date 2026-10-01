@@ -3,7 +3,7 @@
 // instead of only passing deterministicDraft through. This is a PARALLEL
 // implementation; production still defaults to
 // DeterministicResponseRealizer (identity) — see
-// docs/counseling/phase10_3_semantic_realizer.md.
+// docs/counseling/chatbot_system.md.
 //
 // Every test builds a real CounselingTurnPlan via TurnPlanMaterializer
 // (not a hand-rolled spec) and feeds it through RealizationRequest.fromPlan,
