@@ -225,7 +225,7 @@ flutter test integration_test/counseling_production_scenarios_test.dart -d <기�
 - 누적 기법(현재 주차까지), 위기 표현 차단
 - 개인화: 지난 세션의 기법 성과로 기법 순서 조정, 비슷한 걱정이면 지난번 대안 생각을 다시 꺼냄
 
-**진행 중:** Phase 14(적응형 multi-turn 상담). 설계 초안은 [`counseling/phase14_dialogue_moves.md`](counseling/phase14_dialogue_moves.md)입니다.
+**진행 중:** Phase 14(적응형 multi-turn 상담). 설계(동결)는 [`counseling/phase14_dialogue_moves.md`](counseling/phase14_dialogue_moves.md)입니다.
 
 **남은 일(우선순위 순)**
 1. **임상 검수:** 상담 문장, 위기 응답, 1~3주차 기법 승인
