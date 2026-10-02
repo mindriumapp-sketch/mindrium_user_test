@@ -99,7 +99,19 @@ class HoldoutResult {
       })}';
 }
 
-Future<HoldoutResult> runHoldout(String fixturePath) async {
+/// Phase 14.X: how one turn is produced. Default: the harness's normal turn.
+/// The LLM-led evaluation passes a function that tries that path first.
+typedef HoldoutTurn = Future<CounselingTurnResult> Function(
+  CounselingHarness harness,
+  CounselingSessionState session,
+  String userMessage,
+);
+
+Future<HoldoutResult> runHoldout(
+  String fixturePath, {
+  HoldoutTurn? turn,
+  int concurrency = 1,
+}) async {
   final repo = LocalCbtKnowledgeRepository(
     loadAsset: (p) => File(p).readAsString(),
   );
@@ -231,7 +243,9 @@ Future<HoldoutResult> runHoldout(String fixturePath) async {
     for (var t = 0; t < 18; t++) {
       final (text, intent) = next(steps);
       final before = session.state;
-      final r = await harness.handleTurn(session: session, userMessage: text);
+      final r = turn == null
+          ? await harness.handleTurn(session: session, userMessage: text)
+          : await turn(harness, session, text);
       session.messages
         ..add(
           CounselingMessage(
@@ -258,10 +272,17 @@ Future<HoldoutResult> runHoldout(String fixturePath) async {
   }
 
   var seed = 0;
+  final jobs = <Future<FlowRun> Function()>[];
   for (final MapEntry(key: name, value: make) in families.entries) {
     for (var week = 1; week <= 8; week++) {
-      runs.add(await simulate('$name/w$week', week, make(seed++)));
+      final driver = make(seed++); // seeds stay in the same order
+      jobs.add(() => simulate('$name/w$week', week, driver));
     }
+  }
+  // Phase 14.X: run sessions in batches when the turn is a network call.
+  for (var i = 0; i < jobs.length; i += concurrency) {
+    final batch = jobs.skip(i).take(concurrency).map((j) => j());
+    runs.addAll(await Future.wait(batch));
   }
   for (final r in runs) {
     scoreFlow(r, metrics);
