@@ -1,7 +1,7 @@
 # Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
 
-기준: 태그 `counseling-v1.2-session-flow` (2026-10-02). 이 문서는 현재 구현의 유일한 기준 문서입니다. 단계별
-개발 기록(Phase 8~13)은 git 기록에 남아 있습니다(`git log -- docs/counseling`).
+기준: 2026-10-02 (태그 `counseling-v1.2-session-flow` 이후 개인화 추가). 실행 방법과 인수인계 요약은
+[`../HANDOVER.md`](../HANDOVER.md)에 있습니다. 단계별 개발 기록(Phase 8~13)은 git 기록에 남아 있습니다.
 
 이 기능은 의료 진단이나 전문 치료를 대체하지 않습니다. 안전 관문은 키워드 기반이고, 상담 문장과 위기 응답은
 아직 임상 전문가의 검수를 받지 않았습니다. 외부 사용자에게 공개하기 전에 검수가 필요합니다.
@@ -103,7 +103,7 @@ flowchart TD
 |---|---|
 | `lib/features/assistant/` | `MindRiumAssistantHarness`: 발화를 상담 / 앱 사용 안내 / 혼합으로 분기한다. 앱 안내 검색과 응답, 혼합 응답 조합, 사용자 맥락 검색 |
 | `lib/chatbot/chatbot_main.dart` | 상담 화면(`ChatPage`). harness 구성, 종료 안내 표시, 새로고침(새 세션) |
-| `lib/chatbot/affective/` | 발화 감정 신호를 감지해 아바타 표정을 고름 (`affective_system.md`) |
+| `lib/chatbot/affective/` | 발화의 정서 단서로 아바타 표정을 고름 (11.1절) |
 | `lib/chatbot/services/speech_output_service.dart`, `ui/chat_bubble.dart` | 음성 출력, 말풍선 |
 
 ### 3.5 백엔드 `backend/app/routers/`
@@ -309,7 +309,22 @@ flowchart TD
 - **요청:** 결정론 초안, 반영 대상, 질문 목표, 필수 행위, 금지 사항, 최근 대화(현재 사용자 발화 포함), 허용 CBT 근거를 백엔드 `/counseling/realize`로 보냅니다.
 - **검증:** 질문 수나 행위가 계획과 다르면 거부하고, 결정론 의미 실현기로 대체합니다.
 - **텔레메트리:** 원격 시도 여부, 수락 여부, 실패 사유, 지연을 기록합니다. 사용자 문장 내용은 기록하지 않습니다. 현재는 로컬 로그로만 남깁니다.
-- 자세한 연동 계약은 [`remote_gpt_realizer_integration.md`](remote_gpt_realizer_integration.md)를 보세요.
+
+**책임 경계.** GPT에 맡기지 않는 것: 위기 판정, 상태와 전이, 이번 턴의 행위, 인용할 사용자 사실, 질문 목표와
+개수, CBT 기법 선택, 앱 활동 추천, 근거(provenance). GPT가 하는 것: 이미 정해진 초안을 의미와 질문 목표를 바꾸지
+않고 자연스러운 한국어로 다듬는 일뿐입니다.
+
+**연동 계약.**
+- 앱은 OpenAI를 직접 부르지 않습니다. `POST /counseling/realize`(로그인 토큰 필요)로 백엔드에 요청하고, API key는
+  백엔드 `.env`에만 둡니다.
+- 요청: `deterministic_draft`, `reflection_target`, `question_goal`, `required_act`, 최근 대화, 허용 CBT 근거,
+  금지 행동. 응답: `reply`, `model`, `prompt_version`, `latency_ms`.
+- 백엔드 설정: 모델 `OPENAI_MODEL`(기본 `gpt-4o-mini`), temperature 0.2, 출력 150토큰, 타임아웃 연결 3초·읽기 6초.
+  앱 쪽 타임아웃은 8초입니다.
+- 네트워크 오류, 401/429/5xx, 빈 응답, 검증 실패는 모두 사용자에게 오류를 보이지 않고 결정론 문장으로 대체합니다.
+  원격 실패가 상태 전이를 바꾸지 않습니다.
+- 대화 원문 전체, 일기 원문, 프로필은 보내지 않습니다. 실제 배포 전에 보존 기간, 동의, 국외 이전 여부를 검토해야
+  합니다.
 
 ---
 
@@ -325,14 +340,29 @@ flowchart TD
 
 - **화면 (`ChatPage`):**
   - 마무리가 확정되면 종료 안내를 띄웁니다. 새로고침(↻)으로 새 세션을 시작합니다.
-  - 아바타 표정은 감정 신호로 정합니다([`affective_system.md`](affective_system.md)).
+  - 아바타 표정은 발화의 정서 단서로 정합니다(11.1절).
   - 음성 출력을 지원합니다.
 - **맥락:** `MindriumContextBuilder`가 사용자 일기, 효과 있었던 기법, 이전 세션 요약을 모읍니다. 일기의 생각은 reflect와 균형 사고의 대상 후보로 쓰입니다.
 - **저장:**
   - 마무리가 확정되는 턴에 세션 요약을 `completed`로 저장합니다. 화면을 나가면 `interrupted`로 저장합니다.
   - 마무리 제안만으로는 `completed`로 저장하지 않습니다.
-  - 요약 형식은 [`session_summary_schema.md`](session_summary_schema.md)를 보세요.
+  - 요약 필드는 [`../backend_and_database.md`](../backend_and_database.md)의 `counseling_sessions`를 보세요. 필드를 추가할 때 고칠 곳은 [`../HANDOVER.md`](../HANDOVER.md) 4절에 있습니다.
 - **어시스턴트 분기:** 앱 사용 질문("ABC 일기는 어디서 써?")은 앱 안내 응답으로, 상담 발화는 상담으로, 둘이 섞이면 혼합 응답으로 처리합니다.
+
+### 11.1 아바타 표정 (`lib/chatbot/affective/`)
+
+```
+사용자 발화 + 최근 SUD + 직전 신호
+  → AffectSignalDetector   어휘 규칙, 모델 호출 없음 → AffectSignal(label, confidence, spike, streak)
+  → AffectiveAdapter       + 상담 상태 + 안전 수준 → AvatarExpression(의미 상태 5개)
+  → AvatarSelector         표정이 바뀔 때만 assets/npc_images/*.png 교체
+```
+
+- 감정 인식이 아니라 **정서 단서 탐지와 상담 태도 조정**입니다. `confidence`는 규칙의 강도이지 보정된 확률이
+  아닙니다. 보고서에서 정확도처럼 쓰면 안 됩니다.
+- 사용자 신호와 상담사 표정은 다른 enum입니다. 사용자가 괴로워해도 상담사는 괴로운 표정이 아니라 걱정하는
+  표정(`concerned`)을 짓습니다(distressed→concerned, anxious→attentive, positive→encouraging).
+- 안전 수준이 normal이 아니면 다른 규칙을 무시하고 `attentive`로 고정합니다.
 
 ---
 
@@ -359,45 +389,23 @@ adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 
 ---
 
-## 13. 테스트와 평가
+## 13. 테스트
 
-`flutter test`로 전체를 실행합니다(현재 1013개 통과).
+`flutter test`로 전체를 실행합니다(756개). 묶음별 위치와 결함을 고치는 순서는 [`../HANDOVER.md`](../HANDOVER.md)
+5절에 있습니다.
 
-| 묶음 | 위치 | 확인하는 것 |
-|---|---|---|
-| 단위·통합 | `test/counseling/*.dart` | 각 planner, selector, materializer, harness, provider, 라우터 |
-| 기기 결함 재현 | `phase13_7_dogfood_regression_test.dart`, `phase13_8_*`, `phase13_9c_dev_v2_test.dart` | 실기기 dogfood에서 나온 결함(D1~3, E1~3, P1~4, 13.9A~E, 13.10)을 대화 단위로 재현 |
-| 멀티턴 게이트 | `evaluation/phase12_multi_turn_regression_test.dart`, `evaluation/phase13_6_week_progression_test.dart` | 반복, 메타 발화 누락, 조기 전이, 1~8주 × 시나리오 흐름 |
-| 비협조적 사용자 | `evaluation/phase13_9a_uncooperative_test.dart` | 헷갈려하는, 모른다고만 하는, 반복 지적하는, 화내는, 표기 변형 사용자와 기기 세션 재생 |
-| holdout | `evaluation/phase13_9*_holdout*_test.dart`, `evaluation/fixtures/*.json` | 코드를 보지 않은 에이전트가 쓰고, 첫 실행 전에 동결한 발화로 판정. v1~v4는 이미 본 세트라 기록용이고, v5가 판정용 |
-| 개인화 | `personalization_episode_test.dart`, `session_persistence_test.dart` | 에피소드 이력 계산, 기법 순서, 이전 대안 상기, 결과 저장 |
-| 이전 구조 동등성 | `test/research_regression/counseling/phase8_*` | 정책 파이프라인과 기존 결정론 planner의 동등성 |
+개발 중에는 코드를 보지 않은 사람이 쓴 처음 보는 발화 세트(holdout)로 흐름을 판정했습니다. 기준은 두 층이었습니다.
+- A층(구조): 교착, 조기 종료, 미래 주차 기법, 승인 외 CBT, 계속 요청 무시 등 12종. 반드시 0.
+- B층(검출 의존): 비답변 인정, 메타 발화 인용, 확인 질문 반복. 사용자 턴의 1% 이하.
 
-**두 층 게이트** (`evaluation/support/session_flow_metrics.dart`):
-
-| 층 | 지표 | 기준 |
-|---|---|---|
-| A층 (구조) | 교착, 조기 종료, 응답 누락, 미래 주차 기법, 승인 외 CBT, noEligible 교착, 계속 요청 무시, 조기 완료, 상태 반복, 미완료, 복구 턴 원격 실현, 질문 없는 대기 (12종) | 반드시 0 |
-| B층 (검출 의존) | 비답변 인정, 메타 인용, 확인 질문 반복 (3종) | 합계가 사용자 턴의 1% 이하 |
-
-holdout v5 결과: 608턴에서 A층 0, B층 0.
-
-**결함을 다루는 순서 (고정):**
-1. 결함 발견
-2. 의미 범주 정의
-3. 메타데이터와 계약 정의
-4. 결정론 정책 구현
-5. 기기 대화 재현 테스트
-6. 적대적 holdout
-7. 기기 확인
-
-holdout 발화는 고치지 않고, 이미 본 holdout은 판정에 쓰지 않습니다.
+마지막 세트(v5)는 608턴에서 A층 0, B층 0이었습니다. 평가 세트와 채점 코드는 저장소에서 지웠고 태그
+`counseling-v1.2-session-flow`의 `test/counseling/evaluation/`에 있습니다.
 
 ---
 
 ## 14. 알려진 한계와 다음 단계
 
-1. **처음 보는 표현 인식:** 메타 발화와 저정보 답의 검출률이 낮습니다. holdout v5 기준으로 헷갈림 0/12, 저정보 답 2/10입니다. 지금은 8.4절의 안전장치가 피해를 막습니다. 근본 해결은 원격 모델 기반 의도 분류입니다(Phase 14 후보).
+1. **처음 보는 표현 인식:** 메타 발화와 저정보 답의 검출률이 낮습니다. 마지막 평가 세트 기준으로 처음 보는 헷갈림 표현 0/12, 저정보 답 2/10을 알아봤습니다. 지금은 8.4절의 안전장치가 피해를 막습니다. 근본 해결은 원격 모델 기반 의도 분류입니다(Phase 14 후보).
 2. **원격 GPT 표현 품질:** 딱딱한 표현, 해결책 쪽으로 유도하는 질문, 한 턴에 질문 두 개가 나오는 경우가 있습니다(Phase 14).
 3. **임상 콘텐츠:** 1~3주차 기법 승인, 기법 예시 문장(예시 요청에 답하기), 위기 응답과 상담 문장의 전문가 검수가 필요합니다.
 4. **운영 준비:** 릴리스 빌드와 HTTPS, 원격 kill switch(현재는 빌드 플래그뿐), 서버 측 텔레메트리, 로그인 세션 만료 처리가 남았습니다.

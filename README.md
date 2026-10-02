@@ -38,6 +38,7 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 | 마인드리움 보관함 | 걱정 그룹을 캐릭터/수족관 형태로 시각화하고, 보관된 걱정 그룹을 조회 |
 | 리포트 | 일기, 교육, 이완 활동을 날짜/주 단위로 모아 보고 완료율과 SUD 추이를 확인 |
 | 스크린타임 기록 | 앱 포그라운드 사용 세션을 자동 기록하고 서버에 전송하는 기반 기능 |
+| AI 마음상담 | 걱정 하나를 골라 짧은 CBT 상담 세션 진행. 결정은 규칙 기반, 문장 표현만 GPT. 지난 세션 기억 반영. 구조와 실행은 [`docs/HANDOVER.md`](docs/HANDOVER.md) |
 
 ## 8주 프로그램 구성
 
@@ -94,6 +95,7 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 - 걱정 그룹/아카이브: `worry_groups`
 - 알림 설정: `alarm_settings`
 - 스크린타임: `screen_time`
+- 상담: `counseling_sessions`(세션 요약), `counseling_realize`(GPT 문장 표현)
 
 Flutter 앱의 API 기본 주소는 `lib/data/api/api_client.dart`에서 결정됩니다. `API_BASE_URL` dart define이 있으면 그 값을 우선 사용하고, 없으면 Android/iOS 디버그 빌드에서 `http://115.145.134.180:8070`을 사용합니다. 릴리즈 빌드에서는 `API_BASE_URL`을 명시해야 합니다.
 
@@ -153,9 +155,9 @@ Android 릴리즈 빌드는 `android/key.properties`의 release keystore 설정�
 
 ```bash
 cd backend/app
-cp .env.example .env
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8080
+# .env를 만들고 MONGO_URI, DB_NAME, JWT_SECRET, JWT_REFRESH_SECRET, OPENAI_API_KEY를 넣는다
+python3 -m pip install -r requirements.txt
+PYTHONPATH=. python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8080
 ```
 
 필수 환경 변수는 `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`입니다. 백엔드 실행 후 Swagger 문서는 `http://localhost:8080/docs`, 상태 확인은 `http://localhost:8080/health`에서 확인할 수 있습니다.

@@ -1,11 +1,6 @@
 /// Phase 10.6B: structural-only telemetry for a real turn's realization
 /// outcome, per `docs/counseling/chatbot_system.md`'s
-/// telemetry section. Modeled directly on the already-shipped,
-/// already-tested discipline in
-/// `lib/features/counseling/_archive_phase9_decision_agent/remote_counselor_shadow_runner.dart`'s
-/// `toLogEntry()` (see that file's own "Logging serialization has no
-/// sensitive data" test) — reuse the discipline, not the exact fields
-/// (that class logs a *decision*; this logs a *realization*).
+/// telemetry section. Logs structure only, never content.
 ///
 /// **Never put raw content on this class.** No user message, no assistant
 /// reply text, no diary/personalization text, no direct user identifier —

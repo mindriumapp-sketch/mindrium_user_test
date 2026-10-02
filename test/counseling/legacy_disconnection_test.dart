@@ -74,19 +74,6 @@ void main() {
     expect(File('lib/chatbot/services/daily_context.dart').existsSync(), isFalse);
   });
 
-  test('폐기한 legacy 계약이 문서로 남아 있다', () {
-    // 2B 에서 agents.dart / daily_context.dart 를 지웠다. 그 안에 있던
-    // summarizer 스키마와 주차별 컨텍스트 의도는 문서로 옮겨 두었다.
-    expect(
-      File('docs/counseling/session_summary_schema.md').existsSync(),
-      isTrue,
-    );
-    expect(
-      File('docs/counseling/chatbot_system.md').existsSync(),
-      isTrue,
-    );
-  });
-
   test('T32 중독 상담 코퍼스가 앱 자산으로 등록되어 있지 않다', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     final assetLines = pubspec

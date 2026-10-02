@@ -3,7 +3,6 @@
 // on new phrasings written for this purpose (not copied from v1). The gate
 // moves to a fresh blind holdout v2. Each positive has a worry-content
 // counterpart that must stay content.
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -111,11 +110,18 @@ void main() {
   // Holdout v1 has been seen, so it can't certify these detectors; its
   // worry-that-looks-meta lines are kept only as a false-positive
   // regression.
-  group('holdout v1 worry lines stay content (regression only)', () {
-    final raw = jsonDecode(
-      File('test/counseling/evaluation/fixtures/phase13_9b_holdout.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
-    for (final m in (raw['worry_that_looks_meta'] as List).cast<String>()) {
+  group('worry lines that look meta stay content', () {
+    const lines = [
+    '교수님이 발표 끝나고 계속 질문하면 어떡하지 싶어요',
+    '시험 문제가 무슨 말인지 이해가 안 될까 봐 무서워',
+    '발표 때 뭐라고 말해야 할지 하나도 안 떠올라요',
+    '엄마가 시험 어떻게 됐냐고 자꾸 똑같이 물어봐서 스트레스야',
+    '망하면 어쩌지 라는 생각이 계속 반복돼',
+    '친구들이 준비 다 했냐고 계속 물어보니까 더 불안해요',
+    '질문 받았는데 못 알아들으면 바보처럼 보일 것 같아',
+    '선생님 설명을 들어도 이해가 안 돼서 시험 망할 것 같아요',
+    ];
+    for (final m in lines) {
       test(m, () => expect(_detect(m), isNull));
     }
   });

@@ -1,9 +1,4 @@
-// Phase 10.7B: extracted from phase8_4_production_switch_test.dart, which
-// moved to test/research_regression/counseling/ (it's a legacy-vs-new
-// equivalence proof, not a live invariant). This one assertion is
-// different in kind: it's a standing guard that the real production
-// factory wires the intended planner, not a historical migration proof —
-// it belongs in the main suite.
+// Standing guard: the real production factory wires the intended planner.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

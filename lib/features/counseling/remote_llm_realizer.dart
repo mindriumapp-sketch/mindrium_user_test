@@ -14,7 +14,7 @@ import 'response_realizer.dart';
 ///
 /// **절대 예외를 던지지 않는다.** 네트워크 오류·timeout·4xx/5xx·형식 오류는
 /// 모두 여기서 잡아 invalid `RealizationResult`로 바꾼다. 자세한 계약은
-/// docs/counseling/remote_gpt_realizer_integration.md 참고.
+/// docs/counseling/chatbot_system.md 9절 참고.
 class RemoteLlmRealizer implements ResponseRealizer {
   final CounselingRealizeApi api;
   final Uuid _uuid;

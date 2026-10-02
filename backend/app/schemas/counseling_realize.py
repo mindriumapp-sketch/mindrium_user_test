@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 # GPT는 상담 전략을 정하지 않는다. Harness가 이미 확정한 초안을 자연스러운
 # 한국어로 다듬는 선택적 표현 계층이다. 자세한 책임 경계는
-# docs/counseling/remote_gpt_realizer_integration.md 참고.
+# docs/counseling/chatbot_system.md 9절 참고.
 
 
 class RecentTurn(BaseModel):
