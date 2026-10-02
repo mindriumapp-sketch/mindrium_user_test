@@ -34,7 +34,7 @@ class HttpRespondApi implements CounselingRespondApi {
       req.add(utf8.encode(jsonEncode(body)));
       final res = await req.close().timeout(timeout);
       final text = await res.transform(utf8.decoder).join();
-      if (res.statusCode >= 400) throw HttpException('status ${res.statusCode}');
+      if (res.statusCode >= 400) throw HttpException('status ${res.statusCode} $text');
       return jsonDecode(text) as Map<String, dynamic>;
     } finally {
       client.close(force: true);
@@ -46,6 +46,7 @@ void main() {
   final env = Platform.environment;
   final base = env['LLM_LED_BASE_URL'];
   final token = env['LLM_LED_TOKEN'];
+  final concurrency = int.tryParse(env['E1_CONCURRENCY'] ?? '') ?? 8;
   final fixture = env['E1_FIXTURE'] ?? 'test/counseling/evaluation/fixtures/phase13_9_holdout_v5.json';
   final out = env['E1_OUT'] ?? 'build/llm_led/e1.json';
 
@@ -60,11 +61,15 @@ void main() {
     final a = await runHoldout(fixture);
     final b = await runHoldout(
       fixture,
-      concurrency: 8,
+      concurrency: concurrency,
       turn: (harness, session, text) async {
         final t = await harness.handleLlmLedTurn(
           session: session, userMessage: text, api: api, appGuide: guide);
         statuses[t.status] = (statuses[t.status] ?? 0) + 1;
+        if (t.detail != null) {
+          final k = 'http:${t.detail!.replaceAll(RegExp(r'\s+'), ' ')}';
+          violations[k] = (violations[k] ?? 0) + 1;
+        }
         for (final v in t.violations) {
           violations[v] = (violations[v] ?? 0) + 1;
         }

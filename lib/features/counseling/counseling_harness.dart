@@ -699,8 +699,13 @@ class CounselingHarness {
       res = await api.respond(ctx.body, timeout: timeout).timeout(timeout);
     } on TimeoutException {
       return LlmLedTurn(status: 'timeout', latencyMs: sw.elapsedMilliseconds);
-    } on Object {
-      return LlmLedTurn(status: 'http_error', latencyMs: sw.elapsedMilliseconds);
+    } on Object catch (e) {
+      final detail = e.toString();
+      return LlmLedTurn(
+        status: 'http_error',
+        latencyMs: sw.elapsedMilliseconds,
+        detail: detail.length > 160 ? detail.substring(0, 160) : detail,
+      );
     }
     final latency = sw.elapsedMilliseconds;
     final out = LlmLedOutput.tryParse(res['output']);
@@ -843,11 +848,15 @@ class LlmLedTurn {
   final LlmLedOutput? output;
   final List<String> violations;
 
+  /// Error detail for http_error (status code / backend reason; no user text).
+  final String? detail;
+
   const LlmLedTurn({
     this.result,
     required this.status,
     this.latencyMs,
     this.output,
     this.violations = const [],
+    this.detail,
   });
 }
