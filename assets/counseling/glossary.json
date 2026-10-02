@@ -1,0 +1,16 @@
+{
+  "_note": "Phase 14.X term grounding. Names and aliases only; every definition is read from the approved corpus item in source_id (assets/counseling/knowledge). Do not add definitions here.",
+  "terms": [
+    {"term_id": "automatic_thought", "canonical_name": "자동사고", "aliases": ["자동적 사고", "자동 사고", "자동적사고", "자동사고"], "source_id": "week1_mindrium_method_03"},
+    {"term_id": "exposure", "canonical_name": "노출 요법", "aliases": ["노출요법", "노출 치료", "노출치료", "노출"], "source_id": "week1_mindrium_method_04"},
+    {"term_id": "cognitive_restructuring", "canonical_name": "인지적 재구성", "aliases": ["인지 재구성", "인지재구성", "재구성", "인지왜곡", "인지 왜곡"], "source_id": "week1_mindrium_method_05"},
+    {"term_id": "abc_model", "canonical_name": "ABC 모델", "aliases": ["ABC모델", "ABC", "abc", "에이비씨"], "source_id": "week2_abc_model_01"},
+    {"term_id": "sud", "canonical_name": "SUD(주관적 불편감 점수)", "aliases": ["SUD", "sud", "주관적 불편감", "불안 점수", "불안 평가 점수"], "source_id": "common_sud_01"},
+    {"term_id": "balanced_thought", "canonical_name": "균형 잡힌 생각", "aliases": ["균형잡힌 생각", "균형 잡힌 문장", "대안적 생각", "대안 생각", "균형 있게"], "source_id": "week4_alternative_thought_01"},
+    {"term_id": "confront_avoid", "canonical_name": "직면 행동과 회피 행동", "aliases": ["직면 행동", "회피 행동", "직면", "회피"], "source_id": "week5_confront_avoid_01"},
+    {"term_id": "progressive_relaxation", "canonical_name": "점진적 이완 훈련", "aliases": ["점진적 이완", "점진적 근육 이완", "이완 훈련"], "source_id": "week1_relaxation_01"},
+    {"term_id": "fight_flight", "canonical_name": "투쟁-도피 반응", "aliases": ["투쟁 도피", "투쟁-도피", "투쟁도피"], "source_id": "week1_anxiety_mechanism_02"},
+    {"term_id": "cbt", "canonical_name": "인지행동치료(CBT)", "aliases": ["인지행동치료", "인지 행동 치료", "CBT", "cbt"], "source_id": "week1_treatment_options_04"},
+    {"term_id": "gain_loss", "canonical_name": "회피 행동의 이득과 손실", "aliases": ["이득과 손실", "이득 손실"], "source_id": "week7_gain_lose_01"}
+  ]
+}

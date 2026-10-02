@@ -7,6 +7,7 @@ import 'package:gad_app_team/features/assistant/app_guide/app_guide_repository.d
 
 import 'compact_prompt_builder.dart';
 import 'llm_led/llm_led_contract.dart';
+import 'llm_led/term_glossary.dart';
 import 'counseling_state.dart';
 import 'hybrid_turn_router.dart';
 import 'intervention_registry.dart';
@@ -679,6 +680,7 @@ class CounselingHarness {
     required String userMessage,
     required CounselingRespondApi api,
     required AppGuideRepository appGuide,
+    TermGlossary glossary = TermGlossary.empty,
     Duration timeout = const Duration(seconds: 8),
   }) async {
     final safety = await safetyGate.evaluate(userMessage);
@@ -692,6 +694,7 @@ class CounselingHarness {
       userMessage: userMessage,
       knowledge: knowledgeRepository,
       appGuide: appGuide,
+      glossary: glossary,
     );
     final sw = Stopwatch()..start();
     Map<String, dynamic> res;
@@ -850,6 +853,24 @@ class LlmLedTurn {
 
   /// Error detail for http_error (status code / backend reason; no user text).
   final String? detail;
+
+  /// The most serious validator reason (grounding and safety first).
+  String? get primaryRejection {
+    if (violations.isEmpty) return null;
+    for (final r in _rejectionPriority) {
+      if (violations.contains(r)) return r;
+    }
+    return violations.first;
+  }
+
+  static const _rejectionPriority = [
+    'definition_mismatch', 'unknown_term_defined', 'definition_without_request',
+    'unauthorized_intervention', 'prompt_without_intervention', 'integration_without_prompt',
+    'unsupported_user_fact', 'unsupported_app_fact', 'app_claim_without_fact',
+    'diagnosis', 'outcome_guarantee', 'directive', 'finalize_without_proposal',
+    'question_after_no_question_promise', 'too_many_questions', 'question_shape',
+    'repeated_question', 'exploring_after_closed', 'banmal_reply', 'second_person', 'too_long',
+  ];
 
   const LlmLedTurn({
     this.result,

@@ -27,7 +27,7 @@ from schemas.counseling_respond import (
 router = APIRouter(prefix="/counseling", tags=["counseling_respond"])
 logger = logging.getLogger("counseling_respond")
 
-PROMPT_VERSION = "respond_v3"
+PROMPT_VERSION = "respond_v4"
 TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=3.0, pool=3.0)
 MAX_OUTPUT_TOKENS = 400
 
@@ -41,7 +41,7 @@ SYSTEM_PROMPT = """당신은 범불안 CBT 자기관리 앱 MindRium 안의 상�
 - 사용자가 대화 자체에 불만을 보이면("대화가 안 된다", "같은 말 하네") 그 마음을 먼저 인정하고 방식을 바꿉니다(repair).
 - 사용자가 그만 묻기를 원하거나 그냥 들어 달라고 하면 question은 null입니다. "질문하지 않겠다"고 말했으면 그 턴에 질문하지 않습니다.
 - 사용자가 상담자의 말이나 용어를 이해하지 못하면, 방금 한 말을 더 짧고 쉬운 말로 다시 말합니다(clarify). 새 주제로 넘어가거나 다른 질문으로 바꾸지 않습니다.
-- CBT 용어의 뜻을 설명할 때는 concepts에 있는 정의만 쓰고 그 id를 used_concept_ids에 적습니다. concepts에 없는 용어는 정의하지 말고, 이 상담에서는 그 말 대신 쉬운 말로 이야기하겠다고 하고 쉬운 말로 다시 말합니다.
+- 용어 질문(term_request)이 있으면: status가 approved이면 term_request.definition의 내용만 쉬운 말로 풀어 설명하고 definition_id에 그 term_id를 적습니다(내용을 더하거나 바꾸지 않습니다). status가 unknown이면 그 용어를 정의하지 않습니다. "그 표현을 제가 정확히 정의해서 설명하기는 어려워요"처럼 말하고, 필요하면 지금 대화에서 하려던 말을 쉬운 말로 다시 말합니다(definition_id는 null). term_request가 없으면 용어를 새로 정의하지 않습니다.
 - 사용자가 아직 다루지 않은 새 걱정이나 새 사실을 말하면, 다음 예정 질문보다 그것을 먼저 받아 줍니다.
 - 상황(사실)과 걱정하는 생각을 구분합니다. 사실을 "생각"이라고 부르지 않습니다.
 - progress.recent_questions와 같거나 비슷한 질문을 다시 하지 않습니다. 같은 질문 틀("~이 지금의 걱정에 어떤 영향을…")을 반복하지 않습니다.
@@ -100,7 +100,7 @@ def response_format(payload: CounselingRespondRequest) -> dict:
                 "additionalProperties": False,
                 "required": [
                     "domain", "dialogue_moves", "intervention", "used_user_fact_ids",
-                    "used_app_fact_ids", "used_concept_ids", "session_action", "statement", "question",
+                    "used_app_fact_ids", "definition_id", "session_action", "statement", "question",
                 ],
                 "properties": {
                     "domain": {"type": "string", "enum": list(DOMAINS)},
@@ -108,7 +108,12 @@ def response_format(payload: CounselingRespondRequest) -> dict:
                     "intervention": intervention,
                     "used_user_fact_ids": _ids_schema([f.id for f in payload.user_facts]),
                     "used_app_fact_ids": _ids_schema([f.id for f in payload.app_facts]),
-                    "used_concept_ids": _ids_schema([f.id for f in payload.concepts]),
+                    "definition_id": (
+                        {"type": "string", "enum": [payload.term_request.term_id]}
+                        if payload.term_request and payload.term_request.status == "approved"
+                        and payload.term_request.term_id
+                        else {"type": "null"}
+                    ),
                     "session_action": {"type": "string", "enum": list(SESSION_ACTIONS)},
                     "statement": {"type": "string"},
                     "question": {"type": ["string", "null"]},
@@ -126,7 +131,7 @@ def user_prompt(payload: CounselingRespondRequest) -> str:
             "techniques": [t.model_dump() for t in payload.techniques],
             "user_facts": [f.model_dump() for f in payload.user_facts],
             "app_facts": [f.model_dump() for f in payload.app_facts],
-            "concepts": [f.model_dump() for f in payload.concepts],
+            "term_request": payload.term_request.model_dump() if payload.term_request else None,
             "conversation": [t.model_dump() for t in payload.conversation],
         },
         ensure_ascii=False,

@@ -329,7 +329,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       'progress': '빙빙 돌지 않고 적절히 진행됐나요?',
     };
     final scores = <String, int>{};
-    bool? again;
+    int? again;
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -355,10 +355,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                   ]),
                   const SizedBox(height: 8),
                 ],
-                const Text('이 챗봇과 계속 대화하고 싶나요?'),
+                const Text('실제로 이 챗봇과 상담을 계속하고 싶다고 느꼈나요?'),
                 Wrap(spacing: 6, children: [
-                  ChoiceChip(label: const Text('예'), selected: again == true, onSelected: (_) => setSheet(() => again = true)),
-                  ChoiceChip(label: const Text('아니요'), selected: again == false, onSelected: (_) => setSheet(() => again = false)),
+                  for (var v = 1; v <= 5; v++)
+                    ChoiceChip(label: Text('$v'), selected: again == v, onSelected: (_) => setSheet(() => again = v)),
                 ]),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -381,7 +381,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       'session': _provider.sessionPseudonym,
       'path': _provider.experimentPath,
       ...scores,
-      'again': again,
+      'continue_wish': again,
     })}');
   }
 

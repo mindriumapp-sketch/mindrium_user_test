@@ -67,6 +67,14 @@ class Progress(BaseModel):
     exploratory_questions: int = 0
 
 
+class TermRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["approved", "unknown"]
+    term_id: Optional[str] = Field(None, max_length=60)
+    name: str = Field(..., max_length=60)
+    definition: Optional[str] = Field(None, max_length=1200)
+
+
 class CounselingRespondRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     request_id: str = Field(..., min_length=1, max_length=64)
@@ -76,8 +84,8 @@ class CounselingRespondRequest(BaseModel):
     user_facts: List[Fact] = Field(default_factory=list, max_length=20)
     techniques: List[Technique] = Field(default_factory=list, max_length=10)
     app_facts: List[Fact] = Field(default_factory=list, max_length=40)
-    # respond_v3: approved definitions of CBT terms (from the corpus), with ids
-    concepts: List[Fact] = Field(default_factory=list, max_length=25)
+    # respond_v4: the term this message asks about, resolved by the app.
+    term_request: Optional["TermRequest"] = None
 
 
 class InterventionChoice(BaseModel):
@@ -99,7 +107,7 @@ class AgentOutput(BaseModel):
     intervention: Optional[InterventionChoice]
     used_user_fact_ids: List[str]
     used_app_fact_ids: List[str]
-    used_concept_ids: List[str]
+    definition_id: Optional[str]
     session_action: SessionAction
     statement: str = Field(..., min_length=1, max_length=500)
     question: Optional[str] = Field(None, max_length=200)

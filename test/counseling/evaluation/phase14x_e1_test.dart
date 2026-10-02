@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/features/assistant/app_guide/local_app_guide_repository.dart';
+import 'package:gad_app_team/features/counseling/llm_led/term_glossary.dart';
 
 import 'support/holdout_runner.dart';
 import 'support/session_flow_metrics.dart';
@@ -66,6 +67,7 @@ void main() {
   test('E1: A vs B on the holdout drivers', () async {
     final guide = LocalAppGuideRepository(loadAsset: (p) => File(p).readAsString());
     await guide.initialize();
+    final glossary = await TermGlossary.load((p) => File(p).readAsString());
     final api = HttpRespondApi(base!, token!);
     final statuses = <String, int>{};
     final violations = <String, int>{};
@@ -77,7 +79,7 @@ void main() {
       concurrency: concurrency,
       turn: (harness, session, text) async {
         final t = await harness.handleLlmLedTurn(
-          session: session, userMessage: text, api: api, appGuide: guide,
+          session: session, userMessage: text, api: api, appGuide: guide, glossary: glossary,
               // evaluation: allow rate-limit retries (the app keeps 8 s)
               timeout: const Duration(minutes: 2));
         statuses[t.status] = (statuses[t.status] ?? 0) + 1;

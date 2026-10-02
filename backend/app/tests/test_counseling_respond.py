@@ -16,7 +16,7 @@ REQ = CounselingRespondRequest.model_validate({
 OK = {
     "domain": "counseling", "dialogue_moves": ["acknowledge", "ask_evidence"],
     "intervention": None,
-    "used_user_fact_ids": [], "used_app_fact_ids": [], "used_concept_ids": [],
+    "used_user_fact_ids": [], "used_app_fact_ids": [], "definition_id": None,
     "session_action": "continue", "statement": "그런 생각이 드셨군요.",
     "question": "그 생각의 근거가 있을까요?",
 }
@@ -55,3 +55,14 @@ def test_invalid_output_rejected(bad):
 def test_conversation_is_capped_at_12():
     with pytest.raises(Exception):
         CounselingRespondRequest.model_validate({**REQ.model_dump(), "conversation": [{"role": "user", "text": "a"}] * 13})
+
+
+def test_definition_id_is_pinned_to_the_requested_term():
+    req = CounselingRespondRequest.model_validate({**REQ.model_dump(), "term_request": {
+        "status": "approved", "term_id": "abc_model", "name": "ABC 모델", "definition": "x"}})
+    assert response_format(req)["json_schema"]["schema"]["properties"]["definition_id"] == {
+        "type": "string", "enum": ["abc_model"]}
+    unknown = CounselingRespondRequest.model_validate({**REQ.model_dump(), "term_request": {
+        "status": "unknown", "name": "탈파국화"}})
+    assert response_format(unknown)["json_schema"]["schema"]["properties"]["definition_id"] == {"type": "null"}
+    assert response_format(REQ)["json_schema"]["schema"]["properties"]["definition_id"] == {"type": "null"}

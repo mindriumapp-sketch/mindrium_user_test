@@ -13,11 +13,13 @@ import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
 import 'package:gad_app_team/features/counseling/counseling_state.dart';
 import 'package:gad_app_team/features/counseling/llm_led/llm_led_contract.dart';
+import 'package:gad_app_team/features/counseling/llm_led/term_glossary.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
 late LocalCbtKnowledgeRepository _repo;
 late LocalAppGuideRepository _guide;
+late TermGlossary _glossary;
 
 Map<String, dynamic> _out({
   String domain = 'counseling',
@@ -27,6 +29,7 @@ Map<String, dynamic> _out({
   List<String> userIds = const [],
   List<String> appIds = const [],
   String action = 'continue',
+  String? definitionId,
   String text = '그런 생각이 드셨군요. 그 생각을 사실이라고 느끼게 하는 경험이 있을까요?',
 }) {
   // split like respond_v2: everything up to the last question is the statement
@@ -38,7 +41,7 @@ Map<String, dynamic> _out({
     'domain': domain, 'dialogue_moves': moves,
     'intervention': interventionId == null ? null : {'id': interventionId, 'step': step ?? 'prompt'},
     'used_user_fact_ids': userIds, 'used_app_fact_ids': appIds,
-    'session_action': action, 'used_concept_ids': const <String>[],
+    'session_action': action, 'definition_id': definitionId,
     'statement': statement.isEmpty ? '네.' : statement, 'question': question,
   },
   'prompt_version': 'respond_v2',
@@ -79,10 +82,11 @@ void main() {
     await _repo.initialize();
     _guide = LocalAppGuideRepository(loadAsset: (p) => File(p).readAsString());
     await _guide.initialize();
+    _glossary = await TermGlossary.load((p) => File(p).readAsString());
   });
 
   LlmLedContext ctx(CounselingSessionState s, String u) =>
-      LlmLedContext.build(requestId: 'r', session: s, userMessage: u, knowledge: _repo, appGuide: _guide);
+      LlmLedContext.build(requestId: 'r', session: s, userMessage: u, knowledge: _repo, appGuide: _guide, glossary: _glossary);
 
   group('boundary before the call', () {
     test('techniques are cumulative up to the current week, never a future week', () {
@@ -104,6 +108,63 @@ void main() {
       final c = ctx(_session(), 'x');
       expect(c.appFactIds, contains('feature:relaxation'));
       expect(c.appFactIds.any((id) => id.startsWith('screen:')), isTrue);
+    });
+  });
+
+  group('term grounding (code resolves the term)', () {
+    String? id(String u) => _glossary.resolve(u, _repo)?.termId;
+    TermRequest? r(String u) => _glossary.resolve(u, _repo);
+
+    test('exact name and alias', () {
+      expect(id('ABC 모델이 뭐예요?'), 'abc_model');
+      expect(id('자동적 사고라는 게 정확히 뭔데요'), 'automatic_thought');
+      expect(id('SUD가 무슨 뜻이야'), 'sud');
+    });
+    test('mixed with a worry', () {
+      expect(id('발표가 걱정되는데 균형 잡힌 생각이 뭐예요?'), 'balanced_thought');
+    });
+    test('different terms in nearby turns resolve separately', () {
+      expect(id('노출 요법은 뭐예요?'), 'exposure');
+      expect(id('그럼 인지적 재구성은 뭔데요?'), 'cognitive_restructuring');
+    });
+    test('a term not in the glossary is unknown, never mapped to a near one', () {
+      final t = r('탈파국화? 그건 또 뭐예요 ㅋㅋ');
+      expect(t, isNotNull);
+      expect(t!.approved, isFalse);
+      expect(t.name, '탈파국화');
+      expect(r("'가능성을 따져본다'는 게 무슨 뜻이에요?")!.approved, isFalse);
+    });
+    test('a mention that is not a question is not a term request', () {
+      expect(r('요즘 자꾸 회피하게 돼서 힘들어'), isNull);
+      expect(r('발표가 너무 걱정돼요'), isNull);
+    });
+    test('the definition comes from the approved corpus item', () {
+      expect(r('ABC 모델이 뭐예요?')!.definition, contains('ABC 모델'));
+    });
+
+    LlmLedContext withTerm(String u) => ctx(_session(), u);
+    List<String> vt(String u, Map<String, dynamic> raw) =>
+        LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, withTerm(u));
+
+    test('approved: the definition id must be the requested term', () {
+      expect(vt('탈파국화 말고 노출 요법이 뭐예요?', _out(moves: ['clarify'], definitionId: 'exposure',
+          text: '노출 요법은 불안한 상황을 피하지 않고 마주하는 연습이에요.')), isEmpty);
+      expect(vt('노출 요법이 뭐예요?', _out(moves: ['clarify'], definitionId: 'cognitive_restructuring',
+          text: '생각을 바꾸는 연습이에요.')), contains('definition_mismatch'));
+      expect(vt('노출 요법이 뭐예요?', _out(moves: ['clarify'], text: '피하지 않는 연습이에요.')),
+          contains('definition_mismatch'));
+    });
+    test('unknown: no definition id and no definition', () {
+      expect(vt('탈파국화가 뭐예요?', _out(moves: ['clarify'],
+          text: '탈파국화는 불안한 상황에 직접 마주하는 연습을 말합니다.')), contains('unknown_term_defined'));
+      expect(vt('탈파국화가 뭐예요?', _out(moves: ['clarify'], definitionId: 'exposure', text: 'x예요.')),
+          contains('definition_without_request'));
+      expect(vt('탈파국화가 뭐예요?', _out(moves: ['clarify'],
+          text: '그 표현을 제가 정확히 정의해서 설명하기는 어려워요. 쉽게 말하면 걱정이 커질 때 한 걸음 물러서 보자는 이야기였어요.')),
+          isEmpty);
+    });
+    test('no term asked: no definition id', () {
+      expect(vt('발표가 걱정돼', _out(definitionId: 'abc_model')), contains('definition_without_request'));
     });
   });
 
@@ -144,7 +205,6 @@ void main() {
     test('respond_v3: banmal, unlisted directive, term without a concept, exploring after closed', () {
       expect(v(_out(text: '그 상황을 물어본 거야. 이해가 됐어?')), contains('banmal_reply'));
       expect(v(_out(text: '그 생각을 한번 적어 보세요.')), contains('directive'));
-      expect(v(_out(moves: ['clarify'], text: '탈파국화란 최악을 상상하는 것을 말해요.')), contains('term_without_concept'));
       final closed = _session(messages: [
         _u('발표하다 말이 막히면 어떡하지'),
         _a('어떤 근거가 있나요?'), _u('예전에 막혔어'),

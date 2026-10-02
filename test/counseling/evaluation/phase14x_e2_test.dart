@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/data/counseling/local_cbt_knowledge_repository.dart';
 import 'package:gad_app_team/features/assistant/app_guide/local_app_guide_repository.dart';
+import 'package:gad_app_team/features/counseling/llm_led/term_glossary.dart';
 import 'package:gad_app_team/features/assistant/mindrium_assistant_harness.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
@@ -30,6 +31,7 @@ void main() {
     await repo.initialize();
     final guide = LocalAppGuideRepository(loadAsset: (p) => File(p).readAsString());
     await guide.initialize();
+    final glossary = await TermGlossary.load((p) => File(p).readAsString());
     final api = HttpRespondApi(base!, token!);
     final scripts = ((jsonDecode(File(fixture).readAsStringSync()) as Map)['scripts'] as List)
         .cast<Map<String, dynamic>>();
@@ -45,12 +47,16 @@ void main() {
         final text = turn['user'] as String;
         final prev = s.messages.reversed.where((m) => !m.isUser).firstOrNull;
         String status = 'A';
+        List<String> violations = const [];
+        String? primary;
         CounselingTurnResult r;
         if (llmLed) {
-          final t = await harness.handleLlmLedTurn(session: s, userMessage: text, api: api, appGuide: guide,
+          final t = await harness.handleLlmLedTurn(session: s, userMessage: text, api: api, appGuide: guide, glossary: glossary,
               // evaluation: allow rate-limit retries (the app keeps 8 s)
               timeout: const Duration(minutes: 2));
           status = t.status;
+          violations = t.violations;
+          primary = t.primaryRejection ?? (t.status == 'success' ? null : t.status);
           r = t.result ?? await assistant.handleTurn(session: s, userMessage: text);
         } else {
           r = await assistant.handleTurn(session: s, userMessage: text);
@@ -69,6 +75,8 @@ void main() {
           'step': r.assistantMessage.interventionStep?.name,
           'act': r.assistantMessage.dialogueAct?.name,
           'status': status,
+          'primary_rejection': primary,
+          'violations': violations,
         });
         if (r.assistantMessage.closingStep == ClosingStep.finalized) break;
       }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
@@ -21,6 +22,7 @@ import 'counseling_benchmark.dart';
 import 'empathy_planner.dart';
 import 'counseling_harness.dart';
 import 'counseling_state.dart';
+import 'llm_led/term_glossary.dart';
 import 'perception/shadow_perception.dart';
 import 'safety_gate.dart';
 import 'turn_plan.dart';
@@ -89,6 +91,7 @@ class CounselingProvider extends ChangeNotifier {
   final Random _random;
   final List<bool> _block = [];
   int _sessionOrdinal = 0;
+  TermGlossary _glossary = TermGlossary.empty;
   bool _pathB = true;
   bool get _llmLedThisSession => llmLedApi != null && (!llmLedAlternate || _pathB);
 
@@ -266,6 +269,13 @@ class CounselingProvider extends ChangeNotifier {
     // 사용자 컨텍스트는 세션 시작 시 한 번만 읽는다. 턴마다 다시 조회하지 않는다.
     _session.userContext = await _buildContext();
     await _loadPreviousSession();
+    if (llmLedApi != null && _glossary.terms.isEmpty) {
+      try {
+        _glossary = await TermGlossary.load(rootBundle.loadString);
+      } on Object catch (e) {
+        debugPrint('[CounselingProvider] glossary load failed: $e');
+      }
+    }
     _sessionOrdinal++;
     _pathB = llmLedAlternate ? _nextPathB() : true;
     if (llmLedApi != null) {
@@ -505,6 +515,7 @@ class CounselingProvider extends ChangeNotifier {
       userMessage: userText,
       api: api,
       appGuide: appGuideRepository,
+      glossary: _glossary,
     );
     final o = b.output;
     debugPrint('LLM_LED ${jsonEncode({
@@ -517,6 +528,7 @@ class CounselingProvider extends ChangeNotifier {
       'moves': o?.moves,
       'session_action': o?.sessionAction,
       'intervention_step': o?.interventionStep,
+      'primary_rejection': b.primaryRejection,
       'violations': b.violations,
     })}');
     return b.result ?? await _handleTurnWithPerception(userText);
