@@ -1,0 +1,3627 @@
+{
+ "set": "phase14_2_classifier_frozen_v1.json",
+ "model": "gpt-4o-mini",
+ "prompt_version": "classify_v2",
+ "rules": {
+  "accuracy": {
+   "content_type": {
+    "correct": 69,
+    "of": 247,
+    "pct": 27.9
+   },
+   "interaction_signal": {
+    "correct": 211,
+    "of": 247,
+    "pct": 85.4
+   },
+   "open_content": {
+    "correct": 152,
+    "of": 247,
+    "pct": 61.5
+   }
+  },
+  "per_label": {
+   "content_type": {
+    "app_guide": {
+     "recall": 0.0,
+     "precision": null,
+     "gold": 9,
+     "pred": 0
+    },
+    "emotion_expression": {
+     "recall": 0.0,
+     "precision": null,
+     "gold": 15,
+     "pred": 0
+    },
+    "low_information": {
+     "recall": 85.7,
+     "precision": 66.7,
+     "gold": 14,
+     "pred": 18
+    },
+    "meaningful_answer": {
+     "recall": 3.9,
+     "precision": null,
+     "gold": 51,
+     "pred": 0
+    },
+    "meta_interaction": {
+     "recall": 36.2,
+     "precision": 50.0,
+     "gold": 47,
+     "pred": 34
+    },
+    "mixed": {
+     "recall": 6.4,
+     "precision": 100.0,
+     "gold": 47,
+     "pred": 3
+    },
+    "situation": {
+     "recall": 100.0,
+     "precision": 10.2,
+     "gold": 13,
+     "pred": 166
+    },
+    "worry_thought": {
+     "recall": 43.1,
+     "precision": 76.9,
+     "gold": 51,
+     "pred": 26
+    }
+   },
+   "interaction_signal": {
+    "assistant_not_understood": {
+     "recall": 31.6,
+     "precision": 85.7,
+     "gold": 19,
+     "pred": 7
+    },
+    "closing_accept": {
+     "recall": 92.9,
+     "precision": 81.2,
+     "gold": 14,
+     "pred": 16
+    },
+    "closing_continue": {
+     "recall": 80.0,
+     "precision": 80.0,
+     "gold": 10,
+     "pred": 10
+    },
+    "none": {
+     "recall": 98.2,
+     "precision": 85.0,
+     "gold": 167,
+     "pred": 193
+    },
+    "process_resistance": {
+     "recall": 0.0,
+     "precision": null,
+     "gold": 8,
+     "pred": 0
+    },
+    "repeated_question": {
+     "recall": 57.1,
+     "precision": 100.0,
+     "gold": 21,
+     "pred": 12
+    },
+    "stop_questioning": {
+     "recall": 100.0,
+     "precision": 88.9,
+     "gold": 8,
+     "pred": 9
+    }
+   },
+   "open_content": {
+    "elaboration": {
+     "recall": 0.0,
+     "precision": null,
+     "gold": 54,
+     "pred": 0
+    },
+    "new_evidence": {
+     "recall": 0.0,
+     "precision": null,
+     "gold": 24,
+     "pred": 0
+    },
+    "new_worry": {
+     "recall": 0.0,
+     "precision": null,
+     "gold": 17,
+     "pred": 0
+    },
+    "none": {
+     "recall": 100.0,
+     "precision": 61.5,
+     "gold": 152,
+     "pred": 247
+    }
+   }
+  },
+  "meta_false_positive": {
+   "count": 2,
+   "of_gold_none": 167,
+   "ids": [
+    "f081",
+    "f087"
+   ]
+  },
+  "by_tag": {
+   "app_counsel_mix": {
+    "correct": 0,
+    "of": 15,
+    "pct": 0.0
+   },
+   "banmal": {
+    "correct": 20,
+    "of": 115,
+    "pct": 17.4
+   },
+   "closing": {
+    "correct": 0,
+    "of": 25,
+    "pct": 0.0
+   },
+   "emotion_only": {
+    "correct": 0,
+    "of": 15,
+    "pct": 0.0
+   },
+   "jondaet": {
+    "correct": 8,
+    "of": 78,
+    "pct": 10.3
+   },
+   "meta_worry_mix": {
+    "correct": 0,
+    "of": 14,
+    "pct": 0.0
+   },
+   "moreugesseo_meta": {
+    "correct": 2,
+    "of": 10,
+    "pct": 20.0
+   },
+   "moreugesseo_worry": {
+    "correct": 0,
+    "of": 12,
+    "pct": 0.0
+   },
+   "multi_sentence": {
+    "correct": 1,
+    "of": 26,
+    "pct": 3.8
+   },
+   "new_evidence": {
+    "correct": 0,
+    "of": 18,
+    "pct": 0.0
+   },
+   "new_worry": {
+    "correct": 0,
+    "of": 17,
+    "pct": 0.0
+   },
+   "nospace": {
+    "correct": 6,
+    "of": 36,
+    "pct": 16.7
+   },
+   "numeric": {
+    "correct": 0,
+    "of": 21,
+    "pct": 0.0
+   },
+   "repeat_with_content": {
+    "correct": 0,
+    "of": 15,
+    "pct": 0.0
+   },
+   "short": {
+    "correct": 10,
+    "of": 27,
+    "pct": 37.0
+   },
+   "third_party": {
+    "correct": 4,
+    "of": 25,
+    "pct": 16.0
+   },
+   "typo": {
+    "correct": 5,
+    "of": 34,
+    "pct": 14.7
+   }
+  }
+ },
+ "model_raw": {
+  "accuracy": {
+   "content_type": {
+    "correct": 145,
+    "of": 247,
+    "pct": 58.7
+   },
+   "interaction_signal": {
+    "correct": 215,
+    "of": 247,
+    "pct": 87.0
+   },
+   "open_content": {
+    "correct": 184,
+    "of": 247,
+    "pct": 74.5
+   }
+  },
+  "per_label": {
+   "content_type": {
+    "app_guide": {
+     "recall": 88.9,
+     "precision": 57.1,
+     "gold": 9,
+     "pred": 14
+    },
+    "emotion_expression": {
+     "recall": 100.0,
+     "precision": 84.2,
+     "gold": 15,
+     "pred": 19
+    },
+    "low_information": {
+     "recall": 100.0,
+     "precision": 29.8,
+     "gold": 14,
+     "pred": 47
+    },
+    "meaningful_answer": {
+     "recall": 70.6,
+     "precision": 94.6,
+     "gold": 51,
+     "pred": 37
+    },
+    "meta_interaction": {
+     "recall": 10.6,
+     "precision": 100.0,
+     "gold": 47,
+     "pred": 5
+    },
+    "mixed": {
+     "recall": 23.4,
+     "precision": 37.5,
+     "gold": 47,
+     "pred": 24
+    },
+    "situation": {
+     "recall": 100.0,
+     "precision": 66.7,
+     "gold": 13,
+     "pred": 21
+    },
+    "worry_thought": {
+     "recall": 84.3,
+     "precision": 55.0,
+     "gold": 51,
+     "pred": 80
+    }
+   },
+   "interaction_signal": {
+    "assistant_not_understood": {
+     "recall": 73.7,
+     "precision": 93.3,
+     "gold": 19,
+     "pred": 15
+    },
+    "closing_accept": {
+     "recall": 78.6,
+     "precision": 91.7,
+     "gold": 14,
+     "pred": 12
+    },
+    "closing_continue": {
+     "recall": 90.0,
+     "precision": 60.0,
+     "gold": 10,
+     "pred": 15
+    },
+    "none": {
+     "recall": 94.6,
+     "precision": 90.8,
+     "gold": 167,
+     "pred": 174
+    },
+    "process_resistance": {
+     "recall": 25.0,
+     "precision": 100.0,
+     "gold": 8,
+     "pred": 2
+    },
+    "repeated_question": {
+     "recall": 61.9,
+     "precision": 92.9,
+     "gold": 21,
+     "pred": 14
+    },
+    "stop_questioning": {
+     "recall": 100.0,
+     "precision": 53.3,
+     "gold": 8,
+     "pred": 15
+    }
+   },
+   "open_content": {
+    "elaboration": {
+     "recall": 11.1,
+     "precision": 66.7,
+     "gold": 54,
+     "pred": 9
+    },
+    "new_evidence": {
+     "recall": 66.7,
+     "precision": 84.2,
+     "gold": 24,
+     "pred": 19
+    },
+    "new_worry": {
+     "recall": 88.2,
+     "precision": 75.0,
+     "gold": 17,
+     "pred": 20
+    },
+    "none": {
+     "recall": 96.7,
+     "precision": 73.9,
+     "gold": 152,
+     "pred": 199
+    }
+   }
+  },
+  "meta_false_positive": {
+   "count": 8,
+   "of_gold_none": 167,
+   "ids": [
+    "f077",
+    "f079",
+    "f087",
+    "f211",
+    "f218",
+    "f220",
+    "f222",
+    "f223"
+   ]
+  },
+  "by_tag": {
+   "app_counsel_mix": {
+    "correct": 0,
+    "of": 15,
+    "pct": 0.0
+   },
+   "banmal": {
+    "correct": 57,
+    "of": 115,
+    "pct": 49.6
+   },
+   "closing": {
+    "correct": 0,
+    "of": 25,
+    "pct": 0.0
+   },
+   "emotion_only": {
+    "correct": 15,
+    "of": 15,
+    "pct": 100.0
+   },
+   "jondaet": {
+    "correct": 28,
+    "of": 78,
+    "pct": 35.9
+   },
+   "meta_worry_mix": {
+    "correct": 1,
+    "of": 14,
+    "pct": 7.1
+   },
+   "moreugesseo_meta": {
+    "correct": 0,
+    "of": 10,
+    "pct": 0.0
+   },
+   "moreugesseo_worry": {
+    "correct": 4,
+    "of": 12,
+    "pct": 33.3
+   },
+   "multi_sentence": {
+    "correct": 7,
+    "of": 26,
+    "pct": 26.9
+   },
+   "new_evidence": {
+    "correct": 10,
+    "of": 18,
+    "pct": 55.6
+   },
+   "new_worry": {
+    "correct": 5,
+    "of": 17,
+    "pct": 29.4
+   },
+   "nospace": {
+    "correct": 15,
+    "of": 36,
+    "pct": 41.7
+   },
+   "numeric": {
+    "correct": 15,
+    "of": 21,
+    "pct": 71.4
+   },
+   "repeat_with_content": {
+    "correct": 3,
+    "of": 15,
+    "pct": 20.0
+   },
+   "short": {
+    "correct": 17,
+    "of": 27,
+    "pct": 63.0
+   },
+   "third_party": {
+    "correct": 10,
+    "of": 25,
+    "pct": 40.0
+   },
+   "typo": {
+    "correct": 15,
+    "of": 34,
+    "pct": 44.1
+   }
+  }
+ },
+ "model_with_rule_fallback": {
+  "accuracy": {
+   "content_type": {
+    "correct": 145,
+    "of": 247,
+    "pct": 58.7
+   },
+   "interaction_signal": {
+    "correct": 215,
+    "of": 247,
+    "pct": 87.0
+   },
+   "open_content": {
+    "correct": 184,
+    "of": 247,
+    "pct": 74.5
+   }
+  },
+  "per_label": {
+   "content_type": {
+    "app_guide": {
+     "recall": 88.9,
+     "precision": 57.1,
+     "gold": 9,
+     "pred": 14
+    },
+    "emotion_expression": {
+     "recall": 100.0,
+     "precision": 84.2,
+     "gold": 15,
+     "pred": 19
+    },
+    "low_information": {
+     "recall": 100.0,
+     "precision": 29.8,
+     "gold": 14,
+     "pred": 47
+    },
+    "meaningful_answer": {
+     "recall": 70.6,
+     "precision": 94.6,
+     "gold": 51,
+     "pred": 37
+    },
+    "meta_interaction": {
+     "recall": 10.6,
+     "precision": 100.0,
+     "gold": 47,
+     "pred": 5
+    },
+    "mixed": {
+     "recall": 23.4,
+     "precision": 37.5,
+     "gold": 47,
+     "pred": 24
+    },
+    "situation": {
+     "recall": 100.0,
+     "precision": 66.7,
+     "gold": 13,
+     "pred": 21
+    },
+    "worry_thought": {
+     "recall": 84.3,
+     "precision": 55.0,
+     "gold": 51,
+     "pred": 80
+    }
+   },
+   "interaction_signal": {
+    "assistant_not_understood": {
+     "recall": 73.7,
+     "precision": 93.3,
+     "gold": 19,
+     "pred": 15
+    },
+    "closing_accept": {
+     "recall": 78.6,
+     "precision": 91.7,
+     "gold": 14,
+     "pred": 12
+    },
+    "closing_continue": {
+     "recall": 90.0,
+     "precision": 60.0,
+     "gold": 10,
+     "pred": 15
+    },
+    "none": {
+     "recall": 94.6,
+     "precision": 90.8,
+     "gold": 167,
+     "pred": 174
+    },
+    "process_resistance": {
+     "recall": 25.0,
+     "precision": 100.0,
+     "gold": 8,
+     "pred": 2
+    },
+    "repeated_question": {
+     "recall": 61.9,
+     "precision": 92.9,
+     "gold": 21,
+     "pred": 14
+    },
+    "stop_questioning": {
+     "recall": 100.0,
+     "precision": 53.3,
+     "gold": 8,
+     "pred": 15
+    }
+   },
+   "open_content": {
+    "elaboration": {
+     "recall": 11.1,
+     "precision": 66.7,
+     "gold": 54,
+     "pred": 9
+    },
+    "new_evidence": {
+     "recall": 66.7,
+     "precision": 84.2,
+     "gold": 24,
+     "pred": 19
+    },
+    "new_worry": {
+     "recall": 88.2,
+     "precision": 75.0,
+     "gold": 17,
+     "pred": 20
+    },
+    "none": {
+     "recall": 96.7,
+     "precision": 73.9,
+     "gold": 152,
+     "pred": 199
+    }
+   }
+  },
+  "meta_false_positive": {
+   "count": 8,
+   "of_gold_none": 167,
+   "ids": [
+    "f077",
+    "f079",
+    "f087",
+    "f211",
+    "f218",
+    "f220",
+    "f222",
+    "f223"
+   ]
+  },
+  "by_tag": {
+   "app_counsel_mix": {
+    "correct": 0,
+    "of": 15,
+    "pct": 0.0
+   },
+   "banmal": {
+    "correct": 57,
+    "of": 115,
+    "pct": 49.6
+   },
+   "closing": {
+    "correct": 0,
+    "of": 25,
+    "pct": 0.0
+   },
+   "emotion_only": {
+    "correct": 15,
+    "of": 15,
+    "pct": 100.0
+   },
+   "jondaet": {
+    "correct": 28,
+    "of": 78,
+    "pct": 35.9
+   },
+   "meta_worry_mix": {
+    "correct": 1,
+    "of": 14,
+    "pct": 7.1
+   },
+   "moreugesseo_meta": {
+    "correct": 0,
+    "of": 10,
+    "pct": 0.0
+   },
+   "moreugesseo_worry": {
+    "correct": 4,
+    "of": 12,
+    "pct": 33.3
+   },
+   "multi_sentence": {
+    "correct": 7,
+    "of": 26,
+    "pct": 26.9
+   },
+   "new_evidence": {
+    "correct": 10,
+    "of": 18,
+    "pct": 55.6
+   },
+   "new_worry": {
+    "correct": 5,
+    "of": 17,
+    "pct": 29.4
+   },
+   "nospace": {
+    "correct": 15,
+    "of": 36,
+    "pct": 41.7
+   },
+   "numeric": {
+    "correct": 15,
+    "of": 21,
+    "pct": 71.4
+   },
+   "repeat_with_content": {
+    "correct": 3,
+    "of": 15,
+    "pct": 20.0
+   },
+   "short": {
+    "correct": 17,
+    "of": 27,
+    "pct": 63.0
+   },
+   "third_party": {
+    "correct": 10,
+    "of": 25,
+    "pct": 40.0
+   },
+   "typo": {
+    "correct": 15,
+    "of": 34,
+    "pct": 44.1
+   }
+  }
+ },
+ "ops": {
+  "items": 247,
+  "rejected": {},
+  "reject_rate_pct": 0.0,
+  "latency_ms": {
+   "p50": 1053,
+   "p95": 1540.2
+  },
+  "tokens": {
+   "prompt_avg": 930.7,
+   "completion_avg": 41.7
+  },
+  "cost_usd_estimate": {
+   "per_utterance": 0.000165,
+   "per_10_turn_session": 0.00165
+  }
+ },
+ "model_errors": [
+  {
+   "id": "f004",
+   "user": "10000000",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f010",
+   "user": "10이요 10. 진짜 터질 것 같아요",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer",
+     "mixed"
+    ],
+    "open_content": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "elaboration"
+   },
+   "rules": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f014",
+   "user": "숫자가 무슨 의미가 있어 그냥 많이 불안해",
+   "fields": [
+    "interaction_signal"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "process_resistance"
+    ]
+   },
+   "model": {
+    "interaction_signal": "closing_continue"
+   },
+   "rules": {
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f015",
+   "user": "7인데 아까도 숫자 물어보지 않았어?",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "meaningful_answer"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f018",
+   "user": "구",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f052",
+   "user": "발표는 15분이고 교수님 두 분이 들어오세요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f054",
+   "user": "엄마가 다음주에 건강검진 결과 들으러 가셔요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f056",
+   "user": "발표 시작하고 첫 슬라이드 넘길 때",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f057",
+   "user": "면접실 문 열고 들어가는 순간이요",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f058",
+   "user": "질문받을때ㅠ 특히 모르는거 물어볼때",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f059",
+   "user": "시험지 받고 첫 문제 모를 때요. 그때 머리가 하얘져요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f060",
+   "user": "카톡 읽씹 당했을때",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f061",
+   "user": "밤에 누웠을 때 가슴이 두근거리면",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f062",
+   "user": "남친이랑 어제 싸웠어",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f067",
+   "user": "이번에도 떨어지면 진짜 끝일 것 같아요. 다들 취업했는데",
+   "fields": [
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "none"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "interaction_signal": "closing_continue",
+    "open_content": "none"
+   },
+   "rules": {
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f069",
+   "user": "걔가 나 싫어하는거 아닐까 ㅠ",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f072",
+   "user": "팀장님이 저 무능하다고 생각할거에요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f076",
+   "user": "면접관이 같은 질문 또 할까봐",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f077",
+   "user": "팀장님이 자꾸 같은 말 반복하시는데 제가 뭘 잘못한 건가 싶어요",
+   "fields": [
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "none"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "interaction_signal": "repeated_question",
+    "open_content": "none"
+   },
+   "rules": {
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f079",
+   "user": "선배가 그만 좀 물어보라고 할까봐요",
+   "fields": [
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "none"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "interaction_signal": "stop_questioning",
+    "open_content": "none"
+   },
+   "rules": {
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f081",
+   "user": "교수님이질문을이해못하셨다고하면어떡하지",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f082",
+   "user": "면접관이 그거 아까도 말하셨잖아요 하면 진짜 끝날듯",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f084",
+   "user": "상사가 이 일 해서 뭐가 달라지냐고 하실 것 같아요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f085",
+   "user": "동기들이 내 발표 이해 못할까봐요. 제가 설명을 못하거든요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f087",
+   "user": "교수님이 질문 그만하라고 하시면ㅠ",
+   "fields": [
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "none"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "interaction_signal": "stop_questioning",
+    "open_content": "none"
+   },
+   "rules": {
+    "interaction_signal": "stop_questioning",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f089",
+   "user": "부장님이 같은 말을 몇번이나 하게 하냐고 혼낼거같음",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f090",
+   "user": "잘 모르겠어 그냥 발표가 망할 것 같아",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f091",
+   "user": "아니 네가 무슨 말 하는지 잘 모르겠어",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f093",
+   "user": "근거가 뭔지를 모르겠어요 질문이 무슨 뜻이에요?",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f094",
+   "user": "모르겠다 그냥 다 내탓같아",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f095",
+   "user": "다른 관점이 뭔지 모르겠어",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f096",
+   "user": "모르겠어요. 그냥 저는 계속 실패할 것 같아요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f097",
+   "user": "균형 있게가 뭔데 모르겠음",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f099",
+   "user": "뭘 더 얘기하라는건지 모르겠어요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f100",
+   "user": "모르겠는데 아마 면접관이 눈 마주칠때?",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f101",
+   "user": "가장 걱정되는 순간이라는게 뭔지 모르겠어",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f102",
+   "user": "잘모르겠는데내가준비를안해서그런가",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f103",
+   "user": "질문을잘모르겠어",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f104",
+   "user": "몰겠어 걍 망할듯ㅠ",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f105",
+   "user": "몰겠어 뭔소리야ㅋㅋ",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f106",
+   "user": "무슨 말이야",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f107",
+   "user": "질문 그만해",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f108",
+   "user": "질문이 너무 어려워요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f109",
+   "user": "아까도 물어봤잖아",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f110",
+   "user": "같은 말 계속하네",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f111",
+   "user": "그냥 들어줘",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f112",
+   "user": "이거 해서 뭐가 달라져",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ],
+    "interaction_signal": [
+     "process_resistance"
+    ]
+   },
+   "model": {
+    "content_type": "low_information",
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f113",
+   "user": "솔직히 시간 낭비 같아요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "emotion_expression"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f114",
+   "user": "?",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ],
+    "interaction_signal": [
+     "assistant_not_understood"
+    ]
+   },
+   "model": {
+    "content_type": "low_information",
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "content_type": "low_information",
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f115",
+   "user": "ㄴㄴ 질문좀 그만",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f116",
+   "user": "뭔뜻",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f119",
+   "user": "이런 거 물어보지 말고 그냥 위로해 주시면 안 돼요?",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f120",
+   "user": "이런 문장 바꾸기 해봤자 소용없어요. 해봤거든요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f122",
+   "user": "그만물어봐",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f123",
+   "user": "이해가 안 돼요 다시 설명해 주세요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f124",
+   "user": "ㅁㅊ 또 같은질문",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f125",
+   "user": "상담 앱이 뭘 안다고",
+   "fields": [
+    "interaction_signal"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "process_resistance"
+    ]
+   },
+   "model": {
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f126",
+   "user": "아까도 말했잖아 준비 못해서 불안하다고",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "repeated_question"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "interaction_signal": "repeated_question",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f127",
+   "user": "아까도물어봤잖아준비못해서불안하다고",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f128",
+   "user": "같은 거 또 묻네요. 지난번 발표 때 말 더듬어서 다들 웃었다니까요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought"
+   },
+   "rules": {
+    "content_type": "meta_interaction"
+   }
+  },
+  {
+   "id": "f129",
+   "user": "아까 말했잖아 친구들도 다 그렇게 말한다고 근데 난 안믿겨",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "repeated_question"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "interaction_signal": "repeated_question"
+   }
+  },
+  {
+   "id": "f130",
+   "user": "아까도 숫자 말했는데요 지금은 더 올라서 8이에요",
+   "fields": [
+    "interaction_signal"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "repeated_question"
+    ]
+   },
+   "model": {
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f131",
+   "user": "그거 또 물어봐? 면접관이 경력 공백 물어볼때라고",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f133",
+   "user": "몇번째야 이 질문ㅋㅋ 그리고 나 요즘 돈 문제도 걱정돼",
+   "fields": [
+    "interaction_signal"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "repeated_question"
+    ]
+   },
+   "model": {
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f134",
+   "user": "아까 다 얘기했잖아요 팀장님이 제 보고서 다시 하라고 하셨다고요",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "repeated_question"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "situation",
+    "interaction_signal": "closing_continue",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "interaction_signal": "repeated_question",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f135",
+   "user": "또묻네 발표 질의응답때라니까",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f136",
+   "user": "말했잖아 지난주에 교수님이 내 과제 보고 한숨 쉬셨다고",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "repeated_question"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f139",
+   "user": "아까 얘기했는데 ㅠㅠ 면접 끝나고 결과 기다릴 때요",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "repeated_question"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "interaction_signal": "repeated_question",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f140",
+   "user": "이미말했어 건강검진에서 재검 나왔다고",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "repeated_question"
+    ]
+   },
+   "model": {
+    "content_type": "meaningful_answer",
+    "interaction_signal": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "interaction_signal": "repeated_question"
+   }
+  },
+  {
+   "id": "f142",
+   "user": "무슨 말인지 모르겠는데 그냥 나 계속 떨어질 것 같아",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f143",
+   "user": "이거 해서 뭐가 달라져요? 어차피 저는 취업 못할 것 같은데",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "process_resistance"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f144",
+   "user": "그냥 들어줘 요즘 엄마 아픈 거 때문에 잠을 못 자",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "emotion_expression",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f145",
+   "user": "질문이 어려워요ㅠ 저는 그냥 사람들이 절 싫어하는 것 같아서요",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "assistant_not_understood"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "mixed",
+    "interaction_signal": "assistant_not_understood",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f146",
+   "user": "균형있게가뭔데 난그냥망한건데",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "assistant_not_understood"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f147",
+   "user": "시간낭비같긴한데 사실 돈 때문에 진짜 불안하긴 해",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "process_resistance"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f148",
+   "user": "너 말 이해 안됨. 암튼 시험 떨어질까봐 걱정돼",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "meta_interaction",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f149",
+   "user": "묻지 말고 들어줘요. 회사에서 저만 따돌림 당하는 것 같아요",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "mixed",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f150",
+   "user": "이게 무슨 의미가 있나 싶은데 그래도 면접 생각하면 숨이 막혀",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "process_resistance"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f151",
+   "user": "뭔솔ㅋㅋ 나 그냥 잘릴거같은데",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "assistant_not_understood"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "none",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f152",
+   "user": "근거를 대라니 좀 부담스럽네요. 그래도 제가 늘 마지막에 실수하는 건 맞아요",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed",
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "elaboration"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f154",
+   "user": "딱히 근거는 없어요. 그냥 그런 느낌이에요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer",
+     "low_information"
+    ]
+   },
+   "model": {
+    "content_type": "emotion_expression"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f157",
+   "user": "검사결과는 다 정상이었어 근데도 불안해",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f162",
+   "user": "다른 사람들은 내 발표에 그렇게 관심 없을 수도",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "new_evidence"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f166",
+   "user": "다른관점이면 이번이 연습이라고 생각할수도ㅇㅇ",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f167",
+   "user": "글쎄요 그래도 한번 실수해도 다음 기회가 있다? 정도",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "meaningful_answer"
+    ],
+    "open_content": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "mixed",
+    "open_content": "elaboration"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f176",
+   "user": "그건 그런데 사실 요즘 엄마 건강도 걱정돼",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f177",
+   "user": "근거는 잘 모르겠고 갑자기 생각났는데 다음달 월세 낼 돈이 없어요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f178",
+   "user": "발표는 그렇다 쳐도 남친이랑 요즘 연락이 너무 뜸해",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f181",
+   "user": "그 얘기 말고 다른 거 있어요. 회사 구조조정 한다는 소문이 돌아요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought",
+     "situation"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f183",
+   "user": "네 근데 그거 말고 동생이 요즘 학교를 안 가요. 그게 더 신경 쓰여요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f184",
+   "user": "ㅇㅋ 근데 나 다음주 건강검진 결과 나오는것도 무서움",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f186",
+   "user": "아 맞다 이번에 비자 연장 안되면 어떡하지",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_worry"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f187",
+   "user": "근데 다른 얘긴데 내가 너무 살찐거같아서 사람들이 뭐라할까봐",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "worry_thought"
+   }
+  },
+  {
+   "id": "f189",
+   "user": "그리고친구결혼식축의금도부담돼",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "worry_thought",
+     "situation"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f190",
+   "user": "면접보다 지금 다니는 회사에 들킬까봐가 더 걱정이에요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_worry"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f191",
+   "user": "아 근데 오늘 교수님이 메일로 발표 순서 바꿔주셨어 그건 좀 다행",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f193",
+   "user": "사실 저번주에 1차 붙었다고 연락 왔었어요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f194",
+   "user": "오늘 병원 갔는데 의사가 스트레스성이래",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f196",
+   "user": "근데 오늘 또 팀장님이 제 보고서 다시 하라고 하셨어요. 역시 제가 무능한 거 아닐까요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f197",
+   "user": "방금성적떴는데생각보다잘나옴",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f198",
+   "user": "모의면접에서 생각보다 괜찮다는 피드백 받았음ㅋㅋ",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f200",
+   "user": "아 그리고 월급이 이번달 늦게 들어온대요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "new_evidence"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f209",
+   "user": "불안한데 전에 쓴 대안적 생각 어디서 봐?",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "app_guide"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f210",
+   "user": "내일 면접이라 너무 떨리는데 호흡 연습하는거 어디 있어요?",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "app_guide"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f211",
+   "user": "발표망할거같은데걱정일기어디서쓰는지알려줘",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "none"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "stop_questioning",
+    "open_content": "new_worry"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f212",
+   "user": "저번에 쓴 균형잡힌 생각 다시 보고 싶은데 어디 있어? 그때 시험 얘기였는데 이번에도 똑같이 불안해",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "new_worry"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f213",
+   "user": "밤마다 건강 걱정돼서 잠을 못 자요. 수면 관련 기능 있나요?",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "new_evidence"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f214",
+   "user": "정리하는 건 좋은데 오늘 거 어디에 저장돼? 나중에 또 불안할때 보게",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "app_guide"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f215",
+   "user": "알림 오면 오히려 불안해짐ㅠ 끄는거 어디서해",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "app_guide"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f216",
+   "user": "돈 걱정 때문에 미치겠는데 지난주 일기 어디서 다시 봐요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "new_worry"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f217",
+   "user": "이 문장 어디 저장해둘 수 있어? 불안할때 다시 보고싶어",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "app_guide"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f218",
+   "user": "걱정일기쓰는법모르겠어 쓰려고해도 머리가 하얘져",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "assistant_not_understood"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f219",
+   "user": "면접 걱정되는데 이런 거 기록하는 메뉴 있어요? 매번 까먹어서요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "app_guide"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f220",
+   "user": "ㅠㅠ시험 망할듯 일정 추가하는거 어딨어",
+   "fields": [
+    "content_type",
+    "interaction_signal",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "none"
+    ],
+    "open_content": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "stop_questioning",
+    "open_content": "new_worry"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f221",
+   "user": "엄마 아픈 거 계속 생각나는데 이완 음성 어디서 틀어요?",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "new_worry"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f222",
+   "user": "모르겠다 그냥 저번에 했던 연습 어디서 다시 해?",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "app_guide",
+     "mixed"
+    ],
+    "interaction_signal": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "low_information",
+    "interaction_signal": "stop_questioning"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f223",
+   "user": "회사 일로 불안해서 상담 기록 보고 싶은데 메뉴가 안 보여요",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "interaction_signal": [
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "interaction_signal": "stop_questioning"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "none"
+   }
+  },
+  {
+   "id": "f224",
+   "user": "응 정리하자",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "situation"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f225",
+   "user": "여기까지 할게요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "situation"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f226",
+   "user": "아니 좀 더 얘기하고 싶어",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f227",
+   "user": "음 모르겠어 그냥 끝낼까",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f228",
+   "user": "잠깐만 하나만 더",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f229",
+   "user": "ㅇㅇ",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "low_information"
+   }
+  },
+  {
+   "id": "f230",
+   "user": "ㄴㄴ",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ],
+    "interaction_signal": [
+     "closing_continue"
+    ]
+   },
+   "model": {
+    "content_type": "low_information",
+    "interaction_signal": "closing_accept"
+   },
+   "rules": {
+    "content_type": "low_information",
+    "interaction_signal": "closing_accept"
+   }
+  },
+  {
+   "id": "f231",
+   "user": "네",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ],
+    "interaction_signal": [
+     "closing_accept"
+    ]
+   },
+   "model": {
+    "content_type": "low_information",
+    "interaction_signal": "closing_continue"
+   },
+   "rules": {
+    "content_type": "low_information",
+    "interaction_signal": "closing_accept"
+   }
+  },
+  {
+   "id": "f232",
+   "user": "좀더",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f233",
+   "user": "끝내자",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "situation"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f234",
+   "user": "아뇨 아직 면접 얘기 다 못 했어요",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "none"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f235",
+   "user": "정리하기 전에 하나만요. 사실 요즘 수면제 먹을까 고민중이에요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f236",
+   "user": "그만할래 피곤해",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "situation"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f237",
+   "user": "음.. 글쎄요 더 할 말이 있는 것 같기도 하고",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction",
+     "low_information"
+    ]
+   },
+   "model": {
+    "content_type": "mixed"
+   },
+   "rules": {
+    "content_type": "worry_thought"
+   }
+  },
+  {
+   "id": "f238",
+   "user": "고마워 오늘은 여기까지",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "situation"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f239",
+   "user": "어 근데 갑자기 또 불안해짐 더 얘기해도돼?",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed",
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f240",
+   "user": "ㅇㅋ끝",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f241",
+   "user": "아니요 엄마 얘기 좀 더 하고 싶어요. 아직 마음이 안 놓여서요",
+   "fields": [
+    "content_type",
+    "open_content"
+   ],
+   "allowed": {
+    "content_type": [
+     "mixed"
+    ],
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "content_type": "worry_thought",
+    "open_content": "none"
+   },
+   "rules": {
+    "content_type": "situation",
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f242",
+   "user": "모르겠어요.. 끝내도 될 것 같긴 한데",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ],
+    "interaction_signal": [
+     "closing_accept",
+     "none"
+    ]
+   },
+   "model": {
+    "content_type": "low_information",
+    "interaction_signal": "closing_continue"
+   },
+   "rules": {
+    "content_type": "worry_thought",
+    "interaction_signal": "closing_accept"
+   }
+  },
+  {
+   "id": "f243",
+   "user": "정리해주세요",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "situation"
+   },
+   "rules": {
+    "content_type": "situation"
+   }
+  },
+  {
+   "id": "f244",
+   "user": "좋아 근데 다음엔 질문 좀 덜 해줘",
+   "fields": [
+    "content_type",
+    "interaction_signal"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ],
+    "interaction_signal": [
+     "closing_accept"
+    ]
+   },
+   "model": {
+    "content_type": "mixed",
+    "interaction_signal": "stop_questioning"
+   },
+   "rules": {
+    "content_type": "situation",
+    "interaction_signal": "closing_accept"
+   }
+  },
+  {
+   "id": "f245",
+   "user": "정리하는거어떻게해",
+   "fields": [
+    "interaction_signal"
+   ],
+   "allowed": {
+    "interaction_signal": [
+     "assistant_not_understood"
+    ]
+   },
+   "model": {
+    "interaction_signal": "closing_continue"
+   },
+   "rules": {
+    "interaction_signal": "closing_accept"
+   }
+  },
+  {
+   "id": "f246",
+   "user": "벌써?ㅠ 아직 시험 얘기 안끝났는데",
+   "fields": [
+    "open_content"
+   ],
+   "allowed": {
+    "open_content": [
+     "elaboration"
+    ]
+   },
+   "model": {
+    "open_content": "new_evidence"
+   },
+   "rules": {
+    "open_content": "none"
+   }
+  },
+  {
+   "id": "f247",
+   "user": "응응",
+   "fields": [
+    "content_type"
+   ],
+   "allowed": {
+    "content_type": [
+     "meta_interaction"
+    ]
+   },
+   "model": {
+    "content_type": "low_information"
+   },
+   "rules": {
+    "content_type": "low_information"
+   }
+  }
+ ]
+}

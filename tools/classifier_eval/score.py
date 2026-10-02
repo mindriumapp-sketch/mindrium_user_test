@@ -65,13 +65,6 @@ def score(items, preds):
                 meta_fp += 1
                 meta_fp_items.append(it["id"])
 
-    def label_table(f):
-        rows = {}
-        for lab, c in sorted(per_label[f].items()):
-            # precision: predicted lab and lab allowed for that item
-            rows[lab] = {"recall": pct(c["tp"], c["gold"]), "gold": c["gold"], "pred": c["pred"]}
-        return rows
-
     # precision needs the allowed sets, recompute
     for f in FIELDS:
         for lab in list(per_label[f]):
@@ -85,8 +78,10 @@ def score(items, preds):
 
     return {
         "accuracy": {f: {"correct": c, "of": n, "pct": pct(c, n)} for f, (c, n) in acc.items() if n},
-        "per_label": {f: {lab: {**v} for lab, v in sorted(per_label[f].items())} for f in FIELDS
-                      if acc[f][1]},
+        "per_label": {f: {lab: {"recall": pct(v["tp"], v["gold"]), "precision": v["precision"],
+                                "gold": v["gold"], "pred": v["pred"]}
+                          for lab, v in sorted(per_label[f].items())}
+                      for f in FIELDS if acc[f][1]},
         "meta_false_positive": {"count": meta_fp, "of_gold_none": meta_gold_none, "ids": meta_fp_items},
         "by_tag": {t: {"correct": c, "of": n, "pct": pct(c, n)} for t, (c, n) in sorted(tags.items())},
     }
