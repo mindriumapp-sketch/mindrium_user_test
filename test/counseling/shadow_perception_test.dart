@@ -204,7 +204,7 @@ void main() {
     await s.observe(sessionId: 's', turnIndex: 1, userText: 'x', assistantPrev: null, ruleSignal: 'none');
     await ShadowPerception(api: _FailingApi(), sink: events.add)
         .observe(sessionId: 's', turnIndex: 2, userText: 'x', assistantPrev: null, ruleSignal: 'none');
-    expect(events.map((e) => e.fallbackReason), ['timeout', 'request_failed']);
+    expect(events.map((e) => e.fallbackReason), ['timeout', 'http_error']);
   });
 
   test('unknown label values are rejected as a whole', () {

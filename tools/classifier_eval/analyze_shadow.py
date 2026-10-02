@@ -40,3 +40,17 @@ for r in ok:
 print(f"\nassistant_not_understood (guarded): {dict(nu)}")
 print(f"open content (guarded): {Counter(r.get('model_guarded_open') for r in ok)}")
 print(f"guard rejections: {Counter(x for r in ok for x in (r.get('guard_reasons') or []))}")
+
+# Phase 14.2B causal-mode fields
+causal = [r for r in rows if r.get("causal")]
+if causal:
+    print(f"\ncausal turns {len(causal)}")
+    print(f"classifier status: {Counter(r.get('classifier_status') for r in causal)}")
+    print(f"skip reasons: {Counter(r.get('fallback_reason') for r in causal if r.get('classifier_status') == 'skipped')}")
+    print(f"effective signal: {Counter(r.get('effective_signal') for r in causal)}")
+    print(f"used causally (model added a signal the rules missed): {sum(1 for r in causal if r.get('used_causally'))}")
+    print(f"speculative remote discarded: {sum(1 for r in causal if r.get('discard_reason'))}"
+          f"  remote used: {sum(1 for r in causal if r.get('remote_used'))}")
+    lat = [r['latency_ms'] for r in causal if r.get('classifier_status') == 'success']
+    if len(lat) >= 2:
+        print(f"classifier latency (success) p50 {statistics.median(lat):.0f}ms max {max(lat)}ms")

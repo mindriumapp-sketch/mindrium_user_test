@@ -134,6 +134,19 @@ class ShadowPerceptionEvent {
   /// 14.2B: 이 분류 결과를 정책 입력 후보로 썼는지(false면 그림자).
   final bool causal;
 
+  /// 14.2B 인과 모드 기록. 분류기 상태: success | timeout | http_error |
+  /// schema_reject | skipped. 시간 초과는 모델이 none이라고 한 것과 다르다.
+  final String? classifierStatus;
+
+  /// 실제로 정책에 들어간 복구 신호(규칙 OR guard 통과 모델). 없으면 null.
+  final String? effectiveSignal;
+
+  /// 미리 만든(투기적) 응답이 원격 표현을 요청했는지, 최종 응답에 쓰였는지,
+  /// 버렸다면 그 이유(causal_repair_override).
+  final bool? remoteRequested;
+  final bool? remoteUsed;
+  final String? discardReason;
+
   const ShadowPerceptionEvent({
     required this.sessionHash,
     required this.turnIndex,
@@ -143,6 +156,11 @@ class ShadowPerceptionEvent {
     this.latencyMs,
     this.fallbackReason,
     this.causal = false,
+    this.classifierStatus,
+    this.effectiveSignal,
+    this.remoteRequested,
+    this.remoteUsed,
+    this.discardReason,
   });
 
   String? get _guardedSignal => guarded == null
@@ -170,6 +188,14 @@ class ShadowPerceptionEvent {
             (ruleSignal == 'assistant_not_understood'),
     'latency_ms': latencyMs,
     'fallback_reason': fallbackReason,
+    if (causal) ...{
+      'classifier_status': classifierStatus,
+      'effective_signal': effectiveSignal,
+      'used_causally': effectiveSignal != null && ruleSignal == 'none',
+      'remote_requested': remoteRequested,
+      'remote_used': remoteUsed,
+      'discard_reason': discardReason,
+    },
   };
 }
 
@@ -200,8 +226,8 @@ String pseudonymize(String sessionId) {
 ///
 /// - [observe]: 그림자. 호출하는 쪽은 기다리지 않고(unawaited), 결과를 어디에도
 ///   쓰지 않는다.
-/// - [perceive]: 14.2B. 결과를 기다려(시간 제한 [timeout]) guard를 통과한 두 신호
-///   (질문 중단, 챗봇 말을 못 알아들음) 중 하나를 돌려준다. 나머지 신호는 기록만.
+/// - [classifyOnly]: 14.2B. 분류 결과와 상태만 돌려준다. 정책 반영과 기록은 호출하는
+///   쪽(CounselingProvider)이 커밋 지점에서 한다.
 class ShadowPerception {
   final CounselingClassifyApi api;
   final ShadowPerceptionSink sink;
@@ -220,89 +246,84 @@ class ShadowPerception {
     required String? assistantPrev,
     required String ruleSignal,
   }) async {
-    await _classify(
+    final o = await classifyOnly(
       sessionId: sessionId,
       turnIndex: turnIndex,
       userText: userText,
       assistantPrev: assistantPrev,
-      ruleSignal: ruleSignal,
-      causal: false,
     );
-  }
-
-  /// 정책 입력으로 쓸 신호. 우선순위: 질문 중단 > 챗봇 말을 못 알아들음.
-  /// 시간 초과·실패·guard 거부면 null(규칙 판정만 쓴다).
-  Future<SemanticRepairSignal?> perceive({
-    required String sessionId,
-    required int turnIndex,
-    required String userText,
-    required String? assistantPrev,
-    required String ruleSignal,
-  }) async {
-    final g = await _classify(
-      sessionId: sessionId,
+    emit(ShadowPerceptionEvent(
+      sessionHash: pseudonymize(sessionId),
       turnIndex: turnIndex,
-      userText: userText,
-      assistantPrev: assistantPrev,
       ruleSignal: ruleSignal,
-      causal: true,
-    );
-    if (g == null) return null;
-    if (g.stopQuestioning) return SemanticRepairSignal.stopQuestioning;
-    if (g.assistantNotUnderstood) return SemanticRepairSignal.assistantNotUnderstood;
-    return null;
+      modelRaw: o.raw,
+      guarded: o.guarded,
+      latencyMs: o.latencyMs,
+      fallbackReason: o.status == 'success' ? null : o.status,
+    ));
   }
 
-  Future<GuardedSignals?> _classify({
+  /// 분류만 한다(기록하지 않음). 실패해도 예외를 내지 않고 상태로 돌려준다.
+  Future<PerceptionOutcome> classifyOnly({
     required String sessionId,
     required int turnIndex,
     required String userText,
     required String? assistantPrev,
-    required String ruleSignal,
-    required bool causal,
   }) async {
-    final session = pseudonymize(sessionId);
     final sw = Stopwatch()..start();
-    ShadowPerceptionEvent event;
-    GuardedSignals? guarded;
     try {
       final res = await api
           .classify(
-            requestId: '${session}_$turnIndex',
+            requestId: '${pseudonymize(sessionId)}_$turnIndex',
             userText: userText,
             assistantPrev: assistantPrev,
             timeout: timeout,
           )
           .timeout(timeout);
       final act = ModelUserAct.tryParse(res['labels']);
-      if (act != null) guarded = ShadowGuards.apply(act, userText);
-      event = act == null
-          ? ShadowPerceptionEvent(
-              sessionHash: session, turnIndex: turnIndex, ruleSignal: ruleSignal,
-              latencyMs: sw.elapsedMilliseconds, fallbackReason: 'invalid_labels', causal: causal,
-            )
-          : ShadowPerceptionEvent(
-              sessionHash: session, turnIndex: turnIndex, ruleSignal: ruleSignal,
-              modelRaw: act, guarded: guarded, latencyMs: sw.elapsedMilliseconds, causal: causal,
-            );
+      if (act == null) {
+        return PerceptionOutcome(status: 'schema_reject', latencyMs: sw.elapsedMilliseconds);
+      }
+      return PerceptionOutcome(
+        status: 'success',
+        latencyMs: sw.elapsedMilliseconds,
+        raw: act,
+        guarded: ShadowGuards.apply(act, userText),
+      );
     } on TimeoutException {
-      event = ShadowPerceptionEvent(
-        sessionHash: session, turnIndex: turnIndex, ruleSignal: ruleSignal,
-        latencyMs: sw.elapsedMilliseconds, fallbackReason: 'timeout', causal: causal,
-      );
+      return PerceptionOutcome(status: 'timeout', latencyMs: sw.elapsedMilliseconds);
     } on Object {
-      event = ShadowPerceptionEvent(
-        sessionHash: session, turnIndex: turnIndex, ruleSignal: ruleSignal,
-        latencyMs: sw.elapsedMilliseconds, fallbackReason: 'request_failed', causal: causal,
-      );
+      return PerceptionOutcome(status: 'http_error', latencyMs: sw.elapsedMilliseconds);
     }
+  }
+
+  void emit(ShadowPerceptionEvent event) {
     try {
       sink(event);
     } on Object {
       // 기록 실패도 상담에 영향을 주지 않는다.
     }
-    return guarded;
   }
+}
+
+/// 한 번의 분류 결과.
+class PerceptionOutcome {
+  /// success | timeout | http_error | schema_reject
+  final String status;
+  final int latencyMs;
+  final ModelUserAct? raw;
+  final GuardedSignals? guarded;
+
+  const PerceptionOutcome({required this.status, required this.latencyMs, this.raw, this.guarded});
+
+  /// 정책에 쓸 신호. 우선순위: 질문 중단 > 챗봇 말을 못 알아들음.
+  SemanticRepairSignal? get signal => guarded == null
+      ? null
+      : guarded!.stopQuestioning
+      ? SemanticRepairSignal.stopQuestioning
+      : guarded!.assistantNotUnderstood
+      ? SemanticRepairSignal.assistantNotUnderstood
+      : null;
 }
 
 /// 14.2B에서 정책 입력으로 쓰는 두 신호.

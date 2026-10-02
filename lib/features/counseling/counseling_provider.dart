@@ -362,16 +362,7 @@ class CounselingProvider extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     try {
       // 컨텍스트는 위에서 이미 이번 발화 기준으로 다시 선택했다.
-      final perceived = await _perceive(trimmed);
-      final result = await _assistantHarness.handleTurn(
-        session: _session,
-        userMessage: trimmed,
-        perceivedRepair: perceived,
-        previousSessionContext: PreviousSessionContext(
-          latestRelevantSession: _previousSession,
-          carriedUnfinishedIssue: _carriedUnfinishedIssue,
-        ),
-      );
+      final result = await _handleTurnWithPerception(trimmed);
       stopwatch.stop();
 
       // 한 턴의 전체 비용. Step 3 에서는 여기에 모델 추론 시간이 더해진다.
@@ -462,58 +453,140 @@ class CounselingProvider extends ChangeNotifier {
     ));
   }
 
-  /// Phase 14.2B: the guarded semantic repair for this turn, or null. The
-  /// classifier fills the rules' semantic gap only, so it is not called on
-  /// safety turns, app-guide-only turns, invalid input, or turns where the
-  /// rules already caught stop-asking or not-understood. Waits at most [perceptionTimeout];
-  /// a timeout or failure means rules only.
-  Future<InteractionRepairReason?> _perceive(String userText) async {
-    final shadow = shadowPerception;
-    if (!causalPerception || shadow == null) return null;
-    try {
-      if (!(await harness.safetyGate.evaluate(userText)).isNormal) return null;
-      if (_assistantHarness.detectIntent(userText, counselingInProgress: true).isAppGuideOnly) {
-        return null;
-      }
-      if (DeterministicInputGuardTurnPlanner.looksInvalidOrInappropriate(userText)) return null;
-      final before = _messages.sublist(0, _messages.length - 1);
-      final rule = const DeterministicProcessSignalTurnPlanner().plan(
-        TurnPlanningContext(
-          state: _session.state,
-          currentWeek: _session.currentWeek,
-          userMessage: userText,
-          knowledge: const [],
-          recentMessages: before,
+  Future<CounselingTurnResult> _turn(String userText, InteractionRepairReason? perceived) =>
+      _assistantHarness.handleTurn(
+        session: _session,
+        userMessage: userText,
+        perceivedRepair: perceived,
+        previousSessionContext: PreviousSessionContext(
+          latestRelevantSession: _previousSession,
+          carriedUnfinishedIssue: _carriedUnfinishedIssue,
         ),
       );
-      // The rules already caught one of the two signals: use them as is. A
-      // lower repair (repeated question, resistance) still asks the model,
-      // since stop asking outranks it ("왜 또 물어봐, 이제 그만해").
-      final ruleReason = rule?.interactionRepairReason;
-      if (ruleReason == InteractionRepairReason.stopQuestioning ||
-          ruleReason == InteractionRepairReason.assistantNotUnderstood) {
-        return null;
+
+  static String _signalName(InteractionRepairReason? r) => switch (r) {
+    InteractionRepairReason.repeatedQuestion => 'repeated_question',
+    InteractionRepairReason.stopQuestioning => 'stop_questioning',
+    InteractionRepairReason.processFrustration => 'process_resistance',
+    InteractionRepairReason.assistantNotUnderstood => 'assistant_not_understood',
+    null => 'none',
+  };
+
+  /// Phase 14.2B: one turn with the semantic classifier as policy input,
+  /// speculative execution behind a commit barrier.
+  ///
+  /// The classifier fills the rules' semantic gap only, so it is not called
+  /// on safety turns, app-guide-only turns, invalid input, or turns where
+  /// the rules already caught stop-asking or not-understood. Otherwise it
+  /// runs in parallel with the provisional (normal) turn, which may already
+  /// request remote wording. Nothing is committed until the classifier
+  /// answers or [perceptionTimeout] passes: a guarded repair discards the
+  /// provisional result (session counters restored) and re-plans the turn
+  /// deterministically with that repair; otherwise the provisional result
+  /// stands. A timeout or failure means rules only.
+  Future<CounselingTurnResult> _handleTurnWithPerception(String userText) async {
+    final shadow = shadowPerception;
+    if (!causalPerception || shadow == null) return _turn(userText, null);
+
+    final before = _messages.sublist(0, _messages.length - 1);
+    final turnIndex = _messages.where((m) => m.isUser).length;
+    final session = pseudonymize(_session.sessionId);
+    var ruleSignal = 'none';
+    String? skip;
+    try {
+      if (!(await harness.safetyGate.evaluate(userText)).isNormal) {
+        skip = 'safety';
+      } else if (_assistantHarness
+          .detectIntent(userText, counselingInProgress: true)
+          .isAppGuideOnly) {
+        skip = 'app_guide_only';
+      } else if (DeterministicInputGuardTurnPlanner.looksInvalidOrInappropriate(userText)) {
+        skip = 'invalid_input';
+      } else {
+        // Computed on its own, before the classifier, and logged as is.
+        final rule = const DeterministicProcessSignalTurnPlanner().plan(
+          TurnPlanningContext(
+            state: _session.state,
+            currentWeek: _session.currentWeek,
+            userMessage: userText,
+            knowledge: const [],
+            recentMessages: before,
+          ),
+        );
+        ruleSignal = _signalName(rule?.interactionRepairReason);
+        // The rules already caught one of the two signals: use them. A lower
+        // repair still asks the model, since stop asking outranks it.
+        if (ruleSignal == 'stop_questioning' || ruleSignal == 'assistant_not_understood') {
+          skip = 'rule_caught';
+        }
       }
-      final prev = before.reversed.where((m) => !m.isUser).firstOrNull;
-      final signal = await shadow
-          .perceive(
-            sessionId: _session.sessionId,
-            turnIndex: _messages.where((m) => m.isUser).length,
-            userText: userText,
-            assistantPrev: prev?.text,
-            ruleSignal: 'none',
-          )
-          .timeout(perceptionTimeout, onTimeout: () => null);
-      return switch (signal) {
-        SemanticRepairSignal.stopQuestioning => InteractionRepairReason.stopQuestioning,
-        SemanticRepairSignal.assistantNotUnderstood =>
-          InteractionRepairReason.assistantNotUnderstood,
-        null => null,
-      };
     } on Object catch (e) {
-      debugPrint('[CounselingProvider] perception skipped: $e');
-      return null;
+      debugPrint('[CounselingProvider] perception gate failed: $e');
+      skip = 'gate_error';
     }
+
+    if (skip != null) {
+      final result = await _turn(userText, null);
+      shadow.emit(ShadowPerceptionEvent(
+        sessionHash: session, turnIndex: turnIndex, ruleSignal: ruleSignal, causal: true,
+        classifierStatus: 'skipped', fallbackReason: skip,
+        effectiveSignal: ruleSignal == 'none' ? null : ruleSignal,
+      ));
+      return result;
+    }
+
+    final prev = before.reversed.where((m) => !m.isUser).firstOrNull;
+    final classifier = shadow
+        .classifyOnly(
+          sessionId: _session.sessionId,
+          turnIndex: turnIndex,
+          userText: userText,
+          assistantPrev: prev?.text,
+        )
+        .timeout(
+          perceptionTimeout,
+          onTimeout: () => PerceptionOutcome(
+            status: 'timeout',
+            latencyMs: perceptionTimeout.inMilliseconds,
+          ),
+        );
+    final snapshot = (_session.state, _session.turnsInCurrentState, _session.totalTurns);
+    final provisional = await _turn(userText, null);
+    final outcome = await classifier; // commit barrier
+    final remoteRequested = provisional.routing?.allowLlm ?? false;
+    final perceived = switch (outcome.signal) {
+      SemanticRepairSignal.stopQuestioning => InteractionRepairReason.stopQuestioning,
+      SemanticRepairSignal.assistantNotUnderstood => InteractionRepairReason.assistantNotUnderstood,
+      null => null,
+    };
+
+    CounselingTurnResult result = provisional;
+    if (perceived != null) {
+      // Discard the speculative turn; a repair is always deterministic.
+      _session
+        ..state = snapshot.$1
+        ..turnsInCurrentState = snapshot.$2
+        ..totalTurns = snapshot.$3;
+      result = await _turn(userText, perceived);
+    }
+    shadow.emit(ShadowPerceptionEvent(
+      sessionHash: session,
+      turnIndex: turnIndex,
+      ruleSignal: ruleSignal,
+      modelRaw: outcome.raw,
+      guarded: outcome.guarded,
+      latencyMs: outcome.latencyMs,
+      causal: true,
+      classifierStatus: outcome.status,
+      effectiveSignal: perceived != null
+          ? _signalName(perceived)
+          : (ruleSignal == 'none' ? null : ruleSignal),
+      remoteRequested: remoteRequested,
+      remoteUsed: perceived == null &&
+          provisional.realizationSource.name != 'deterministic',
+      discardReason: perceived != null ? 'causal_repair_override' : null,
+    ));
+    return result;
   }
 
   /// 지난 상담 기록을 읽어 참고 대상을 정한다.

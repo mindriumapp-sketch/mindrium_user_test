@@ -14,6 +14,7 @@ import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
 import 'package:gad_app_team/features/counseling/perception/shadow_perception.dart';
+import 'package:gad_app_team/features/counseling/response_realizer.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
 /// Returns the given signal for listed utterances, `none` otherwise.
@@ -215,4 +216,120 @@ void main() {
       expect(m.text.contains('“그게 무슨 상관이야”'), isFalse, reason: _why(r));
     }
   });
+
+  group('speculative execution behind a commit barrier', () {
+    Future<(List<CounselingMessage>, List<ShadowPerceptionEvent>, _CountingRealizer, Duration)> remoteRun(
+      List<String> script,
+      _ScriptedApi api, {
+      Duration realizerDelay = Duration.zero,
+      Duration timeout = const Duration(seconds: 2),
+    }) async {
+      final events = <ShadowPerceptionEvent>[];
+      final realizer = _CountingRealizer(realizerDelay);
+      final p = CounselingProvider(
+        knowledgeRepository: _repo,
+        currentWeek: 4,
+        instantEmpathy: false,
+        shadowPerception: ShadowPerception(api: api, sink: events.add),
+        causalPerception: true,
+        perceptionTimeout: timeout,
+        harness: CounselingHarness.remoteGpt(
+          llm: MockLlmService(),
+          safetyGate: const KeywordSafetyGate(),
+          knowledgeRepository: _repo,
+          responseRealizer: realizer,
+        ),
+      );
+      await p.initialize();
+      final sw = Stopwatch();
+      for (final (i, t) in script.indexed) {
+        if (i == script.length - 1) sw.start();
+        await p.sendMessage(t);
+      }
+      sw.stop();
+      return (p.messages.where((m) => !m.isUser).skip(1).toList(), events, realizer, sw.elapsed);
+    }
+
+    test('a repair discards the speculative remote reply; the final reply is deterministic', () async {
+      const u = '그게 무슨 상관이야';
+      final (r, events, realizer, _) =
+          await remoteRun([...reflectStart, u], _ScriptedApi({u: 'assistant_not_understood'}));
+      expect(r.last.interactionRepairReason, InteractionRepairReason.assistantNotUnderstood);
+      expect(r.last.text, startsWith('제 말이'));
+      final e = events.last.toLogEntry();
+      expect(e['classifier_status'], 'success');
+      expect(e['effective_signal'], 'assistant_not_understood');
+      expect(e['remote_requested'], isTrue);
+      expect(e['remote_used'], isFalse);
+      expect(e['discard_reason'], 'causal_repair_override');
+      expect(realizer.calls, greaterThan(0));
+    });
+
+    test('no repair: the provisional (remote) reply is committed', () async {
+      const u = '잠도 많이자는데 계속 피곤해';
+      final (_, events, _, _) = await remoteRun(['요즘 몸이 안좋은가봐', '7', u], _ScriptedApi(const {}));
+      final e = events.last.toLogEntry();
+      expect(e['classifier_status'], 'success');
+      expect(e['effective_signal'], isNull);
+      expect(e['remote_used'], isTrue);
+      expect(e['discard_reason'], isNull);
+    });
+
+    test('classifier and remote wording run in parallel, not in series', () async {
+      const u = '잠도 많이자는데 계속 피곤해';
+      final (_, _, _, took) = await remoteRun(
+        ['요즘 몸이 안좋은가봐', '7', u],
+        _ScriptedApi(const {}, delay: const Duration(milliseconds: 400)),
+        realizerDelay: const Duration(milliseconds: 400),
+      );
+      expect(took, lessThan(const Duration(milliseconds: 750)), reason: '$took');
+    });
+
+    test('a timeout is recorded as a timeout, not as "none"', () async {
+      const u = '그게 무슨 상관이야';
+      final (r, events, _, _) = await remoteRun(
+        [...reflectStart, u],
+        _ScriptedApi({u: 'assistant_not_understood'}, delay: const Duration(seconds: 2)),
+        timeout: const Duration(milliseconds: 50),
+      );
+      expect(r.last.interactionRepairReason, isNull);
+      expect(events.last.toLogEntry()['classifier_status'], 'timeout');
+    });
+
+    test('the rule signal is computed and logged on its own', () async {
+      const u = '아까도 물어봤잖아';
+      final (_, events, _, _) = await remoteRun([...reflectStart, u], _ScriptedApi(const {}));
+      final e = events.last.toLogEntry();
+      expect(e['rule_signal'], 'repeated_question');
+      expect(e['effective_signal'], 'repeated_question');
+    });
+
+    test('skipped turns are logged with the reason', () async {
+      const u = '무슨 말이야';
+      final (_, events, _, _) = await remoteRun([...reflectStart, u], _ScriptedApi(const {}));
+      final e = events.last.toLogEntry();
+      expect(e['classifier_status'], 'skipped');
+      expect(e['fallback_reason'], 'rule_caught');
+      expect(e['rule_signal'], 'assistant_not_understood');
+    });
+  });
+}
+
+class _CountingRealizer implements ResponseRealizer {
+  final Duration delay;
+  int calls = 0;
+  _CountingRealizer(this.delay);
+
+  @override
+  Future<RealizationResult> realize(RealizationRequest r) async {
+    calls++;
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    return RealizationResult(
+      reply: r.deterministicDraft,
+      source: RealizationSource.remoteLlm,
+      latency: delay,
+      validationResult: RealizationValidationResult.valid,
+      chosenAct: r.requiredAct,
+    );
+  }
 }
