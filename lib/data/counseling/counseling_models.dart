@@ -4,6 +4,8 @@
 /// Step 3 에서 실제 온디바이스 모델로 교체할 때 이 파일은 그대로 남아야 한다.
 library;
 
+import 'episode_history.dart';
+
 /// 라벨이 붙은 임상 예시. 문단으로 펴면 라벨이 사라지므로 별도 타입으로 둔다.
 class CbtExample {
   final String text;
@@ -370,6 +372,11 @@ class CounselingMessage {
   /// usable thought was found yet.
   final bool isClarify;
 
+  /// Integration turns only: true when the answer earned the technique's
+  /// outcome sentence, false when it was only acknowledged. Becomes the
+  /// episode's `intervention_outcome`.
+  final bool? interventionCredited;
+
   const CounselingMessage({
     required this.id,
     required this.role,
@@ -387,6 +394,7 @@ class CounselingMessage {
     this.closingStep,
     this.earlyWrapUp,
     this.isClarify = false,
+    this.interventionCredited,
   });
 
   bool get isUser => role == 'user';
@@ -483,6 +491,9 @@ class MindriumCounselingContext {
   /// 컨텍스트를 만들 때 서버 조회가 실패했는지. 실패해도 상담은 이어간다.
   final bool degraded;
 
+  /// 지난 상담 에피소드(개인화 결정 근거). 결정론 정책만 읽는다.
+  final EpisodeHistory episodes;
+
   const MindriumCounselingContext({
     required this.currentWeek,
     this.relevantItems = const [],
@@ -490,7 +501,19 @@ class MindriumCounselingContext {
     this.recurringThemes = const [],
     this.effectiveInterventions = const [],
     this.degraded = false,
+    this.episodes = EpisodeHistory.empty,
   });
+
+  MindriumCounselingContext withEpisodes(EpisodeHistory history) =>
+      MindriumCounselingContext(
+        currentWeek: currentWeek,
+        relevantItems: relevantItems,
+        recentSud: recentSud,
+        recurringThemes: recurringThemes,
+        effectiveInterventions: effectiveInterventions,
+        degraded: degraded,
+        episodes: history,
+      );
 
   static const MindriumCounselingContext empty = MindriumCounselingContext(
     currentWeek: 1,

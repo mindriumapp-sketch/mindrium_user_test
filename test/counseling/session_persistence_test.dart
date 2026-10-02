@@ -36,6 +36,7 @@ class _FakeSessionsApi implements CounselingSessionsApi {
     String? interventionUsed,
     String? activityRecommended,
     String? unfinishedIssue,
+    String? interventionOutcome,
     List<String> provenanceIds = const [],
     int turnCount = 0,
   }) async {
@@ -50,6 +51,7 @@ class _FakeSessionsApi implements CounselingSessionsApi {
       'core_thought_source': coreThoughtSource,
       'alternative_thought': alternativeThought,
       'unfinished_issue': unfinishedIssue,
+      'intervention_outcome': interventionOutcome,
       'provenance_ids': provenanceIds,
       'turn_count': turnCount,
     });
@@ -115,6 +117,33 @@ void main() {
       expect(provider.state, CounselingState.closing);
       expect(provider.isSessionFinalized, isFalse);
       expect(api.saved.where((s) => s['completion_status'] == 'completed'), isEmpty);
+    });
+
+    test('the episode saves how the technique answer was taken (intervention_outcome)', () async {
+      final api = _FakeSessionsApi();
+      await runToClosing(api);
+      final completed = api.saved.lastWhere((s) => s['completion_status'] == 'completed');
+      // runToClosing answers with the worry again, not a reframe, so the
+      // technique was acknowledged rather than credited.
+      expect(completed['intervention_outcome'], 'acknowledged');
+    });
+
+    test('a later session reads past episodes into the decision context', () async {
+      final api = _FakeSessionsApi()
+        ..saved.add({
+          'session_id': 'past',
+          'week': 4,
+          'completion_status': 'completed',
+          'intervention_used': 'week4_alternative_thought_01',
+          'intervention_outcome': 'credited',
+          'ended_at': '2026-09-29T10:00:00Z',
+        });
+      final provider = build(api);
+      await provider.initialize();
+      // the context exists even without a context builder, carrying episodes
+      await provider.sendMessage('내일 발표가 있어서 불안해요');
+      expect(provider.debugSession.userContext?.episodes.effectiveTechniqueIds,
+          ['week4_alternative_thought_01']);
     });
 
     test('closing 확정(finalized) 시점에 completed 로 저장한다', () async {

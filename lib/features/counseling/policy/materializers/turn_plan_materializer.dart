@@ -635,6 +635,9 @@ class TurnPlanMaterializer {
       reflectionSentence: _withReflectAnswerAck(
         aboutWorry
             ? '“$cleanTarget”라는 걱정과 관련된 행동을 함께 살펴볼게요.'
+            : decision.recalledAlternative != null
+            ? '${_reflectionFor(policy.interventionType, cleanTarget)} '
+                '지난번 비슷한 걱정에서는 “${decision.recalledAlternative!.replaceFirst(RegExp(r'[.!?]+$'), '')}”라고 정리해 보셨어요.'
             : _reflectionFor(policy.interventionType, cleanTarget),
         recentMessages: recentMessages,
         userMessage: userMessage,
@@ -760,6 +763,9 @@ class TurnPlanMaterializer {
       interventionStep: InterventionStep.integration,
       stageProgress: StageProgress.complete,
       closingStep: ClosingStep.proposed,
+      // Personalization: whether this answer earned the technique's outcome
+      // sentence; saved as the episode's outcome.
+      interventionCredited: reflection == _integrationFor(policy.interventionType),
     );
   }
 

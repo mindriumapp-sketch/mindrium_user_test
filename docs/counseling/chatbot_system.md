@@ -265,6 +265,41 @@ flowchart TD
 
 ---
 
+## 8A. 에피소드 기억과 개인화된 결정 (2026-10-02)
+
+지난 상담은 서버의 세션 요약으로 저장됩니다(`/counseling-sessions`). 원문 대화가 아니라 구조화된 사실입니다.
+- 주 걱정, 핵심 생각, 대안 생각
+- SUD 시작·끝
+- 사용 기법과 그 결과
+- 미해결 주제
+- 완료 상태
+
+앱은 시작할 때 최근 10개 세션을 읽어 `EpisodeHistory`(`lib/data/counseling/episode_history.dart`)를 만들고,
+사용자 맥락(`MindriumCounselingContext.episodes`)에 넣습니다. 결정론 정책만 이 이력을 읽습니다.
+
+**기록:** 기법 답을 통합하는 턴마다 그 답이 기법 성과로 인정됐는지(`interventionCredited`)를 표시합니다. 세션을
+저장할 때 `intervention_outcome`으로 남깁니다.
+- `credited`: 기법 성과로 인정됨
+- `acknowledged`: 저정보·중립 답으로만 받아 줌
+- null: 기법 없음
+
+**결정에 쓰는 방식 (승인·주차·적용 조건은 바꾸지 않고, 순서와 문장만 바꿈):**
+
+| 결정 | 규칙 |
+|---|---|
+| D1 기법 순서 | 적용 가능한 승인 기법 중 이 사용자에게 성과로 인정된 적 있는 기법을 먼저 고릅니다(인정 횟수가 많은 순). 써 봤지만 한 번도 인정되지 않은 기법은 맨 뒤로 보냅니다. 나머지는 최근 주차부터입니다. 경계와 결정이 같은 이력으로 같은 결과를 냅니다 |
+| D2 이전 대안 상기 | 균형 사고 기법을 쓸 때, 이번 걱정과 주제어가 겹치는 완료 에피소드에 사용자가 정리한 대안 생각이 있으면 기법 질문 앞에 상기합니다. 예: "지난번 비슷한 걱정에서는 “…”라고 정리해 보셨어요." 사용자 자신의 기록만 인용하고, 출처는 에피소드 세션 id입니다 |
+
+**주제어 판단:** 두 글자 이상 어절의 앞 두 글자를 씁니다("발표하다가"/"발표가" → "발표"). 감정·채움말·시간 표현은 제외합니다. 겹침이 하나 이상이면 비슷한 걱정으로 봅니다.
+
+**아직 하지 않은 것:**
+- 패턴 기억(반복 걱정, 반복 맥락의 장기 요약)과 그에 따른 흐름 변경
+- 미해결 주제로 세션 열기
+- 앱 활동 신호 활용
+- SUD 변화에 따른 결정
+
+---
+
 ## 9. 표현 계층 (원격 GPT)
 
 - **실행 조건:**
@@ -326,7 +361,7 @@ adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 
 ## 13. 테스트와 평가
 
-`flutter test`로 전체를 실행합니다(현재 1002개 통과).
+`flutter test`로 전체를 실행합니다(현재 1013개 통과).
 
 | 묶음 | 위치 | 확인하는 것 |
 |---|---|---|
@@ -335,6 +370,7 @@ adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 | 멀티턴 게이트 | `evaluation/phase12_multi_turn_regression_test.dart`, `evaluation/phase13_6_week_progression_test.dart` | 반복, 메타 발화 누락, 조기 전이, 1~8주 × 시나리오 흐름 |
 | 비협조적 사용자 | `evaluation/phase13_9a_uncooperative_test.dart` | 헷갈려하는, 모른다고만 하는, 반복 지적하는, 화내는, 표기 변형 사용자와 기기 세션 재생 |
 | holdout | `evaluation/phase13_9*_holdout*_test.dart`, `evaluation/fixtures/*.json` | 코드를 보지 않은 에이전트가 쓰고, 첫 실행 전에 동결한 발화로 판정. v1~v4는 이미 본 세트라 기록용이고, v5가 판정용 |
+| 개인화 | `personalization_episode_test.dart`, `session_persistence_test.dart` | 에피소드 이력 계산, 기법 순서, 이전 대안 상기, 결과 저장 |
 | 이전 구조 동등성 | `test/research_regression/counseling/phase8_*` | 정책 파이프라인과 기존 결정론 planner의 동등성 |
 
 **두 층 게이트** (`evaluation/support/session_flow_metrics.dart`):

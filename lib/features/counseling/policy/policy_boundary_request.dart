@@ -1,4 +1,5 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/episode_history.dart';
 import 'package:gad_app_team/data/counseling/retrieval_summary.dart';
 import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 import 'package:gad_app_team/features/counseling/counseling_state.dart';
@@ -297,6 +298,7 @@ class DeterministicPolicyBoundaryBuilder implements PolicyBoundaryBuilder {
       knowledge: request.knowledge,
       hasEffectiveIntervention: effectiveIntervention != null,
       registry: interventionRegistry,
+      episodes: request.userContext?.episodes ?? EpisodeHistory.empty,
     );
 
     if (candidate == null) {

@@ -4,6 +4,7 @@ import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/data/counseling/mindrium_context_builder.dart';
 import 'package:gad_app_team/data/api/counseling_sessions_api.dart';
 import 'package:gad_app_team/data/counseling/counseling_session_summary.dart';
+import 'package:gad_app_team/data/counseling/episode_history.dart';
 import 'package:gad_app_team/data/counseling/previous_session.dart';
 import 'package:gad_app_team/data/counseling/retrieval_summary.dart';
 import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
@@ -104,6 +105,13 @@ class CounselingProvider extends ChangeNotifier {
 
   /// 이번 상담에서 참고할 지난 완료 세션.
   PreviousSession? _previousSession;
+  EpisodeHistory _episodeHistory = EpisodeHistory.empty;
+
+  MindriumCounselingContext? _withEpisodes(MindriumCounselingContext? ctx) {
+    if (_episodeHistory.isEmpty) return ctx;
+    return (ctx ?? MindriumCounselingContext(currentWeek: _session.currentWeek))
+        .withEpisodes(_episodeHistory);
+  }
 
   /// 지난 세션에서 이어받은 미해결 주제.
   String? _carriedUnfinishedIssue;
@@ -158,6 +166,9 @@ class CounselingProvider extends ChangeNotifier {
 
   /// 이번 상담에서 참고하는 지난 완료 세션. 없으면 null.
   PreviousSession? get previousSession => _previousSession;
+
+  @visibleForTesting
+  CounselingSessionState get debugSession => _session;
 
   /// 지난 세션에서 이어받은 미해결 주제. 없으면 null.
   String? get carriedUnfinishedIssue => _carriedUnfinishedIssue;
@@ -244,10 +255,10 @@ class CounselingProvider extends ChangeNotifier {
     if (builder == null) return null;
 
     try {
-      return await builder.build(
+      return _withEpisodes(await builder.build(
         currentWeek: _session.currentWeek,
         userMessage: userMessage,
-      );
+      ));
     } on Object catch (e) {
       debugPrint('[CounselingProvider] 사용자 컨텍스트 생성 실패: $e');
       return null;
@@ -412,8 +423,12 @@ class CounselingProvider extends ChangeNotifier {
     if (api == null) return;
 
     try {
-      final rows = await api.listSessions(limit: 5);
+      final rows = await api.listSessions(limit: 10);
       final sessions = rows.map(PreviousSession.fromJson).toList();
+
+      // 개인화: 지난 에피소드를 결정 근거로 둔다(기법 순서, 이전 대안 상기).
+      _episodeHistory = EpisodeHistory.fromSessions(sessions);
+      _session.userContext = _withEpisodes(_session.userContext);
 
       _previousSession = previousSessionSelector.selectPrimary(sessions);
       _carriedUnfinishedIssue = previousSessionSelector.selectUnfinishedIssue(
@@ -477,6 +492,7 @@ class CounselingProvider extends ChangeNotifier {
         interventionUsed: summary.interventionUsed,
         activityRecommended: summary.activityRecommended,
         unfinishedIssue: summary.unfinishedTopic,
+        interventionOutcome: _interventionOutcome,
         provenanceIds: summary.provenanceIds,
         turnCount: summary.turnCount,
       );
@@ -486,6 +502,16 @@ class CounselingProvider extends ChangeNotifier {
     } on Object catch (e) {
       debugPrint('[CounselingProvider] 세션 요약 저장 실패: $e');
     }
+  }
+
+  /// 이번 세션 기법 답의 결과: 한 번이라도 성과로 인정됐으면 'credited',
+  /// 받아 주기만 했으면 'acknowledged', 통합 턴이 없으면 null.
+  String? get _interventionOutcome {
+    final integrations = _session.messages.where(
+      (m) => !m.isUser && m.interventionCredited != null,
+    );
+    if (integrations.isEmpty) return null;
+    return integrations.any((m) => m.interventionCredited!) ? 'credited' : 'acknowledged';
   }
 
   /// 사용자가 화면을 벗어날 때 호출한다.

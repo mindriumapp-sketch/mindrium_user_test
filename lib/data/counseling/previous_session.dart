@@ -18,6 +18,10 @@ class PreviousSession {
   final String? interventionUsed;
   final String? activityRecommended;
   final String? unfinishedIssue;
+
+  /// 기법 답이 어떻게 받아들여졌는지. 'credited'(기법 성과로 인정) |
+  /// 'acknowledged'(저정보·중립 답으로만 받아 줌) | null(기법 없음 또는 이전 기록).
+  final String? interventionOutcome;
   final int? sudEnd;
   final List<String> provenanceIds;
   final DateTime? endedAt;
@@ -33,6 +37,7 @@ class PreviousSession {
     this.interventionUsed,
     this.activityRecommended,
     this.unfinishedIssue,
+    this.interventionOutcome,
     this.sudEnd,
     this.provenanceIds = const [],
     this.endedAt,
@@ -52,6 +57,7 @@ class PreviousSession {
       interventionUsed: json['intervention_used'] as String?,
       activityRecommended: json['activity_recommended'] as String?,
       unfinishedIssue: json['unfinished_issue'] as String?,
+      interventionOutcome: json['intervention_outcome'] as String?,
       sudEnd: (json['sud_end'] as num?)?.toInt(),
       provenanceIds:
           (json['provenance_ids'] as List?)?.whereType<String>().toList() ??

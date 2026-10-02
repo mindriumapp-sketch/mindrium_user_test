@@ -1,4 +1,5 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/episode_history.dart';
 import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 
 import '../../intervention_registry.dart';
@@ -66,6 +67,7 @@ class InterventionDecisionSelector {
       knowledge: knowledge,
       hasEffectiveIntervention: effectiveIntervention != null,
       registry: registry,
+      episodes: userContext?.episodes ?? EpisodeHistory.empty,
     );
     if (candidate == null) {
       // Phase 13.2: nothing approved fits. A normal outcome — briefly
@@ -158,11 +160,20 @@ class InterventionDecisionSelector {
             ? [diary!.id]
             : const <String>[];
 
+    // Personalization: a similar worry handled before, with the user's own
+    // alternative thought — recalled for the balanced-thought question.
+    final recalled =
+        policy.interventionType == InterventionType.balancedThought
+            ? userContext?.episodes.similarEpisodeWithAlternative(target)
+            : null;
+
     return CounselorDecision(
       selectedAction: DialogueAct.socraticQuestion,
       selectedInterventionId: selected.id,
       reflectionTarget: ReflectionTarget.text(target),
       usedFactIds: usedFactIds,
+      recalledAlternative: recalled?.alternativeThought?.trim(),
+      recalledEpisodeId: recalled?.sessionId,
     );
   }
 }

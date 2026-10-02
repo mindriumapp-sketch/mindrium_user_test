@@ -104,6 +104,14 @@ class CounselorDecision {
   /// acknowledged.
   final bool continuationDeclined;
 
+  /// Personalization: intervention only — an alternative thought the user
+  /// wrote in a past episode about a similar worry, recalled before the
+  /// balanced-thought question. Comes from the user's own saved record.
+  final String? recalledAlternative;
+
+  /// Session id of the episode [recalledAlternative] came from (provenance).
+  final String? recalledEpisodeId;
+
   const CounselorDecision({
     required this.selectedAction,
     this.selectedGoalId,
@@ -114,5 +122,7 @@ class CounselorDecision {
     this.goalExhaustionRecovery,
     this.closingStep,
     this.continuationDeclined = false,
+    this.recalledAlternative,
+    this.recalledEpisodeId,
   });
 }

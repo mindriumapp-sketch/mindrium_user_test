@@ -101,6 +101,9 @@ class CounselingTurnPlan {
   /// Phase 13.9C: see `CounselingMessage.isClarify`.
   final bool isClarify;
 
+  /// See `CounselingMessage.interventionCredited`.
+  final bool? interventionCredited;
+
   const CounselingTurnPlan({
     required this.reflectionTarget,
     required this.questionGoal,
@@ -123,6 +126,7 @@ class CounselingTurnPlan {
     this.closingStep,
     this.earlyWrapUp,
     this.isClarify = false,
+    this.interventionCredited,
   });
 
   String get deterministicReply => [

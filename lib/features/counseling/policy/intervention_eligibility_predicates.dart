@@ -1,4 +1,5 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/episode_history.dart';
 
 import '../intervention_registry.dart';
 
@@ -103,8 +104,9 @@ class InterventionCandidateResolver {
     required List<CbtKnowledgeItem> knowledge,
     required bool hasEffectiveIntervention,
     required ApprovedInterventionRegistry registry,
+    EpisodeHistory episodes = EpisodeHistory.empty,
   }) {
-    for (final policy in registry.policiesUpTo(currentWeek)) {
+    for (final policy in personalizedOrder(registry.policiesUpTo(currentWeek), episodes)) {
       if (InterventionEligibilityPredicates.alreadyUsed(recentMessages, policy)) {
         continue;
       }
@@ -128,6 +130,32 @@ class InterventionCandidateResolver {
       return InterventionCandidate(policy, item);
     }
     return null;
+  }
+
+  /// Personalization (2026-10-02): the same approved candidates, reordered by
+  /// this user's episodes — techniques credited before come first (most
+  /// credited first), techniques tried but never credited go last, the rest
+  /// keep most-recent-week-first. Approval, week limits and gates are
+  /// unchanged; only the order is.
+  static List<ApprovedInterventionPolicy> personalizedOrder(
+    List<ApprovedInterventionPolicy> policies,
+    EpisodeHistory episodes,
+  ) {
+    if (episodes.isEmpty) return policies;
+    final effective = episodes.effectiveTechniqueIds;
+    final ineffective = episodes.ineffectiveTechniqueIds;
+    int rank(ApprovedInterventionPolicy p) {
+      final i = effective.indexOf(p.requiredId);
+      if (i >= 0) return i;
+      if (ineffective.contains(p.requiredId)) return 1000;
+      return 500;
+    }
+    final indexed = policies.indexed.toList()
+      ..sort((a, b) {
+        final r = rank(a.$2).compareTo(rank(b.$2));
+        return r != 0 ? r : a.$1.compareTo(b.$1);
+      });
+    return [for (final (_, p) in indexed) p];
   }
 }
 

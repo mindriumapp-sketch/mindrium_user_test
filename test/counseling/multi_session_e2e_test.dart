@@ -36,6 +36,7 @@ class _InMemorySessionsApi implements CounselingSessionsApi {
     String? interventionUsed,
     String? activityRecommended,
     String? unfinishedIssue,
+    String? interventionOutcome,
     List<String> provenanceIds = const [],
     int turnCount = 0,
   }) async {
@@ -60,6 +61,7 @@ class _InMemorySessionsApi implements CounselingSessionsApi {
       'intervention_used': interventionUsed,
       'activity_recommended': activityRecommended,
       'unfinished_issue': unfinishedIssue,
+      'intervention_outcome': interventionOutcome,
       'provenance_ids': provenanceIds,
       'turn_count': turnCount,
       'ended_at': endedAt.toIso8601String(),
