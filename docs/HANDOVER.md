@@ -186,7 +186,7 @@ backend/app/routers/counseling_sessions.py  PUT/GET /counseling-sessions (세션
 ## 5. 테스트
 
 ```bash
-flutter test                    # 단위·대화 테스트 756개, 10초 안팎
+flutter test                    # 단위·대화·평가 테스트 934개, 10초 안팎
 flutter analyze
 flutter test integration_test/counseling_production_scenarios_test.dart -d <기기>   # 실기기, 로그인 상태 필요
 ```
@@ -196,6 +196,7 @@ flutter test integration_test/counseling_production_scenarios_test.dart -d <기�
 | 단위 | `test/counseling/*_test.dart` | planner, selector, materializer, 라우터, 발화 해석 |
 | 대화 재현 | `phase13_7_*`, `phase13_8_*`, `phase13_9c_dev_v2_test.dart` | 실기기에서 나온 결함을 대화 단위로 재현 |
 | 세션·개인화 | `session_persistence_test.dart`, `multi_session_e2e_test.dart`, `personalization_episode_test.dart` | 저장, 지난 세션 로드, 기법 순서, 지난 대안 상기 |
+| 평가 게이트 | `test/counseling/evaluation/` | 동결 발화 세트로 72세션 채점. 지표와 기준선은 `chatbot_system.md` 13절 |
 | 실기기 시나리오 | `integration_test/` | 설치된 앱과 같은 경로로 실제 서버 데이터를 써서 여러 시나리오 실행 |
 
 **주의:** 테스트의 서버는 가짜 저장소(`_InMemorySessionsApi`)라 실제 백엔드의 직렬화를 거치지 않습니다. 저장·조회
@@ -234,8 +235,8 @@ flutter test integration_test/counseling_production_scenarios_test.dart -d <기�
    프롬프트로 다듬을 수 있습니다.
 5. **개인화 확장:** 반복 걱정 패턴, 미해결 주제로 세션 시작, SUD 변화 반영은 아직 없습니다.
 
-**개발 과정 기록**은 저장소에서 지웠고 git에 남아 있습니다. 단계별 설계 문서, 평가 세트(holdout), 이전 엔진은
-태그 `counseling-v1.2-session-flow`에서 볼 수 있습니다.
+**개발 과정 기록**은 저장소에서 지웠고 git에 남아 있습니다. 단계별 설계 문서와 이전 엔진은 태그
+`counseling-v1.2-session-flow`에서 볼 수 있습니다. 평가 세트는 회귀 게이트로 쓰기 위해 다시 저장소에 두었습니다.
 
 ```bash
 git show counseling-v1.2-session-flow --stat
