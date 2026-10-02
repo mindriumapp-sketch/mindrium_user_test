@@ -34,6 +34,9 @@ def _serialize(doc: Dict[str, Any]) -> Dict[str, Any]:
         "intervention_used": doc.get("intervention_used"),
         "activity_recommended": doc.get("activity_recommended"),
         "unfinished_issue": doc.get("unfinished_issue"),
+        # 다음 세션 개인화(기법 순서, 이전 대안 상기)의 근거. 빠지면 앱은 모든
+        # 지난 세션을 성과 미인정으로 본다 (dogfood 2026-10-02).
+        "intervention_outcome": doc.get("intervention_outcome"),
         "provenance_ids": list(doc.get("provenance_ids") or []),
         "turn_count": int(doc.get("turn_count") or 0),
         "started_at": parse_datetime_value(doc.get("started_at")),

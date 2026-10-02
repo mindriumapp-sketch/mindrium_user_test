@@ -16,6 +16,7 @@ import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/intervention_registry.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
 import 'package:gad_app_team/features/counseling/policy/intervention_eligibility_predicates.dart';
+import 'package:gad_app_team/features/counseling/response_realizer.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
 PreviousSession _episode(
@@ -104,12 +105,20 @@ void main() {
       await repo.initialize();
     });
 
-    Future<List<CounselingMessage>> run(int week, EpisodeHistory h, List<String> turns) async {
-      final harness = CounselingHarness.deterministic(
-        llm: MockLlmService(),
-        safetyGate: const KeywordSafetyGate(),
-        knowledgeRepository: repo,
-      );
+    Future<List<CounselingMessage>> run(int week, EpisodeHistory h, List<String> turns, {bool appHarness = false}) async {
+      final harness = appHarness
+          // the app's harness: the semantic realizer renders every turn
+          ? CounselingHarness.remoteGpt(
+              llm: MockLlmService(),
+              safetyGate: const KeywordSafetyGate(),
+              knowledgeRepository: repo,
+              responseRealizer: _DraftRealizer(),
+            )
+          : CounselingHarness.deterministic(
+              llm: MockLlmService(),
+              safetyGate: const KeywordSafetyGate(),
+              knowledgeRepository: repo,
+            );
       final s = CounselingSessionState(
         sessionId: 'pz',
         currentWeek: week,
@@ -156,6 +165,21 @@ void main() {
       final p = prompt(r);
       expect(p.referencedCbtIds, [_w4]);
       expect(p.text, contains('지난번 비슷한 걱정에서는 “막혀도 잠깐 쉬고 다시 이어가면 된다”라고 정리해 보셨어요.'));
+    });
+
+    // Dogfood 2026-10-02: the app's semantic realizer rebuilt the reflection
+    // and dropped the recall sentence; the deterministic harness kept it.
+    test('the app harness keeps the recalled alternative', () async {
+      final h = EpisodeHistory.fromSessions([
+        _episode('past1',
+            intervention: _w4,
+            outcome: 'credited',
+            thought: '발표 때 말이 막힐까 봐 걱정돼',
+            alternative: '막혀도 잠깐 쉬고 다시 이어가면 된다.'),
+      ]);
+      final p = prompt(await run(4, h, turns, appHarness: true));
+      expect(p.text, contains('지난번 비슷한 걱정에서는 “막혀도 잠깐 쉬고 다시 이어가면 된다”라고 정리해 보셨어요.'));
+      expect('?'.allMatches(p.text).length, 1);
     });
 
     test('an integration records whether the answer was credited', () async {
@@ -219,4 +243,16 @@ void main() {
       expect(h.similarEpisodeWithAlternative('내일 발표에서 말이 막히면 어떡하지'), isNull);
     });
   });
+}
+
+/// Stands in for the remote GPT on the turns that may use it: the draft as is.
+class _DraftRealizer implements ResponseRealizer {
+  @override
+  Future<RealizationResult> realize(RealizationRequest request) async => RealizationResult(
+    reply: request.deterministicDraft,
+    source: RealizationSource.deterministic,
+    latency: Duration.zero,
+    validationResult: RealizationValidationResult.valid,
+    chosenAct: request.requiredAct,
+  );
 }
