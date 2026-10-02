@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/api/counseling_classify_api.dart';
+import 'package:gad_app_team/data/api/counseling_sessions_api.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/data/counseling/local_cbt_knowledge_repository.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
@@ -304,6 +305,40 @@ void main() {
       expect(e['effective_signal'], 'repeated_question');
     });
 
+    test('rollback is complete: counters, messages and saves match a direct repair', () async {
+      const u = '그게 무슨 상관이야';
+      final saves = <String>[];
+      CounselingProvider make(CounselingClassifyApi? api) => CounselingProvider(
+            knowledgeRepository: _repo,
+            currentWeek: 4,
+            instantEmpathy: false,
+            sessionsApi: _CountingSessions(saves),
+            shadowPerception: api == null ? null : ShadowPerception(api: api, sink: (_) {}),
+            causalPerception: api != null,
+            harness: CounselingHarness.remoteGpt(
+              llm: MockLlmService(),
+              safetyGate: const KeywordSafetyGate(),
+              knowledgeRepository: _repo,
+              responseRealizer: _CountingRealizer(Duration.zero),
+            ),
+          );
+      final speculative = make(_ScriptedApi({u: 'assistant_not_understood'}));
+      await speculative.initialize();
+      for (final t in [...reflectStart, u, '돈 때문에 집세를 못 낼까봐 걱정돼', '네']) {
+        await speculative.sendMessage(t);
+      }
+      final s = speculative.debugSession;
+      // one assistant message per user turn (plus the greeting)
+      expect(speculative.messages.where((m) => m.isUser).length, 6);
+      expect(speculative.messages.where((m) => !m.isUser).length, 7);
+      expect(s.totalTurns, 6, reason: 'the discarded provisional turn must not count');
+      // the repair turn left no provisional progress: the next real worry
+      // is still worked in reflect (evidence), not skipped past
+      final afterRepair = speculative.messages.where((m) => !m.isUser).toList()[5];
+      expect(afterRepair.dialogueGoalId, 'evidence', reason: afterRepair.text);
+      expect(saves.where((x) => x == 'completed').length, lessThanOrEqualTo(1));
+    });
+
     test('skipped turns are logged with the reason', () async {
       const u = '무슨 말이야';
       final (_, events, _, _) = await remoteRun([...reflectStart, u], _ScriptedApi(const {}));
@@ -332,4 +367,23 @@ class _CountingRealizer implements ResponseRealizer {
       chosenAct: r.requiredAct,
     );
   }
+}
+
+class _CountingSessions implements CounselingSessionsApi {
+  final List<String> saves;
+  _CountingSessions(this.saves);
+  @override
+  Future<Map<String, dynamic>> upsertSession({
+    required String sessionId, required int week, required String completionStatus,
+    required DateTime startedAt, required DateTime endedAt, String? finalState, String? safetyLevel,
+    String? mainConcern, String? coreThought, String? coreThoughtSource, String? alternativeThought,
+    String? affect, int? sudStart, int? sudEnd, String? interventionUsed, String? activityRecommended,
+    String? unfinishedIssue, String? interventionOutcome, List<String> provenanceIds = const [],
+    int turnCount = 0,
+  }) async {
+    saves.add(completionStatus);
+    return {};
+  }
+  @override
+  Future<List<Map<String, dynamic>>> listSessions({int limit = 5, String? completionStatus}) async => const [];
 }
