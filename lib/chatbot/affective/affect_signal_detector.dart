@@ -1,16 +1,22 @@
 import 'affect_signal.dart';
 
-/// 사용자 상태 신호를 계산한다. LLM 을 호출하지 않는다.
+/// 사용자 발화에서 **정서적 단서(affective cue)** 를 찾는다.
 ///
-/// 한 턴당 모델 추론은 상담 응답 생성 1회로 유지한다는 것이 이 프로젝트의 제약이다.
-/// 감정 분류를 위해 추론을 한 번 더 돌리면 지연·발열·배터리가 모두 나빠진다.
-/// 나중에 정확도가 필요해지면 별도의 경량 분류기를 이 클래스 뒤에 넣는다.
+/// 이것은 감정 인식(emotion recognition) 시스템이 아니다. 한국어 표층 표현을
+/// 정규식으로 찾는 어휘 규칙이며, 정확도를 주장하지 않는다. 목적은 사용자의 감정을
+/// 맞히는 것이 아니라, 상담사 아바타가 취할 태도를 정하기에 충분한 단서를 얻는 것이다.
+/// 성능을 보고할 때도 "감정 인식 정확도"가 아니라 단서 탐지와 태도 적응으로 기술한다.
+///
+/// LLM 을 호출하지 않는다. 한 턴당 모델 추론은 상담 응답 생성 1회로 유지한다는 것이
+/// 이 프로젝트의 제약이다. 분류를 위해 추론을 한 번 더 돌리면 지연·발열·배터리가
+/// 모두 나빠진다. 나중에 정확도가 필요해지면 별도의 경량 분류기를 이 뒤에 넣는다.
 class AffectSignalDetector {
   final AffectivePolicy policy;
 
   const AffectSignalDetector({this.policy = AffectivePolicy.defaults});
 
   /// 규칙별 확신도. 표현이 뚜렷할수록 높다.
+  /// 확률이 아니라 규칙의 강도를 나타내는 값이며, 보정된 신뢰도가 아니다.
   static const double _strongConfidence = 0.95;
   static const double _mediumConfidence = 0.8;
   static const double _weakConfidence = 0.6;
@@ -29,6 +35,17 @@ class AffectSignalDetector {
   /// 부드러운 긍정. 방향은 같지만 단계 기본 태도를 뒤집을 만큼은 아니다.
   static final RegExp _positiveSoft = RegExp(r'(다행|편안|안심|괜찮|고마)');
   static final RegExp _reflective = RegExp(r'(생각|고민|정리|되돌아|살펴)');
+
+  /// 직전 턴과 SUD 를 비교해 궤적을 정한다.
+  ///
+  /// 한쪽이라도 값이 없으면 판단하지 않는다. 없는 변화를 추측하면
+  /// "좋아지고 계시네요" 같은 근거 없는 말이 나온다.
+  AffectTrajectory _trajectory(int? current, int? previous) {
+    if (current == null || previous == null) return AffectTrajectory.unknown;
+    if (current < previous) return AffectTrajectory.improving;
+    if (current > previous) return AffectTrajectory.worsening;
+    return AffectTrajectory.steady;
+  }
 
   /// [userMessage] 는 사용자가 방금 한 말이다. 상담자의 답변이 아니다.
   ///
@@ -88,6 +105,7 @@ class AffectSignalDetector {
       spike: spike,
       streak: streak,
       sud: recentSud,
+      trajectory: _trajectory(recentSud, previous?.sud),
     );
   }
 }

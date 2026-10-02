@@ -57,7 +57,18 @@ void main() {
     expect(output.parseStatus, ParseStatus.fallback);
     expect(output.dialogueAct, DialogueAct.unknown);
     expect(output.referencedCbtIds, isEmpty);
-    expect(output.reply, isNotEmpty);
+    expect(output.reply, '따옴표가 닫히지 않았어요');
+    expect(output.reply, isNot(contains('"reply"')));
+  });
+
+  test('T12 잘린 JSON에서도 reply만 복구하고 구현 필드를 숨긴다', () {
+    final output = parser.parse('''{
+"reply": "어제보다 덜 힘들게 느껴진 이유가 무엇일까요?",
+"referenced_cbt_ids": ["common_sud_01"]
+''');
+
+    expect(output.reply, '어제보다 덜 힘들게 느껴진 이유가 무엇일까요?');
+    expect(output.reply, isNot(contains('referenced_cbt_ids')));
   });
 
   test('T12 JSON 이 아예 없으면 평문으로 처리한다', () {

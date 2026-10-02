@@ -20,6 +20,13 @@ class AffectiveAdapter {
     // 위기 상황에서는 표정을 극적으로 쓰지 않는다. 연출은 안전을 돕지 않는다.
     if (safetyLevel != SafetyLevel.normal) return AvatarExpression.attentive;
 
+    // 라벨이 계속 anxious 여도 불안이 내려가는 중이면 격려가 맞다.
+    // 궤적을 보지 않으면 세 턴 내내 같은 표정에 머문다.
+    if (signal.trajectory == AffectTrajectory.improving &&
+        signal.label != AffectLabel.distressed) {
+      return AvatarExpression.encouraging;
+    }
+
     final base = _baseFor(state);
 
     // 신호가 충분히 뚜렷하면 단계 기본값 대신 신호를 따른다.

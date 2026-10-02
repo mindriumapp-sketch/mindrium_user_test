@@ -58,9 +58,8 @@ Map<String, dynamic> diary({
     'consequence_action': behaviors.map(chip).toList(),
     'alternative_thoughts': alternatives,
     'latest_sud': sud,
-    'created_at': DateTime.now()
-        .subtract(Duration(days: daysAgo))
-        .toIso8601String(),
+    'created_at':
+        DateTime.now().subtract(Duration(days: daysAgo)).toIso8601String(),
   };
 }
 
@@ -85,7 +84,10 @@ void main() {
       ),
     );
 
-    final context = await builder.build(currentWeek: 4, userMessage: '발표가 걱정돼요');
+    final context = await builder.build(
+      currentWeek: 4,
+      userMessage: '발표가 걱정돼요',
+    );
 
     expect(context.relevantItems, hasLength(1));
     final item = context.relevantItems.single;
@@ -119,9 +121,7 @@ void main() {
     expect(ids, contains('diary:abc123'));
     expect(ids, contains('alt:abc123'));
     expect(
-      context.relevantItems
-          .firstWhere((e) => e.id == 'alt:abc123')
-          .type,
+      context.relevantItems.firstWhere((e) => e.id == 'alt:abc123').type,
       UserContextType.alternativeThought,
     );
   });
@@ -149,12 +149,8 @@ void main() {
   test('T18 선택은 상한을 지키고 결정적이다', () async {
     final diaries = List.generate(
       12,
-      (i) => diary(
-        id: 'd$i',
-        situation: '상황 $i',
-        thoughts: ['걱정 $i'],
-        daysAgo: 1,
-      ),
+      (i) =>
+          diary(id: 'd$i', situation: '상황 $i', thoughts: ['걱정 $i'], daysAgo: 1),
     );
     final builder = MindriumContextBuilder(
       dataSource: FakeDataSource(diaries: diaries),
@@ -200,15 +196,61 @@ void main() {
     expect(context.relevantItems.first.id, 'diary:high');
   });
 
+  test('현재 인간관계 발화에 최근 고SUD 발표 일기를 섞지 않는다', () async {
+    final builder = MindriumContextBuilder(
+      dataSource: FakeDataSource(
+        diaries: [
+          diary(
+            id: 'presentation',
+            situation: '연구 발표',
+            thoughts: ['질문에 답하지 못하면 무능해 보일 것이다'],
+            sud: 9,
+          ),
+        ],
+      ),
+    );
+
+    final context = await builder.build(
+      currentWeek: 4,
+      userMessage: '친한 친구가 연락에 답하지 않아서 속상해요.',
+    );
+
+    expect(context.relevantItems, isEmpty);
+  });
+
   test('T19 SUD 추이를 일기 점수에서 계산한다', () async {
     final builder = MindriumContextBuilder(
       dataSource: FakeDataSource(
         diaries: [
           // 최신순. 최근 절반이 더 높으므로 increasing.
-          diary(id: 'd1', situation: '발표', thoughts: ['걱정'], sud: 8, daysAgo: 1),
-          diary(id: 'd2', situation: '발표', thoughts: ['걱정'], sud: 8, daysAgo: 2),
-          diary(id: 'd3', situation: '발표', thoughts: ['걱정'], sud: 4, daysAgo: 3),
-          diary(id: 'd4', situation: '발표', thoughts: ['걱정'], sud: 4, daysAgo: 4),
+          diary(
+            id: 'd1',
+            situation: '발표',
+            thoughts: ['걱정'],
+            sud: 8,
+            daysAgo: 1,
+          ),
+          diary(
+            id: 'd2',
+            situation: '발표',
+            thoughts: ['걱정'],
+            sud: 8,
+            daysAgo: 2,
+          ),
+          diary(
+            id: 'd3',
+            situation: '발표',
+            thoughts: ['걱정'],
+            sud: 4,
+            daysAgo: 3,
+          ),
+          diary(
+            id: 'd4',
+            situation: '발표',
+            thoughts: ['걱정'],
+            sud: 4,
+            daysAgo: 4,
+          ),
         ],
       ),
     );
@@ -224,7 +266,9 @@ void main() {
   test('T20 효과가 확인된 이완만 개입 이력에 남는다', () async {
     final builder = MindriumContextBuilder(
       dataSource: FakeDataSource(
-        diaries: [diary(id: 'd1', situation: '발표', thoughts: ['걱정'])],
+        diaries: [
+          diary(id: 'd1', situation: '발표', thoughts: ['걱정']),
+        ],
         relaxations: [
           {'id': 'r1', 'task_id': '점진적 이완', 'before_sud': 7, 'after_sud': 4},
           // 낮아지지 않았으므로 제외된다.
@@ -245,7 +289,9 @@ void main() {
   test('T21 조회가 실패해도 예외 없이 degraded 컨텍스트를 준다', () async {
     final builder = MindriumContextBuilder(
       dataSource: FakeDataSource(
-        diaries: [diary(id: 'd1', situation: '발표', thoughts: ['걱정'])],
+        diaries: [
+          diary(id: 'd1', situation: '발표', thoughts: ['걱정']),
+        ],
         failing: {'groups', 'relaxation'},
       ),
     );
@@ -259,9 +305,7 @@ void main() {
 
   test('T21 전부 실패하면 비어 있는 컨텍스트를 준다', () async {
     final builder = MindriumContextBuilder(
-      dataSource: FakeDataSource(
-        failing: {'diaries', 'groups', 'relaxation'},
-      ),
+      dataSource: FakeDataSource(failing: {'diaries', 'groups', 'relaxation'}),
     );
 
     final context = await builder.build(currentWeek: 4, userMessage: '걱정');

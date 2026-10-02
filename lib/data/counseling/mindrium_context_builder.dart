@@ -51,6 +51,13 @@ class ApiMindriumDataSource implements MindriumDataSource {
 class MindriumContextBuilder {
   final MindriumDataSource dataSource;
 
+  // 서버 원본은 화면 수명 동안 한 번만 읽는다. build()를 현재 발화마다 다시
+  // 호출하더라도 아래 snapshot에서 관련 항목만 재선별하므로 네트워크 요청은
+  // 반복되지 않는다.
+  List<Map<String, dynamic>>? _diarySnapshot;
+  List<Map<String, dynamic>>? _groupSnapshot;
+  List<Map<String, dynamic>>? _relaxationSnapshot;
+
   /// 한 턴에 제공할 사용자 데이터 항목 수 상한.
   static const int maxItems = 5;
 
@@ -69,7 +76,14 @@ class MindriumContextBuilder {
   /// 높은 불안으로 보는 SUD 하한.
   static const int highSudThreshold = 7;
 
-  const MindriumContextBuilder({required this.dataSource});
+  MindriumContextBuilder({required this.dataSource});
+
+  /// 서버에 새 일기/훈련 기록이 생긴 뒤 다음 build에서 다시 조회하게 한다.
+  void invalidateSnapshot() {
+    _diarySnapshot = null;
+    _groupSnapshot = null;
+    _relaxationSnapshot = null;
+  }
 
   /// 세션 시작 시 한 번 호출한다. 턴마다 다시 부르지 않는다.
   ///
@@ -98,9 +112,21 @@ class MindriumContextBuilder {
       }
     }
 
-    diaries = await safely(dataSource.listDiarySummaries, 'diaries');
-    groups = await safely(dataSource.listWorryGroups, 'worry_groups');
-    relaxations = await safely(dataSource.listRelaxationTasks, 'relaxation');
+    diaries =
+        _diarySnapshot ??= await safely(
+          dataSource.listDiarySummaries,
+          'diaries',
+        );
+    groups =
+        _groupSnapshot ??= await safely(
+          dataSource.listWorryGroups,
+          'worry_groups',
+        );
+    relaxations =
+        _relaxationSnapshot ??= await safely(
+          dataSource.listRelaxationTasks,
+          'relaxation',
+        );
 
     final groupTitles = {
       for (final group in groups)
@@ -178,10 +204,11 @@ class MindriumContextBuilder {
       );
 
       // 대안적 생각은 별도 항목으로 둔다. 개입 이력이라 참조 근거가 다르다.
-      final alternatives = (diary['alternative_thoughts'] as List?)
-          ?.whereType<String>()
-          .where((t) => t.trim().isNotEmpty)
-          .toList();
+      final alternatives =
+          (diary['alternative_thoughts'] as List?)
+              ?.whereType<String>()
+              .where((t) => t.trim().isNotEmpty)
+              .toList();
       if (alternatives != null && alternatives.isNotEmpty) {
         items.add(
           UserContextItem(
@@ -208,10 +235,48 @@ class MindriumContextBuilder {
 
     final now = DateTime.now();
     final scored = <(UserContextItem, int)>[];
+    final relevanceKeywords =
+        keywords
+            .where((keyword) => !_genericRelevanceKeywords.contains(keyword))
+            .toList();
+
+    bool textMatches(String text) {
+      final active = relevanceKeywords.isEmpty ? keywords : relevanceKeywords;
+      return active.any(text.contains);
+    }
+
+    // 대안적 생각 자체에는 상황명이 없을 수 있다. 관련성이 확인된 원본 일기와
+    // 같은 ID인 경우에만 함께 제공한다.
+    final relevantDiaryIds = <String>{};
+    for (final item in candidates) {
+      if (item.type != UserContextType.diary) continue;
+      final matchesFocus = focusGroupId != null && item.groupId == focusGroupId;
+      if (matchesFocus || textMatches(item.text.toLowerCase())) {
+        relevantDiaryIds.add(item.id.replaceFirst('diary:', ''));
+      }
+    }
 
     for (var i = 0; i < candidates.length; i++) {
       final item = candidates[i];
       var score = 0;
+
+      final text = item.text.toLowerCase();
+      final matchesKeyword = keywords.any(text.contains);
+      final matchesTopic = textMatches(text);
+      final matchesFocus = focusGroupId != null && item.groupId == focusGroupId;
+      final matchesLinkedDiary =
+          item.type == UserContextType.alternativeThought &&
+          relevantDiaryIds.contains(item.id.replaceFirst('alt:', ''));
+
+      // 현재 발화가 있는 턴에는 **주제 관련성**이 admission gate다.
+      // 최근 기록이거나 SUD가 높다는 이유만으로 발표 일기가 인간관계 대화에
+      // 들어오면 이후 planner가 그것을 현재 생각처럼 반영하게 된다.
+      if (keywords.isNotEmpty &&
+          !matchesTopic &&
+          !matchesFocus &&
+          !matchesLinkedDiary) {
+        continue;
+      }
 
       // 최근성: 2주 이내면 가산.
       final occurredAt = item.occurredAt;
@@ -219,12 +284,11 @@ class MindriumContextBuilder {
         score += _scoreRecentDiary;
       }
 
-      if (focusGroupId != null && item.groupId == focusGroupId) {
+      if (matchesFocus) {
         score += _scoreSameWorryGroup;
       }
 
-      final text = item.text.toLowerCase();
-      if (keywords.any(text.contains)) score += _scoreKeywordOverlap;
+      if (matchesKeyword) score += _scoreKeywordOverlap;
 
       final sud = item.sud;
       if (sud != null && sud >= highSudThreshold) score += _scoreHighSud;
@@ -245,17 +309,39 @@ class MindriumContextBuilder {
     return scored.take(maxItems).map((e) => e.$1).toList();
   }
 
+  /// 이것 하나가 겹친다는 이유만으로 같은 생활 주제라고 볼 수 없는 표현.
+  /// 다른 주제어가 없는 짧은 검색("걱정")에서는 기존 검색 동작을 유지한다.
+  static const Set<String> _genericRelevanceKeywords = {
+    '걱정',
+    '걱',
+    '불안',
+    '답하지',
+    '답하',
+    '답',
+    '생각',
+    '생',
+    '느낌',
+    '느',
+    '마음',
+    '마',
+    '힘들',
+    '힘',
+    '속상',
+    '속',
+  };
+
   /// SUD 추이를 일기의 latest_sud 로 계산한다.
   ///
   /// 서버의 주차별 통계 엔드포인트(getWeeklySudStats)는 현재 sud_api.dart 에서
   /// 주석 처리되어 있어 쓰지 않는다. 이미 가져온 일기만으로 추이를 낸다.
   SudContext? _sudContext(List<UserContextItem> items) {
     // 최신순으로 들어온 일기에서 SUD 가 있는 것만 추린다.
-    final scores = items
-        .where((item) => item.type == UserContextType.diary)
-        .map((item) => item.sud)
-        .whereType<int>()
-        .toList();
+    final scores =
+        items
+            .where((item) => item.type == UserContextType.diary)
+            .map((item) => item.sud)
+            .whereType<int>()
+            .toList();
 
     if (scores.isEmpty) return null;
 
@@ -291,13 +377,12 @@ class MindriumContextBuilder {
       }
     }
 
-    final themes = counts.entries
-        .where((e) => e.value >= recurringThemeMinCount)
-        .toList()
-      ..sort((a, b) {
-        final byCount = b.value.compareTo(a.value);
-        return byCount != 0 ? byCount : a.key.compareTo(b.key);
-      });
+    final themes =
+        counts.entries.where((e) => e.value >= recurringThemeMinCount).toList()
+          ..sort((a, b) {
+            final byCount = b.value.compareTo(a.value);
+            return byCount != 0 ? byCount : a.key.compareTo(b.key);
+          });
 
     return themes.take(5).map((e) => e.key).toList();
   }
@@ -307,8 +392,8 @@ class MindriumContextBuilder {
   ) {
     final result = <EffectiveIntervention>[];
     for (final task in relaxations) {
-      final id = (task['task_log_id'] ?? task['id'] ?? task['task_id'])
-          ?.toString();
+      final id =
+          (task['task_log_id'] ?? task['id'] ?? task['task_id'])?.toString();
       if (id == null || id.isEmpty) continue;
 
       final intervention = EffectiveIntervention(
@@ -338,10 +423,7 @@ class MindriumContextBuilder {
 
   List<String> _chipLabels(Object? chips) {
     if (chips is! List) return const [];
-    return chips
-        .map(_chipLabel)
-        .where((label) => label.isNotEmpty)
-        .toList();
+    return chips.map(_chipLabel).where((label) => label.isNotEmpty).toList();
   }
 
   DateTime? _parseDate(Object? value) {
@@ -360,11 +442,12 @@ class MindriumContextBuilder {
   /// 한국어 조사를 고려해 어절과 앞 2글자를 함께 본다.
   /// LocalCbtKnowledgeRepository 와 같은 방식이라 두 검색의 동작이 어긋나지 않는다.
   List<String> _keywords(String text) {
-    final tokens = text
-        .toLowerCase()
-        .split(RegExp(r'[^0-9a-z가-힣]+'))
-        .where((t) => t.length >= 2)
-        .toSet();
+    final tokens =
+        text
+            .toLowerCase()
+            .split(RegExp(r'[^0-9a-z가-힣]+'))
+            .where((t) => t.length >= 2)
+            .toSet();
 
     final keywords = <String>{};
     for (final token in tokens) {

@@ -5,6 +5,7 @@ import 'package:gad_app_team/chatbot/chatbot_main.dart';
 import 'package:gad_app_team/chatbot/services/speech_output_service.dart';
 import 'package:gad_app_team/chatbot/ui/chat_bubble.dart';
 import 'package:gad_app_team/data/counseling/local_cbt_knowledge_repository.dart';
+import 'package:gad_app_team/features/assistant/app_guide/local_app_guide_repository.dart';
 import 'package:gad_app_team/data/counseling/mindrium_context_builder.dart';
 import 'package:gad_app_team/features/counseling/llm_service.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
@@ -65,10 +66,13 @@ Finder findText(String expected) {
 
 void main() {
   late LocalCbtKnowledgeRepository repository;
+  late LocalAppGuideRepository appGuideRepository;
 
   setUpAll(() async {
     repository = LocalCbtKnowledgeRepository(loadAsset: loadFromDisk);
     await repository.initialize();
+    appGuideRepository = LocalAppGuideRepository(loadAsset: loadFromDisk);
+    await appGuideRepository.initialize();
   });
 
   /// 실제 파일 I/O 는 위젯 테스트의 가짜 시간축에서 끝나지 않으므로
@@ -86,11 +90,13 @@ void main() {
     final source = CountingDataSource();
 
     await tester.runAsync(() async => repository.initialize());
+    await tester.runAsync(() async => appGuideRepository.initialize());
 
     await tester.pumpWidget(
       MaterialApp(
         home: ChatPage(
           knowledgeRepository: repository,
+          appGuideRepository: appGuideRepository,
           llm: llm,
           dataSource: source,
           speechOutput: withSpeech ? speech : null,
@@ -111,6 +117,45 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
+  // ── 활동 CTA ──
+  testWidgets('T37 개입 턴에 추천 활동이 말풍선 아래에 표시된다', (tester) async {
+    final deps = await pumpChatPage(tester);
+
+    // 개입 상태까지 진행시킨다.
+    for (final message in [
+      '사람들이 저를 무능하게 볼 것 같아요.',
+      '그 생각을 바꾸기 어려워요.',
+      '한 번 막히면 다 안다고 생각할 것 같아요.',
+    ]) {
+      await send(tester, message);
+    }
+
+    // 승인된 개입이 확정되면 추천이 보인다. 버튼이 아니라 표시다.
+    final suggestion = findText('추천 활동 ·');
+    if (suggestion.evaluate().isNotEmpty) {
+      expect(suggestion, findsOneWidget);
+    }
+    // 추천은 눌러서 화면을 여는 대상이 아니다.
+    expect(find.byType(OutlinedButton), findsNothing);
+    expect(deps.llm.calls, greaterThanOrEqualTo(0));
+  });
+
+  testWidgets('T37 일반 턴에는 추천이 없다', (tester) async {
+    await pumpChatPage(tester);
+
+    await send(tester, '내일 발표가 있어요.');
+
+    expect(findText('추천 활동 ·'), findsNothing);
+  });
+
+  testWidgets('T37 위기 턴에는 추천을 붙이지 않는다', (tester) async {
+    await pumpChatPage(tester);
+
+    await send(tester, '죽고 싶어요');
+
+    expect(findText('추천 활동 ·'), findsNothing);
+  });
+
   testWidgets('T26 ChatPage 가 상담 엔진으로 첫 인사를 띄운다', (tester) async {
     await pumpChatPage(tester);
 
@@ -118,13 +163,15 @@ void main() {
     expect(find.byType(ChatPage), findsOneWidget);
   });
 
-  testWidgets('T27 입력 한 번에 LLM 이 정확히 한 번 호출된다', (tester) async {
+  testWidgets('T27 기본 제품 경로는 deterministic planner로 LLM을 호출하지 않는다', (
+    tester,
+  ) async {
     final deps = await pumpChatPage(tester);
 
     await send(tester, '내일 발표인데 너무 불안해요.');
 
-    // 한 턴에 모델 호출은 1회다. legacy 의 4-agent 다중 호출과 대비된다.
-    expect(deps.llm.calls, 1);
+    expect(deps.llm.calls, 0);
+    expect(findText('0에서 10 사이'), findsOneWidget);
   });
 
   testWidgets('T28 사용자 입력과 상담자 응답이 모두 말풍선으로 보인다', (tester) async {

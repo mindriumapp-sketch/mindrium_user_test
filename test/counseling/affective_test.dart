@@ -5,6 +5,7 @@ import 'package:gad_app_team/chatbot/affective/affect_signal.dart';
 import 'package:gad_app_team/chatbot/affective/affect_signal_detector.dart';
 import 'package:gad_app_team/chatbot/affective/affective_adapter.dart';
 import 'package:gad_app_team/chatbot/affective/avatar_asset_resolver.dart';
+import 'package:gad_app_team/chatbot/affective/avatar_selector.dart';
 import 'package:gad_app_team/features/counseling/counseling_state.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
@@ -236,6 +237,54 @@ void main() {
     }
   });
 
+  // ───── 이미지 유지 정책 ─────
+
+  test('T51 같은 표정이 이어지면 이미지를 바꾸지 않는다', () {
+    final selector = AvatarSelector();
+
+    final first = selector.update(AvatarExpression.attentive);
+    final second = selector.update(AvatarExpression.attentive);
+    final third = selector.update(AvatarExpression.attentive);
+
+    expect(second, first);
+    expect(third, first);
+  });
+
+  test('T51 표정이 바뀔 때만 이미지를 교체한다', () {
+    final selector = AvatarSelector();
+
+    final attentive = selector.update(AvatarExpression.attentive);
+    final concerned = selector.update(AvatarExpression.concerned);
+
+    expect(concerned, isNot(attentive));
+    expect(selector.expression, AvatarExpression.concerned);
+  });
+
+  test('T51 같은 표정으로 돌아오면 다음 변형을 쓴다', () {
+    final selector = AvatarSelector();
+
+    final first = selector.update(AvatarExpression.attentive);
+    selector.update(AvatarExpression.concerned);
+    final second = selector.update(AvatarExpression.attentive);
+
+    // 둘 다 attentive 의 유효한 변형이어야 한다.
+    final options = AvatarAssetResolver.variants[AvatarExpression.attentive]!;
+    expect(options, contains(first));
+    expect(options, contains(second));
+  });
+
+  test('T51 reset 하면 기본 이미지로 돌아간다', () {
+    final selector = AvatarSelector();
+    selector.update(AvatarExpression.concerned);
+
+    selector.reset();
+
+    expect(selector.expression, isNull);
+    expect(selector.asset, const AvatarAssetResolver().defaultAsset);
+  });
+
+  group('affect trajectory', _trajectoryTests);
+
   test('T50 ChatPage 는 감정 판단 로직을 직접 갖지 않는다', () {
     final source = File('lib/chatbot/chatbot_main.dart').readAsStringSync();
 
@@ -247,5 +296,85 @@ void main() {
     expect(source.contains('_emotionToAsset'), isFalse);
     // 이미지 경로도 resolver 를 통해서만 얻는다.
     expect(source.contains('counselor_profile_'), isFalse);
+  });
+}
+
+// ───────────── affect trajectory (우선순위 2번) ─────────────
+
+void _trajectoryTests() {
+  const detector = AffectSignalDetector();
+  const adapter = AffectiveAdapter();
+
+  test('T52 SUD 가 내려가면 improving 으로 본다', () {
+    final first = detector.detect(userMessage: '너무 불안해요', recentSud: 8);
+    final second = detector.detect(
+      userMessage: '아직 불안해요',
+      recentSud: 6,
+      previous: first,
+    );
+
+    expect(first.trajectory, AffectTrajectory.unknown);
+    expect(second.trajectory, AffectTrajectory.improving);
+  });
+
+  test('T52 SUD 가 올라가면 worsening 으로 본다', () {
+    final first = detector.detect(userMessage: '불안해요', recentSud: 5);
+    final second = detector.detect(
+      userMessage: '더 불안해요',
+      recentSud: 8,
+      previous: first,
+    );
+
+    expect(second.trajectory, AffectTrajectory.worsening);
+  });
+
+  test('T52 SUD 가 없으면 궤적을 추측하지 않는다', () {
+    final first = detector.detect(userMessage: '불안해요');
+    final second = detector.detect(userMessage: '여전해요', previous: first);
+
+    expect(second.trajectory, AffectTrajectory.unknown);
+  });
+
+  test('T53 나아지는 중이면 라벨이 불안이어도 격려로 대응한다', () {
+    const signal = AffectSignal(
+      label: AffectLabel.anxious,
+      confidence: 0.8,
+      trajectory: AffectTrajectory.improving,
+    );
+
+    expect(
+      adapter.adapt(signal: signal, state: CounselingState.reflect),
+      AvatarExpression.encouraging,
+    );
+  });
+
+  test('T53 괴로움이 큰 상태에서는 궤적보다 concerned 를 유지한다', () {
+    const signal = AffectSignal(
+      label: AffectLabel.distressed,
+      confidence: 0.95,
+      trajectory: AffectTrajectory.improving,
+    );
+
+    expect(
+      adapter.adapt(signal: signal, state: CounselingState.reflect),
+      AvatarExpression.concerned,
+    );
+  });
+
+  test('T53 위기 상황에서는 궤적을 무시한다', () {
+    const signal = AffectSignal(
+      label: AffectLabel.anxious,
+      confidence: 0.8,
+      trajectory: AffectTrajectory.improving,
+    );
+
+    expect(
+      adapter.adapt(
+        signal: signal,
+        state: CounselingState.reflect,
+        safetyLevel: SafetyLevel.crisis,
+      ),
+      AvatarExpression.attentive,
+    );
   });
 }

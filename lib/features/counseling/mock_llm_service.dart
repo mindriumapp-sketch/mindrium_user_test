@@ -97,14 +97,21 @@ class MockLlmService implements LlmService {
     );
   }
 
-  /// 프롬프트에 박힌 CURRENT_STATE 값을 읽어 해당 fixture 를 고른다.
+  /// 프롬프트에서 현재 상태를 알아내 해당 fixture 를 고른다.
+  ///
+  /// 프롬프트 프로파일마다 상태를 드러내는 방식이 다르다. verbose 는 CURRENT_STATE
+  /// 를 그대로 적고, compact 는 상태 머신 대신 이번 턴의 할 일만 적는다.
+  /// 둘 다 지원해야 같은 fixture 로 두 프로파일을 비교할 수 있다.
   String? _fixtureFor(LlmRequest request) {
-    final match = RegExp(
-      r'CURRENT_STATE:\s*(\w+)',
-    ).firstMatch(request.userPrompt);
-    final state = match?.group(1);
-    if (state == null) return null;
-    return responses[state];
+    final prompt = request.userPrompt;
+
+    final explicit = RegExp(r'CURRENT_STATE:\s*(\w+)').firstMatch(prompt);
+    if (explicit != null) return responses[explicit.group(1)];
+
+    for (final state in CounselingState.values) {
+      if (prompt.contains(state.currentTask)) return responses[state.wireName];
+    }
+    return null;
   }
 
   /// 편의 생성자: 모든 state 에 같은 원문을 돌려준다.

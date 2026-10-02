@@ -39,7 +39,34 @@ class CounselingOutputParser {
       }
     }
 
+    // max token에서 JSON 닫힘이 잘려도 reply 문자열 자체는 복구한다. 절대로
+    // 구현용 JSON/provenance 원문을 사용자에게 그대로 보여주지 않는다.
+    final partialReply = _extractPartialReply(trimmed);
+    if (partialReply != null) {
+      return CounselingModelOutput(
+        reply: partialReply,
+        dialogueAct: DialogueAct.unknown,
+        referencedCbtIds: const [],
+        referencedUserContextIds: const [],
+        parseStatus: ParseStatus.fallback,
+      );
+    }
+
     return _plainText(trimmed, ParseStatus.fallback);
+  }
+
+  String? _extractPartialReply(String source) {
+    final match = RegExp(
+      r'''["']reply["']\s*:\s*["']((?:\\.|[^"'])*)''',
+      dotAll: true,
+    ).firstMatch(source);
+    final value = match?.group(1);
+    if (value == null || value.trim().isEmpty) return null;
+    return value
+        .replaceAll(r'\n', '\n')
+        .replaceAll(r'\"', '"')
+        .replaceAll(r"\'", "'")
+        .trim();
   }
 
   Map<String, dynamic>? _tryDecode(String source) {
@@ -95,7 +122,10 @@ class CounselingOutputParser {
     return null;
   }
 
-  CounselingModelOutput? _fromMap(Map<String, dynamic> json, ParseStatus status) {
+  CounselingModelOutput? _fromMap(
+    Map<String, dynamic> json,
+    ParseStatus status,
+  ) {
     final reply = json['reply'];
     if (reply is! String || reply.trim().isEmpty) return null;
 
@@ -103,22 +133,37 @@ class CounselingOutputParser {
       reply: reply.trim(),
       dialogueAct: DialogueAct.fromWire(json['dialogue_act'] as String?),
       referencedCbtIds: _stringList(json['referenced_cbt_ids']),
-      referencedUserContextIds: _stringList(json['referenced_user_context_ids']),
+      referencedUserContextIds: _stringList(
+        json['referenced_user_context_ids'],
+      ),
       parseStatus: status,
     );
   }
 
+  /// 프롬프트 표기를 그대로 베낀 형태를 정리한다.
+  ///
+  /// 프롬프트가 근거를 `[id=diary:abc123]` 로 표시하다 보니 작은 모델은
+  /// JSON 에도 `id=diary:abc123` 또는 `[id=diary:abc123]` 을 그대로 넣는다.
+  /// 이걸 그냥 두면 harness 의 provenance 검증에서 전부 걸러져, 모델이 근거를
+  /// 제대로 골랐는데도 사용하지 않은 것처럼 기록된다.
+  static final RegExp _idNoise = RegExp(r'^\[?\s*id\s*=\s*|\]$');
+
   List<String> _stringList(Object? value) {
     if (value is! List) return const [];
-    return value.whereType<String>().where((s) => s.isNotEmpty).toList();
+    return value
+        .whereType<String>()
+        .map((s) => s.replaceAll(_idNoise, '').trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
   /// JSON 을 못 읽었을 때. 원문에서 코드펜스만 걷어내 사용자에게 보여준다.
   CounselingModelOutput _plainText(String raw, ParseStatus status) {
-    final sanitized = raw
-        .replaceAll(RegExp(r'```(?:json)?'), '')
-        .replaceAll('```', '')
-        .trim();
+    final sanitized =
+        raw
+            .replaceAll(RegExp(r'```(?:json)?'), '')
+            .replaceAll('```', '')
+            .trim();
 
     return CounselingModelOutput(
       reply: sanitized,

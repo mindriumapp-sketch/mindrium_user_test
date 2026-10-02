@@ -1,6 +1,7 @@
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 
 import 'counseling_state.dart';
+import 'turn_plan.dart';
 
 /// 프롬프트를 만드는 데 필요한 입력. 문자열을 여기저기서 이어 붙이지 않기 위해 객체로 둔다.
 class PromptContext {
@@ -18,6 +19,9 @@ class PromptContext {
   /// 최근 대화. 전체를 넣지 않고 harness 가 잘라서 준다.
   final List<CounselingMessage> recentMessages;
 
+  /// TurnPlanner가 만든 결정론적 행동 계획. null이면 기존 prompt 경로다.
+  final CounselingTurnPlan? turnPlan;
+
   const PromptContext({
     required this.state,
     required this.userMessage,
@@ -26,6 +30,7 @@ class PromptContext {
     this.userContext,
     this.sessionSummary,
     this.recentMessages = const [],
+    this.turnPlan,
   });
 }
 
@@ -41,29 +46,59 @@ class PromptBundle {
   /// 이 턴에 모델이 참조해도 되는 사용자 데이터 id.
   final Set<String> offeredUserContextIds;
 
+  /// harness 가 이번 턴에 요구하는 발화 행위.
+  ///
+  /// null 이 아니면 모델에게 행위 분류를 시키지 않고 harness 가 값을 붙인다.
+  /// 작은 모델에게 "좋은 상담 문장을 쓰라" 와 "그 문장이 무슨 행위인지 분류하라" 를
+  /// 동시에 시키면 정작 중요한 문장 생성에 쓸 capacity 가 줄어든다.
+  final DialogueAct? requiredDialogueAct;
+
+  /// JSON이 아닌 사용자 표시용 평문을 의도한 프로파일인지 여부.
+  final bool acceptsPlainText;
+
   const PromptBundle({
     required this.systemPrompt,
     required this.userPrompt,
     required this.promptVersion,
     required this.offeredCbtIds,
     required this.offeredUserContextIds,
+    this.requiredDialogueAct,
+    this.acceptsPlainText = false,
   });
 }
 
-class PromptBuilder {
+/// 프롬프트 생성 계약.
+///
+/// 같은 harness 에 서로 다른 프롬프트 전략을 꽂아 비교하기 위해 인터페이스로 둔다.
+/// 모델을 바꾸지 않고 프롬프트만 바꿔가며 재는 것이 온디바이스 실험의 핵심이다.
+abstract class CounselingPromptBuilder {
+  String get promptVersion;
+
+  PromptBundle build(PromptContext context);
+}
+
+/// 규칙과 근거를 모두 풀어 쓰는 초기 프롬프트.
+///
+/// 큰 모델에서는 문제가 없지만, 1.7B 급에서는 지시가 길어질수록 정작 사용자의
+/// 핵심 생각을 놓친다. 비교 대상으로 남겨 둔다. CompactPromptBuilder 를 참고.
+class PromptBuilder implements CounselingPromptBuilder {
   /// 프롬프트를 고칠 때마다 올린다. 모델 비교 실험에서 조건을 식별하는 값이다.
-  static const String promptVersion = 'counsel_v1';
+  static const String promptVersionValue = 'counsel_v1_verbose';
 
   /// 최근 대화에서 프롬프트에 넣을 메시지 수.
   static const int recentMessageWindow = 6;
 
   const PromptBuilder();
 
+  @override
+  String get promptVersion => promptVersionValue;
+
+  @override
   PromptBundle build(PromptContext context) {
     return PromptBundle(
       systemPrompt: _systemPrompt,
       userPrompt: _userPrompt(context),
-      promptVersion: promptVersion,
+      promptVersion: promptVersionValue,
       offeredCbtIds: context.knowledge.map((item) => item.id).toSet(),
       offeredUserContextIds: context.userContext?.offeredIds ?? const {},
     );
@@ -110,14 +145,15 @@ class PromptBuilder {
 ''';
 
   String _userPrompt(PromptContext context) {
-    final buffer = StringBuffer()
-      ..writeln('CURRENT_STATE: ${context.state.wireName}')
-      ..writeln('STATE_GOAL: ${context.state.goal}')
-      ..writeln(
-        'ALLOWED_DIALOGUE_ACTS: '
-        '${context.allowedDialogueActs.map((a) => a.wireName).join(', ')}',
-      )
-      ..writeln();
+    final buffer =
+        StringBuffer()
+          ..writeln('CURRENT_STATE: ${context.state.wireName}')
+          ..writeln('STATE_GOAL: ${context.state.goal}')
+          ..writeln(
+            'ALLOWED_DIALOGUE_ACTS: '
+            '${context.allowedDialogueActs.map((a) => a.wireName).join(', ')}',
+          )
+          ..writeln();
 
     if (context.sessionSummary != null &&
         context.sessionSummary!.trim().isNotEmpty) {

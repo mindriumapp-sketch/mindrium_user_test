@@ -4,6 +4,20 @@
 /// 과도한 미러링이 자연스럽게 코드로 굳는다. 신호와 태도는 끝까지 분리한다.
 library;
 
+/// 직전 턴 대비 정서 궤적.
+enum AffectTrajectory {
+  unknown,
+
+  /// 불안이 낮아지는 중.
+  improving,
+
+  /// 큰 변화 없음.
+  steady,
+
+  /// 불안이 높아지는 중.
+  worsening,
+}
+
 enum AffectLabel {
   neutral,
   anxious,
@@ -17,7 +31,7 @@ enum AffectLabel {
 class AffectSignal {
   final AffectLabel label;
 
-  /// 0.0~1.0. 규칙 기반 탐지에서는 규칙의 확실성을 뜻한다.
+  /// 0.0~1.0. 어휘 규칙의 강도이며 보정된 확률이 아니다.
   final double confidence;
 
   /// 직전 신호 대비 급격한 변화인지.
@@ -29,12 +43,17 @@ class AffectSignal {
   /// 최근 SUD. 없을 수 있다.
   final int? sud;
 
+  /// 직전 턴 대비 변화. 한 턴의 라벨만 보면 "불안 → 불안 → 불안"처럼 보이지만,
+  /// SUD 가 8 → 7 → 5 로 내려가고 있다면 상담자의 태도는 달라져야 한다.
+  final AffectTrajectory trajectory;
+
   const AffectSignal({
     required this.label,
     required this.confidence,
     this.spike = false,
     this.streak = 0,
     this.sud,
+    this.trajectory = AffectTrajectory.unknown,
   });
 
   static const AffectSignal unknown = AffectSignal(
