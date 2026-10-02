@@ -49,6 +49,7 @@ void main() {
         String status = 'A';
         List<String> violations = const [];
         String? primary;
+        String? definitionId;
         CounselingTurnResult r;
         if (llmLed) {
           final t = await harness.handleLlmLedTurn(session: s, userMessage: text, api: api, appGuide: guide, glossary: glossary,
@@ -56,6 +57,7 @@ void main() {
               timeout: const Duration(minutes: 2));
           status = t.status;
           violations = t.violations;
+          definitionId = t.output?.definitionId;
           primary = t.primaryRejection ?? (t.status == 'success' ? null : t.status);
           r = t.result ?? await assistant.handleTurn(session: s, userMessage: text);
         } else {
@@ -76,6 +78,7 @@ void main() {
           'act': r.assistantMessage.dialogueAct?.name,
           'status': status,
           'primary_rejection': primary,
+          'definition_id': definitionId,
           'violations': violations,
         });
         if (r.assistantMessage.closingStep == ClosingStep.finalized) break;
