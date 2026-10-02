@@ -5,6 +5,7 @@ import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 import 'activity_recommendation.dart';
 import 'counseling_state.dart';
 import 'intervention_registry.dart';
+import 'policy/dialogue_progress_ledger.dart';
 import 'policy/materializers/turn_plan_materializer.dart';
 import 'policy/realization/realization_spec.dart';
 import 'policy/selectors/checkin_decision_selector.dart';
@@ -788,32 +789,11 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     return null;
   }
 
-  /// Clarify turns at the end of [messages], skipping repair turns.
-  static int _trailingClarifies(List<CounselingMessage> messages) {
-    var count = 0;
-    for (final m in messages.reversed) {
-      if (m.isUser || m.interactionRepairReason != null) continue;
-      // An unreadable-input turn asked nothing new; it doesn't reset the run.
-      if (m.dialogueAct == DialogueAct.unknown) continue;
-      if (!m.isClarify) break;
-      count++;
-    }
-    return count;
-  }
-
   static CounselingMessage? _lastUser(List<CounselingMessage> messages) {
     for (final m in messages.reversed) {
       if (m.isUser) return m;
     }
     return null;
-  }
-
-  /// Phase 13.8 (P4): no more questions after two non-answers in a row (or
-  /// two "I don't understand you" turns); offer to wrap up instead.
-  static bool _voicesWorry(String text) {
-    final t = text.trim();
-    return t.replaceAll(RegExp(r'\s'), '').length >= 12 &&
-        RegExp(r'(걱정|불안|무서|무섭|두려|겁나|겁이|초조|긴장|스트레스)').hasMatch(t);
   }
 
   static bool _complains(String text) {
@@ -954,8 +934,10 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     // ("…건 아닐까 걱정되네"), even if its thought form isn't recognized —
     // cutting off a cooperative user is worse than one more question.
     if (context.state == CounselingState.reflect &&
-        _trailingClarifies(round) >= 2 &&
-        !_voicesWorry(current) &&
+        // Phase 14.3: clarify-type turns answered without new content. A
+        // contentful reply anywhere resets the run, so a user who keeps
+        // talking ("돈이 부족해서 걱정이야") is never wrapped up here.
+        DialogueProgressLedger.stagnantClarifyRun(round, current) >= 2 &&
         UserThoughtExtractor.roundWorryThought(
               UserThoughtExtractor.semanticContent(round),
             ) ==

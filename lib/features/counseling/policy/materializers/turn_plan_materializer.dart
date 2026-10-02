@@ -477,7 +477,9 @@ class TurnPlanMaterializer {
       userContextIds: decision.usedFactIds,
       cbtContextIds: const [],
       goalExhaustionRecovery: decision.goalExhaustionRecovery,
-      stageProgress: StageProgress.complete,
+      stageProgress: decision.awaitingThought
+          ? StageProgress.inProgress
+          : StageProgress.complete,
     );
   }
 

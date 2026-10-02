@@ -3,6 +3,7 @@ import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 
 import '../../turn_plan.dart' show ReflectQuestionGoal;
 import '../counselor_decision.dart';
+import '../dialogue_progress_ledger.dart';
 
 /// Phase 8.3B: the actual deterministic *selection* made by
 /// `DeterministicReflectTurnPlanner.plan` — copied verbatim (not
@@ -44,7 +45,14 @@ class ReflectDecisionSelector {
     required String userMessage,
     required List<CounselingMessage> recentMessages,
     required MindriumCounselingContext? userContext,
-  }) {
+  }) =>
+      _select(userMessage, recentMessages, userContext).decision;
+
+  ({CounselorDecision decision, bool clarifyBranch}) _select(
+    String userMessage,
+    List<CounselingMessage> recentMessages,
+    MindriumCounselingContext? userContext,
+  ) {
     // Phase 13.7 (E3): a round reopened at closing is about a new worry, so
     // goals and content are read from the current round only.
     final roundMessages = UserThoughtExtractor.currentRound(recentMessages);
@@ -134,10 +142,31 @@ class ReflectDecisionSelector {
         (!isFollowUp && UserThoughtExtractor.thoughtShaped(target) != null);
 
     if (!isFollowUp && !hasRealThought) {
+      // Phase 14.3: the last turn was already a clarify question and this
+      // reply brought nothing new, so asking the same kind of question again
+      // repeats itself ("구체적인 계기는?" → "무슨 계기" → "구체적으로
+      // 말씀해 주실 수 있을까요?"). Listen without a question instead; a
+      // further reply without content ends in the no-progress wrap-up.
+      if (DialogueProgressLedger.clarifyWouldRepeat(roundMessages, currentText)) {
+        return (
+          decision: CounselorDecision(
+            selectedAction: DialogueAct.reflect,
+            goalExhaustionRecovery: GoalExhaustionRecovery.listenWithoutQuestion,
+            awaitingThought: true,
+            reflectionTarget: ReflectionTarget.text(
+              UserThoughtExtractor.latestContentMessage(content) ?? target,
+            ),
+          ),
+          clarifyBranch: true,
+        );
+      }
       // Clarify branch: no usable thought found yet.
-      return CounselorDecision(
-        selectedAction: DialogueAct.explore,
-        reflectionTarget: ReflectionTarget.text(target),
+      return (
+        decision: CounselorDecision(
+          selectedAction: DialogueAct.explore,
+          reflectionTarget: ReflectionTarget.text(target),
+        ),
+        clarifyBranch: true,
       );
     }
 
@@ -151,20 +180,26 @@ class ReflectDecisionSelector {
       final recoveryTarget = currentIsSubstantive
           ? target
           : UserThoughtExtractor.roundWorryThought(content) ?? target;
-      return CounselorDecision(
+      return (
+        decision: CounselorDecision(
         selectedAction: DialogueAct.reflect,
         goalExhaustionRecovery: _selectRecovery(recentMessages),
         reflectionTarget: ReflectionTarget.text(recoveryTarget),
         usedFactIds: diaryThought != null ? [selectedUserItem!.id] : const [],
+      ),
+        clarifyBranch: false,
       );
     }
 
     final goal = (goalSelection as SelectedReflectGoal).goal;
-    return CounselorDecision(
+    return (
+      decision: CounselorDecision(
       selectedAction: DialogueAct.socraticQuestion,
       selectedGoalId: goal.name,
       reflectionTarget: ReflectionTarget.text(target),
       usedFactIds: diaryThought != null ? [selectedUserItem!.id] : const [],
+    ),
+      clarifyBranch: false,
     );
   }
 
@@ -177,12 +212,9 @@ class ReflectDecisionSelector {
     required List<CounselingMessage> recentMessages,
     required MindriumCounselingContext? userContext,
   }) {
-    final decision = select(
-      userMessage: userMessage,
-      recentMessages: recentMessages,
-      userContext: userContext,
-    );
-    return decision.selectedAction == DialogueAct.explore;
+    // The clarify branch (no usable thought yet), whether it asks or — when a
+    // clarify would repeat — listens.
+    return _select(userMessage, recentMessages, userContext).clarifyBranch;
   }
 
   /// 아직 하지 않은 질문 목표를 순서대로 고른다. 모두 소진되면

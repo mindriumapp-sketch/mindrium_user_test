@@ -35,7 +35,12 @@ void main() {
   //
   // Re-run after 13.9D on this now-seen set: all 0. Informational only; the
   // gate moved to holdout v3.
-  const seenSetRerun = <String, int>{};
+  // Phase 14.3 (2026-10-02): repeatedClarifyRun 1. A contentful-looking
+  // reply now resets the no-progress pressure (so a user who keeps talking
+  // is never wrapped up); a non-answer the rules don't recognize ("머리가 하얘요")
+  // passes as content and gets one more question. Accepted trade-off;
+  // recognizing it is 14.2B. B-tier, well under 1% of user turns.
+  const seenSetRerun = <String, int>{'repeatedClarifyRun': 1};
   group('holdout v2 (seen set): re-run recorded, not a pass', () {
     for (final metric in flowGateMetrics) {
       test(metric, () {

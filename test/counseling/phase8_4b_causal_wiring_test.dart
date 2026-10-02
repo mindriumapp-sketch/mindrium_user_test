@@ -119,11 +119,18 @@ void main() {
       'FakeAgent가 다른(허용된) reflectionTarget/interventionId를 고르면 실제 production TurnPlan이 이를 반영한다',
       () {
         final knowledge = [_cbtItem(id: 'week4_alternative_thought_01')];
+        // Phase 14.3: a technique needs the round's worry thought to apply
+        // to (without one it wraps up instead), so the round states one.
         final context = TurnPlanningContext(
           state: CounselingState.intervention,
           currentWeek: 4,
           userMessage: '생각을 바꾸는 게 잘 안 돼요.',
           knowledge: knowledge,
+          recentMessages: [
+            CounselingMessage(
+              id: 'u0', role: 'user', text: '발표하다가 말이 막히면 어떡하지', createdAt: DateTime(2026),
+            ),
+          ],
         );
 
         const baselinePlanner = PolicyPipelineTurnPlanner();

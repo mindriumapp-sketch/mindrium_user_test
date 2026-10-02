@@ -337,7 +337,10 @@ class DeterministicPolicyBoundaryBuilder implements PolicyBoundaryBuilder {
 
     return PolicyBoundary(
       currentState: request.currentState,
-      allowedActions: const [DialogueAct.socraticQuestion],
+      // Phase 14.3: summarize too — with no worry thought to apply the
+      // technique to, the selector wraps up briefly instead (the same
+      // action as noEligibleIntervention).
+      allowedActions: const [DialogueAct.socraticQuestion, DialogueAct.summarize],
       candidateGoalIds: const [],
       eligibleInterventionIds: [candidate.item.id],
       allowedFactIds: allowedFactIds,

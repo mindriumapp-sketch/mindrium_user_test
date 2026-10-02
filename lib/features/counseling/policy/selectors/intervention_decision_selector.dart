@@ -107,11 +107,9 @@ class InterventionDecisionSelector {
             ? (InterventionEligibilityPredicates.looksLikeBehavior(userMessage) &&
                     UserThoughtExtractor.hasContent(userMessage)
                 ? userMessage.trim()
-                : roundWorry ??
-                    UserThoughtExtractor.latestContentMessage(
-                      UserThoughtExtractor.semanticContent(recentMessages),
-                    ) ??
-                    userMessage.trim())
+                // Phase 14.3: around the round's worry, or nothing (the
+                // no-target guard below then wraps up instead).
+                : roundWorry)
             : policy.interventionType == InterventionType.balancedThought
             ? roundWorry ?? UserThoughtExtractor.thoughtShaped(userMessage)
             : policy.interventionType == InterventionType.maintenanceReview
@@ -129,12 +127,30 @@ class InterventionDecisionSelector {
                 policy.interventionType == InterventionType.maintenanceReview
             ? null
             : UserThoughtExtractor.thoughtFromDiary(diary?.text);
-    final target =
+    final groundedTarget =
         explicitThought ??
         (policy.interventionType == InterventionType.maintenanceReview
             ? effectiveIntervention?.label
             : null) ??
-        diaryThought ??
+        diaryThought;
+    // Phase 14.3: only a worry thought (or a described behavior) may be a
+    // technique's target. With none — reflect reached its cap on replies the
+    // rules didn't recognize as non-answers ("머리가 하얘요", "없을걸요
+    // 아마") — the technique does not apply: wrap up briefly, quoting nothing.
+    if (groundedTarget == null) {
+      final fallback = UserThoughtExtractor.latestContentMessage(
+        UserThoughtExtractor.semanticContent(recentMessages),
+      );
+      if (fallback == null ||
+          UserThoughtExtractor.targetEligibility(fallback) != TargetEligibility.worryThought) {
+        return const CounselorDecision(
+          selectedAction: DialogueAct.summarize,
+          reflectionTarget: ReflectionTarget.none(),
+        );
+      }
+    }
+    final target =
+        groundedTarget ??
         // Phase 13.9C (S1): never a non-answer or a question to the counselor.
         UserThoughtExtractor.latestContentMessage(
           UserThoughtExtractor.semanticContent(recentMessages),

@@ -363,6 +363,26 @@ class UserThoughtExtractor {
     return t.replaceAll(RegExp(r'[\s.!?,~]'), '').length >= 4;
   }
 
+  /// Phase 14.3: a contribution that carries usable counseling content, so a
+  /// turn after it is not "no progress". Conservative on purpose: anything
+  /// not known to be low-information or addressed to the counselor counts,
+  /// so an unrecognized worry ("돈이 부족해서 걱정이야") still stops closing
+  /// pressure. Whether the turn was a repair is known only from the reply's
+  /// metadata, which callers check separately.
+  static bool isContentfulContribution(String value) =>
+      hasContent(value) &&
+      value.replaceAll(RegExp(r'[\s.!?,~]'), '').length >= 6;
+
+  /// Phase 13.10: a substantive message that voices worry even when its
+  /// thought form isn't recognized ("…건 아닐까 걱정되네"). Not a thought
+  /// target by itself (a feeling about a situation is clarified into its
+  /// thought); used to never cut off a user who is still talking.
+  static bool voicesWorry(String text) {
+    final t = text.trim();
+    return t.replaceAll(RegExp(r'\s'), '').length >= 12 &&
+        RegExp(r'(걱정|불안|무서|무섭|두려|겁나|겁이|초조|긴장|스트레스)').hasMatch(t);
+  }
+
   /// Phase 13.8 (P4): a reply that doesn't answer an open question — low
   /// information other than a number (a number answers the 0–10 rating).
   static bool isNonAnswer(String value) =>

@@ -112,6 +112,11 @@ class CounselorDecision {
   /// Session id of the episode [recalledAlternative] came from (provenance).
   final String? recalledEpisodeId;
 
+  /// Phase 14.3: reflect only — this listening turn replaced a repeated
+  /// clarify question; there is still no thought to work on, so the stage
+  /// is not complete.
+  final bool awaitingThought;
+
   const CounselorDecision({
     required this.selectedAction,
     this.selectedGoalId,
@@ -124,5 +129,6 @@ class CounselorDecision {
     this.continuationDeclined = false,
     this.recalledAlternative,
     this.recalledEpisodeId,
+    this.awaitingThought = false,
   });
 }

@@ -252,10 +252,18 @@ void main() {
     }
 
     test('a complaint in the wrap-up turn is acknowledged', () async {
-      final r = await run(['내일 회의때 발표를 해야되는데 긴장돼', '8', '모르겠어', '아니 이유를 딱히 모르겠다고', '모른다니까 왜 계속 물어봐']);
-      final wrap = r.lastWhere((m) => m.earlyWrapUp != null, orElse: () => r.last);
-      expect(wrap.earlyWrapUp, isNotNull, reason: r.map((m) => m.text).join('\n'));
-      expect(wrap.text, startsWith('계속 질문이 이어져서 답답하셨을 것 같아요.'));
+      final r = await run(['내일 회의때 발표를 해야 돼', '8', '모르겠어', '아니 이유를 딱히 모르겠다고', '모른다니까 왜 계속 물어봐']);
+      // Phase 14.3: "아니 이유를 딱히 모르겠다고" passes as content, so the
+      // complaint is the turn that stops the questions: acknowledged either
+      // in a wrap-up or as a stop-questioning repair, never another question.
+      final last = r.last;
+      final why = r.map((m) => m.text).join('\n');
+      if (last.earlyWrapUp != null) {
+        expect(last.text, startsWith('계속 질문이 이어져서 답답하셨을 것 같아요.'), reason: why);
+      } else {
+        expect(last.interactionRepairReason, InteractionRepairReason.stopQuestioning, reason: why);
+        expect(last.text.contains('?'), isFalse, reason: why);
+      }
     });
 
     test('asking for more after the one continuation ends with that wish acknowledged', () async {

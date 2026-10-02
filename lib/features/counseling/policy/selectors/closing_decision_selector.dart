@@ -25,6 +25,11 @@ class ClosingDecisionSelector {
   static final RegExp _wantsToContinue = RegExp(
     r'(아니|아직|더\s*(이야기|얘기|말|하고|할래)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더)',
   );
+  /// The continue cues other than a bare "아니", which in "아니 싫어 그만해"
+  /// is a refusal, not a wish to keep talking.
+  static final RegExp _stronglyContinues = RegExp(
+    r'(아직|더\s*(이야기|얘기|말|하고|할래)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더)',
+  );
   static final RegExp _agrees = RegExp(
     r'^(네|넵|응|웅|어|그래|좋아|괜찮|알겠|고마워|고맙|감사|그만|마칠|마무리|여기까지|됐어|끝낼|끝내요|그렇게)',
   );
@@ -86,6 +91,12 @@ class ClosingDecisionSelector {
     if (continuationUsed) return ClosingStep.finalized;
 
     final text = userMessage.trim();
+    // Phase 14.3: refusal takes precedence over continuing. An explicit
+    // wrap-up ("그만해", "끝낼래") finalizes unless a strong continue cue is
+    // also there ("아직 끝내지 말자", "좀 더 하고 그만할래").
+    if (_wrapsUp.hasMatch(text) && !_stronglyContinues.hasMatch(text)) {
+      return ClosingStep.finalized;
+    }
     if (_wantsToContinue.hasMatch(text)) return ClosingStep.continued;
     // Phase 13.8 (P4): "몰라" to "정리할까요, 더 이야기할까요?" is not a wish
     // to keep talking; reopening would ask the same kind of question again.

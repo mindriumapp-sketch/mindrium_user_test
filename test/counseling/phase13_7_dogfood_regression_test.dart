@@ -181,8 +181,15 @@ void main() {
     final replies = await run(session3);
     final reopen = replies.indexWhere((m) => m.closingStep == ClosingStep.continued);
     expect(reopen, greaterThan(0));
-    for (final m in replies.skip(reopen + 1)) {
+    final after = replies.skip(reopen + 1).toList();
+    for (final (i, m) in after.indexed) {
       if (m.closingStep == ClosingStep.finalized) continue;
+      // Phase 14.3: the one question-less turn allowed is the listening turn
+      // that replaces a repeated clarify (right after a clarify question).
+      if (m.goalExhaustionRecovery == GoalExhaustionRecovery.listenWithoutQuestion &&
+          i > 0 && after[i - 1].isClarify) {
+        continue;
+      }
       expect(m.goalExhaustionRecovery, isNull, reason: m.text);
       expect(m.text.trim().endsWith('?'), isTrue, reason: 'no question: ${m.text}');
     }
