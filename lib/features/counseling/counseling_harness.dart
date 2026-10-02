@@ -1,7 +1,12 @@
+import 'dart:async';
+
+import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/features/assistant/app_guide/app_guide_repository.dart';
 
 import 'compact_prompt_builder.dart';
+import 'llm_led/llm_led_contract.dart';
 import 'counseling_state.dart';
 import 'hybrid_turn_router.dart';
 import 'intervention_registry.dart';
@@ -663,6 +668,85 @@ class CounselingHarness {
     return messages.sublist(messages.length - recentSessionMessageWindow);
   }
 
+  /// Phase 14.X: one turn on the Bounded LLM-led path. Safety first (no call
+  /// on a crisis); then one call with the narrowed context; the validator
+  /// decides. Returns a result only when the turn is fully accepted (or was
+  /// a safety turn); otherwise [LlmLedTurn.result] is null and the caller
+  /// runs the deterministic path for this turn. Nothing in [session] changes
+  /// unless a result is returned.
+  Future<LlmLedTurn> handleLlmLedTurn({
+    required CounselingSessionState session,
+    required String userMessage,
+    required CounselingRespondApi api,
+    required AppGuideRepository appGuide,
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
+    final safety = await safetyGate.evaluate(userMessage);
+    if (!safety.isNormal) {
+      return LlmLedTurn(result: _safetyTurn(session, safety), status: 'safety');
+    }
+    final requestId = '${session.sessionId}_${session.totalTurns}';
+    final ctx = LlmLedContext.build(
+      requestId: requestId,
+      session: session,
+      userMessage: userMessage,
+      knowledge: knowledgeRepository,
+      appGuide: appGuide,
+    );
+    final sw = Stopwatch()..start();
+    Map<String, dynamic> res;
+    try {
+      res = await api.respond(ctx.body, timeout: timeout).timeout(timeout);
+    } on TimeoutException {
+      return LlmLedTurn(status: 'timeout', latencyMs: sw.elapsedMilliseconds);
+    } on Object {
+      return LlmLedTurn(status: 'http_error', latencyMs: sw.elapsedMilliseconds);
+    }
+    final latency = sw.elapsedMilliseconds;
+    final out = LlmLedOutput.tryParse(res['output']);
+    if (out == null) return LlmLedTurn(status: 'schema_reject', latencyMs: latency);
+    final violations = LlmLedValidator.validate(out, ctx);
+    if (violations.isNotEmpty) {
+      return LlmLedTurn(status: 'rejected', latencyMs: latency, output: out, violations: violations);
+    }
+
+    final stateBefore = session.state;
+    final map = LlmLedMapping.of(out, ctx, stateBefore, userMessage);
+    final message = CounselingMessage(
+      id: '${session.sessionId}_${session.totalTurns}_assistant',
+      role: 'assistant',
+      text: out.text,
+      createdAt: DateTime.now(),
+      dialogueAct: map.act,
+      referencedCbtIds: map.cbtIds,
+      referencedUserContextIds: out.usedUserFactIds,
+      parseStatus: ParseStatus.strict,
+      latency: Duration(milliseconds: latency),
+      dialogueGoalId: map.goalId,
+      interventionStep: map.interventionStep,
+      closingStep: map.closingStep,
+      isClarify: map.isClarify,
+      interventionCredited: map.credited,
+    );
+    _advance(session, map.nextState);
+    return LlmLedTurn(
+      status: 'success',
+      latencyMs: latency,
+      output: out,
+      result: CounselingTurnResult(
+        assistantMessage: message,
+        state: map.nextState,
+        stateBefore: stateBefore,
+        safety: safety,
+        handledBySafety: false,
+        promptVersion: (res['prompt_version'] ?? 'respond').toString(),
+        realizationSource: RealizationSource.remoteLlm,
+        offeredCbtIdCount: ctx.techniqueIds.length,
+        offeredUserContextIdCount: ctx.userFactIds.length,
+      ),
+    );
+  }
+
   CounselingTurnResult _safetyTurn(
     CounselingSessionState session,
     SafetyResult safety,
@@ -748,4 +832,22 @@ class CounselingHarness {
 
     return plan?.interventionPlan?.recommendation.activity;
   }
+}
+
+/// Phase 14.X: outcome of one LLM-led attempt. [status]: success | safety |
+/// timeout | http_error | schema_reject | rejected (validator).
+class LlmLedTurn {
+  final CounselingTurnResult? result;
+  final String status;
+  final int? latencyMs;
+  final LlmLedOutput? output;
+  final List<String> violations;
+
+  const LlmLedTurn({
+    this.result,
+    required this.status,
+    this.latencyMs,
+    this.output,
+    this.violations = const [],
+  });
 }

@@ -1,7 +1,6 @@
 # Phase 14.X 설계: Bounded LLM-led 경로 (시제품)
 
-상태: **초안 (동결 전)**. 작성 2026-10-02. 지금 경로(결정론 주도)는 바꾸지 않고, 플래그로 켜는 실험 경로를 따로
-만듭니다. 이 문서가 동결되면 구현합니다.
+상태: **동결 (2026-10-02)**. 지금 경로(결정론 주도)는 바꾸지 않고, 플래그로 켜는 실험 경로를 따로 만듭니다.
 
 ## 1. 목표와 가설
 
@@ -59,10 +58,12 @@
 
 **기존 메타데이터로 옮김.** 저장과 기억이 지금처럼 동작하도록 출력을 턴 메타데이터로 옮깁니다.
 - `intervention_step` → `interventionStep`
-- `session_action` → `closingStep` (offer_close=proposed, finalize=finalized)
-- `repair` move → `interactionRepairReason`
-- `ask_*` → `dialogueGoalId`
-- 단계: 상태 정책이 이 메타데이터로 계속 계산합니다. 그래서 중간에 결정론 경로로 대체돼도 흐름이 이어집니다.
+- `session_action` → `closingStep` (offer_close=proposed, finalize=finalized, 제안 중 continue=continued)
+- `ask_*` → `dialogueGoalId`, `clarify` → `isClarify`, `intervention_id` → `referencedCbtIds`
+- `repair` move는 시제품에서 복구 사유를 따로 기록하지 않습니다(사유 구분을 모델에 시키지 않음)
+- 단계는 B의 출력으로 정합니다: 기법 질문·통합 → intervention, 마무리 제안·종료 → closing, 제안 중 계속 → reflect,
+  `ask_*`가 나오면 checkIn/explore에서 reflect로, 그 밖에는 checkIn → explore 다음 유지. 그래서 중간에 결정론 경로로
+  대체돼도 단계와 메타데이터가 이어집니다.
 - 기법 성과 인정(`interventionCredited`)은 LLM이 정하지 않습니다. 지금처럼 코드 규칙(`isTechniqueAnswer` + `showsTechniqueMove`)으로 판정합니다.
 
 ## 5. 검증 (실패 = 이번 턴만 결정론 경로로 대체)
@@ -81,7 +82,7 @@
 
 ## 6. 켜는 조건
 
-빌드 플래그 `COUNSELING_LLM_LED_PATH=true`(기본 false) + 내부 계정. 켜면 이번 상담의 모든 비위기 턴이 B 경로로
+빌드 플래그 `COUNSELING_LLM_LED_PATH=true`(기본 false) + 내부 계정. E3에는 `COUNSELING_LLM_LED_AB=true`를 더하면 세션마다 A·B를 번갈아 쓰고(첫 세션 B), 경로는 화면에 표시하지 않고 기기 로그(`LLM_LED_SESSION`)에만 남깁니다. 켜면 이번 상담의 모든 비위기 턴이 B 경로로
 가고, 실패한 턴만 A 경로로 대체됩니다. 기존 분류기와 표현기는 B 경로에서 쓰지 않습니다.
 
 ## 7. 평가 (A = 지금 경로, B = 이 경로, 같은 입력)
@@ -102,8 +103,22 @@
 
 **중단:** 위반이 늘거나 개선이 작으면 B를 접고 A 구조를 유지합니다.
 
-## 9. 동결 전에 정할 것
+## 9. 동결 결정
 
-1. **모델:** `gpt-4o-mini`(빠름, 저렴) 또는 더 큰 모델. 제안은 mini로 시작하고, 품질이 부족하면 비교합니다.
-2. **최근 대화 길이:** 12개 메시지로 충분한지.
-3. **E3 평가자:** 개발자 혼자 할지, 다른 내부 평가자를 둘지.
+| 항목 | 결정 |
+|---|---|
+| 모델 | `gpt-4o-mini`로 시작(서버 설정 `OPENAI_MODEL`). 품질이 부족하면 더 큰 모델과 비교 |
+| 최근 대화 | 최대 12개 메시지 |
+| E3 평가자 | 개발자 1인(내부 계정) |
+| 개인정보 | 최근 대화 원문과 검색된 사용자 기록 요약이 외부로 나감. 내부 계정에서만 켬 |
+| 허용 기법 | 현재 주차까지 승인된 기법 전부(누적). 기법별 적용 조건(예: 회피 형태일 때)은 강제하지 않고 목적과 함께 참고로 전달 |
+
+## 10. 구현 위치
+
+| 부분 | 파일 |
+|---|---|
+| 백엔드 | `backend/app/routers/counseling_respond.py`(프롬프트 `respond_v1`, 요청마다 허용 id를 응답 스키마 enum으로 고정), `schemas/counseling_respond.py` |
+| 맥락·검증·변환 | `lib/features/counseling/llm_led/llm_led_contract.dart` |
+| 턴 처리 | `CounselingHarness.handleLlmLedTurn`(안전 먼저, 실패 시 세션을 건드리지 않음) |
+| 대체·A/B | `CounselingProvider._handleTurnLlmLedFirst`, 기기 로그 `LLM_LED`(원문 없음) |
+| 테스트 | `test/counseling/phase14x_llm_led_test.dart`, `backend/app/tests/test_counseling_respond.py` |

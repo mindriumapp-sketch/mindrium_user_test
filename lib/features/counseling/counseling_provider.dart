@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/data/counseling/mindrium_context_builder.dart';
@@ -74,6 +76,18 @@ class CounselingProvider extends ChangeNotifier {
   /// How long a turn waits for the classifier before using the rules alone.
   final Duration perceptionTimeout;
 
+  /// Phase 14.X: the Bounded LLM-led path. When set, each non-crisis turn
+  /// goes to it first; a timeout, error or validator rejection falls back to
+  /// the deterministic path for that turn. Null = off (default).
+  final CounselingRespondApi? llmLedApi;
+
+  /// Phase 14.X E3: use the LLM-led path on every other session only (A/B),
+  /// without showing which. The path is logged per session.
+  final bool llmLedAlternate;
+  int _sessionOrdinal = 0;
+  bool get _llmLedThisSession =>
+      llmLedApi != null && (!llmLedAlternate || _sessionOrdinal.isOdd);
+
   /// 지난 세션 중 어느 것을 참고할지 정한다.
   final PreviousSessionSelector previousSessionSelector;
 
@@ -143,6 +157,8 @@ class CounselingProvider extends ChangeNotifier {
     this.shadowPerception,
     this.causalPerception = false,
     this.perceptionTimeout = const Duration(seconds: 2),
+    this.llmLedApi,
+    this.llmLedAlternate = false,
     this.previousSessionSelector = const PreviousSessionSelector(),
     String? sessionId,
   }) : appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
@@ -233,6 +249,14 @@ class CounselingProvider extends ChangeNotifier {
     // 사용자 컨텍스트는 세션 시작 시 한 번만 읽는다. 턴마다 다시 조회하지 않는다.
     _session.userContext = await _buildContext();
     await _loadPreviousSession();
+    _sessionOrdinal++;
+    if (llmLedApi != null) {
+      debugPrint('LLM_LED_SESSION ${jsonEncode({
+        'session': pseudonymize(_session.sessionId),
+        'path': _llmLedThisSession ? 'B' : 'A',
+        'ordinal': _sessionOrdinal,
+      })}');
+    }
 
     _messages.add(
       CounselingMessage(
@@ -362,7 +386,7 @@ class CounselingProvider extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     try {
       // 컨텍스트는 위에서 이미 이번 발화 기준으로 다시 선택했다.
-      final result = await _handleTurnWithPerception(trimmed);
+      final result = await _handleTurnLlmLedFirst(trimmed);
       stopwatch.stop();
 
       // 한 턴의 전체 비용. Step 3 에서는 여기에 모델 추론 시간이 더해진다.
@@ -451,6 +475,33 @@ class CounselingProvider extends ChangeNotifier {
       assistantPrev: prev?.text,
       ruleSignal: ruleSignal,
     ));
+  }
+
+  /// Phase 14.X: the LLM-led path first, the deterministic path when it
+  /// does not produce an accepted turn. Logs one line per turn (no text).
+  Future<CounselingTurnResult> _handleTurnLlmLedFirst(String userText) async {
+    final api = llmLedApi;
+    if (api == null || !_llmLedThisSession) return _handleTurnWithPerception(userText);
+    final b = await harness.handleLlmLedTurn(
+      session: _session,
+      userMessage: userText,
+      api: api,
+      appGuide: appGuideRepository,
+    );
+    final o = b.output;
+    debugPrint('LLM_LED ${jsonEncode({
+      'session': pseudonymize(_session.sessionId),
+      'turn': _messages.where((m) => m.isUser).length,
+      'status': b.status,
+      'fallback': b.result == null,
+      'latency_ms': b.latencyMs,
+      'domain': o?.domain,
+      'moves': o?.moves,
+      'session_action': o?.sessionAction,
+      'intervention_step': o?.interventionStep,
+      'violations': b.violations,
+    })}');
+    return b.result ?? await _handleTurnWithPerception(userText);
   }
 
   Future<CounselingTurnResult> _turn(String userText, InteractionRepairReason? perceived) =>

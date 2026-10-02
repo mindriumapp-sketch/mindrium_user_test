@@ -35,6 +35,7 @@ import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/chatbot/services/chat_transcript_log.dart';
 import 'package:gad_app_team/data/api/counseling_classify_api.dart';
 import 'package:gad_app_team/data/api/counseling_realize_api.dart';
+import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/features/counseling/perception/shadow_perception.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
 import 'package:gad_app_team/features/counseling/remote_llm_realizer.dart';
@@ -126,6 +127,19 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   /// 관찰도 함께 켜진 것으로 본다.
   static const bool _semanticRepairEnabled = bool.fromEnvironment(
     'COUNSELING_SEMANTIC_REPAIR',
+    defaultValue: false,
+  );
+
+  /// Phase 14.X: Bounded LLM-led 경로(시제품). 내부 계정에서만, 기본값 false.
+  /// docs/counseling/phase14x_bounded_llm_led.md.
+  static const bool _llmLedEnabled = bool.fromEnvironment(
+    'COUNSELING_LLM_LED_PATH',
+    defaultValue: false,
+  );
+
+  /// Phase 14.X E3: LLM-led 경로를 세션마다 번갈아 쓴다(화면에 표시하지 않음).
+  static const bool _llmLedAlternate = bool.fromEnvironment(
+    'COUNSELING_LLM_LED_AB',
     defaultValue: false,
   );
 
@@ -290,6 +304,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       sessionsApi: sessionsApi,
       shadowPerception: _shadowPerception(),
       causalPerception: _semanticRepairEnabled && _shadowPerception() != null,
+      llmLedApi: _llmLedApi(),
+      llmLedAlternate: _llmLedAlternate,
       // Phase 10.6C-DOGFOOD: disabled per real-device feedback — showing
       // this deterministic placeholder bubble ahead of the real answer
       // made every Remote-eligible turn render as two disconnected
@@ -300,6 +316,12 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       instantEmpathy: false,
       harness: harness,
     );
+  }
+
+  CounselingRespondApi? _llmLedApi() {
+    if (!_llmLedEnabled || widget.llm != null) return null;
+    if (!isInternalAccountEmail(context.read<UserProvider>().userEmail)) return null;
+    return DioCounselingRespondApi(ApiClient(tokens: TokenStorage()));
   }
 
   ShadowPerception? _shadowPerception() {

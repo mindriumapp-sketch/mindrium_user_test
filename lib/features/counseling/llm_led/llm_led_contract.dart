@@ -1,0 +1,358 @@
+// Phase 14.X: Bounded LLM-led path — context, output, validator, mapping.
+// docs/counseling/phase14x_bounded_llm_led.md.
+//
+// Code narrows the world before the call (approved techniques up to this
+// week, retrieved user facts, the app catalog, all with ids) and checks the
+// answer after it. Anything the validator rejects falls back to the
+// deterministic path for that turn.
+import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
+import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
+import 'package:gad_app_team/features/assistant/app_guide/app_guide_repository.dart';
+
+import '../counseling_harness.dart' show CounselingSessionState;
+import '../counseling_state.dart';
+import '../intervention_registry.dart';
+
+const _domains = {'counseling', 'app_guide', 'mixed'};
+const _moves = {
+  'acknowledge', 'restate', 'reflect_emotion', 'clarify', 'open_question',
+  'ask_evidence', 'ask_alternative', 'ask_probability', 'connect_past_record',
+  'summarize', 'listen', 'repair', 'intervention_question', 'integrate',
+  'answer_app', 'offer_close', 'finalize',
+};
+const _sessionActions = {'continue', 'offer_close', 'finalize'};
+
+String _clip(String s, int n) => s.length <= n ? s : s.substring(0, n);
+
+/// What the model may use this turn, with ids.
+class LlmLedContext {
+  final Map<String, dynamic> body;
+  final Set<String> techniqueIds;
+  final Map<String, String> techniqueTypes; // id -> InterventionType.name
+  final Set<String> userFactIds;
+  final Set<String> appFactIds;
+  final List<String> appNames; // names a reply may only use with an app fact
+  final String? pendingInterventionId;
+  final bool closingProposed;
+
+  const LlmLedContext({
+    required this.body,
+    required this.techniqueIds,
+    required this.techniqueTypes,
+    required this.userFactIds,
+    required this.appFactIds,
+    required this.appNames,
+    required this.pendingInterventionId,
+    required this.closingProposed,
+  });
+
+  static LlmLedContext build({
+    required String requestId,
+    required CounselingSessionState session,
+    required String userMessage,
+    required CbtKnowledgeRepository knowledge,
+    required AppGuideRepository appGuide,
+    ApprovedInterventionRegistry registry = const ApprovedInterventionRegistry(),
+  }) {
+    final messages = session.messages;
+    final round = UserThoughtExtractor.currentRound(messages);
+    final lastAssistant = messages.reversed.where((m) => !m.isUser).firstOrNull;
+    final pending = lastAssistant?.interventionStep == InterventionStep.prompt
+        ? lastAssistant!.referencedCbtIds.firstOrNull
+        : null;
+
+    // conversation: the last 11 messages plus this user message (12 max)
+    final conversation = [
+      for (final m in messages.length > 11 ? messages.sublist(messages.length - 11) : messages)
+        {'role': m.isUser ? 'user' : 'assistant', 'text': _clip(m.text, 1200)},
+      {'role': 'user', 'text': _clip(userMessage, 1200)},
+    ];
+
+    // user facts
+    final ctx = session.userContext;
+    final facts = <Map<String, String>>[];
+    for (final e in (ctx?.episodes.episodes ?? const []).where((e) => e.isCompleted).take(5)) {
+      final alt = e.interventionOutcome == 'credited' ? e.alternativeThought : null;
+      final core = e.coreThought ?? e.mainConcern;
+      if (core == null) continue;
+      facts.add({
+        'id': 'session:${e.sessionId}',
+        'kind': 'past_episode',
+        'text': _clip('걱정: $core${alt != null ? ' / 그때 정리한 생각: $alt' : ''}', 600),
+      });
+    }
+    for (final item in (ctx?.relevantItems ?? const <UserContextItem>[]).take(8)) {
+      facts.add({'id': item.id, 'kind': item.type.name, 'text': _clip(item.text, 300)});
+    }
+    for (final ei in (ctx?.effectiveInterventions ?? const <EffectiveIntervention>[]).take(3)) {
+      facts.add({
+        'id': ei.id,
+        'kind': 'effective_intervention',
+        'text': _clip(
+          '${ei.label}${ei.preSud != null && ei.postSud != null ? ' (불안 ${ei.preSud}→${ei.postSud})' : ''}',
+          300,
+        ),
+      });
+    }
+
+    // approved techniques up to this week (cumulative, never a future week)
+    final techniques = <Map<String, Object>>[];
+    final types = <String, String>{};
+    for (final p in registry.policiesUpTo(session.currentWeek)) {
+      final item = knowledge.getById(p.requiredId);
+      if (item == null) continue;
+      types[p.requiredId] = p.interventionType.name;
+      techniques.add({
+        'id': p.requiredId,
+        'name': _clip(item.title, 120),
+        'week': p.week,
+        'purpose': _clip(item.paragraphs.firstOrNull ?? item.title, 600),
+        'question_guide': _clip(item.paragraphs.length > 1 ? item.paragraphs[1] : '', 600),
+      });
+    }
+
+    // app catalog (small: the whole thing, with ids)
+    final appFacts = <Map<String, String>>[];
+    final appNames = <String>[];
+    for (final f in appGuide.features) {
+      appFacts.add({
+        'id': 'feature:${f.featureId}',
+        'kind': 'feature',
+        'text': _clip('${f.name}(${f.aliases.join(', ')}): ${f.description}${f.available ? '' : ' [사용 불가]'}', 600),
+      });
+      appNames
+        ..add(f.name)
+        ..addAll(f.aliases.where((a) => a.length >= 3));
+    }
+    for (final s in appGuide.screens) {
+      appFacts.add({
+        'id': 'screen:${s.screenId}',
+        'kind': 'screen',
+        'text': _clip('${s.displayName}: ${s.description}', 600),
+      });
+      appNames.add(s.displayName);
+    }
+    for (final n in appGuide.navigationPaths) {
+      appFacts.add({
+        'id': 'nav:${n.from}->${n.to}',
+        'kind': 'navigation',
+        'text': _clip('${n.from} → ${n.to}: ${n.steps.join(' → ')}', 600),
+      });
+    }
+
+    final progress = {
+      'stage': session.state.wireName,
+      'round_worry': UserThoughtExtractor.roundWorryThought(UserThoughtExtractor.semanticContent(round)),
+      'asked_goals': [
+        for (final m in round)
+          if (!m.isUser && m.dialogueGoalId != null) m.dialogueGoalId!,
+      ],
+      'intervention_pending': pending,
+      'intervention_used': <String>{
+        for (final m in messages)
+          if (!m.isUser) ...m.referencedCbtIds,
+      }.toList(),
+      'closing_proposed': lastAssistant?.closingStep == ClosingStep.proposed,
+      'continuation_used': messages.any((m) => !m.isUser && m.closingStep == ClosingStep.continued),
+    };
+
+    return LlmLedContext(
+      body: {
+        'request_id': requestId,
+        'current_week': session.currentWeek,
+        'conversation': conversation,
+        'progress': progress,
+        'user_facts': facts.take(20).toList(),
+        'techniques': techniques.take(10).toList(),
+        'app_facts': appFacts.take(40).toList(),
+      },
+      techniqueIds: types.keys.toSet(),
+      techniqueTypes: types,
+      userFactIds: facts.take(20).map((f) => f['id']!).toSet(),
+      appFactIds: appFacts.take(40).map((f) => f['id']!).toSet(),
+      appNames: appNames.where((n) => n.trim().length >= 2).toList(),
+      pendingInterventionId: pending,
+      closingProposed: lastAssistant?.closingStep == ClosingStep.proposed,
+    );
+  }
+}
+
+/// The model's answer (backend `output`).
+class LlmLedOutput {
+  final String domain;
+  final List<String> moves;
+  final String? interventionId;
+  final String? interventionStep;
+  final List<String> usedUserFactIds;
+  final List<String> usedAppFactIds;
+  final String sessionAction;
+  final String text;
+
+  const LlmLedOutput({
+    required this.domain,
+    required this.moves,
+    required this.interventionId,
+    required this.interventionStep,
+    required this.usedUserFactIds,
+    required this.usedAppFactIds,
+    required this.sessionAction,
+    required this.text,
+  });
+
+  /// Null when the shape or an enum is off.
+  static LlmLedOutput? tryParse(Object? json) {
+    if (json is! Map) return null;
+    final moves = json['dialogue_moves'];
+    final userIds = json['used_user_fact_ids'];
+    final appIds = json['used_app_fact_ids'];
+    final text = json['response_text'];
+    final step = json['intervention_step'];
+    final id = json['intervention_id'];
+    if (!_domains.contains(json['domain']) ||
+        !_sessionActions.contains(json['session_action']) ||
+        moves is! List || moves.isEmpty || !moves.every(_moves.contains) ||
+        userIds is! List || appIds is! List ||
+        text is! String || text.trim().isEmpty ||
+        (step != null && step != 'prompt' && step != 'integration') ||
+        (id != null && id is! String)) {
+      return null;
+    }
+    return LlmLedOutput(
+      domain: json['domain'] as String,
+      moves: moves.cast<String>(),
+      interventionId: id as String?,
+      interventionStep: step as String?,
+      usedUserFactIds: userIds.whereType<String>().toList(),
+      usedAppFactIds: appIds.whereType<String>().toList(),
+      sessionAction: json['session_action'] as String,
+      text: text.trim(),
+    );
+  }
+}
+
+/// Post-call boundary. Empty list = accepted.
+class LlmLedValidator {
+  const LlmLedValidator._();
+
+  static final RegExp _diagnosis = RegExp(r'(진단|장애(입니다|예요|에요|가 있)|병(입니다|이에요)|우울증|공황장애)');
+  static final RegExp _guarantee = RegExp(
+    r'(잘\s*될\s*거|괜찮을\s*거|문제\s*없을|걱정\s*(안\s*해도|하지\s*않아도)|반드시\s*(좋아|나아)|분명히?\s*(괜찮|잘)|나을\s*거|낫게\s*해)',
+  );
+  static final RegExp _directive = RegExp(r'(해야\s*(합니다|해요|돼요)|하셔야|하세요[.!]?\s*$|하십시오)');
+  static final RegExp _appTerms = RegExp(r'(메뉴|화면|탭|버튼|설정에서|홈에서|들어가)');
+
+  static List<String> validate(LlmLedOutput o, LlmLedContext c) {
+    final v = <String>[];
+    if (o.interventionId != null && !c.techniqueIds.contains(o.interventionId)) {
+      v.add('unauthorized_intervention');
+    }
+    if (o.interventionStep == 'prompt' && o.interventionId == null) v.add('prompt_without_intervention');
+    if (o.interventionStep == 'integration' && o.interventionId == null && c.pendingInterventionId == null) {
+      v.add('integration_without_prompt');
+    }
+    if (!o.usedUserFactIds.every(c.userFactIds.contains)) v.add('unsupported_user_fact');
+    if (!o.usedAppFactIds.every(c.appFactIds.contains)) v.add('unsupported_app_fact');
+    final mentionsApp = _appTerms.hasMatch(o.text) || c.appNames.any((n) => o.text.contains(n));
+    if (mentionsApp && o.usedAppFactIds.isEmpty && o.domain != 'counseling') {
+      v.add('app_claim_without_fact');
+    }
+    if ('?'.allMatches(o.text).length + '？'.allMatches(o.text).length > 1) v.add('too_many_questions');
+    if (_diagnosis.hasMatch(o.text)) v.add('diagnosis');
+    if (_guarantee.hasMatch(o.text)) v.add('outcome_guarantee');
+    if (_directive.hasMatch(o.text)) v.add('directive');
+    if (o.sessionAction == 'finalize' && !c.closingProposed) v.add('finalize_without_proposal');
+    if (o.text.length > 600) v.add('too_long');
+    return v;
+  }
+}
+
+/// Maps an accepted answer onto the existing turn metadata, so persistence,
+/// episodic memory and a later deterministic fallback keep working.
+class LlmLedMapping {
+  final CounselingState nextState;
+  final DialogueAct act;
+  final String? goalId;
+  final bool isClarify;
+  final InterventionStep? interventionStep;
+  final List<String> cbtIds;
+  final bool? credited;
+  final ClosingStep? closingStep;
+
+  const LlmLedMapping({
+    required this.nextState,
+    required this.act,
+    required this.goalId,
+    required this.isClarify,
+    required this.interventionStep,
+    required this.cbtIds,
+    required this.credited,
+    required this.closingStep,
+  });
+
+  static LlmLedMapping of(LlmLedOutput o, LlmLedContext c, CounselingState current, String userMessage) {
+    final m = o.moves.toSet();
+    final goal = m.contains('ask_evidence')
+        ? 'evidence'
+        : m.contains('ask_alternative')
+        ? 'alternative'
+        : m.contains('ask_probability')
+        ? 'probability'
+        : null;
+    final step = switch (o.interventionStep) {
+      'prompt' => InterventionStep.prompt,
+      'integration' => InterventionStep.integration,
+      _ => null,
+    };
+    final cbtId = o.interventionId ?? (step == InterventionStep.integration ? c.pendingInterventionId : null);
+    bool? credited;
+    if (step == InterventionStep.integration && cbtId != null) {
+      final type = c.techniqueTypes[cbtId];
+      credited = UserThoughtExtractor.isTechniqueAnswer(userMessage) &&
+          (type == null || UserThoughtExtractor.showsTechniqueMove(userMessage, type));
+    }
+    final closing = o.sessionAction == 'finalize'
+        ? ClosingStep.finalized
+        : o.sessionAction == 'offer_close'
+        ? ClosingStep.proposed
+        : (c.closingProposed ? ClosingStep.continued : null);
+
+    final CounselingState next;
+    if (closing == ClosingStep.finalized || closing == ClosingStep.proposed) {
+      next = CounselingState.closing;
+    } else if (closing == ClosingStep.continued) {
+      next = CounselingState.reflect;
+    } else if (step != null) {
+      next = CounselingState.intervention;
+    } else if (goal != null && (current == CounselingState.checkIn || current == CounselingState.explore)) {
+      next = CounselingState.reflect;
+    } else if (current == CounselingState.checkIn) {
+      next = CounselingState.explore;
+    } else if (current == CounselingState.closing) {
+      next = CounselingState.reflect;
+    } else {
+      next = current;
+    }
+
+    final act = closing == ClosingStep.finalized
+        ? DialogueAct.closing
+        : (step == InterventionStep.prompt || goal != null)
+        ? DialogueAct.socraticQuestion
+        : (m.contains('clarify') || m.contains('open_question'))
+        ? DialogueAct.explore
+        : m.contains('summarize')
+        ? DialogueAct.summarize
+        : DialogueAct.reflect;
+
+    return LlmLedMapping(
+      nextState: next,
+      act: act,
+      goalId: goal,
+      isClarify: m.contains('clarify'),
+      interventionStep: step,
+      cbtIds: cbtId == null ? const [] : [cbtId],
+      credited: credited,
+      closingStep: closing,
+    );
+  }
+}
