@@ -42,6 +42,11 @@ def check(row):
         "finalize_on_refusal": lambda: row["closing"] == "finalized",
         "continue_on_wish": lambda: row["closing"] != "finalized",
         "no_fabricated_record": lambda: not FABRICATED.search(r),
+        # moved forward: a technique step, a summary, or a wrap-up proposal,
+        # not yet another exploratory question about the same thing
+        "progress": lambda: row.get("step") is not None
+        or row["closing"] in ("proposed", "finalized")
+        or row.get("act") == "summarize",
     }[c]()
 
 

@@ -64,6 +64,8 @@ void main() {
           'reply': r.assistantMessage.text,
           'closing': r.assistantMessage.closingStep?.name,
           'repair': r.assistantMessage.interactionRepairReason?.name,
+          'step': r.assistantMessage.interventionStep?.name,
+          'act': r.assistantMessage.dialogueAct?.name,
           'status': status,
         });
         if (r.assistantMessage.closingStep == ClosingStep.finalized) break;
