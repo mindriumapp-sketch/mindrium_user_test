@@ -1,0 +1,3598 @@
+{
+  "version": "phase14_2_classifier_frozen_v1",
+  "frozen_at": "2026-10-02",
+  "author_note": "written blind from the label brief only; not edited after any classifier run",
+  "items": [
+    {
+      "id": "f001",
+      "tags": [
+        "banmal",
+        "short",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "한 7?",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f002",
+      "tags": [
+        "short",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "칠",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f003",
+      "tags": [
+        "nospace",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "7점정도",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f004",
+      "tags": [
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "10000000",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f005",
+      "tags": [
+        "jondaet",
+        "numeric"
+      ],
+      "assistant_prev": "지금 불안한 정도를 0부터 10까지 숫자로 말해주실 수 있을까요?",
+      "user": "음 6점 정도요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f006",
+      "tags": [
+        "short",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "8",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f007",
+      "tags": [
+        "typo",
+        "numeric",
+        "banmal"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "한 오? 육?ㅋㅋ",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f008",
+      "tags": [
+        "jondaet",
+        "numeric",
+        "multi_sentence"
+      ],
+      "assistant_prev": "지금 불안한 정도를 0부터 10까지 숫자로 말해주실 수 있을까요?",
+      "user": "솔직히 9요. 어제보다 더 심해요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f009",
+      "tags": [
+        "banmal",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "3정도? 아까보단 나아짐",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f010",
+      "tags": [
+        "jondaet",
+        "numeric",
+        "multi_sentence"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "10이요 10. 진짜 터질 것 같아요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "mixed"
+        ]
+      }
+    },
+    {
+      "id": "f011",
+      "tags": [
+        "banmal",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "숫자로 말하기 어려운데 한 5",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f012",
+      "tags": [
+        "nospace",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "0에서10이면 9.5",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f013",
+      "tags": [
+        "typo",
+        "numeric"
+      ],
+      "assistant_prev": "지금 불안한 정도를 0부터 10까지 숫자로 말해주실 수 있을까요?",
+      "user": "ㅂ ㅏㄹ 아니 8",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f014",
+      "tags": [
+        "banmal",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "숫자가 무슨 의미가 있어 그냥 많이 불안해",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "process_resistance",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "emotion_expression",
+          "mixed"
+        ]
+      }
+    },
+    {
+      "id": "f015",
+      "tags": [
+        "banmal",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "7인데 아까도 숫자 물어보지 않았어?",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f016",
+      "tags": [
+        "numeric",
+        "banmal"
+      ],
+      "assistant_prev": "지금 불안한 정도를 0부터 10까지 숫자로 말해주실 수 있을까요?",
+      "user": "백점 만점에 80?",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f017",
+      "tags": [
+        "nospace",
+        "numeric",
+        "short"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "한4~5",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f018",
+      "tags": [
+        "short",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "구",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f019",
+      "tags": [
+        "banmal",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "모르겠어 6? 7?",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f020",
+      "tags": [
+        "banmal",
+        "short"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "몰라",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f021",
+      "tags": [
+        "short"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "그냥",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f022",
+      "tags": [
+        "short",
+        "typo"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "ㅇㅇ",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f023",
+      "tags": [
+        "short",
+        "banmal"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "글쎄",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f024",
+      "tags": [
+        "short"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "딱히",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f025",
+      "tags": [
+        "short"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "음..",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f026",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "잘 모르겠어요",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f027",
+      "tags": [
+        "short",
+        "typo"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "ㅁㄹ",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f028",
+      "tags": [
+        "typo",
+        "banmal"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "모르겟다",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f029",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "그냥 뭐 그래요",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f030",
+      "tags": [
+        "short"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "..",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f031",
+      "tags": [
+        "banmal",
+        "nospace"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "없는듯",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f032",
+      "tags": [
+        "short",
+        "typo"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "ㅎㅎ",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f033",
+      "tags": [
+        "short",
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "걍 다",
+      "gold": {
+        "content_type": "low_information",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f034",
+      "tags": [
+        "banmal",
+        "emotion_only"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "너무 무서워",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f035",
+      "tags": [
+        "banmal",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "답답해 죽겠어",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f036",
+      "tags": [
+        "jondaet",
+        "typo",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "ㅠㅠㅠㅠ 그냥 너무 불안해요",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f037",
+      "tags": [
+        "banmal",
+        "short",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "짜증나",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f038",
+      "tags": [
+        "nospace",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "속이너무답답하다",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f039",
+      "tags": [
+        "jondaet",
+        "multi_sentence",
+        "emotion_only"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "요즘 계속 우울해요. 아무것도 하기 싫고요",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f040",
+      "tags": [
+        "banmal",
+        "emotion_only",
+        "typo"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "심장 쿵쾅거려 ㅠ",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "meaningful_answer"
+        ]
+      }
+    },
+    {
+      "id": "f041",
+      "tags": [
+        "banmal",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "하.. 서럽다",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f042",
+      "tags": [
+        "jondaet",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "막막해요",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f043",
+      "tags": [
+        "banmal",
+        "emotion_only"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "화나 진짜",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f044",
+      "tags": [
+        "typo",
+        "nospace",
+        "emotion_only"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "ㄹㅇ 미칠것같음",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f045",
+      "tags": [
+        "jondaet",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "무섭고 슬퍼요 그냥",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f046",
+      "tags": [
+        "banmal",
+        "nospace",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "울고싶다",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f047",
+      "tags": [
+        "banmal",
+        "short",
+        "emotion_only"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "불안해",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f048",
+      "tags": [
+        "jondaet",
+        "emotion_only"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "외로워요...",
+      "gold": {
+        "content_type": "emotion_expression",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f049",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "내일 팀 회의 있어",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f050",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "다음주 화요일에 기말고사 봐요",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f051",
+      "tags": [
+        "banmal",
+        "nospace"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "금요일에 최종면접있음",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f052",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "발표는 15분이고 교수님 두 분이 들어오세요",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f053",
+      "tags": [
+        "banmal",
+        "nospace"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "이번달 월세 아직 못냄",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f054",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "엄마가 다음주에 건강검진 결과 들으러 가셔요",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f055",
+      "tags": [
+        "jondaet",
+        "multi_sentence"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "회사에서 프로젝트 마감이 금요일이에요. 팀원은 3명이고요",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f056",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "발표 시작하고 첫 슬라이드 넘길 때",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f057",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "면접실 문 열고 들어가는 순간이요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f058",
+      "tags": [
+        "banmal",
+        "nospace",
+        "typo"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "질문받을때ㅠ 특히 모르는거 물어볼때",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f059",
+      "tags": [
+        "jondaet",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "시험지 받고 첫 문제 모를 때요. 그때 머리가 하얘져요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f060",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "카톡 읽씹 당했을때",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f061",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "밤에 누웠을 때 가슴이 두근거리면",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f062",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "남친이랑 어제 싸웠어",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f063",
+      "tags": [
+        "banmal",
+        "third_party"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "알바 사장님이 다음주부터 시간 줄인대",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f064",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "사람들이 날 한심하게 볼 것 같아",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f065",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "몸이 어디 안 좋은 건 아닐까요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f066",
+      "tags": [
+        "banmal",
+        "nospace"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "발표망할것같아",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f067",
+      "tags": [
+        "jondaet",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "이번에도 떨어지면 진짜 끝일 것 같아요. 다들 취업했는데",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f068",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "돈 없어서 다음달 어떻게 버티지",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f069",
+      "tags": [
+        "banmal",
+        "typo"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "걔가 나 싫어하는거 아닐까 ㅠ",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f070",
+      "tags": [
+        "banmal",
+        "nospace"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "시험 망하면 장학금 끊기고 휴학해야될수도",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f071",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "두통이 일주일째인데 혹시 뇌에 문제 있는건 아닐까요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f072",
+      "tags": [
+        "jondaet",
+        "third_party"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "팀장님이 저 무능하다고 생각할거에요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f073",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "내일 회의에서 또 말 버벅이면 어쩌지",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f074",
+      "tags": [
+        "typo",
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "ㅈㄴ 불안함 이번에 짤릴듯",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "mixed"
+        ]
+      }
+    },
+    {
+      "id": "f075",
+      "tags": [
+        "banmal",
+        "third_party",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "교수님이 무슨 말 하는지 모르겠어서 불안해",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f076",
+      "tags": [
+        "banmal",
+        "third_party"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "면접관이 같은 질문 또 할까봐",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f077",
+      "tags": [
+        "jondaet",
+        "third_party"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "팀장님이 자꾸 같은 말 반복하시는데 제가 뭘 잘못한 건가 싶어요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f078",
+      "tags": [
+        "banmal",
+        "third_party"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "엄마가 계속 질문해서 짜증나는데 내가 이상한건가",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f079",
+      "tags": [
+        "jondaet",
+        "third_party"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "선배가 그만 좀 물어보라고 할까봐요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f080",
+      "tags": [
+        "banmal",
+        "third_party",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "친구가 하는 말이 무슨 뜻인지 모르겠어 나 싫다는 건가",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f081",
+      "tags": [
+        "nospace",
+        "third_party"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "교수님이질문을이해못하셨다고하면어떡하지",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f082",
+      "tags": [
+        "banmal",
+        "third_party"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "면접관이 그거 아까도 말하셨잖아요 하면 진짜 끝날듯",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f083",
+      "tags": [
+        "banmal",
+        "third_party"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "남친이 그냥 들어달라는데 내가 자꾸 조언해서 헤어지자 할까봐",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f084",
+      "tags": [
+        "jondaet",
+        "third_party"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "상사가 이 일 해서 뭐가 달라지냐고 하실 것 같아요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f085",
+      "tags": [
+        "jondaet",
+        "third_party",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "동기들이 내 발표 이해 못할까봐요. 제가 설명을 못하거든요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f086",
+      "tags": [
+        "banmal",
+        "third_party"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "의사가 하는 말 잘 못 알아들었는데 심각한거면 어떡해",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f087",
+      "tags": [
+        "banmal",
+        "third_party",
+        "typo"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "교수님이 질문 그만하라고 하시면ㅠ",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f088",
+      "tags": [
+        "banmal",
+        "third_party"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "룸메가 시간낭비라고 할까봐 공부하는거 말 못하겠어",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f089",
+      "tags": [
+        "banmal",
+        "third_party",
+        "nospace"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "부장님이 같은 말을 몇번이나 하게 하냐고 혼낼거같음",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f090",
+      "tags": [
+        "banmal",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "잘 모르겠어 그냥 발표가 망할 것 같아",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f091",
+      "tags": [
+        "banmal",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "아니 네가 무슨 말 하는지 잘 모르겠어",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f092",
+      "tags": [
+        "jondaet",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "모르겠어요 그냥 다들 날 무시하는 것 같아요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f093",
+      "tags": [
+        "jondaet",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "근거가 뭔지를 모르겠어요 질문이 무슨 뜻이에요?",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f094",
+      "tags": [
+        "banmal",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "모르겠다 그냥 다 내탓같아",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f095",
+      "tags": [
+        "banmal",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "다른 관점이 뭔지 모르겠어",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f096",
+      "tags": [
+        "jondaet",
+        "moreugesseo_worry",
+        "multi_sentence"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "모르겠어요. 그냥 저는 계속 실패할 것 같아요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f097",
+      "tags": [
+        "banmal",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "균형 있게가 뭔데 모르겠음",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f098",
+      "tags": [
+        "banmal",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "나도 내가 왜 불안한지 모르겠어 시험 때문인가",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "emotion_expression"
+        ]
+      }
+    },
+    {
+      "id": "f099",
+      "tags": [
+        "jondaet",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "뭘 더 얘기하라는건지 모르겠어요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f100",
+      "tags": [
+        "banmal",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "모르겠는데 아마 면접관이 눈 마주칠때?",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f101",
+      "tags": [
+        "banmal",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "가장 걱정되는 순간이라는게 뭔지 모르겠어",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f102",
+      "tags": [
+        "nospace",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "잘모르겠는데내가준비를안해서그런가",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f103",
+      "tags": [
+        "nospace",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "질문을잘모르겠어",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f104",
+      "tags": [
+        "typo",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "몰겠어 걍 망할듯ㅠ",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f105",
+      "tags": [
+        "typo",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "몰겠어 뭔소리야ㅋㅋ",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f106",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "무슨 말이야",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f107",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "질문 그만해",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "stop_questioning",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f108",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "질문이 너무 어려워요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f109",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "아까도 물어봤잖아",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f110",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "같은 말 계속하네",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f111",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "그냥 들어줘",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "stop_questioning",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f112",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "이거 해서 뭐가 달라져",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "process_resistance",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f113",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "솔직히 시간 낭비 같아요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "process_resistance",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f114",
+      "tags": [
+        "short"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "?",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f115",
+      "tags": [
+        "typo",
+        "nospace",
+        "short"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "ㄴㄴ 질문좀 그만",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "stop_questioning",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f116",
+      "tags": [
+        "short",
+        "nospace"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "뭔뜻",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f117",
+      "tags": [
+        "short"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "또?",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f118",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "너 로봇이지?",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f119",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "이런 거 물어보지 말고 그냥 위로해 주시면 안 돼요?",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "stop_questioning",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f120",
+      "tags": [
+        "jondaet",
+        "multi_sentence"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "이런 문장 바꾸기 해봤자 소용없어요. 해봤거든요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "process_resistance",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f121",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "방금 한 질문이랑 똑같은데요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f122",
+      "tags": [
+        "nospace",
+        "banmal"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "그만물어봐",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "stop_questioning",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f123",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "이해가 안 돼요 다시 설명해 주세요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f124",
+      "tags": [
+        "typo"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "ㅁㅊ 또 같은질문",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f125",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "상담 앱이 뭘 안다고",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "process_resistance",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f126",
+      "tags": [
+        "banmal",
+        "repeat_with_content",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "아까도 말했잖아 준비 못해서 불안하다고",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f127",
+      "tags": [
+        "nospace",
+        "repeat_with_content",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "아까도물어봤잖아준비못해서불안하다고",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f128",
+      "tags": [
+        "jondaet",
+        "repeat_with_content",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "같은 거 또 묻네요. 지난번 발표 때 말 더듬어서 다들 웃었다니까요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f129",
+      "tags": [
+        "banmal",
+        "repeat_with_content"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "아까 말했잖아 친구들도 다 그렇게 말한다고 근데 난 안믿겨",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f130",
+      "tags": [
+        "jondaet",
+        "repeat_with_content",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "아까도 숫자 말했는데요 지금은 더 올라서 8이에요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "meaningful_answer"
+        ]
+      }
+    },
+    {
+      "id": "f131",
+      "tags": [
+        "banmal",
+        "repeat_with_content"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "그거 또 물어봐? 면접관이 경력 공백 물어볼때라고",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f132",
+      "tags": [
+        "banmal",
+        "repeat_with_content",
+        "typo"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "계속 같은 질문이네 ㅠ 근데 사실 작년에도 시험 망쳐서 재수강했어",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f133",
+      "tags": [
+        "banmal",
+        "repeat_with_content",
+        "new_worry"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "몇번째야 이 질문ㅋㅋ 그리고 나 요즘 돈 문제도 걱정돼",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f134",
+      "tags": [
+        "jondaet",
+        "repeat_with_content",
+        "third_party"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "아까 다 얘기했잖아요 팀장님이 제 보고서 다시 하라고 하셨다고요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f135",
+      "tags": [
+        "nospace",
+        "repeat_with_content"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "또묻네 발표 질의응답때라니까",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f136",
+      "tags": [
+        "banmal",
+        "repeat_with_content",
+        "third_party"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "말했잖아 지난주에 교수님이 내 과제 보고 한숨 쉬셨다고",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f137",
+      "tags": [
+        "banmal",
+        "repeat_with_content",
+        "typo"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "같은 말 반복하지마ㅡㅡ 근데 생각해보니 저번에 발표 잘했단 소리도 들었긴해",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f138",
+      "tags": [
+        "banmal",
+        "repeat_with_content",
+        "numeric"
+      ],
+      "assistant_prev": "지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+      "user": "방금도 물어봤잖아 7이라고",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "meaningful_answer"
+        ]
+      }
+    },
+    {
+      "id": "f139",
+      "tags": [
+        "jondaet",
+        "repeat_with_content",
+        "typo"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "아까 얘기했는데 ㅠㅠ 면접 끝나고 결과 기다릴 때요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f140",
+      "tags": [
+        "nospace",
+        "repeat_with_content"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "이미말했어 건강검진에서 재검 나왔다고",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "repeated_question",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f141",
+      "tags": [
+        "banmal",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "질문 좀 그만했으면 좋겠는데 진짜 내일 발표 망할까봐 무서워",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "stop_questioning",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f142",
+      "tags": [
+        "banmal",
+        "meta_worry_mix",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "무슨 말인지 모르겠는데 그냥 나 계속 떨어질 것 같아",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f143",
+      "tags": [
+        "jondaet",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "이거 해서 뭐가 달라져요? 어차피 저는 취업 못할 것 같은데",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "process_resistance",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f144",
+      "tags": [
+        "banmal",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "그냥 들어줘 요즘 엄마 아픈 거 때문에 잠을 못 자",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "stop_questioning",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f145",
+      "tags": [
+        "jondaet",
+        "meta_worry_mix",
+        "typo"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "질문이 어려워요ㅠ 저는 그냥 사람들이 절 싫어하는 것 같아서요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f146",
+      "tags": [
+        "nospace",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "균형있게가뭔데 난그냥망한건데",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f147",
+      "tags": [
+        "banmal",
+        "meta_worry_mix",
+        "nospace"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "시간낭비같긴한데 사실 돈 때문에 진짜 불안하긴 해",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "process_resistance",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f148",
+      "tags": [
+        "banmal",
+        "meta_worry_mix",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "너 말 이해 안됨. 암튼 시험 떨어질까봐 걱정돼",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f149",
+      "tags": [
+        "jondaet",
+        "meta_worry_mix",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "묻지 말고 들어줘요. 회사에서 저만 따돌림 당하는 것 같아요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "stop_questioning",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f150",
+      "tags": [
+        "banmal",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "이게 무슨 의미가 있나 싶은데 그래도 면접 생각하면 숨이 막혀",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "process_resistance",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f151",
+      "tags": [
+        "typo",
+        "meta_worry_mix"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "뭔솔ㅋㅋ 나 그냥 잘릴거같은데",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f152",
+      "tags": [
+        "jondaet",
+        "meta_worry_mix",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "근거를 대라니 좀 부담스럽네요. 그래도 제가 늘 마지막에 실수하는 건 맞아요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      },
+      "acceptable": {
+        "content_type": [
+          "meaningful_answer"
+        ]
+      }
+    },
+    {
+      "id": "f153",
+      "tags": [
+        "banmal",
+        "new_evidence",
+        "third_party"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "작년에 발표할 때 목소리 떨려서 교수님이 괜찮냐고 물어보셨어",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f154",
+      "tags": [
+        "jondaet",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "딱히 근거는 없어요. 그냥 그런 느낌이에요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "low_information"
+        ]
+      }
+    },
+    {
+      "id": "f155",
+      "tags": [
+        "banmal",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "지난번 면접에서 압박질문에 대답 못했던 거",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f156",
+      "tags": [
+        "jondaet",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "사실 친구가 요즘 답장이 늦긴 한데 바빠서 그런 거라고 했어요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f157",
+      "tags": [
+        "banmal",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "검사결과는 다 정상이었어 근데도 불안해",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f158",
+      "tags": [
+        "typo",
+        "banmal",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "근거ㅋㅋ 저번 시험 C+받음",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f159",
+      "tags": [
+        "jondaet",
+        "multi_sentence",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "그러고보니 지난 학기엔 비슷한 시험 잘 봤어요. 그건 좀 반대되는 근거네요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f160",
+      "tags": [
+        "jondaet",
+        "new_evidence",
+        "third_party"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "팀장님이 저번주 회의에서 제 아이디어 칭찬하셨어요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f161",
+      "tags": [
+        "nospace",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "카드값연체문자왔었음",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f162",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "다른 사람들은 내 발표에 그렇게 관심 없을 수도",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f163",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "면접관도 사람이니까 긴장하는 거 이해해 줄 것 같아요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f164",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "친구 입장에서 보면 그냥 바빴을수도 있겠다",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f165",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "시험 하나로 인생 끝나는 건 아니긴 하죠",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f166",
+      "tags": [
+        "nospace",
+        "typo"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "다른관점이면 이번이 연습이라고 생각할수도ㅇㅇ",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f167",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "글쎄요 그래도 한번 실수해도 다음 기회가 있다? 정도",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f168",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "발표가 완벽하진 않아도 준비한 만큼은 할 수 있다",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f169",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "떨어질 수도 있지만 그게 내 가치를 정하는 건 아니다",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f170",
+      "tags": [
+        "jondaet",
+        "multi_sentence"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "두통이 있지만 검사 결과가 정상이니까 일단 지켜보자. 이 정도요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f171",
+      "tags": [
+        "nospace"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "실수할수있지만다들그정도는이해해줌",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f172",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "음 완벽하게 하려고 안해도 된다..?",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f173",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "돈이 빠듯하지만 이번달은 알바비로 버틸 수 있다고 생각해요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f174",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "보는 관점을 바꿔봐도 똑같이 망할듯",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "meaningful_answer"
+        ]
+      }
+    },
+    {
+      "id": "f175",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "균형있게 바꿔도 결국 난 안 될 거 같은데",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "interaction_signal": [
+          "process_resistance"
+        ]
+      }
+    },
+    {
+      "id": "f176",
+      "tags": [
+        "banmal",
+        "new_worry"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "그건 그런데 사실 요즘 엄마 건강도 걱정돼",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f177",
+      "tags": [
+        "jondaet",
+        "new_worry",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "근거는 잘 모르겠고 갑자기 생각났는데 다음달 월세 낼 돈이 없어요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f178",
+      "tags": [
+        "banmal",
+        "new_worry"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "발표는 그렇다 쳐도 남친이랑 요즘 연락이 너무 뜸해",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f179",
+      "tags": [
+        "jondaet",
+        "new_worry"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "발표도 발표지만 사실 졸업 못할까봐 더 무서워요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f180",
+      "tags": [
+        "nospace",
+        "new_worry"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "아그리고 요즘 가슴이 자꾸 아픈데 이것도 불안해",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f181",
+      "tags": [
+        "jondaet",
+        "new_worry",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "그 얘기 말고 다른 거 있어요. 회사 구조조정 한다는 소문이 돌아요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      },
+      "acceptable": {
+        "content_type": [
+          "situation"
+        ]
+      }
+    },
+    {
+      "id": "f182",
+      "tags": [
+        "banmal",
+        "new_worry"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "그것보다 룸메랑 싸워서 집 나가야될까봐 걱정임",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f183",
+      "tags": [
+        "jondaet",
+        "new_worry",
+        "multi_sentence"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "네 근데 그거 말고 동생이 요즘 학교를 안 가요. 그게 더 신경 쓰여요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f184",
+      "tags": [
+        "typo",
+        "new_worry"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "ㅇㅋ 근데 나 다음주 건강검진 결과 나오는것도 무서움",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f185",
+      "tags": [
+        "banmal",
+        "new_worry"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "시험보다 사실 부모님 이혼하실까봐가 더 커",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f186",
+      "tags": [
+        "banmal",
+        "new_worry"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "아 맞다 이번에 비자 연장 안되면 어떡하지",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f187",
+      "tags": [
+        "banmal",
+        "new_worry"
+      ],
+      "assistant_prev": "그 생각을 사실이라고 느끼게 하는 근거나 경험이 무엇인지 하나 떠올려볼까요?",
+      "user": "근데 다른 얘긴데 내가 너무 살찐거같아서 사람들이 뭐라할까봐",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f188",
+      "tags": [
+        "jondaet",
+        "new_worry",
+        "multi_sentence"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "좋네요. 근데 요즘 밤마다 대출 이자 생각에 잠이 안 와요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      },
+      "acceptable": {
+        "content_type": [
+          "mixed"
+        ]
+      }
+    },
+    {
+      "id": "f189",
+      "tags": [
+        "nospace",
+        "new_worry"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "그리고친구결혼식축의금도부담돼",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      },
+      "acceptable": {
+        "content_type": [
+          "situation"
+        ]
+      }
+    },
+    {
+      "id": "f190",
+      "tags": [
+        "jondaet",
+        "new_worry"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "면접보다 지금 다니는 회사에 들킬까봐가 더 걱정이에요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f191",
+      "tags": [
+        "banmal",
+        "new_evidence",
+        "third_party"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "아 근데 오늘 교수님이 메일로 발표 순서 바꿔주셨어 그건 좀 다행",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      },
+      "acceptable": {
+        "content_type": [
+          "situation"
+        ]
+      }
+    },
+    {
+      "id": "f192",
+      "tags": [
+        "jondaet",
+        "new_evidence"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "방금 친구한테 연락 왔는데 화난 거 아니래요",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      },
+      "acceptable": {
+        "content_type": [
+          "situation"
+        ]
+      }
+    },
+    {
+      "id": "f193",
+      "tags": [
+        "jondaet",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "사실 저번주에 1차 붙었다고 연락 왔었어요",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f194",
+      "tags": [
+        "banmal",
+        "new_evidence",
+        "third_party"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "오늘 병원 갔는데 의사가 스트레스성이래",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f195",
+      "tags": [
+        "banmal",
+        "new_evidence",
+        "third_party"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "생각해보니 선배도 첫 발표때 엄청 떨었는데 잘 됐대",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f196",
+      "tags": [
+        "jondaet",
+        "new_evidence",
+        "multi_sentence",
+        "third_party"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "근데 오늘 또 팀장님이 제 보고서 다시 하라고 하셨어요. 역시 제가 무능한 거 아닐까요",
+      "gold": {
+        "content_type": "worry_thought",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f197",
+      "tags": [
+        "nospace",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 상황에서 가장 걱정되는 순간은 언제인가요?",
+      "user": "방금성적떴는데생각보다잘나옴",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f198",
+      "tags": [
+        "typo",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "모의면접에서 생각보다 괜찮다는 피드백 받았음ㅋㅋ",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f199",
+      "tags": [
+        "banmal",
+        "new_evidence",
+        "multi_sentence"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "근데 어제도 회의에서 말 버벅였어. 그래서 이 문장 못 믿겠어",
+      "gold": {
+        "content_type": "meaningful_answer",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      },
+      "acceptable": {
+        "content_type": [
+          "worry_thought"
+        ]
+      }
+    },
+    {
+      "id": "f200",
+      "tags": [
+        "jondaet",
+        "new_evidence"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "아 그리고 월급이 이번달 늦게 들어온대요",
+      "gold": {
+        "content_type": "situation",
+        "interaction_signal": "none",
+        "open_content": "new_evidence"
+      }
+    },
+    {
+      "id": "f201",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "걱정일기 어디서 써?",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f202",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "알림 설정 어디서 바꿔요?",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f203",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "전에 쓴 기록 어디서 봐요?",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f204",
+      "tags": [
+        "nospace",
+        "typo"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "이앱비번어케바꿈",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f205",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "이완 훈련 메뉴 어딨어?",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f206",
+      "tags": [
+        "typo"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "알림ㅁ 끄는법좀",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f207",
+      "tags": [
+        "jondaet"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "대화 내용 저장돼요?",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "meta_interaction"
+        ]
+      }
+    },
+    {
+      "id": "f208",
+      "tags": [
+        "banmal"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "다크모드 있어?",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f209",
+      "tags": [
+        "banmal",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "불안한데 전에 쓴 대안적 생각 어디서 봐?",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f210",
+      "tags": [
+        "jondaet",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "내일 면접이라 너무 떨리는데 호흡 연습하는거 어디 있어요?",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f211",
+      "tags": [
+        "nospace",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "발표망할거같은데걱정일기어디서쓰는지알려줘",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f212",
+      "tags": [
+        "banmal",
+        "app_counsel_mix",
+        "multi_sentence"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "저번에 쓴 균형잡힌 생각 다시 보고 싶은데 어디 있어? 그때 시험 얘기였는데 이번에도 똑같이 불안해",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f213",
+      "tags": [
+        "jondaet",
+        "app_counsel_mix",
+        "multi_sentence"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "밤마다 건강 걱정돼서 잠을 못 자요. 수면 관련 기능 있나요?",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f214",
+      "tags": [
+        "banmal",
+        "app_counsel_mix",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "정리하는 건 좋은데 오늘 거 어디에 저장돼? 나중에 또 불안할때 보게",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f215",
+      "tags": [
+        "typo",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "알림 오면 오히려 불안해짐ㅠ 끄는거 어디서해",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f216",
+      "tags": [
+        "jondaet",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "돈 걱정 때문에 미치겠는데 지난주 일기 어디서 다시 봐요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f217",
+      "tags": [
+        "banmal",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "이 생각을 조금 더 균형 있게 바꾼다면 어떤 문장이 될 수 있을까요?",
+      "user": "이 문장 어디 저장해둘 수 있어? 불안할때 다시 보고싶어",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f218",
+      "tags": [
+        "nospace",
+        "app_counsel_mix",
+        "moreugesseo_worry"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "걱정일기쓰는법모르겠어 쓰려고해도 머리가 하얘져",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f219",
+      "tags": [
+        "jondaet",
+        "app_counsel_mix",
+        "multi_sentence"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "면접 걱정되는데 이런 거 기록하는 메뉴 있어요? 매번 까먹어서요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f220",
+      "tags": [
+        "typo",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "ㅠㅠ시험 망할듯 일정 추가하는거 어딨어",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f221",
+      "tags": [
+        "jondaet",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "그 일에 대해 조금 더 이야기해 주실 수 있을까요?",
+      "user": "엄마 아픈 거 계속 생각나는데 이완 음성 어디서 틀어요?",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f222",
+      "tags": [
+        "banmal",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "그 상황을 다른 관점에서 본다면 어떻게 볼 수 있을까요?",
+      "user": "모르겠다 그냥 저번에 했던 연습 어디서 다시 해?",
+      "gold": {
+        "content_type": "app_guide",
+        "interaction_signal": "none",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "mixed"
+        ]
+      }
+    },
+    {
+      "id": "f223",
+      "tags": [
+        "jondaet",
+        "app_counsel_mix"
+      ],
+      "assistant_prev": "요즘 어떤 일이 가장 마음에 걸리나요?",
+      "user": "회사 일로 불안해서 상담 기록 보고 싶은데 메뉴가 안 보여요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "none",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f224",
+      "tags": [
+        "banmal",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "응 정리하자",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f225",
+      "tags": [
+        "jondaet",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "여기까지 할게요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f226",
+      "tags": [
+        "banmal",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "아니 좀 더 얘기하고 싶어",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_continue",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f227",
+      "tags": [
+        "banmal",
+        "closing",
+        "moreugesseo_meta"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "음 모르겠어 그냥 끝낼까",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "interaction_signal": [
+          "none"
+        ]
+      }
+    },
+    {
+      "id": "f228",
+      "tags": [
+        "banmal",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "잠깐만 하나만 더",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_continue",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f229",
+      "tags": [
+        "short",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "ㅇㅇ",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f230",
+      "tags": [
+        "short",
+        "closing",
+        "typo"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "ㄴㄴ",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_continue",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f231",
+      "tags": [
+        "short",
+        "closing",
+        "jondaet"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "네",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f232",
+      "tags": [
+        "short",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "좀더",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_continue",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f233",
+      "tags": [
+        "banmal",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "끝내자",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f234",
+      "tags": [
+        "jondaet",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "아뇨 아직 면접 얘기 다 못 했어요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "closing_continue",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f235",
+      "tags": [
+        "jondaet",
+        "closing",
+        "new_worry",
+        "multi_sentence"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "정리하기 전에 하나만요. 사실 요즘 수면제 먹을까 고민중이에요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "closing_continue",
+        "open_content": "new_worry"
+      }
+    },
+    {
+      "id": "f236",
+      "tags": [
+        "banmal",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "그만할래 피곤해",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f237",
+      "tags": [
+        "jondaet",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "음.. 글쎄요 더 할 말이 있는 것 같기도 하고",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_continue",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "low_information"
+        ],
+        "interaction_signal": [
+          "none"
+        ]
+      }
+    },
+    {
+      "id": "f238",
+      "tags": [
+        "banmal",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "고마워 오늘은 여기까지",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f239",
+      "tags": [
+        "typo",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "어 근데 갑자기 또 불안해짐 더 얘기해도돼?",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "closing_continue",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "meta_interaction"
+        ]
+      }
+    },
+    {
+      "id": "f240",
+      "tags": [
+        "nospace",
+        "closing",
+        "short",
+        "typo"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "ㅇㅋ끝",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f241",
+      "tags": [
+        "jondaet",
+        "closing",
+        "multi_sentence"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "아니요 엄마 얘기 좀 더 하고 싶어요. 아직 마음이 안 놓여서요",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "closing_continue",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f242",
+      "tags": [
+        "jondaet",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "모르겠어요.. 끝내도 될 것 같긴 한데",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "interaction_signal": [
+          "none"
+        ]
+      }
+    },
+    {
+      "id": "f243",
+      "tags": [
+        "jondaet",
+        "closing",
+        "nospace"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "정리해주세요",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f244",
+      "tags": [
+        "banmal",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "좋아 근데 다음엔 질문 좀 덜 해줘",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    },
+    {
+      "id": "f245",
+      "tags": [
+        "nospace",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "정리하는거어떻게해",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "assistant_not_understood",
+        "open_content": "none"
+      },
+      "acceptable": {
+        "content_type": [
+          "app_guide"
+        ]
+      }
+    },
+    {
+      "id": "f246",
+      "tags": [
+        "typo",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "벌써?ㅠ 아직 시험 얘기 안끝났는데",
+      "gold": {
+        "content_type": "mixed",
+        "interaction_signal": "closing_continue",
+        "open_content": "elaboration"
+      }
+    },
+    {
+      "id": "f247",
+      "tags": [
+        "short",
+        "closing"
+      ],
+      "assistant_prev": "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+      "user": "응응",
+      "gold": {
+        "content_type": "meta_interaction",
+        "interaction_signal": "closing_accept",
+        "open_content": "none"
+      }
+    }
+  ]
+}
