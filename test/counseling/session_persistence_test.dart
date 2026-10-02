@@ -126,6 +126,8 @@ void main() {
       // runToClosing answers with the worry again, not a reframe, so the
       // technique was acknowledged rather than credited.
       expect(completed['intervention_outcome'], 'acknowledged');
+      // not credited, so no alternative thought is saved
+      expect(completed['alternative_thought'], isNull);
     });
 
     test('a later session reads past episodes into the decision context', () async {

@@ -468,6 +468,9 @@ class CounselingProvider extends ChangeNotifier {
     }
     final summary = _memory.summary;
     if (!summary.hasContent) return;
+    // Episode facts come from turn metadata, not from the turn-order
+    // recorder (which stored meta replies as alternative thoughts).
+    final facts = EpisodeFacts.fromMessages(_session.messages);
     if (_lastPersistedTurnCount == summary.turnCount &&
         _lastPersistedStatus == status) {
       return;
@@ -482,16 +485,16 @@ class CounselingProvider extends ChangeNotifier {
         endedAt: DateTime.now(),
         finalState: _session.state.wireName,
         safetyLevel: _lastSafetyLevel.name,
-        mainConcern: summary.concern,
-        coreThought: summary.automaticThought,
-        coreThoughtSource: _coreThoughtSource,
-        alternativeThought: summary.alternativeThought,
+        mainConcern: summary.concern ?? facts.mainConcern,
+        coreThought: facts.coreThought,
+        coreThoughtSource: facts.coreThought == null ? null : _coreThoughtSource,
+        alternativeThought: facts.alternativeThought,
         affect: _lastSignalLabel,
-        sudStart: _sudStart,
+        sudStart: _sudStart ?? facts.sudStart,
         sudEnd: summary.endingSud,
         interventionUsed: summary.interventionUsed,
         activityRecommended: summary.activityRecommended,
-        unfinishedIssue: summary.unfinishedTopic,
+        unfinishedIssue: facts.unfinishedIssue,
         interventionOutcome: _interventionOutcome,
         provenanceIds: summary.provenanceIds,
         turnCount: summary.turnCount,

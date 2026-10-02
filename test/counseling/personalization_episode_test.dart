@@ -60,8 +60,8 @@ void main() {
 
     test('a similar completed episode with an alternative thought is found', () {
       final past = EpisodeHistory.fromSessions([
-        _episode('x', thought: '발표하다가 말이 막히면 어떡하지', alternative: '막혀도 다시 이어가면 된다'),
-        _episode('y', thought: '시험을 망칠 것 같아', alternative: '준비한 만큼은 할 수 있다', status: 'interrupted'),
+        _episode('x', thought: '발표하다가 말이 막히면 어떡하지', alternative: '막혀도 다시 이어가면 된다', outcome: 'credited'),
+        _episode('y', thought: '시험을 망칠 것 같아', alternative: '준비한 만큼은 할 수 있다', outcome: 'credited', status: 'interrupted'),
       ]);
       expect(past.similarEpisodeWithAlternative('내일 발표에서 실수할까봐 걱정돼')?.sessionId, 'x');
       // interrupted episodes are not recalled; unrelated worries aren't either.
@@ -163,6 +163,60 @@ void main() {
       expect(credited.last.interventionCredited, isTrue);
       final ack = await run(4, EpisodeHistory.empty, [...turns.take(5), '모르겠어']);
       expect(ack.last.interventionCredited, isFalse);
+    });
+  });
+
+  // Dogfood 2026-10-02: the saved episode had alternative_thought "내가 언제
+  // 뭐라는거야 라고 했어" (a meta reply after the technique question),
+  // core_thought "내일 시험이 있어" (a situation), and a stale carried
+  // unfinished issue. Episode facts now come from turn metadata.
+  group('EpisodeFacts from turn metadata', () {
+    CounselingMessage u(String t) => CounselingMessage(id: t, role: 'user', text: t, createdAt: DateTime(2026));
+    CounselingMessage a(String t, {String? goal, InterventionStep? step, bool? credited, InteractionRepairReason? repair}) =>
+        CounselingMessage(
+          id: 'a$t',
+          role: 'assistant',
+          text: t,
+          createdAt: DateTime(2026),
+          dialogueGoalId: goal,
+          interventionStep: step,
+          interventionCredited: credited,
+          interactionRepairReason: repair,
+        );
+
+    test('a meta reply is never the alternative thought; a situation is never the core thought', () {
+      final f = EpisodeFacts.fromMessages([
+        u('내일 시험이 있어'), a('지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?'),
+        u('8'), a('가장 걱정되는 순간은 언제인가요?'),
+        u('시험 망치면 혼날 것 같아'), a('근거…?', goal: 'evidence'),
+        u('저번에도 혼났어'), a('다른 관점…?', goal: 'alternative'),
+        u('모르겠어'), a('“시험 망치면 혼날 것 같아”라는 생각… 균형 있게?', step: InterventionStep.prompt),
+        u('내가 언제 뭐라는거야 라고 했어'),
+        a('말씀해 주셔서 고마워요. … 정리해 볼까요?', step: InterventionStep.integration, credited: false),
+      ]);
+      expect(f.alternativeThought, isNull);
+      expect(f.coreThought, '시험 망치면 혼날 것 같아');
+      expect(f.sudStart, 8);
+      expect(f.unfinishedIssue, '시험 망치면 혼날 것 같아');
+    });
+
+    test('a credited answer is the alternative thought', () {
+      final f = EpisodeFacts.fromMessages([
+        u('발표하다가 말이 막힐까 봐 걱정돼'), a('…근거?', goal: 'evidence'),
+        u('예전에 막혔어'), a('…균형 있게?', step: InterventionStep.prompt),
+        u('막혀도 잠깐 쉬고 다시 이어가면 돼'),
+        a('그렇게 보면 … 정리해 볼까요?', step: InterventionStep.integration, credited: true),
+      ]);
+      expect(f.alternativeThought, '막혀도 잠깐 쉬고 다시 이어가면 돼');
+      expect(f.unfinishedIssue, isNull);
+    });
+
+    test('an episode is recalled only if its alternative was credited', () {
+      final h = EpisodeHistory.fromSessions([
+        _episode('old', thought: '발표 때 말이 막힐까 봐 걱정돼', alternative: '너가 예시를 알려줘'),
+        _episode('ack', thought: '발표 때 말이 막힐까 봐', alternative: '모르겠어', outcome: 'acknowledged'),
+      ]);
+      expect(h.similarEpisodeWithAlternative('내일 발표에서 말이 막히면 어떡하지'), isNull);
     });
   });
 }
