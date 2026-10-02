@@ -8,11 +8,10 @@
 import 'dart:async';
 import 'dart:io'
     if (dart.library.html) 'utils/file_stub.dart'
-    show File, Directory;
+    show Directory;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:gad_app_team/utils/text_line_material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -33,6 +32,7 @@ import 'package:gad_app_team/features/counseling/policy/rollout/local_realizatio
 import 'package:gad_app_team/features/counseling/policy/rollout/rollout_config.dart';
 import 'package:gad_app_team/features/counseling/counseling_benchmark.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
+import 'package:gad_app_team/chatbot/services/chat_transcript_log.dart';
 import 'package:gad_app_team/data/api/counseling_classify_api.dart';
 import 'package:gad_app_team/data/api/counseling_realize_api.dart';
 import 'package:gad_app_team/features/counseling/perception/shadow_perception.dart';
@@ -140,7 +140,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   // ===== Chat State =====
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  File? _jsonLogFile;
+  ChatTranscriptLog? _transcriptLog;
   final bool _autoSend = true;
 
   /// 화면에 띄우는 안내 문구(에러/도움말). 상담 메시지가 아니라 UI 전용이다.
@@ -370,44 +370,18 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     if (kIsWeb) return; // 웹은 path_provider 미지원 → 스킵
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final logsDir = Directory('${dir.path}/logs');
-      if (!await logsDir.exists()) await logsDir.create(recursive: true);
-      final ts = DateTime.now().toIso8601String().replaceAll(':', '-');
-      _jsonLogFile = File('${logsDir.path}/chat_session_$ts.json');
-      await _jsonLogFile!.writeAsString(
-        jsonEncode({
-          'sessionId': ts,
-          'startedAt': DateTime.now().toIso8601String(),
-          'messages': <Map<String, dynamic>>[],
-        }),
-        flush: true,
-      );
+      _transcriptLog = await ChatTranscriptLog.create(Directory('${dir.path}/logs'));
     } catch (e) {
       debugPrint('init json log error: $e');
     }
   }
 
-  Future<void> _appendJsonLogMessage({
+  void _appendJsonLogMessage({
     required String role,
     required String text,
     Map<String, dynamic>? extra,
-  }) async {
-    if (kIsWeb || _jsonLogFile == null) return;
-    try {
-      final raw = await _jsonLogFile!.readAsString();
-      final data = jsonDecode(raw) as Map<String, dynamic>;
-      final List<dynamic> messages = (data['messages'] as List?) ?? <dynamic>[];
-      messages.add({
-        'ts': DateTime.now().toIso8601String(),
-        'role': role,
-        'text': text,
-        if (extra != null) ...extra,
-      });
-      data['messages'] = messages;
-      await _jsonLogFile!.writeAsString(jsonEncode(data), flush: true);
-    } catch (e) {
-      debugPrint('append json log error: $e');
-    }
+  }) {
+    _transcriptLog?.append(role: role, text: text, extra: extra);
   }
 
   // ===== STT / TTS =====

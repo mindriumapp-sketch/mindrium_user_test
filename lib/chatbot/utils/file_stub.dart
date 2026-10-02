@@ -10,6 +10,10 @@ class File {
     throw UnsupportedError('File operations are not supported on web');
   }
   
+  Future<File> rename(String newPath) async {
+    throw UnsupportedError('File operations are not supported on web');
+  }
+
   String get path => '';
 }
 
