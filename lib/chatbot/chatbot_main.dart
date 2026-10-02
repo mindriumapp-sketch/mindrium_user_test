@@ -121,6 +121,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     defaultValue: false,
   );
 
+  /// Phase 14.2B: 분류기의 두 신호(질문 중단, 챗봇 말을 못 알아들음)를 guard 뒤에서
+  /// 정책 입력으로 쓴다(규칙 OR 모델). 내부 계정에서만, 기본값 false. 켜면 그림자
+  /// 관찰도 함께 켜진 것으로 본다.
+  static const bool _semanticRepairEnabled = bool.fromEnvironment(
+    'COUNSELING_SEMANTIC_REPAIR',
+    defaultValue: false,
+  );
+
   // ===== Affect =====
   // 표정 결정은 전부 affective/ 로 옮겼다. 화면은 결과를 그리기만 한다.
   static const AffectSignalDetector _detector = AffectSignalDetector();
@@ -281,6 +289,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       contextBuilder: contextBuilder,
       sessionsApi: sessionsApi,
       shadowPerception: _shadowPerception(),
+      causalPerception: _semanticRepairEnabled && _shadowPerception() != null,
       // Phase 10.6C-DOGFOOD: disabled per real-device feedback — showing
       // this deterministic placeholder bubble ahead of the real answer
       // made every Remote-eligible turn render as two disconnected
@@ -294,7 +303,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   ShadowPerception? _shadowPerception() {
-    if (!_shadowClassifierEnabled || widget.llm != null) return null;
+    if (!(_shadowClassifierEnabled || _semanticRepairEnabled) || widget.llm != null) {
+      return null;
+    }
     final email = context.read<UserProvider>().userEmail;
     if (!isInternalAccountEmail(email)) return null;
     return ShadowPerception(

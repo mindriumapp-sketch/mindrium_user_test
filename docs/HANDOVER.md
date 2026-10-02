@@ -90,6 +90,7 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 | `COUNSELING_REMOTE_REALIZER` | `false` | GPT 표현 계층 사용. 꺼져 있으면 모든 문장이 결정론 |
 | `COUNSELING_REMOTE_REALIZER_KILL_SWITCH` | `false` | GPT 표현 즉시 차단 |
 | `COUNSELING_SHADOW_CLASSIFIER` | `false` | 의미 분류기 그림자 관찰(Phase 14.2A). 내부 계정에서만, 결정에 쓰지 않음 |
+| `COUNSELING_SEMANTIC_REPAIR` | `false` | 분류기의 질문 중단·못 알아들음 신호를 정책에 반영(Phase 14.2B). 내부 계정에서만 |
 
 GPT 표현은 플래그를 켜도 **내부 계정 허용 목록**에 있는 이메일에만 적용됩니다
 (`lib/features/counseling/policy/rollout/internal_account_allowlist.dart`). 새 개발자는 자신의 계정 이메일을

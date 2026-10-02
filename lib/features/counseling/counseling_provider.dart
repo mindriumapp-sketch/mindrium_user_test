@@ -66,6 +66,14 @@ class CounselingProvider extends ChangeNotifier {
   /// 쓰지 않는다. null이면 꺼짐(기본).
   final ShadowPerception? shadowPerception;
 
+  /// Phase 14.2B: use [shadowPerception]'s guarded `stop_questioning` /
+  /// `assistant_not_understood` as policy input (rules OR model). Off by
+  /// default; when off the classifier is shadow-only.
+  final bool causalPerception;
+
+  /// How long a turn waits for the classifier before using the rules alone.
+  final Duration perceptionTimeout;
+
   /// 지난 세션 중 어느 것을 참고할지 정한다.
   final PreviousSessionSelector previousSessionSelector;
 
@@ -133,6 +141,8 @@ class CounselingProvider extends ChangeNotifier {
     this.empathyPlanner = const EmpathyPlanner(),
     this.sessionsApi,
     this.shadowPerception,
+    this.causalPerception = false,
+    this.perceptionTimeout = const Duration(seconds: 2),
     this.previousSessionSelector = const PreviousSessionSelector(),
     String? sessionId,
   }) : appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
@@ -352,9 +362,11 @@ class CounselingProvider extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     try {
       // 컨텍스트는 위에서 이미 이번 발화 기준으로 다시 선택했다.
+      final perceived = await _perceive(trimmed);
       final result = await _assistantHarness.handleTurn(
         session: _session,
         userMessage: trimmed,
+        perceivedRepair: perceived,
         previousSessionContext: PreviousSessionContext(
           latestRelevantSession: _previousSession,
           carriedUnfinishedIssue: _carriedUnfinishedIssue,
@@ -401,7 +413,7 @@ class CounselingProvider extends ChangeNotifier {
           result.assistantMessage.closingStep == ClosingStep.finalized &&
           !isSessionFinalized;
 
-      _observeShadow(trimmed, result.assistantMessage);
+      if (!causalPerception) _observeShadow(trimmed, result.assistantMessage);
       _messages.add(result.assistantMessage);
       // CTA 는 이 메시지에 붙는다. 한 턴에 하나이며, 다음 턴에 새 제안이 오면
       // 이전 것은 사라진다.
@@ -448,6 +460,60 @@ class CounselingProvider extends ChangeNotifier {
       assistantPrev: prev?.text,
       ruleSignal: ruleSignal,
     ));
+  }
+
+  /// Phase 14.2B: the guarded semantic repair for this turn, or null. The
+  /// classifier fills the rules' semantic gap only, so it is not called on
+  /// safety turns, app-guide-only turns, invalid input, or turns where the
+  /// rules already caught stop-asking or not-understood. Waits at most [perceptionTimeout];
+  /// a timeout or failure means rules only.
+  Future<InteractionRepairReason?> _perceive(String userText) async {
+    final shadow = shadowPerception;
+    if (!causalPerception || shadow == null) return null;
+    try {
+      if (!(await harness.safetyGate.evaluate(userText)).isNormal) return null;
+      if (_assistantHarness.detectIntent(userText, counselingInProgress: true).isAppGuideOnly) {
+        return null;
+      }
+      if (DeterministicInputGuardTurnPlanner.looksInvalidOrInappropriate(userText)) return null;
+      final before = _messages.sublist(0, _messages.length - 1);
+      final rule = const DeterministicProcessSignalTurnPlanner().plan(
+        TurnPlanningContext(
+          state: _session.state,
+          currentWeek: _session.currentWeek,
+          userMessage: userText,
+          knowledge: const [],
+          recentMessages: before,
+        ),
+      );
+      // The rules already caught one of the two signals: use them as is. A
+      // lower repair (repeated question, resistance) still asks the model,
+      // since stop asking outranks it ("왜 또 물어봐, 이제 그만해").
+      final ruleReason = rule?.interactionRepairReason;
+      if (ruleReason == InteractionRepairReason.stopQuestioning ||
+          ruleReason == InteractionRepairReason.assistantNotUnderstood) {
+        return null;
+      }
+      final prev = before.reversed.where((m) => !m.isUser).firstOrNull;
+      final signal = await shadow
+          .perceive(
+            sessionId: _session.sessionId,
+            turnIndex: _messages.where((m) => m.isUser).length,
+            userText: userText,
+            assistantPrev: prev?.text,
+            ruleSignal: 'none',
+          )
+          .timeout(perceptionTimeout, onTimeout: () => null);
+      return switch (signal) {
+        SemanticRepairSignal.stopQuestioning => InteractionRepairReason.stopQuestioning,
+        SemanticRepairSignal.assistantNotUnderstood =>
+          InteractionRepairReason.assistantNotUnderstood,
+        null => null,
+      };
+    } on Object catch (e) {
+      debugPrint('[CounselingProvider] perception skipped: $e');
+      return null;
+    }
   }
 
   /// 지난 상담 기록을 읽어 참고 대상을 정한다.

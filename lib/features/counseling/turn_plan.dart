@@ -190,6 +190,14 @@ class TurnPlanningContext {
   /// retrieval 인지 planner 인지 갈리지 않는다.
   final RetrievalSummary retrievalSummary;
 
+  /// Phase 14.2B: a repair perceived by the semantic classifier (guarded),
+  /// only [InteractionRepairReason.stopQuestioning] or
+  /// [InteractionRepairReason.assistantNotUnderstood]. Combined with the
+  /// rule detectors in [DeterministicProcessSignalTurnPlanner]; never read
+  /// by any other planner. Null when the classifier is off, skipped, timed
+  /// out, or found nothing.
+  final InteractionRepairReason? perceivedRepair;
+
   const TurnPlanningContext({
     required this.state,
     this.currentWeek = 0,
@@ -198,6 +206,7 @@ class TurnPlanningContext {
     this.userContext,
     this.recentMessages = const [],
     this.retrievalSummary = RetrievalSummary.empty,
+    this.perceivedRepair,
   });
 
   /// [userContext] 만 주어진 경우에도 요약을 갖춘 컨텍스트를 만든다.
@@ -854,14 +863,21 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     // Phase 13.9E: "아직 정리할 기분 아냐 좀 더 들어줘" asks to keep going; a
     // wish to continue goes to the handshake before the complaint rule
     // below (whose "들어줘" cue it shares).
-    if (_wantsMoreAtProposal.hasMatch(current)) return null;
+    // Phase 14.2B: a perceived stop request outranks continuing.
+    final perceived = context.perceivedRepair;
+    if (_wantsMoreAtProposal.hasMatch(current) &&
+        perceived != InteractionRepairReason.stopQuestioning) {
+      return null;
+    }
 
     // Phase 13.9A (B): a complaint about the questions themselves at the
     // proposal ("모르겠다고, 왜 계속 같은말해 짜증나게"). Its "계속" is not a
     // wish to continue, and asking anything again would repeat what the
     // user is complaining about: apologize and end.
     final complaint =
-        _requestsEmpathy.hasMatch(current) || _generalizedStop(current)
+        perceived == InteractionRepairReason.stopQuestioning ||
+                _requestsEmpathy.hasMatch(current) ||
+                _generalizedStop(current)
             ? InteractionRepairReason.stopQuestioning
             : _repeatsInteraction.hasMatch(current) || _generalizedRepeat(current)
             ? InteractionRepairReason.repeatedQuestion
@@ -888,7 +904,10 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
         closingStep: ClosingStep.finalized,
       );
     }
-    if (!_assistantNotUnderstood(current)) return null;
+    if (perceived != InteractionRepairReason.assistantNotUnderstood &&
+        !_assistantNotUnderstood(current)) {
+      return null;
+    }
     final variants = _repairSentences[InteractionRepairReason.assistantNotUnderstood]!;
     return CounselingTurnPlan(
       reflectionTarget: current,
@@ -933,7 +952,11 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     // Phase 13.10: and never on a substantive message that voices worry
     // ("…건 아닐까 걱정되네"), even if its thought form isn't recognized —
     // cutting off a cooperative user is worse than one more question.
-    if (context.state == CounselingState.reflect &&
+    // Phase 14.2B: a perceived repair is not a non-answer; the wrap-up nets
+    // below are for replies that carry nothing, so they step aside.
+    final perceived = context.perceivedRepair;
+    if (perceived == null &&
+        context.state == CounselingState.reflect &&
         // Phase 14.3: clarify-type turns answered without new content. A
         // contentful reply anywhere resets the run, so a user who keeps
         // talking ("돈이 부족해서 걱정이야") is never wrapped up here.
@@ -953,7 +976,8 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
     // Phase 13.8 (P4): a second non-answer in a row, in explore/reflect.
     // Intervention has its own no-pressure integration for "모르겠어".
     final previousUser = _lastUser(context.recentMessages);
-    if ((context.state == CounselingState.explore ||
+    if (perceived == null &&
+        (context.state == CounselingState.explore ||
             context.state == CounselingState.reflect) &&
         UserThoughtExtractor.isNonAnswer(current) &&
         previousUser != null &&
@@ -961,20 +985,28 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
       return _wrapUpPlan(context, EarlyWrapUp.lowInformation);
     }
 
-    final wantsEmpathy =
+    // Phase 14.2B: rules OR the guarded model signal, with a fixed
+    // precedence — stop asking > not understood > the other repairs.
+    final perceivedStop = perceived == InteractionRepairReason.stopQuestioning;
+    final perceivedNotUnderstood =
+        perceived == InteractionRepairReason.assistantNotUnderstood;
+    final wantsEmpathy = perceivedStop ||
         _requestsEmpathy.hasMatch(current) || _generalizedStop(current);
+    final notUnderstoodFirst = !wantsEmpathy && perceivedNotUnderstood;
     final resists = !wantsEmpathy &&
+        !notUnderstoodFirst &&
         (_showsProcessResistance.hasMatch(current) ||
             _conversationIsPointless(current));
     final repeatsInteraction =
         !wantsEmpathy &&
+        !notUnderstoodFirst &&
         !resists &&
         (_repeatsInteraction.hasMatch(current) || _generalizedRepeat(current));
     final notUnderstood =
         !wantsEmpathy &&
         !resists &&
         !repeatsInteraction &&
-        _assistantNotUnderstood(current);
+        (notUnderstoodFirst || _assistantNotUnderstood(current));
     if (!wantsEmpathy && !resists && !repeatsInteraction && !notUnderstood) {
       return null;
     }

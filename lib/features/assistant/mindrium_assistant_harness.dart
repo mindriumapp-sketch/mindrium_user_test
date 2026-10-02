@@ -128,6 +128,7 @@ class MindRiumAssistantHarness {
     required CounselingSessionState session,
     required String userMessage,
     PreviousSessionContext previousSessionContext = PreviousSessionContext.none,
+    InteractionRepairReason? perceivedRepair,
   }) async {
     final context = await buildContext(
       session: session,
@@ -153,6 +154,7 @@ class MindRiumAssistantHarness {
         session: session,
         userMessage: userMessage,
         precomputedContext: _makePrecomputedContext(context),
+        perceivedRepair: perceivedRepair,
       );
       final appGuideResponse = appGuideResponseBuilder.build(
         userMessage,
@@ -169,6 +171,7 @@ class MindRiumAssistantHarness {
       session: session,
       userMessage: userMessage,
       precomputedContext: _makePrecomputedContext(context),
+      perceivedRepair: perceivedRepair,
     );
   }
 
