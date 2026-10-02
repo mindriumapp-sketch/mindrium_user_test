@@ -47,7 +47,9 @@ void main() {
         String status = 'A';
         CounselingTurnResult r;
         if (llmLed) {
-          final t = await harness.handleLlmLedTurn(session: s, userMessage: text, api: api, appGuide: guide);
+          final t = await harness.handleLlmLedTurn(session: s, userMessage: text, api: api, appGuide: guide,
+              // evaluation: allow rate-limit retries (the app keeps 8 s)
+              timeout: const Duration(minutes: 2));
           status = t.status;
           r = t.result ?? await assistant.handleTurn(session: s, userMessage: text);
         } else {

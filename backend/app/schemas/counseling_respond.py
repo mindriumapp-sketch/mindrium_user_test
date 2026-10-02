@@ -62,6 +62,9 @@ class Progress(BaseModel):
     recent_no_progress_turns: int = 0
     exchange_count: int = 0
     recent_questions: List[str] = Field(default_factory=list, max_length=3)
+    # respond_v3: exploration has run its course for this worry
+    explore_closed: bool = False
+    exploratory_questions: int = 0
 
 
 class CounselingRespondRequest(BaseModel):
@@ -73,6 +76,8 @@ class CounselingRespondRequest(BaseModel):
     user_facts: List[Fact] = Field(default_factory=list, max_length=20)
     techniques: List[Technique] = Field(default_factory=list, max_length=10)
     app_facts: List[Fact] = Field(default_factory=list, max_length=40)
+    # respond_v3: approved definitions of CBT terms (from the corpus), with ids
+    concepts: List[Fact] = Field(default_factory=list, max_length=25)
 
 
 class InterventionChoice(BaseModel):
@@ -94,6 +99,7 @@ class AgentOutput(BaseModel):
     intervention: Optional[InterventionChoice]
     used_user_fact_ids: List[str]
     used_app_fact_ids: List[str]
+    used_concept_ids: List[str]
     session_action: SessionAction
     statement: str = Field(..., min_length=1, max_length=500)
     question: Optional[str] = Field(None, max_length=200)

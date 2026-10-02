@@ -36,6 +36,8 @@ class LlmLedContext {
   final String? pendingInterventionId;
   final bool closingProposed;
   final List<String> recentQuestions;
+  final Set<String> conceptIds;
+  final bool exploreClosed;
 
   const LlmLedContext({
     required this.body,
@@ -47,6 +49,8 @@ class LlmLedContext {
     required this.pendingInterventionId,
     required this.closingProposed,
     this.recentQuestions = const [],
+    this.conceptIds = const {},
+    this.exploreClosed = false,
   });
 
   static LlmLedContext build({
@@ -143,6 +147,21 @@ class LlmLedContext {
       });
     }
 
+    // respond_v3: approved term definitions (education items up to this
+    // week, plus the shared SUD item), so a term is never defined from memory.
+    final concepts = <Map<String, String>>[];
+    for (final id in (knowledge.allIds.toList()..sort())) {
+      final item = knowledge.getById(id);
+      if (item == null) continue;
+      final isConcept = item.type == 'education' || id == 'common_sud_01';
+      if (!isConcept || item.week > session.currentWeek) continue;
+      concepts.add({
+        'id': id,
+        'kind': 'concept',
+        'text': _clip('${item.title}: ${item.paragraphs.take(2).join(' ')}', 600),
+      });
+    }
+
     // respond_v2: structured progress evidence (advisory).
     final roundWorry = UserThoughtExtractor.roundWorryThought(UserThoughtExtractor.semanticContent(round));
     final askedGoals = {
@@ -159,7 +178,18 @@ class LlmLedContext {
       for (final m in messages.reversed.where((m) => !m.isUser).take(6))
         for (final q in RegExp(r'[^.!?\n]*\?').allMatches(m.text)) q.group(0)!.trim(),
     ].where((q) => q.isNotEmpty).take(3).toList();
+    // respond_v3: exploration has run its course once a worry thought is known
+    // and three exploratory questions were asked this round (five without one).
+    final exploratory = round.where((m) =>
+        !m.isUser &&
+        m.text.contains('?') &&
+        m.interventionStep == null &&
+        m.closingStep == null &&
+        m.interactionRepairReason == null).length;
+    final exploreClosed = (roundWorry != null && exploratory >= 3) || exploratory >= 5;
     final progress = {
+      'explore_closed': exploreClosed,
+      'exploratory_questions': exploratory,
       'concern_identified': round.any((m) => m.isUser && UserThoughtExtractor.hasContent(m.text)) ||
           UserThoughtExtractor.hasContent(userMessage),
       'thought_identified': roundWorry != null,
@@ -191,6 +221,7 @@ class LlmLedContext {
         'user_facts': facts.take(20).toList(),
         'techniques': techniques.take(10).toList(),
         'app_facts': appFacts.take(40).toList(),
+        'concepts': concepts.take(25).toList(),
       },
       techniqueIds: types.keys.toSet(),
       techniqueTypes: types,
@@ -200,6 +231,8 @@ class LlmLedContext {
       pendingInterventionId: pending,
       closingProposed: lastAssistant?.closingStep == ClosingStep.proposed,
       recentQuestions: recentQuestions,
+      conceptIds: concepts.take(25).map((c) => c['id']!).toSet(),
+      exploreClosed: exploreClosed,
     );
   }
 }
@@ -212,6 +245,7 @@ class LlmLedOutput {
   final String? interventionStep;
   final List<String> usedUserFactIds;
   final List<String> usedAppFactIds;
+  final List<String> usedConceptIds;
   final String sessionAction;
   final String statement;
   final String? question;
@@ -226,6 +260,7 @@ class LlmLedOutput {
     required this.interventionStep,
     required this.usedUserFactIds,
     required this.usedAppFactIds,
+    this.usedConceptIds = const [],
     required this.sessionAction,
     required this.statement,
     required this.question,
@@ -260,6 +295,7 @@ class LlmLedOutput {
       interventionStep: iv == null ? null : (iv as Map)['step'] as String,
       usedUserFactIds: userIds.whereType<String>().toList(),
       usedAppFactIds: appIds.whereType<String>().toList(),
+      usedConceptIds: (json['used_concept_ids'] as List? ?? const []).whereType<String>().toList(),
       sessionAction: json['session_action'] as String,
       statement: statement.trim(),
       question: q == null || q.isEmpty ? null : q,
@@ -275,7 +311,13 @@ class LlmLedValidator {
   static final RegExp _guarantee = RegExp(
     r'(잘\s*될\s*거|괜찮을\s*거|문제\s*없을|걱정\s*(안\s*해도|하지\s*않아도)|반드시\s*(좋아|나아)|분명히?\s*(괜찮|잘)|나을\s*거|낫게\s*해)',
   );
-  static final RegExp _directive = RegExp(r'(해야\s*(합니다|해요|돼요)|하셔야|하세요[.!]?\s*$|하십시오)');
+  static final RegExp _directive = RegExp(r'(해야\s*(합니다|해요|돼요)|하셔야|(하|보|써|적어|해)\s*세요[.!]?(\s|$)|하십시오)');
+  // respond_v3: the counselor always speaks 해요체. A sentence ending in a
+  // banmal ending (not followed by 요) is rejected.
+  static final RegExp _banmalSentence = RegExp(
+    r'(?<![가-힣]요)(?:어|아|야|지|니|자|래|네|구나|거든|냐|해|돼|줘|게|까|봐|줄래|볼래|을까|ㄹ까|군)\s*[.?!~]*$',
+  );
+  static final RegExp _defines = RegExp(r'(이란|란|은|는)\s.{0,40}(말해요|뜻해요|의미해요|말이에요|뜻이에요|방법이에요|방식이에요|거예요|것이에요)');
   static final RegExp _appTerms = RegExp(r'(메뉴|화면|탭|버튼|설정에서|홈에서|들어가)');
   static final RegExp _secondPerson = RegExp(r'당신');
   static final RegExp _noQuestionPromise = RegExp(
@@ -298,6 +340,17 @@ class LlmLedValidator {
     return false;
   }
 
+  static bool _hasBanmal(String text) {
+    for (final sentence in text.split(RegExp(r'(?<=[.?!])\s+'))) {
+      final t = sentence.trim();
+      if (t.isEmpty) continue;
+      if (RegExp(r'(요|니다|니까|세요|죠)\s*[.?!~]*$').hasMatch(t)) continue;
+      if (RegExp(r'^(네|예|아니요|아뇨)\s*[.!~]*$').hasMatch(t)) continue; // polite one-word replies
+      if (_banmalSentence.hasMatch(t)) return true;
+    }
+    return false;
+  }
+
   static List<String> validate(LlmLedOutput o, LlmLedContext c) {
     final v = <String>[];
     if (o.interventionId != null && !c.techniqueIds.contains(o.interventionId)) {
@@ -314,7 +367,9 @@ class LlmLedValidator {
       v.add('app_claim_without_fact');
     }
     if ('?'.allMatches(o.text).length + '？'.allMatches(o.text).length > 1) v.add('too_many_questions');
-    if (o.statement.contains('?') || o.statement.contains('？')) v.add('question_in_statement');
+    // respond_v2 r2: a question mark inside the statement is only a format
+    // slip when the reply still has one question in total (the user sees the
+    // same text), so only the total is checked (too_many_questions above).
     if (o.question != null && !RegExp(r'[?？]\s*$').hasMatch(o.question!)) v.add('question_shape');
     if (_secondPerson.hasMatch(o.text)) v.add('second_person');
     if (o.question != null && _noQuestionPromise.hasMatch(o.statement)) v.add('question_after_no_question_promise');
@@ -325,6 +380,19 @@ class LlmLedValidator {
     if (_guarantee.hasMatch(o.text)) v.add('outcome_guarantee');
     if (_directive.hasMatch(o.text)) v.add('directive');
     if (o.sessionAction == 'finalize' && !c.closingProposed) v.add('finalize_without_proposal');
+    if (!o.usedConceptIds.every(c.conceptIds.contains)) v.add('unsupported_concept');
+    if (o.moves.contains('clarify') && _defines.hasMatch(o.text) && o.usedConceptIds.isEmpty) {
+      v.add('term_without_concept');
+    }
+    if (_hasBanmal(o.text)) v.add('banmal_reply');
+    if (c.exploreClosed &&
+        o.question != null &&
+        o.interventionStep != 'prompt' &&
+        o.sessionAction != 'offer_close' &&
+        !o.moves.contains('clarify') &&
+        !o.moves.contains('answer_app')) {
+      v.add('exploring_after_closed');
+    }
     if (o.text.length > 600) v.add('too_long');
     return v;
   }
@@ -419,3 +487,4 @@ class LlmLedMapping {
     );
   }
 }
+

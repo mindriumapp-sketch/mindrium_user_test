@@ -16,7 +16,7 @@ REQ = CounselingRespondRequest.model_validate({
 OK = {
     "domain": "counseling", "dialogue_moves": ["acknowledge", "ask_evidence"],
     "intervention": None,
-    "used_user_fact_ids": [], "used_app_fact_ids": [],
+    "used_user_fact_ids": [], "used_app_fact_ids": [], "used_concept_ids": [],
     "session_action": "continue", "statement": "그런 생각이 드셨군요.",
     "question": "그 생각의 근거가 있을까요?",
 }

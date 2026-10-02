@@ -38,7 +38,7 @@ Map<String, dynamic> _out({
     'domain': domain, 'dialogue_moves': moves,
     'intervention': interventionId == null ? null : {'id': interventionId, 'step': step ?? 'prompt'},
     'used_user_fact_ids': userIds, 'used_app_fact_ids': appIds,
-    'session_action': action,
+    'session_action': action, 'used_concept_ids': const <String>[],
     'statement': statement.isEmpty ? '네.' : statement, 'question': question,
   },
   'prompt_version': 'respond_v2',
@@ -141,6 +141,21 @@ void main() {
       expect(v(_out(), s: asked), contains('repeated_question'));
       expect(v(_out(text: '알겠어요. 더 묻지 않을게요.')), isEmpty);
     });
+    test('respond_v3: banmal, unlisted directive, term without a concept, exploring after closed', () {
+      expect(v(_out(text: '그 상황을 물어본 거야. 이해가 됐어?')), contains('banmal_reply'));
+      expect(v(_out(text: '그 생각을 한번 적어 보세요.')), contains('directive'));
+      expect(v(_out(moves: ['clarify'], text: '탈파국화란 최악을 상상하는 것을 말해요.')), contains('term_without_concept'));
+      final closed = _session(messages: [
+        _u('발표하다 말이 막히면 어떡하지'),
+        _a('어떤 근거가 있나요?'), _u('예전에 막혔어'),
+        _a('다른 관점은 어떤가요?'), _u('다들 긴장해'),
+        _a('가능성은 어느 정도일까요?'), _u('반반'),
+      ]);
+      expect(ctx(closed, '음 그렇네').exploreClosed, isTrue);
+      expect(v(_out(text: '그렇군요. 그 외에 또 어떤 준비를 해볼 수 있을까요?'), s: closed), contains('exploring_after_closed'));
+      expect(v(_out(moves: ['offer_close'], action: 'offer_close',
+          text: '오늘 이야기 잘 정리됐어요. 오늘은 여기까지 정리해 볼까요?'), s: closed), isEmpty);
+    });
     test('respond_v2: an intervention step always carries an id', () {
       final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};
       expect(LlmLedOutput.tryParse(raw), isNull);
@@ -177,6 +192,7 @@ void main() {
       final i = await _harness().handleLlmLedTurn(session: s, userMessage: '막혀도 다시 이어가면 될 수도 있어',
           api: _Api([_out(moves: ['integrate', 'offer_close'], interventionId: id, step: 'integration', action: 'offer_close', text: '그렇게 보면 조금 가벼워지네요. 여기까지 정리해 볼까요?')]),
           appGuide: _guide);
+      expect(i.status, 'success', reason: '${i.violations}');
       final m = i.result!.assistantMessage;
       expect(m.interventionStep, InterventionStep.integration);
       expect(m.referencedCbtIds, [id]);

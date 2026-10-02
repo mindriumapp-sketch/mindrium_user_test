@@ -27,7 +27,7 @@ from schemas.counseling_respond import (
 router = APIRouter(prefix="/counseling", tags=["counseling_respond"])
 logger = logging.getLogger("counseling_respond")
 
-PROMPT_VERSION = "respond_v2"
+PROMPT_VERSION = "respond_v3"
 TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=3.0, pool=3.0)
 MAX_OUTPUT_TOKENS = 400
 
@@ -36,10 +36,12 @@ SYSTEM_PROMPT = """당신은 범불안 CBT 자기관리 앱 MindRium 안의 상�
 대화 원칙
 - 사용자가 방금 한 말을 먼저 정확히 이해하고 거기에 맞게 반응합니다. 정해진 순서대로 질문을 이어가지 않습니다.
 - 따뜻하고 간결한 한국어. statement는 1~2문장, question은 없거나 정확히 1개입니다. 사용자를 "당신"이라고 부르지 않습니다(호칭 없이 말합니다).
+- 사용자가 반말을 써도 상담자는 항상 존댓말(해요체)을 씁니다. 반말 어미("~야", "~어", "~줄래?")를 쓰지 않습니다.
 - 사용자가 앱 사용법을 물으면 상담 질문으로 돌리지 말고 app_facts에 있는 내용으로 바로 안내합니다(domain=app_guide). 상담 내용과 섞여 있으면 둘 다 다룹니다(domain=mixed).
 - 사용자가 대화 자체에 불만을 보이면("대화가 안 된다", "같은 말 하네") 그 마음을 먼저 인정하고 방식을 바꿉니다(repair).
 - 사용자가 그만 묻기를 원하거나 그냥 들어 달라고 하면 question은 null입니다. "질문하지 않겠다"고 말했으면 그 턴에 질문하지 않습니다.
-- 사용자가 상담자의 말이나 용어를 이해하지 못하면, 방금 한 말을 더 짧고 쉬운 말로 다시 말합니다(clarify). 새 주제로 넘어가지 않습니다.
+- 사용자가 상담자의 말이나 용어를 이해하지 못하면, 방금 한 말을 더 짧고 쉬운 말로 다시 말합니다(clarify). 새 주제로 넘어가거나 다른 질문으로 바꾸지 않습니다.
+- CBT 용어의 뜻을 설명할 때는 concepts에 있는 정의만 쓰고 그 id를 used_concept_ids에 적습니다. concepts에 없는 용어는 정의하지 말고, 이 상담에서는 그 말 대신 쉬운 말로 이야기하겠다고 하고 쉬운 말로 다시 말합니다.
 - 사용자가 아직 다루지 않은 새 걱정이나 새 사실을 말하면, 다음 예정 질문보다 그것을 먼저 받아 줍니다.
 - 상황(사실)과 걱정하는 생각을 구분합니다. 사실을 "생각"이라고 부르지 않습니다.
 - progress.recent_questions와 같거나 비슷한 질문을 다시 하지 않습니다. 같은 질문 틀("~이 지금의 걱정에 어떤 영향을…")을 반복하지 않습니다.
@@ -49,6 +51,7 @@ SYSTEM_PROMPT = """당신은 범불안 CBT 자기관리 앱 MindRium 안의 상�
 - 걱정하는 생각이 분명하면(thought_identified) 근거, 다른 관점, 가능성 중 아직 안 살펴본 것을 하나 살펴볼 수 있습니다.
 - 걱정을 충분히 살펴봤고(근거나 다른 관점을 살펴봄) 열린 새 내용이 없으면, 탐색 질문을 더 하지 말고 앞으로 나아갑니다: intervention_available이면 techniques 중 맞는 기법 하나로 질문하고(intervention={id, step:"prompt"}), 아니면 짧게 정리하고 마무리를 제안합니다(offer_close).
 - recent_no_progress_turns가 2 이상이면 더 묻지 말고 정리하거나 마무리를 제안합니다.
+- explore_closed가 true이면 탐색 질문을 하지 않습니다. 기법 질문(intervention prompt)이나 마무리 제안(offer_close), 또는 질문 없는 정리만 합니다. 사용자가 완전히 새로운 걱정을 꺼내면 그것을 받아 주고, 다음 상담에서 이어가거나 지금 계속할지 마무리 제안으로 묻습니다.
 - 기법 질문에 답이 오면 그 답을 받아 줍니다(intervention={같은 id, step:"integration"}, integrate). 기법을 마쳤으면(intervention_completed) 마무리를 제안할 수 있습니다.
 - 마무리 제안(offer_close)은 question에 "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?"처럼 하나로 묻습니다. 직전 응답이 마무리 제안이었고 사용자가 동의하면 마무리합니다(finalize, question=null). 더 이야기하고 싶어 하면 이어갑니다(continue).
 
@@ -97,7 +100,7 @@ def response_format(payload: CounselingRespondRequest) -> dict:
                 "additionalProperties": False,
                 "required": [
                     "domain", "dialogue_moves", "intervention", "used_user_fact_ids",
-                    "used_app_fact_ids", "session_action", "statement", "question",
+                    "used_app_fact_ids", "used_concept_ids", "session_action", "statement", "question",
                 ],
                 "properties": {
                     "domain": {"type": "string", "enum": list(DOMAINS)},
@@ -105,6 +108,7 @@ def response_format(payload: CounselingRespondRequest) -> dict:
                     "intervention": intervention,
                     "used_user_fact_ids": _ids_schema([f.id for f in payload.user_facts]),
                     "used_app_fact_ids": _ids_schema([f.id for f in payload.app_facts]),
+                    "used_concept_ids": _ids_schema([f.id for f in payload.concepts]),
                     "session_action": {"type": "string", "enum": list(SESSION_ACTIONS)},
                     "statement": {"type": "string"},
                     "question": {"type": ["string", "null"]},
@@ -122,6 +126,7 @@ def user_prompt(payload: CounselingRespondRequest) -> str:
             "techniques": [t.model_dump() for t in payload.techniques],
             "user_facts": [f.model_dump() for f in payload.user_facts],
             "app_facts": [f.model_dump() for f in payload.app_facts],
+            "concepts": [f.model_dump() for f in payload.concepts],
             "conversation": [t.model_dump() for t in payload.conversation],
         },
         ensure_ascii=False,

@@ -23,8 +23,21 @@ class HttpRespondApi implements CounselingRespondApi {
   final String token;
   HttpRespondApi(this.baseUrl, this.token);
 
+  /// Evaluation only: an upstream rate-limit error (502 upstream) is retried
+  /// after a pause, so a shared-key quota does not turn into fallbacks.
   @override
   Future<Map<String, dynamic>> respond(Map<String, dynamic> body, {Duration timeout = const Duration(seconds: 8)}) async {
+    for (var attempt = 0; ; attempt++) {
+      try {
+        return await _once(body, timeout);
+      } on HttpException catch (e) {
+        if (attempt >= 4 || !e.message.contains('upstream error')) rethrow;
+        await Future<void>.delayed(Duration(seconds: 15 * (attempt + 1)));
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _once(Map<String, dynamic> body, Duration timeout) async {
     final client = HttpClient()..connectionTimeout = timeout;
     try {
       final req = await client.postUrl(Uri.parse('$baseUrl/counseling/respond'));
@@ -64,7 +77,9 @@ void main() {
       concurrency: concurrency,
       turn: (harness, session, text) async {
         final t = await harness.handleLlmLedTurn(
-          session: session, userMessage: text, api: api, appGuide: guide);
+          session: session, userMessage: text, api: api, appGuide: guide,
+              // evaluation: allow rate-limit retries (the app keeps 8 s)
+              timeout: const Duration(minutes: 2));
         statuses[t.status] = (statuses[t.status] ?? 0) + 1;
         if (t.detail != null) {
           final k = 'http:${t.detail!.replaceAll(RegExp(r'\s+'), ' ')}';
