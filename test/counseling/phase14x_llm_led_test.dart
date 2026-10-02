@@ -2,6 +2,7 @@
 // after it, mapping onto turn metadata, and fallback to the deterministic
 // path on anything not accepted.
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
@@ -26,15 +27,23 @@ Map<String, dynamic> _out({
   List<String> userIds = const [],
   List<String> appIds = const [],
   String action = 'continue',
-  String text = '그 생각을 사실이라고 느끼게 하는 경험이 있을까요?',
-}) => {
+  String text = '그런 생각이 드셨군요. 그 생각을 사실이라고 느끼게 하는 경험이 있을까요?',
+}) {
+  // split like respond_v2: everything up to the last question is the statement
+  final m = RegExp(r'^(.*?)([^.!?]*\?)\s*$').firstMatch(text);
+  final statement = m == null ? text : m.group(1)!.trim();
+  final question = m == null ? null : m.group(2)!.trim();
+  return {
   'output': {
-    'domain': domain, 'dialogue_moves': moves, 'intervention_id': interventionId,
-    'intervention_step': step, 'used_user_fact_ids': userIds, 'used_app_fact_ids': appIds,
-    'session_action': action, 'response_text': text,
+    'domain': domain, 'dialogue_moves': moves,
+    'intervention': interventionId == null ? null : {'id': interventionId, 'step': step ?? 'prompt'},
+    'used_user_fact_ids': userIds, 'used_app_fact_ids': appIds,
+    'session_action': action,
+    'statement': statement.isEmpty ? '네.' : statement, 'question': question,
   },
-  'prompt_version': 'respond_v1',
-};
+  'prompt_version': 'respond_v2',
+  };
+}
 
 class _Api implements CounselingRespondApi {
   final List<Map<String, dynamic>> answers;
@@ -124,6 +133,18 @@ void main() {
       final proposed = _session(messages: [_a('정리할까요?', closing: ClosingStep.proposed)]);
       expect(v(_out(moves: ['finalize'], action: 'finalize', text: '오늘 이야기 고마워요.'), s: proposed), isEmpty);
     });
+    test('respond_v2: second person, question after a no-question promise, repeated question', () {
+      expect(v(_out(text: '당신의 마음이 이해돼요.')), contains('second_person'));
+      expect(v(_out(text: '알겠어요, 더 묻지 않을게요. 어떤 이야기를 하고 싶으세요?')),
+          contains('question_after_no_question_promise'));
+      final asked = _session(messages: [_a('그 생각을 사실이라고 느끼게 하는 경험이 있을까요?')]);
+      expect(v(_out(), s: asked), contains('repeated_question'));
+      expect(v(_out(text: '알겠어요. 더 묻지 않을게요.')), isEmpty);
+    });
+    test('respond_v2: an intervention step always carries an id', () {
+      final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};
+      expect(LlmLedOutput.tryParse(raw), isNull);
+    });
     test('bad shape is not parsed', () {
       expect(LlmLedOutput.tryParse({..._out()['output'] as Map, 'domain': 'chitchat'}), isNull);
       expect(LlmLedOutput.tryParse({..._out()['output'] as Map, 'dialogue_moves': ['give_advice']}), isNull);
@@ -154,7 +175,7 @@ void main() {
       expect(s.state, CounselingState.intervention);
       s.messages..add(_u('예전에 막혔어'))..add(p.result!.assistantMessage);
       final i = await _harness().handleLlmLedTurn(session: s, userMessage: '막혀도 다시 이어가면 될 수도 있어',
-          api: _Api([_out(moves: ['integrate', 'offer_close'], step: 'integration', action: 'offer_close', text: '그렇게 보면 조금 가벼워지네요. 여기까지 정리해 볼까요?')]),
+          api: _Api([_out(moves: ['integrate', 'offer_close'], interventionId: id, step: 'integration', action: 'offer_close', text: '그렇게 보면 조금 가벼워지네요. 여기까지 정리해 볼까요?')]),
           appGuide: _guide);
       final m = i.result!.assistantMessage;
       expect(m.interventionStep, InterventionStep.integration);
@@ -217,15 +238,22 @@ void main() {
       expect(p.messages.last.text, contains('0에서 10')); // the deterministic check-in
     });
 
-    test('A/B: every other session uses the LLM-led path', () async {
+    test('A/B: balanced hidden assignment (2 A + 2 B per block of four sessions)', () async {
       final api = _Api([_out(moves: ['acknowledge', 'open_question'], text: 'B 경로 응답이에요. 어떤 점이 걱정되나요?')]);
-      final p = await make(api, alternate: true); // session 1 → B
-      await p.sendMessage('발표가 있어');
-      expect(p.messages.last.text, startsWith('B 경로'));
-      await p.reset(); // session 2 → A
-      await p.sendMessage('발표가 있어');
-      expect(p.messages.last.text, isNot(startsWith('B 경로')));
-      expect(api.bodies, hasLength(1));
+      final p = CounselingProvider(
+        knowledgeRepository: _repo, appGuideRepository: _guide, currentWeek: 4, instantEmpathy: false,
+        llmLedApi: api, llmLedAlternate: true, random: Random(7), harness: _harness());
+      await p.initialize();
+      final paths = <String>[];
+      for (var i = 0; i < 8; i++) {
+        if (i > 0) await p.reset();
+        await p.sendMessage('발표가 있어');
+        final b = p.messages.last.text.startsWith('B 경로');
+        expect(p.experimentPath, b ? 'B' : 'A');
+        paths.add(p.experimentPath);
+      }
+      expect(paths.where((x) => x == 'B').length, 4, reason: '$paths');
+      expect(paths.take(4).where((x) => x == 'B').length, 2, reason: '$paths');
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
@@ -81,12 +82,26 @@ class CounselingProvider extends ChangeNotifier {
   /// the deterministic path for that turn. Null = off (default).
   final CounselingRespondApi? llmLedApi;
 
-  /// Phase 14.X E3: use the LLM-led path on every other session only (A/B),
-  /// without showing which. The path is logged per session.
+  /// Phase 14.X E3: assign each session to A or B at random (balanced
+  /// blocks of 2 A + 2 B, shuffled), without showing which. The path is
+  /// logged per session.
   final bool llmLedAlternate;
+  final Random _random;
+  final List<bool> _block = [];
   int _sessionOrdinal = 0;
-  bool get _llmLedThisSession =>
-      llmLedApi != null && (!llmLedAlternate || _sessionOrdinal.isOdd);
+  bool _pathB = true;
+  bool get _llmLedThisSession => llmLedApi != null && (!llmLedAlternate || _pathB);
+
+  /// Pseudonymous id of the current session (for experiment logs).
+  String get sessionPseudonym => pseudonymize(_session.sessionId);
+
+  /// Path of the current session, for the E3 rating log only ('A' | 'B').
+  String get experimentPath => _llmLedThisSession ? 'B' : 'A';
+
+  bool _nextPathB() {
+    if (_block.isEmpty) _block.addAll([true, true, false, false]..shuffle(_random));
+    return _block.removeLast();
+  }
 
   /// 지난 세션 중 어느 것을 참고할지 정한다.
   final PreviousSessionSelector previousSessionSelector;
@@ -159,9 +174,11 @@ class CounselingProvider extends ChangeNotifier {
     this.perceptionTimeout = const Duration(seconds: 2),
     this.llmLedApi,
     this.llmLedAlternate = false,
+    Random? random,
     this.previousSessionSelector = const PreviousSessionSelector(),
     String? sessionId,
-  }) : appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
+  }) : _random = random ?? Random(),
+       appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
        _session = CounselingSessionState(
          sessionId:
              sessionId ?? 'session_${DateTime.now().millisecondsSinceEpoch}',
@@ -250,6 +267,7 @@ class CounselingProvider extends ChangeNotifier {
     _session.userContext = await _buildContext();
     await _loadPreviousSession();
     _sessionOrdinal++;
+    _pathB = llmLedAlternate ? _nextPathB() : true;
     if (llmLedApi != null) {
       debugPrint('LLM_LED_SESSION ${jsonEncode({
         'session': pseudonymize(_session.sessionId),

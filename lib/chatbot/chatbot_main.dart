@@ -6,6 +6,7 @@
 // 이 파일에 있으면 안 되는 것:
 //   프롬프트 생성, 검색, CBT 상태 결정, 환자 기록 선택, 모델 호출, 응답 검증
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io'
     if (dart.library.html) 'utils/file_stub.dart'
     show Directory;
@@ -316,6 +317,72 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       instantEmpathy: false,
       harness: harness,
     );
+  }
+
+  /// Phase 14.X E3: rate the session that just ended. The path (A/B) is not
+  /// shown; it is logged with the session pseudonym (`LLM_LED_RATING`).
+  Future<void> _askSessionRating() async {
+    const items = {
+      'natural': '실제 대화처럼 자연스럽게 이어졌나요?',
+      'context': '방금 한 말을 제대로 이해하고 반응했나요?',
+      'flexible': '앱 질문, 새 주제, 불만에 적절히 대응했나요?',
+      'progress': '빙빙 돌지 않고 적절히 진행됐나요?',
+    };
+    final scores = <String, int>{};
+    bool? again;
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('이번 상담 평가 (1~5)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                for (final e in items.entries) ...[
+                  Text(e.value),
+                  Wrap(spacing: 6, children: [
+                    for (var v = 1; v <= 5; v++)
+                      ChoiceChip(
+                        label: Text('$v'),
+                        selected: scores[e.key] == v,
+                        onSelected: (_) => setSheet(() => scores[e.key] = v),
+                      ),
+                  ]),
+                  const SizedBox(height: 8),
+                ],
+                const Text('이 챗봇과 계속 대화하고 싶나요?'),
+                Wrap(spacing: 6, children: [
+                  ChoiceChip(label: const Text('예'), selected: again == true, onSelected: (_) => setSheet(() => again = true)),
+                  ChoiceChip(label: const Text('아니요'), selected: again == false, onSelected: (_) => setSheet(() => again = false)),
+                ]),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: scores.length == items.length && again != null
+                        ? () => Navigator.of(ctx).pop(true)
+                        : null,
+                    child: const Text('제출'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (ok != true) return;
+    debugPrint('LLM_LED_RATING ${jsonEncode({
+      'session': _provider.sessionPseudonym,
+      'path': _provider.experimentPath,
+      ...scores,
+      'again': again,
+    })}');
   }
 
   CounselingRespondApi? _llmLedApi() {
@@ -641,6 +708,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       _appendNotice(
         '오늘 상담은 여기까지예요. 새로운 주제로 다시 이야기하고 싶다면 오른쪽 위 새로고침 버튼을 눌러주세요.',
       );
+      if (_llmLedEnabled && _llmLedAlternate) unawaited(_askSessionRating());
     }
 
     await _speakLatestAssistantMessage();

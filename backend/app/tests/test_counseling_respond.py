@@ -15,22 +15,23 @@ REQ = CounselingRespondRequest.model_validate({
 })
 OK = {
     "domain": "counseling", "dialogue_moves": ["acknowledge", "ask_evidence"],
-    "intervention_id": None, "intervention_step": None,
+    "intervention": None,
     "used_user_fact_ids": [], "used_app_fact_ids": [],
-    "session_action": "continue", "response_text": "그 생각의 근거가 있을까요?",
+    "session_action": "continue", "statement": "그런 생각이 드셨군요.",
+    "question": "그 생각의 근거가 있을까요?",
 }
 
 
 def test_ids_are_enums_per_request():
     schema = response_format(REQ)["json_schema"]["schema"]["properties"]
-    assert schema["intervention_id"]["enum"] == ["week4_alternative_thought_01", None]
+    assert schema["intervention"]["anyOf"][1]["properties"]["id"]["enum"] == ["week4_alternative_thought_01"]
     assert schema["used_user_fact_ids"]["items"]["enum"] == ["session:s1"]
     assert schema["used_app_fact_ids"]["maxItems"] == 0
 
 
 def test_no_techniques_means_null_only():
     req = REQ.model_copy(update={"techniques": []})
-    assert response_format(req)["json_schema"]["schema"]["properties"]["intervention_id"] == {"type": "null"}
+    assert response_format(req)["json_schema"]["schema"]["properties"]["intervention"] == {"type": "null"}
 
 
 def test_valid_output_parses():
@@ -43,6 +44,8 @@ def test_valid_output_parses():
     {**OK, "dialogue_moves": []},
     {**OK, "dialogue_moves": ["give_advice"]},
     {k: v for k, v in OK.items() if k != "session_action"},
+    {**OK, "intervention": {"step": "prompt"}},
+    {**OK, "intervention": {"id": "x", "step": "explain"}},
 ])
 def test_invalid_output_rejected(bad):
     with pytest.raises(RespondRejected):

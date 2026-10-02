@@ -35,6 +35,7 @@ class LlmLedContext {
   final List<String> appNames; // names a reply may only use with an app fact
   final String? pendingInterventionId;
   final bool closingProposed;
+  final List<String> recentQuestions;
 
   const LlmLedContext({
     required this.body,
@@ -45,6 +46,7 @@ class LlmLedContext {
     required this.appNames,
     required this.pendingInterventionId,
     required this.closingProposed,
+    this.recentQuestions = const [],
   });
 
   static LlmLedContext build({
@@ -141,13 +143,36 @@ class LlmLedContext {
       });
     }
 
+    // respond_v2: structured progress evidence (advisory).
+    final roundWorry = UserThoughtExtractor.roundWorryThought(UserThoughtExtractor.semanticContent(round));
+    final askedGoals = {
+      for (final m in round)
+        if (!m.isUser && m.dialogueGoalId != null) m.dialogueGoalId!,
+    };
+    var noProgress = 0;
+    for (final m in [...messages.reversed.where((m) => m.isUser)]) {
+      if (UserThoughtExtractor.isContentfulContribution(m.text)) break;
+      noProgress++;
+    }
+    if (!UserThoughtExtractor.isContentfulContribution(userMessage)) noProgress++; else noProgress = 0;
+    final recentQuestions = [
+      for (final m in messages.reversed.where((m) => !m.isUser).take(6))
+        for (final q in RegExp(r'[^.!?\n]*\?').allMatches(m.text)) q.group(0)!.trim(),
+    ].where((q) => q.isNotEmpty).take(3).toList();
     final progress = {
+      'concern_identified': round.any((m) => m.isUser && UserThoughtExtractor.hasContent(m.text)) ||
+          UserThoughtExtractor.hasContent(userMessage),
+      'thought_identified': roundWorry != null,
+      'evidence_explored': askedGoals.contains('evidence'),
+      'alternative_explored': askedGoals.contains('alternative'),
+      'intervention_available': types.isNotEmpty,
+      'intervention_completed': round.any((m) => !m.isUser && m.interventionStep == InterventionStep.integration),
+      'recent_no_progress_turns': noProgress,
+      'exchange_count': messages.where((m) => m.isUser).length + 1,
+      'recent_questions': recentQuestions,
       'stage': session.state.wireName,
-      'round_worry': UserThoughtExtractor.roundWorryThought(UserThoughtExtractor.semanticContent(round)),
-      'asked_goals': [
-        for (final m in round)
-          if (!m.isUser && m.dialogueGoalId != null) m.dialogueGoalId!,
-      ],
+      'round_worry': roundWorry,
+      'asked_goals': askedGoals.toList(),
       'intervention_pending': pending,
       'intervention_used': <String>{
         for (final m in messages)
@@ -174,6 +199,7 @@ class LlmLedContext {
       appNames: appNames.where((n) => n.trim().length >= 2).toList(),
       pendingInterventionId: pending,
       closingProposed: lastAssistant?.closingStep == ClosingStep.proposed,
+      recentQuestions: recentQuestions,
     );
   }
 }
@@ -187,7 +213,11 @@ class LlmLedOutput {
   final List<String> usedUserFactIds;
   final List<String> usedAppFactIds;
   final String sessionAction;
-  final String text;
+  final String statement;
+  final String? question;
+
+  /// What the user sees: the statement, then the one question if any.
+  String get text => question == null ? statement : '$statement $question';
 
   const LlmLedOutput({
     required this.domain,
@@ -197,36 +227,42 @@ class LlmLedOutput {
     required this.usedUserFactIds,
     required this.usedAppFactIds,
     required this.sessionAction,
-    required this.text,
+    required this.statement,
+    required this.question,
   });
 
-  /// Null when the shape or an enum is off.
+  /// Null when the shape or an enum is off (respond_v2 shape: statement +
+  /// optional single question; intervention as one {id, step} object).
   static LlmLedOutput? tryParse(Object? json) {
     if (json is! Map) return null;
     final moves = json['dialogue_moves'];
     final userIds = json['used_user_fact_ids'];
     final appIds = json['used_app_fact_ids'];
-    final text = json['response_text'];
-    final step = json['intervention_step'];
-    final id = json['intervention_id'];
+    final statement = json['statement'];
+    final question = json['question'];
+    final iv = json['intervention'];
     if (!_domains.contains(json['domain']) ||
         !_sessionActions.contains(json['session_action']) ||
         moves is! List || moves.isEmpty || !moves.every(_moves.contains) ||
         userIds is! List || appIds is! List ||
-        text is! String || text.trim().isEmpty ||
-        (step != null && step != 'prompt' && step != 'integration') ||
-        (id != null && id is! String)) {
+        statement is! String || statement.trim().isEmpty ||
+        (question != null && question is! String) ||
+        (iv != null &&
+            (iv is! Map || iv['id'] is! String ||
+                (iv['step'] != 'prompt' && iv['step'] != 'integration')))) {
       return null;
     }
+    final q = (question as String?)?.trim();
     return LlmLedOutput(
       domain: json['domain'] as String,
       moves: moves.cast<String>(),
-      interventionId: id as String?,
-      interventionStep: step as String?,
+      interventionId: iv == null ? null : (iv as Map)['id'] as String,
+      interventionStep: iv == null ? null : (iv as Map)['step'] as String,
       usedUserFactIds: userIds.whereType<String>().toList(),
       usedAppFactIds: appIds.whereType<String>().toList(),
       sessionAction: json['session_action'] as String,
-      text: text.trim(),
+      statement: statement.trim(),
+      question: q == null || q.isEmpty ? null : q,
     );
   }
 }
@@ -241,6 +277,26 @@ class LlmLedValidator {
   );
   static final RegExp _directive = RegExp(r'(해야\s*(합니다|해요|돼요)|하셔야|하세요[.!]?\s*$|하십시오)');
   static final RegExp _appTerms = RegExp(r'(메뉴|화면|탭|버튼|설정에서|홈에서|들어가)');
+  static final RegExp _secondPerson = RegExp(r'당신');
+  static final RegExp _noQuestionPromise = RegExp(
+    r'(질문\s*(을|은)?\s*(그만|안\s*할|하지\s*않|줄이|드리지\s*않)|더\s*(묻지|여쭙지|여쭤보지)\s*않)',
+  );
+
+  static Set<String> _words(String s) =>
+      {for (final w in s.split(RegExp(r'[\s.,!?~]+'))) if (w.length >= 2) w};
+
+  /// Token Jaccard ≥ 0.6 with a recent question = asked again.
+  static bool _repeats(String q, List<String> recent) {
+    final a = _words(q);
+    if (a.isEmpty) return false;
+    for (final r in recent) {
+      final b = _words(r);
+      final inter = a.intersection(b).length;
+      final union = a.union(b).length;
+      if (union > 0 && inter / union >= 0.6) return true;
+    }
+    return false;
+  }
 
   static List<String> validate(LlmLedOutput o, LlmLedContext c) {
     final v = <String>[];
@@ -258,6 +314,13 @@ class LlmLedValidator {
       v.add('app_claim_without_fact');
     }
     if ('?'.allMatches(o.text).length + '？'.allMatches(o.text).length > 1) v.add('too_many_questions');
+    if (o.statement.contains('?') || o.statement.contains('？')) v.add('question_in_statement');
+    if (o.question != null && !RegExp(r'[?？]\s*$').hasMatch(o.question!)) v.add('question_shape');
+    if (_secondPerson.hasMatch(o.text)) v.add('second_person');
+    if (o.question != null && _noQuestionPromise.hasMatch(o.statement)) v.add('question_after_no_question_promise');
+    if (o.question != null && o.sessionAction != 'offer_close' && _repeats(o.question!, c.recentQuestions)) {
+      v.add('repeated_question');
+    }
     if (_diagnosis.hasMatch(o.text)) v.add('diagnosis');
     if (_guarantee.hasMatch(o.text)) v.add('outcome_guarantee');
     if (_directive.hasMatch(o.text)) v.add('directive');

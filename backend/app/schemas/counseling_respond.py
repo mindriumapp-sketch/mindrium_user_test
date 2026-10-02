@@ -52,6 +52,16 @@ class Progress(BaseModel):
     intervention_used: List[str] = Field(default_factory=list)
     closing_proposed: bool = False
     continuation_used: bool = False
+    # respond_v2: structured progress evidence (advisory, not a script)
+    concern_identified: bool = False
+    thought_identified: bool = False
+    evidence_explored: bool = False
+    alternative_explored: bool = False
+    intervention_available: bool = False
+    intervention_completed: bool = False
+    recent_no_progress_turns: int = 0
+    exchange_count: int = 0
+    recent_questions: List[str] = Field(default_factory=list, max_length=3)
 
 
 class CounselingRespondRequest(BaseModel):
@@ -65,18 +75,28 @@ class CounselingRespondRequest(BaseModel):
     app_facts: List[Fact] = Field(default_factory=list, max_length=40)
 
 
+class InterventionChoice(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str
+    step: InterventionStep
+
+
 class AgentOutput(BaseModel):
-    """모델 출력의 유일하게 허용되는 형태."""
+    """모델 출력의 유일하게 허용되는 형태 (respond_v2).
+
+    문장(statement)과 질문(question)을 나눠 질문은 최대 1개만 가능하다. 기법은 하나의
+    객체(id와 단계)라서 id 없는 기법 단계는 만들 수 없다.
+    """
 
     model_config = ConfigDict(extra="forbid", strict=True)
     domain: Domain
-    dialogue_moves: List[Move] = Field(..., min_length=1, max_length=4)
-    intervention_id: Optional[str]
-    intervention_step: Optional[InterventionStep]
+    dialogue_moves: List[Move] = Field(..., min_length=1, max_length=5)
+    intervention: Optional[InterventionChoice]
     used_user_fact_ids: List[str]
     used_app_fact_ids: List[str]
     session_action: SessionAction
-    response_text: str = Field(..., min_length=1, max_length=600)
+    statement: str = Field(..., min_length=1, max_length=500)
+    question: Optional[str] = Field(None, max_length=200)
 
 
 class CounselingRespondResponse(BaseModel):
