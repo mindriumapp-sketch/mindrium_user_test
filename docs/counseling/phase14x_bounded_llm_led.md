@@ -1,0 +1,109 @@
+# Phase 14.X 설계: Bounded LLM-led 경로 (시제품)
+
+상태: **초안 (동결 전)**. 작성 2026-10-02. 지금 경로(결정론 주도)는 바꾸지 않고, 플래그로 켜는 실험 경로를 따로
+만듭니다. 이 문서가 동결되면 구현합니다.
+
+## 1. 목표와 가설
+
+**목표.** 다음 응답의 판단(무엇을 할지, 어떻게 말할지)을 GPT 한 번의 호출에 맡기고, 코드는 허용 가능한 범위를 미리
+좁히고 결과를 검증합니다.
+
+**가설.** 상담, 앱 안내, 사용자의 메타 반응, 개인 기록을 한 맥락에서 함께 보게 하면, 지금 구조에서 생기는
+교차 영역·맥락 실패(앱 질문을 상담으로 처리, "그만하자"를 걱정으로 처리, "대화가 안 된다"에 또 질문)가 줄어든다.
+
+**Phase 9 Remote decision agent와 다른 점.** Phase 9는 기존 상태·계획 구조 안에서 결정 부품 하나를 원격으로 바꿨고,
+결정론 선택보다 낫지 않아 쓰지 않았습니다. 이번에는 상태 기계가 결정을 강제하지 않습니다. 대화 전체, 개인 에피소드,
+앱 안내 근거, 허용 기법, 명시적 경계를 한 번에 보고 다음 응답 전체를 정합니다. 상태는 참고 정보로만 넘깁니다.
+
+## 2. 경계 (LLM 밖에서 코드가 정함)
+
+| 항목 | 방식 |
+|---|---|
+| 안전 | 기존 SafetyGate가 먼저 판정. 위기면 LLM을 부르지 않고 고정 응답 |
+| CBT | 이번 사용자가 지금 쓸 수 있는 승인 기법만 id와 함께 전달(현재 주차까지 누적, 미래 주차 제외). 목록 밖 id는 거부 |
+| 사용자 사실 | 이번 턴에 검색된 기록만 id와 함께 전달(에피소드 세션 id, 일기 id, 효과 있었던 기법). 그 밖의 사실 언급은 거부 |
+| 앱 사실 | 앱 안내 카탈로그(기능 9, 화면 10, 이동 경로 9) 전체를 id와 함께 전달. 근거 id 없이 구체적인 화면·경로를 말하면 거부 |
+| 금지 행동 | 진단, 치료 효과 보장, 결과 보장형 안심, 지시형 조언, 승인 밖 기법, 자기 노출 |
+| 세션 제약 | 질문 최대 1개. 세션 확정 종료는 직전 응답이 마무리 제안이고 사용자가 동의했을 때만 |
+| 상태 | 현재 단계와 진행 상황(14.3 ledger)을 참고 정보로만 전달. 특정 질문을 강제하지 않음 |
+
+## 3. 입력 (백엔드 `POST /counseling/respond`)
+
+- 최근 대화: 최대 12개 메시지(사용자·상담자)
+- 현재 주차, 참고용 단계와 진행 상황(라운드 걱정, 이미 물은 목표, 기법 질문 대기 여부, 마무리 제안 대기 여부, 계속하기 사용 여부)
+- 사용자 사실: `[{id, kind, text}]`
+- 허용 기법: `[{id, name, purpose, question_guide}]` (코퍼스에서 발췌)
+- 앱 사실: `[{id, kind: feature|screen|navigation, name, description, steps?}]`
+- 금지 행동 목록
+
+새로 외부로 나가는 정보는 최근 대화 원문과 검색된 사용자 기록 요약입니다. 지금 분류기·표현기가 보내는 것보다 많습니다.
+내부 계정에서만 켭니다.
+
+## 4. 출력 스키마 (JSON 하나, structured outputs로 enum 강제)
+
+```json
+{
+  "domain": "counseling | app_guide | mixed",
+  "dialogue_moves": ["acknowledge", "restate", "reflect_emotion", "clarify", "open_question",
+                     "ask_evidence", "ask_alternative", "ask_probability", "connect_past_record",
+                     "summarize", "listen", "repair", "intervention_question", "integrate",
+                     "answer_app", "offer_close", "finalize"],
+  "intervention_id": "허용 기법 id 또는 null",
+  "intervention_step": "prompt | integration | null",
+  "used_user_fact_ids": ["..."],
+  "used_app_fact_ids": ["..."],
+  "session_action": "continue | offer_close | finalize",
+  "response_text": "사용자에게 보일 문장"
+}
+```
+
+**기존 메타데이터로 옮김.** 저장과 기억이 지금처럼 동작하도록 출력을 턴 메타데이터로 옮깁니다.
+- `intervention_step` → `interventionStep`
+- `session_action` → `closingStep` (offer_close=proposed, finalize=finalized)
+- `repair` move → `interactionRepairReason`
+- `ask_*` → `dialogueGoalId`
+- 단계: 상태 정책이 이 메타데이터로 계속 계산합니다. 그래서 중간에 결정론 경로로 대체돼도 흐름이 이어집니다.
+- 기법 성과 인정(`interventionCredited`)은 LLM이 정하지 않습니다. 지금처럼 코드 규칙(`isTechniqueAnswer` + `showsTechniqueMove`)으로 판정합니다.
+
+## 5. 검증 (실패 = 이번 턴만 결정론 경로로 대체)
+
+| 검사 | 기준 |
+|---|---|
+| 스키마 | 필드·enum 불일치, 추가 키 → 거부 |
+| 기법 | `intervention_id`가 허용 목록 밖, 미래 주차 → 거부 |
+| 사용자 사실 | `used_user_fact_ids`가 입력에 없음 → 거부 |
+| 앱 사실 | `used_app_fact_ids`가 카탈로그에 없음, 또는 화면·메뉴 이름을 말하면서 앱 사실 id가 없음 → 거부 |
+| 문장 | 질문 2개 이상, 진단·보장·결과 보장·지시 표현 → 거부 |
+| 마무리 | 마무리 제안 없이 `finalize` → 거부 |
+| 안전 재검사 | 응답 문장에 위기 표현 처리 누락이 의심되면 → 결정론 안전 응답 |
+
+재시도 호출은 하지 않습니다. 실패하면 바로 대체합니다. 시간 제한은 8초이고, 넘으면 대체합니다.
+
+## 6. 켜는 조건
+
+빌드 플래그 `COUNSELING_LLM_LED_PATH=true`(기본 false) + 내부 계정. 켜면 이번 상담의 모든 비위기 턴이 B 경로로
+가고, 실패한 턴만 A 경로로 대체됩니다. 기존 분류기와 표현기는 B 경로에서 쓰지 않습니다.
+
+## 7. 평가 (A = 지금 경로, B = 이 경로, 같은 입력)
+
+| 단계 | 방법 |
+|---|---|
+| E1 자동 | 기존 홀드아웃 드라이버(v1~v5, 의도별 시뮬레이션 사용자)로 A와 B를 돌려 A층 지표 비교. B 전용 지표 추가: `unsupportedUserFact`, `unsupportedAppFact`, `unauthorizedIntervention`, `forbiddenAdvice`, `stateIncoherentAction`, `validatorFallbackRate`, 지연 |
+| E2 교차 영역 세트 | 코드와 dogfood 원문을 보지 않은 작성자가 새로 씀(상담 중 앱 질문, 메타 반응, 거절, 혼합, 개인 기록 연결). 첫 실행 전 동결 |
+| E3 실기기 | 내부 계정에서 A·B를 번갈아 세션 진행(어느 경로인지 화면에 표시하지 않음). 세션마다 자연스러움 1~5점과 메모 |
+
+## 8. 진행/중단 기준
+
+**진행(구조 전환 검토)은 아래를 모두 만족할 때:**
+- 검증 뒤 최종 응답 기준으로 안전·미승인 기법·미래 주차·근거 없는 사실 위반 0
+- 대체 비율 10% 이하
+- 지연 p95 5초 이하
+- E2와 E3에서 B가 명확히 나음: 맥락 무시 실패(앱 질문을 상담으로, 메타를 내용으로, 거절 무시)가 A 대비 절반 이하, E3 평균 점수가 A보다 1점 이상 높음
+
+**중단:** 위반이 늘거나 개선이 작으면 B를 접고 A 구조를 유지합니다.
+
+## 9. 동결 전에 정할 것
+
+1. **모델:** `gpt-4o-mini`(빠름, 저렴) 또는 더 큰 모델. 제안은 mini로 시작하고, 품질이 부족하면 비교합니다.
+2. **최근 대화 길이:** 12개 메시지로 충분한지.
+3. **E3 평가자:** 개발자 혼자 할지, 다른 내부 평가자를 둘지.

@@ -30,7 +30,7 @@ if len(lat) >= 2:
 
 print("\nrule signal x model raw signal")
 for (rule, raw), n in Counter((r["rule_signal"], r["model_raw_signal"]) for r in ok).most_common():
-    print(f"  rule={rule:26s} model={raw:26s} {n}")
+    print(f"  rule={rule:26s} model={str(raw):26s} {n}")
 
 nu = Counter()
 for r in ok:
