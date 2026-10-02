@@ -199,3 +199,22 @@ python3 tools/classifier_eval/score.py $F build/classifier_eval/frozen_rules.jso
 ```
 
 원본 결과는 `test/counseling/evaluation/results/phase14_2a_frozen_v1_classify_v2*.json`에 있습니다. `temperature 0`이어도 모델 응답은 실행마다 조금 다를 수 있습니다. 위 수치는 2026-10-02 한 번 실행한 결과입니다.
+
+## 8. 14.2B-0/1: frozen_v2 결과 (2026-10-02, 한 번 실행)
+
+`frozen_v2`(240개)는 코드와 dogfood 문장을 보지 않은 작성자가 실패 유형 설명만 보고 썼고, 실행 전에 커밋했습니다
+(`97f0f8b`). 분류기는 `classify_v2` 그대로입니다. guard 값은 앱의 guard(`shadow_perception.dart`)와 같은 정규식으로
+계산했습니다. 원본: `test/counseling/evaluation/results/phase14_2b_frozen_v2_classify_v2*.json`.
+
+| 신호 | 규칙 재현율 / 정밀도 | 모델(guard) 재현율 / 정밀도 | v1(진단) guard 값 | 판단 |
+|---|---|---|---|---|
+| assistant_not_understood (27) | 7.4 / 100 | **37.0 / 90.9** | 73.7 / 100 | 적용 후보. 오탐 1건("방금 내가 한 말 읽긴 했어?")도 챗봇을 향한 말 |
+| stop_questioning (25) | 40.0 / 84.6 | **88.0 / 88.5** | 100 / 72.7 | 적용 후보. v2 오탐 3건은 모두 챗봇의 진행 방식에 대한 불만(정답 process_resistance)이라 질문을 멈춰도 해가 작음. v1 오탐은 앱 위치 질문("어디서") |
+| new_worry (19) | - | **73.7 / 100** | 88.2 / 75.0 | 후보. 다만 실기기 32턴에서는 한 번도 표시하지 않음 |
+| new_evidence (12) | - | 50.0 / 75.0 | 66.7 / 84.2 | 보류(표본 작음, 재현율 낮음) |
+| repeated_question (15) | 53.3 / 88.9 | 80.0 / 73.3(원값) | - | 규칙 유지 |
+| process_resistance (22) | 4.5 / 100 | 27.3 / 100(원값) | 25.0 / 100 | 그림자 유지(재현율 낮음) |
+| low_information | 50.0 / 63.6 | 100 / 32.5(원값) | 100 / 29.8 | 사용 안 함 |
+| 메타 오탐(정답 none 122개) | 2 | 2 | - | 같음. 제3자 주어 1건(g172 "선생님이 같은 질문만…")은 guard가 없는 repeated_question |
+
+운영: 시간 초과 2건(0.8%), 지연 p50 1.0초 / p95 1.9초.
