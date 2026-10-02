@@ -1,4 +1,4 @@
-# Phase 14.2A 결과: 의미 분류기 오프라인 평가 (A-1 ~ A-3)
+# Phase 14.2A 결과: 의미 분류기 오프라인 평가와 그림자 연결 (A-1 ~ A-4)
 
 기준: 2026-10-02. 설계는 [`phase14_dialogue_moves.md`](phase14_dialogue_moves.md) 5.1절과 10절입니다. 이 단계에서
 분류기는 앱에 연결하지 않았고, 상담 결정에도 쓰지 않았습니다. 실제 사용자 발화는 외부로 보내지 않았고, 합성
@@ -127,7 +127,65 @@
 2. **A-4 그림자 연결:** 내부 계정에서만 켜고, 결정에는 쓰지 않으며, 원문 없이 라벨·일치 여부·지연만 기록합니다.
    결정 변화 0을 자동으로 확인합니다.
 
-## 5. 재현
+## 5. A-4 그림자 연결 (2026-10-02)
+
+**`frozen_v1`의 지위 변경.** 아래 guard를 이 세트의 오탐 유형을 보고 설계했으므로, `frozen_v1`은 이제 개발·진단
+세트입니다. 14.2B 판정에는 쓰지 않습니다. 14.2B 직전에 `frozen_v2`를 새로 만듭니다(6절).
+
+**분류기는 바꾸지 않았습니다.** `classify_v2` 그대로입니다.
+
+**관찰 범위**
+
+| 신호 | A-4에서의 취급 |
+|---|---|
+| `assistant_not_understood` | guard 뒤 그림자 후보 |
+| `new_worry`, `new_evidence` | guard 뒤 그림자 후보 |
+| `repeated_question`, `process_resistance` | 모델 원값만 진단용으로 기록 |
+| `stop_questioning`, `low_information`, `elaboration` | 원값만 기록, guard 값을 만들지 않음(모델 사용 금지) |
+| 확신도 | 기록하지 않음, 정책에 쓰지 않음 |
+
+**라벨별 guard** (`lib/features/counseling/perception/shadow_perception.dart`). 메타 신호와 내용 신호의 guard를
+분리했습니다.
+- `assistant_not_understood`: 제3자 주어("교수님이", "선배가", "친구가" …)이거나 앱 사용법 혼동(앱, 기능, 메뉴,
+  설정, 알림, 일기 …)이면 버립니다. "그게 무슨 뜻이야"처럼 직전 상담자 발화를 가리키는 말은 통과합니다.
+- `new_worry` / `new_evidence`: 걱정 내용인 것이 정상이므로 걱정 판정으로 막지 않습니다. 앱 안내 영역이거나
+  내용이 없는 발화(메타만, 저정보)이면 버립니다.
+
+**인과 차단.** 분류 요청은 응답이 정해진 뒤 기다리지 않고(unawaited) 보냅니다. 결과는 기록 함수로만 갑니다.
+`test/counseling/shadow_perception_test.dart`가 다음을 자동으로 확인합니다.
+
+| 확인 | 방법 |
+|---|---|
+| 결정 변화 0 | 5개 시나리오(협조, 헷갈림, 저정보 + 계속, 반복·중단, 위기)를 그림자 없음 / 최악 라벨만 내는 그림자 / 실패하는 그림자 / 느린 그림자로 각각 돌려, 상태, 응답 문장, 행위, 목표, 복구 사유, 기법 단계, 마무리 단계, 조기 마무리, 확인 질문, 성과 인정, CBT id, 저장된 세션 요약이 모두 같음 |
+| 턴을 막지 않음 | 응답하지 않는 분류기에서 시간 초과로 기록되고 턴은 진행됨 |
+| 원문 없음 | 기록에 사용자 발화, 상담자 발화, 세션 id 원문이 없음(세션은 FNV-1a 가명) |
+| guard | 제3자·앱 사용법 오탐 유형은 버리고, 챗봇을 가리키는 말은 통과 |
+
+**켜는 조건.** 빌드 플래그 `COUNSELING_SHADOW_CLASSIFIER=true`(기본 false) **그리고** 내부 계정 허용 목록에 있는
+계정일 때만 동작합니다. 켜면 그 계정의 사용자 발화와 직전 상담자 발화가 백엔드를 거쳐 OpenAI로 갑니다.
+
+```bash
+flutter build apk --debug \
+  --dart-define=API_BASE_URL=http://127.0.0.1:8090 \
+  --dart-define=COUNSELING_REMOTE_REALIZER=true \
+  --dart-define=COUNSELING_SHADOW_CLASSIFIER=true
+# dogfood 뒤
+adb logcat -d | grep SHADOW_PERCEPTION > build/classifier_eval/shadow.log
+python3 tools/classifier_eval/analyze_shadow.py build/classifier_eval/shadow.log
+```
+
+기록 한 줄에는 가명 세션, 턴 번호, 규칙 신호, 모델 원값, guard 값과 버린 이유, 규칙과의 일치 여부, 지연, 실패
+사유만 들어갑니다. 실제 사례의 원문 분석이 필요하면 사용자가 따로 적어 둔 문장만 평가 세트로 옮깁니다.
+
+## 6. 남은 순서
+
+1. **A-5 그림자 분석:** 내부 dogfood 기록으로 라벨별 추가 가치(규칙이 놓친 것을 모델이 잡은 비율), guard가 버린
+   유형, 호출이 필요한 턴의 비율(선택 호출 가능성), 실제 지연을 봅니다.
+2. **14.2B-0 `frozen_v2`:** A-5에서 본 실패 유형을 바탕으로, 실제 문장을 복사하지 않고 새 표현으로 작성합니다.
+   코드를 보지 않은 작성자가 쓰고 첫 실행 전에 동결합니다.
+3. **14.2B-1 라벨별 적용 결정:** 라벨마다 따로 정합니다. 기준을 넘지 못한 라벨은 규칙을 유지합니다.
+
+## 7. 재현
 
 ```bash
 python3 tools/classifier_eval/build_dev_set.py

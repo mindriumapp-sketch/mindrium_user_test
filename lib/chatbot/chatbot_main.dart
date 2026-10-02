@@ -33,7 +33,9 @@ import 'package:gad_app_team/features/counseling/policy/rollout/local_realizatio
 import 'package:gad_app_team/features/counseling/policy/rollout/rollout_config.dart';
 import 'package:gad_app_team/features/counseling/counseling_benchmark.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
+import 'package:gad_app_team/data/api/counseling_classify_api.dart';
 import 'package:gad_app_team/data/api/counseling_realize_api.dart';
+import 'package:gad_app_team/features/counseling/perception/shadow_perception.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
 import 'package:gad_app_team/features/counseling/remote_llm_realizer.dart';
 import 'package:gad_app_team/features/counseling/llm_service.dart';
@@ -108,6 +110,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   /// 알려진 한계) — 지금은 이 컴파일타임 플래그가 유일한 kill switch다.
   static const bool _rolloutKillSwitch = bool.fromEnvironment(
     'COUNSELING_REMOTE_REALIZER_KILL_SWITCH',
+    defaultValue: false,
+  );
+
+  /// Phase 14.2A-4: 의미 분류기 그림자 관찰. 켜도 결과는 기록만 하고 상담
+  /// 결정에 쓰지 않는다. 사용자 발화가 백엔드를 거쳐 외부 모델로 가므로 내부
+  /// 계정 허용 목록에 있는 계정에서만 동작한다. 기본값 false.
+  static const bool _shadowClassifierEnabled = bool.fromEnvironment(
+    'COUNSELING_SHADOW_CLASSIFIER',
     defaultValue: false,
   );
 
@@ -270,6 +280,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       currentWeek: week,
       contextBuilder: contextBuilder,
       sessionsApi: sessionsApi,
+      shadowPerception: _shadowPerception(),
       // Phase 10.6C-DOGFOOD: disabled per real-device feedback — showing
       // this deterministic placeholder bubble ahead of the real answer
       // made every Remote-eligible turn render as two disconnected
@@ -279,6 +290,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       // just not wired to true at this real call site anymore.
       instantEmpathy: false,
       harness: harness,
+    );
+  }
+
+  ShadowPerception? _shadowPerception() {
+    if (!_shadowClassifierEnabled || widget.llm != null) return null;
+    final email = context.read<UserProvider>().userEmail;
+    if (!isInternalAccountEmail(email)) return null;
+    return ShadowPerception(
+      api: DioCounselingClassifyApi(ApiClient(tokens: TokenStorage())),
     );
   }
 

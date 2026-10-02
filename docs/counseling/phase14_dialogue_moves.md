@@ -369,6 +369,7 @@ confidence:          0.0 ~ 1.0 (필드별)
 | Strategy RAG | 이번 Phase에서 만들지 않음 |
 
 - 2026-10-02 초안 작성(`a765fea`)
+- 2026-10-02 14.2A 결과 반영: 분류기 전체 적용(14.2B)은 보류. 후보 신호 3개(`assistant_not_understood`, `new_worry`, `new_evidence`)만 라벨별 guard 뒤 그림자 관찰. `frozen_v1`은 진단 세트로 전환하고 14.2B 전에 `frozen_v2`를 새로 동결([`phase14_2a_results.md`](phase14_2a_results.md))
 - 2026-10-02 검토 의견 반영 후 동결: move 두 축 분리, 안심을 `supportiveAffirmation`으로 축소, 지난 기록 연결 자격과 횟수, 교환 단위 정의, 길이를 검토 기준으로 명시, 14.2를 A/B로 분리, 분류기 출력 제한
 
 ---

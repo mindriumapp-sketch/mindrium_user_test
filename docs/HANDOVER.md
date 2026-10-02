@@ -89,6 +89,7 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 | `API_BASE_URL` | 디버그는 `http://115.145.134.180:8070` | 백엔드 주소 |
 | `COUNSELING_REMOTE_REALIZER` | `false` | GPT 표현 계층 사용. 꺼져 있으면 모든 문장이 결정론 |
 | `COUNSELING_REMOTE_REALIZER_KILL_SWITCH` | `false` | GPT 표현 즉시 차단 |
+| `COUNSELING_SHADOW_CLASSIFIER` | `false` | 의미 분류기 그림자 관찰(Phase 14.2A). 내부 계정에서만, 결정에 쓰지 않음 |
 
 GPT 표현은 플래그를 켜도 **내부 계정 허용 목록**에 있는 이메일에만 적용됩니다
 (`lib/features/counseling/policy/rollout/internal_account_allowlist.dart`). 새 개발자는 자신의 계정 이메일을

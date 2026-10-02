@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
@@ -16,6 +18,7 @@ import 'counseling_benchmark.dart';
 import 'empathy_planner.dart';
 import 'counseling_harness.dart';
 import 'counseling_state.dart';
+import 'perception/shadow_perception.dart';
 import 'safety_gate.dart';
 import 'turn_plan.dart';
 
@@ -58,6 +61,10 @@ class CounselingProvider extends ChangeNotifier {
 
   /// 세션 요약을 서버에 남긴다. 없으면 저장하지 않고 상담만 진행한다.
   final CounselingSessionsApi? sessionsApi;
+
+  /// Phase 14.2A-4: 의미 분류기 그림자 관찰. 결과는 기록만 하고 상담 결정에
+  /// 쓰지 않는다. null이면 꺼짐(기본).
+  final ShadowPerception? shadowPerception;
 
   /// 지난 세션 중 어느 것을 참고할지 정한다.
   final PreviousSessionSelector previousSessionSelector;
@@ -125,6 +132,7 @@ class CounselingProvider extends ChangeNotifier {
     this.instantEmpathy = false,
     this.empathyPlanner = const EmpathyPlanner(),
     this.sessionsApi,
+    this.shadowPerception,
     this.previousSessionSelector = const PreviousSessionSelector(),
     String? sessionId,
   }) : appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
@@ -393,6 +401,7 @@ class CounselingProvider extends ChangeNotifier {
           result.assistantMessage.closingStep == ClosingStep.finalized &&
           !isSessionFinalized;
 
+      _observeShadow(trimmed, result.assistantMessage);
       _messages.add(result.assistantMessage);
       // CTA 는 이 메시지에 붙는다. 한 턴에 하나이며, 다음 턴에 새 제안이 오면
       // 이전 것은 사라진다.
@@ -412,6 +421,33 @@ class CounselingProvider extends ChangeNotifier {
       _isGenerating = false;
       notifyListeners();
     }
+  }
+
+  /// Phase 14.2A-4: 이번 사용자 턴을 그림자로 분류해 기록한다. 기다리지 않고,
+  /// 결과는 어떤 상태에도 쓰지 않는다. 규칙 신호는 이번 응답의 메타데이터다.
+  void _observeShadow(String userText, CounselingMessage reply) {
+    final shadow = shadowPerception;
+    if (shadow == null) return;
+    // 이번 사용자 발화 바로 앞의 상담자 발화(_messages 끝은 이번 사용자 발화).
+    final prev = _messages.reversed.skip(1).where((m) => !m.isUser).firstOrNull;
+    final ruleSignal = switch (reply.interactionRepairReason) {
+      InteractionRepairReason.repeatedQuestion => 'repeated_question',
+      InteractionRepairReason.stopQuestioning => 'stop_questioning',
+      InteractionRepairReason.processFrustration => 'process_resistance',
+      InteractionRepairReason.assistantNotUnderstood => 'assistant_not_understood',
+      null => switch (reply.closingStep) {
+        ClosingStep.finalized => 'closing_accept',
+        ClosingStep.continued => 'closing_continue',
+        _ => 'none',
+      },
+    };
+    unawaited(shadow.observe(
+      sessionId: _session.sessionId,
+      turnIndex: _messages.where((m) => m.isUser).length,
+      userText: userText,
+      assistantPrev: prev?.text,
+      ruleSignal: ruleSignal,
+    ));
   }
 
   /// 지난 상담 기록을 읽어 참고 대상을 정한다.
