@@ -1,0 +1,481 @@
+{
+ "fixture": "test/counseling/evaluation/fixtures/phase14x_term_check_v1.json",
+ "scripts": [
+  {
+   "id": "t001",
+   "week": 4,
+   "A": [
+    {
+     "user": "발표가 걱정돼",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“발표가 걱정돼”라고 말씀해 주셨군요. 지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "7",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“발표가 걱정돼”라고 느끼고 계시는군요. 발표에서 가장 걱정되는 순간은 언제인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "ABC 모델이 뭐예요?",
+     "check": "term:abc_model",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "지금 조금 힘드신 것 같아요. 지금 마음에 가장 걸리는 부분을 조금 더 구체적으로 이야기해 주실 수 있을까요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    }
+   ],
+   "B": [
+    {
+     "user": "발표가 걱정돼",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "발표에 대한 걱정이 있군요. 그 걱정을 조금 더 균형 잡힌 시각으로 바라볼 수 있는 문장을 적어보는 것이 도움이 될 수 있습니다. 예를 들어, 어떤 문장을 적어볼 수 있을까요?",
+     "closing": null,
+     "repair": null,
+     "step": "prompt",
+     "act": "socraticQuestion",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "7",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "바로 떠오르지 않아도 괜찮아요. 이렇게 한 번 생각해 보려고 한 것만으로도 충분히 의미가 있어요. 오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?",
+     "closing": "proposed",
+     "repair": null,
+     "step": "integration",
+     "act": "reflect",
+     "status": "rejected",
+     "primary_rejection": "repeated_question",
+     "definition_id": null,
+     "violations": [
+      "repeated_question"
+     ]
+    },
+    {
+     "user": "ABC 모델이 뭐예요?",
+     "check": "term:abc_model",
+     "only_if_proposed": false,
+     "prev_proposed": true,
+     "reply": "ABC 모델은 사람들이 느끼는 감정과 행동이 사건 자체보다는 그 사건에 대한 생각에 의해 결정된다는 개념이에요. 이 모델은 감정과 행동을 이해하는 데 도움을 줄 수 있습니다.",
+     "closing": "continued",
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": "abc_model",
+     "violations": []
+    }
+   ]
+  },
+  {
+   "id": "t002",
+   "week": 4,
+   "A": [
+    {
+     "user": "요즘 계속 불안해요",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“요즘 계속 불안해요”라고 말씀해 주셨군요. 지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "자동적 사고라는 게 정확히 뭔데요",
+     "check": "term:automatic_thought",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "제 말이 헷갈리게 들렸나 봐요. 쉽게 다시 여쭤볼게요. 지금 가장 걱정되는 것 한 가지만 편하게 말씀해 주시겠어요?",
+     "closing": null,
+     "repair": "assistantNotUnderstood",
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    }
+   ],
+   "B": [
+    {
+     "user": "요즘 계속 불안해요",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "요즘 계속 불안하다는 말씀을 하셨군요. 그런 기분이 계속되면 정말 힘들 수 있습니다. 어떤 상황에서 특히 불안함을 느끼시나요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "reflect",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "자동적 사고라는 게 정확히 뭔데요",
+     "check": "term:automatic_thought",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "자동적 사고는 불안한 상황에서 머릿속에 자동으로 떠오르는 부정적인 생각들을 말합니다. 예를 들어, 친구가 인사를 안 할 때 \"저 친구가 나를 싫어하나 봐\" 같은 생각이 떠오르는 것이죠.",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": "automatic_thought",
+     "violations": []
+    }
+   ]
+  },
+  {
+   "id": "t003",
+   "week": 4,
+   "A": [
+    {
+     "user": "시험이 걱정되는데 균형 잡힌 생각이 뭐예요?",
+     "check": "term:balanced_thought",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“시험이 걱정되는데 균형 잡힌 생각이 뭐예요”라고 말씀해 주셨군요. 지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    }
+   ],
+   "B": [
+    {
+     "user": "시험이 걱정되는데 균형 잡힌 생각이 뭐예요?",
+     "check": "term:balanced_thought",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“시험이 걱정되는데 균형 잡힌 생각이 뭐예요”라고 말씀해 주셨군요. 지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "rejected",
+     "primary_rejection": "banmal_reply",
+     "definition_id": "balanced_thought",
+     "violations": [
+      "banmal_reply"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "t004",
+   "week": 6,
+   "A": [
+    {
+     "user": "면접이 무서워요",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“면접이 무서워요”라고 말씀해 주셨군요. 지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "노출 요법은 뭐예요?",
+     "check": "term:exposure",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“노출 요법은 뭐예요”라고 느끼고 계시는군요. 그 상황에서 가장 걱정되는 순간은 언제인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "그럼 인지적 재구성은 뭔데요?",
+     "check": "term:cognitive_restructuring",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "지금 조금 힘드신 것 같아요. 지금 마음에 가장 걸리는 부분을 조금 더 구체적으로 이야기해 주실 수 있을까요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    }
+   ],
+   "B": [
+    {
+     "user": "면접이 무서워요",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "면접이 무섭다는 마음을 이해합니다. 그 상황이 정말 긴장될 수 있겠네요. 면접에 대해 어떤 부분이 특히 걱정되시나요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "reflect",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "노출 요법은 뭐예요?",
+     "check": "term:exposure",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "노출 요법은 불안을 유발하는 상황이나 대상을 회피하지 않고 직접 마주하는 연습입니다. 이렇게 하면 불안이 더 커지는 것을 막을 수 있습니다. 면접과 관련해 어떤 걱정이 더 있으신가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": "exposure",
+     "violations": []
+    },
+    {
+     "user": "그럼 인지적 재구성은 뭔데요?",
+     "check": "term:cognitive_restructuring",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“그럼 인지적 재구성은 뭔데요”라고 느끼고 계시는군요. 그 상황에서 가장 걱정되는 순간은 언제인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "rejected",
+     "primary_rejection": "repeated_question",
+     "definition_id": "cognitive_restructuring",
+     "violations": [
+      "repeated_question"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "t005",
+   "week": 4,
+   "A": [
+    {
+     "user": "친구 관계가 걱정돼요",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“친구 관계가 걱정돼요”라고 말씀해 주셨군요. 지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "탈파국화? 그건 또 뭐예요 ㅋㅋ",
+     "check": "term:unknown",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“탈파국화? 그건 또 뭐예요 ㅋㅋ”라고 느끼고 계시는군요. 그 상황에서 가장 걱정되는 순간은 언제인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "'가능성을 따져본다'는 게 무슨 뜻이에요?",
+     "check": "term:unknown",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "지금 조금 힘드신 것 같아요. 지금 마음에 가장 걸리는 부분을 조금 더 구체적으로 이야기해 주실 수 있을까요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    }
+   ],
+   "B": [
+    {
+     "user": "친구 관계가 걱정돼요",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "친구 관계에 대한 걱정이 있군요. 그 관계에서 어떤 부분이 특히 걱정되나요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "reflect",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "탈파국화? 그건 또 뭐예요 ㅋㅋ",
+     "check": "term:unknown",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "탈파국화라는 표현은 제가 정확히 정의해서 설명하기는 어려워요. 그 표현이 어떤 의미인지에 대한 걱정이 있으신가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "'가능성을 따져본다'는 게 무슨 뜻이에요?",
+     "check": "term:unknown",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "방금 하신 이야기가 계속 마음에 남아 있는 것 같아요. 그 상황에서 가장 걱정되는 순간은 언제인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "rejected",
+     "primary_rejection": "unknown_term_defined",
+     "definition_id": null,
+     "violations": [
+      "unknown_term_defined"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "t006",
+   "week": 3,
+   "A": [
+    {
+     "user": "회사 일이 불안해",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "“회사 일이 불안해”라고 말씀해 주셨군요. 지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "SUD가 무슨 뜻이야",
+     "check": "term:sud",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "방금 하신 이야기가 계속 마음에 남아 있는 것 같아요. 그 상황에서 가장 걱정되는 순간은 언제인가요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "A",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    }
+   ],
+   "B": [
+    {
+     "user": "회사 일이 불안해",
+     "check": null,
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "회사 일이 불안하다는 마음을 이해합니다. 그 일에 대해 어떤 부분이 특히 불안하게 느껴지나요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "reflect",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": null,
+     "violations": []
+    },
+    {
+     "user": "SUD가 무슨 뜻이야",
+     "check": "term:sud",
+     "only_if_proposed": false,
+     "prev_proposed": false,
+     "reply": "SUD는 지금 느끼는 불안의 정도를 스스로 매기는 점수입니다. 활동 전과 후에 각각 SUD를 기록해 변화를 비교합니다. 활동을 진행하기 전에 느끼는 불안 정도를 고르고, 활동을 진행한 후에 다시 한 번 고릅니다. 회사 일에서 어떤 부분이 특히 불안하게 느껴지나요?",
+     "closing": null,
+     "repair": null,
+     "step": null,
+     "act": "explore",
+     "status": "success",
+     "primary_rejection": null,
+     "definition_id": "sud",
+     "violations": []
+    }
+   ]
+  }
+ ]
+}
