@@ -19,6 +19,8 @@ library;
 /// authenticated, or stored anywhere else in the app.
 const Set<String> internalAccountEmailAllowlist = {
   'sehyun712@skku.edu',
+  // synthetic demo account (backend/scripts/seed_demo_account.py)
+  'mindrium.demo@example.com',
 };
 
 /// `null`/empty `email` is never internal — fails closed.

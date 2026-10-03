@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/features/counseling/policy/rollout/internal_account_allowlist.dart';
 
 void main() {
-  test('default allowlist contains only the registered Stage 1 dogfood account', () {
-    expect(internalAccountEmailAllowlist, {'sehyun712@skku.edu'});
+  // Any new address here sends that user's text to OpenAI; add deliberately.
+  test('default allowlist: the dogfood account and the synthetic demo account only', () {
+    expect(internalAccountEmailAllowlist, {'sehyun712@skku.edu', 'mindrium.demo@example.com'});
   });
 
   test('null/empty email is never internal', () {

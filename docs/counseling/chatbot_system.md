@@ -1,10 +1,12 @@
 # Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
 
-기준: 2026-10-02 (태그 `counseling-v1.2-session-flow` 이후 개인화 추가). 실행 방법과 인수인계 요약은
-[`../HANDOVER.md`](../HANDOVER.md)에 있습니다. 단계별 개발 기록(Phase 8~13)은 git 기록에 남아 있습니다.
+기준: 2026-10-03, 데모 동결 태그 `respond-v9-demo-freeze`. 실행 방법과 인수인계 요약은
+[`../HANDOVER.md`](../HANDOVER.md), 시연 절차는 [`../demo_checklist.md`](../demo_checklist.md)에 있습니다.
+LLM 주도 경로(B)의 설계·평가 기록은 [`phase14x_bounded_llm_led.md`](phase14x_bounded_llm_led.md)에 있습니다.
 
 이 기능은 의료 진단이나 전문 치료를 대체하지 않습니다. 안전 관문은 키워드 기반이고, 상담 문장과 위기 응답은
 아직 임상 전문가의 검수를 받지 않았습니다. 외부 사용자에게 공개하기 전에 검수가 필요합니다.
+사용자 발화를 OpenAI로 보내는 경로(B, 원격 표현)는 허용 목록에 있는 내부·데모 계정에서만 켜집니다.
 
 ---
 
@@ -14,8 +16,8 @@
 |---|---|
 | 목적 | 범불안 CBT 프로그램(1~8주차) 사용자가 걱정 하나를 골라, 짧은 상담 세션에서 생각을 살펴보고 그 주차까지 배운 기법을 적용하도록 돕는다 |
 | 대화 단위 | 세션 하나는 확인 → 탐색 → 되짚기 → 기법 → 마무리 순서로 진행하며, 보통 7~12턴이다 |
-| 의사결정 | 무엇을 말할지(상태, 목표, 기법, 대상)는 **모두 결정론 코드**가 정한다 |
-| 표현 | 일반 상담 턴의 문장만 원격 GPT가 자연스럽게 다듬을 수 있다. 검증에 실패하면 결정론 문장으로 되돌아간다 |
+| 주 경로 (B) | **LLM이 허용된 경계 안에서 대화 전략과 응답을 정하고, 안전·사용자 사실·앱 사실·기법 자격·용어 정의·최종 검증은 코드가 통제한다** (Bounded LLM-led, 2절) |
+| 대체 경로 (A) | B가 검증에 실패하거나 응답이 없으면, 그 턴은 결정론 파이프라인(상태, 목표, 기법, 대상을 코드가 결정)이 답한다. 허용 목록 밖의 계정은 처음부터 A만 쓴다 |
 | 안전 | 위기 표현은 상담을 중단하고 고정된 위기 응답을 낸다 |
 | 기법 | 승인된 4~8주차 기법만 사용한다. 현재 주차까지 누적해 쓰고, 미래 주차 기법은 쓰지 않는다 |
 | 저장 | 세션 요약을 백엔드(`/counseling-sessions`)에 저장한다. 마무리가 확정되면 `completed`, 중간에 나가면 `interrupted` |
@@ -23,6 +25,32 @@
 ---
 
 ## 2. 전체 구조
+
+### 2.1 두 경로 (데모 구성: `COUNSELING_LLM_LED_PATH=true`, 허용 목록 계정)
+
+```mermaid
+flowchart TD
+  U[사용자 발화] --> SG[SafetyGate]
+  SG -->|위기| C[고정 위기 응답 · 모델 호출 없음]
+  SG -->|정상| CTX[LlmLedContext.build<br/>코드가 경계를 만든다]
+  CTX --> B[POST /counseling/respond<br/>GPT 1회 · 요청마다 id enum을 고정한 JSON 스키마]
+  B --> V[LlmLedValidator<br/>근거·안전·형식·조언·반복 검사]
+  V -->|통과| OUT[B 응답 + 턴 메타데이터<br/>LlmLedMapping]
+  V -->|거절 / 오류 / 시간초과| A[A: 결정론 파이프라인<br/>2.2절]
+  A --> OUT2[A 응답]
+```
+
+LLM 호출 전에 코드가 정하는 경계:
+- **SafetyGate:** 위기면 모델을 부르지 않는다.
+- **사용자 사실:** 일기, 과거 상담 에피소드, 효과 있었던 기법(id 포함). 모델은 이 id만 인용할 수 있다.
+- **기법 자격:** 현재 주차까지의 승인 기법만 enum으로 준다.
+- **앱 사실:** 앱 안내 지식(기능, 화면, 이동 경로, id 포함).
+- **용어:** 사용자가 물은 용어를 코드가 판정하고(`TermGlossary`), 승인 코퍼스의 정의 하나만 준다.
+- **진행 근거:** 걱정 파악, 근거·관점 탐색, 탐색 종료(`explore_closed`), 최근 질문, 종료 요청, 새 주제 여부.
+
+응답 뒤 검증기가 거절하는 것 (주요 항목): 승인되지 않은 기법, 주지 않은 사용자·앱 사실, 진단·결과 보장, 상담 지시·조언(`directive`, `advice`), 사용자가 시도하기 전의 예시 문장(`premature_example`), 질문 2개 이상, 반복 질문·반복 응답, 반말, 제안 없는 종료, 탐색 종료 후 같은 걱정 재탐색, 용어 정의 불일치. 거절 사유는 `LLM_LED` 로그에 남는다(텍스트 없음).
+
+### 2.2 대체 경로 A (결정론 파이프라인)
 
 ```mermaid
 flowchart TD
@@ -47,7 +75,7 @@ flowchart TD
   OUT --> SP[CounselingStatePolicy<br/>다음 상태 결정]
 ```
 
-**핵심 원칙**
+**A 경로의 원칙** (B가 대체될 때와 허용 목록 밖 계정에 적용)
 1. **결정과 표현의 분리.** 상태 전이, 질문 목표, 기법 선택, 인용 대상은 결정론 코드가 정합니다. GPT는 이미 정해진 계획의 문장만 다듬습니다.
 2. **원격 GPT 허용은 턴의 의미가 정한다.** 상태가 아니라 턴의 종류로 판단합니다. 복구 턴, 목표 소진 대응, 조기 마무리 턴은 항상 결정론 문장으로 나갑니다.
 3. **흐름은 검출보다 구조로 지킨다.** 메타 발화나 저정보 답을 알아보지 못해도, 인용·기법 인정·질문 반복을 막는 안전장치가 별도로 동작합니다(8절).
@@ -85,7 +113,17 @@ flowchart TD
 | `materializers/realization_spec_builder.dart`, `realization/` | 원격 실현용 의미 명세, 결정론 의미 실현기(원격 실패 시 대체) |
 | `intervention_eligibility_predicates.dart` | 기법 후보 결정(`InterventionCandidateResolver`), 질문→답 추적(`InterventionProgressTracker`) |
 | `turn_plan_adapter.dart` | 상태·행위별로 materializer 메서드를 고름 |
-| `rollout/` | 단계적 공개 설정(`RolloutConfig`), 내부 계정 허용 목록, 원격 실현 텔레메트리 |
+| `rollout/` | 단계적 공개 설정(`RolloutConfig`), 내부 계정 허용 목록(`internal_account_allowlist.dart`, B 경로와 원격 표현을 켜는 계정), 원격 실현 텔레메트리 |
+
+### 3.1A B 경로 `lib/features/counseling/llm_led/`
+
+| 파일 | 역할 |
+|---|---|
+| `llm_led_contract.dart` | `LlmLedContext`(경계 구성), `LlmLedOutput`(응답 파싱), `LlmLedValidator`(검증), `LlmLedMapping`(응답 → 다음 상태와 턴 메타데이터, 기법 인정은 코드 규칙) |
+| `term_glossary.dart` | 용어 질문 판정. `assets/counseling/glossary.json`은 이름·별칭만 갖고, 정의는 승인 코퍼스에서 읽는다 |
+| `../counseling_harness.dart` `handleLlmLedTurn` | 안전 → 경계 → 호출 → 검증. 실패하면 세션을 바꾸지 않고 null을 돌려 A가 그 턴을 처리한다 |
+| `../counseling_provider.dart` `_handleTurnLlmLedFirst` | B 먼저, 실패 시 A. 턴마다 `LLM_LED` 로그(상태, 그룹, 거절 사유, 지연 분해) |
+| `lib/data/api/counseling_respond_api.dart` | `/counseling/respond` 클라이언트와 실패 분류(`CounselingRespondFailure`) |
 
 ### 3.3 데이터 `lib/data/counseling/`, `lib/data/api/`
 
@@ -110,13 +148,17 @@ flowchart TD
 
 | 엔드포인트 | 역할 |
 |---|---|
+| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v9`, `gpt-4o-mini`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
 | `POST /counseling/realize` | 결정론 초안과 계획을 받아 GPT로 다시 표현한다(`counseling_realize.py`, 시스템 프롬프트 포함). 모델은 서버 설정 `openai_model`을 따른다 |
 | `PUT /counseling-sessions/{session_id}` | 세션 요약 upsert |
 | `GET /counseling-sessions` | 최근 세션 조회(이전 세션 맥락용) |
 
 ---
 
-## 4. 한 턴의 처리 순서 (`CounselingHarness.handleTurn`)
+## 4. 한 턴의 처리 순서
+
+B 경로(`handleLlmLedTurn`)는 2.1절의 순서를 따릅니다. 아래는 A 경로(`CounselingHarness.handleTurn`)입니다.
+A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 받으면 어느 단계에서든 바로 마무리합니다.
 
 1. **안전 관문.** 위기 표현이면 일반 상담을 멈추고 고정된 위기 응답을 냅니다. 모델은 호출하지 않습니다.
 2. **근거 검색.** 현재 상태의 태그로 CBT 코퍼스를 검색합니다. intervention 상태에서는 현재 주차까지의 승인 기법 항목을 id로 추가합니다.
@@ -376,15 +418,21 @@ flowchart TD
 | `API_BASE_URL` | 빌드 설정값 | 백엔드 주소 |
 | `COUNSELING_REMOTE_REALIZER` | `false` | 원격 GPT 표현 사용 |
 | `COUNSELING_REMOTE_REALIZER_KILL_SWITCH` | `false` | 원격 표현 즉시 차단 |
+| `COUNSELING_LLM_LED_PATH` | `false` | **B 경로 사용. 데모에서는 반드시 `true`** (허용 목록 계정만 해당) |
+| `COUNSELING_LLM_LED_AB` | `false` | 세션마다 A/B를 블라인드로 배정하고 끝에 평가지를 띄운다(평가용). 데모에서는 `false` |
 
 **실기기 dogfood:** 개발 Mac의 IP가 자주 바뀌므로, adb 포트 포워딩을 걸고 로컬 주소로 빌드합니다. 포워딩은 무선 디버깅이 다시 연결되면 새로 걸어야 합니다.
+
+데모 빌드와 사전 점검은 `tools/demo/preflight.sh --install` 한 번으로 합니다([`../demo_checklist.md`](../demo_checklist.md)). 수동으로 할 때:
 
 ```bash
 adb -s <device> reverse tcp:8090 tcp:8090
 flutter build apk --debug \
+  --dart-define=API_BASE_URL=http://127.0.0.1:8090 \
   --dart-define=COUNSELING_REMOTE_REALIZER=true \
   --dart-define=COUNSELING_REMOTE_REALIZER_KILL_SWITCH=false \
-  --dart-define=API_BASE_URL=http://127.0.0.1:8090
+  --dart-define=COUNSELING_LLM_LED_PATH=true \
+  --dart-define=COUNSELING_LLM_LED_AB=false
 adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
@@ -426,6 +474,15 @@ v1~v5는 모두 이미 본 세트라 **회귀 확인용**입니다. 새 구조�
 
 ## 14. 알려진 한계와 다음 단계
 
+**데모 동결 시점(respond_v9)의 한계**
+- **임상:** 1~3주차 기법은 임상 승인 전입니다. 위기 감지는 키워드 기반이고 위기 응답 문구는 전문가 검수 전입니다.
+- **운영:** 개발용 백엔드(Mac에서 실행), debug 빌드, HTTP, adb 포트 포워딩에 의존합니다. OpenAI 처리는 허용 목록의 내부·데모 계정에서만 일어납니다.
+- **B 경로 잔여 결함:** statement 안의 숨은 두 번째 질문은 검증기가 막고 A로 대체됩니다(약 2~3%). "사용자가 하지 않은 말 인용"은 프롬프트로만 막습니다. 앱 기능을 권하는 문장은 앱 안내로 보고 허용합니다.
+- **A 대체 응답의 어색함:** B가 대체될 때 A가 사용자 말을 따옴표로 되짚거나 맥락 밖 말에 일반적인 질문을 할 수 있습니다(데모 스모크 20턴 중 2턴).
+- **개인화 데이터 공백:** 이완 과제 API가 SUD를 돌려주지 않아 "효과 있었던 기법"은 과거 상담 세션에서만 옵니다. 일기 요약 API는 대안 생각을 돌려주지 않습니다.
+
+**A 경로 개발 당시의 한계** (B 도입 전 기록)
+
 1. **처음 보는 표현 인식:** 메타 발화와 저정보 답의 검출률이 낮습니다. 마지막 평가 세트 기준으로 처음 보는 헷갈림 표현 0/12, 저정보 답 2/10을 알아봤습니다. 지금은 8.4절의 안전장치가 피해를 막습니다. 근본 해결은 원격 모델 기반 의도 분류입니다(Phase 14 후보).
 2. **원격 GPT 표현 품질:** 딱딱한 표현, 해결책 쪽으로 유도하는 질문, 한 턴에 질문 두 개가 나오는 경우가 있습니다(Phase 14).
 3. **임상 콘텐츠:** 1~3주차 기법 승인, 기법 예시 문장(예시 요청에 답하기), 위기 응답과 상담 문장의 전문가 검수가 필요합니다.
@@ -441,3 +498,4 @@ v1~v5는 모두 이미 본 세트라 **회귀 확인용**입니다. 새 구조�
 | `counseling-v1-clean-baseline` | 결정론 선택 + 검증된 원격 표현 + 안전한 대체 + rollout 인프라 |
 | `counseling-v1.1-selection-repair` | 메타 발화 복구, 목표 소진 대응, 멀티턴 견고성 |
 | `counseling-v1.2-session-flow` | 완료 기반 세션 흐름, 누적 기법, 마무리 핸드셰이크, 헷갈림·저정보 처리, 흐름 안전장치, 두 층 게이트 |
+| `respond-v9-demo-freeze` | B 경로(Bounded LLM-led) 주 경로화, A는 대체 경로. 조언 차단, 종료 처리, 맥락 밖 입력 안내, 실패 분류 계측. 데모 스모크(`fixtures/demo_smoke_v1.json`) 통과 후 동결 |

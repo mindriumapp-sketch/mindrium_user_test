@@ -106,6 +106,7 @@ void main() {
         rows.add({
           'user': text,
           'check': turn['check'],
+          'expect': turn['expect'],
           'only_if_proposed': turn['only_if_proposed'] ?? false,
           'prev_proposed': prev?.closingStep == ClosingStep.proposed,
           'reply': r.assistantMessage.text,
