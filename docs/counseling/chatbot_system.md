@@ -499,7 +499,6 @@ adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 | 단위 | `test/counseling/*_test.dart` | B 계약·검증기(`llm_led_test`), 표정(`avatar_*`), A의 planner·selector·materializer·라우터·발화 해석, 저장·개인화 |
 | A 경로 회귀 | `test/counseling/regression/` | 동결 발화 세트(holdout v1~v5)로 세션 흐름 채점, 멀티턴·주차별 진행·비협조 사용자·감지 게이트. 채점은 `support/session_flow_metrics.dart` |
 | 데모 스모크 | `test/counseling/regression/demo_smoke_test.dart` | 실제 백엔드로 데모 시나리오(`fixtures/demo_smoke_v1.json`)를 A·B 모두 실행. 환경 변수가 없으면 건너뜀. 기준 결과 `baseline/demo_smoke_respond_v11.json` |
-| 실기기 | `integration_test/` | 설치된 앱과 같은 A 경로로 시나리오 실행 |
 
 **A 경로 회귀 기준.** 구조 지표(교착, 조기 종료, 기법 답 누락, 미래 주차 기법, 승인 외 CBT, 계속 요청 무시, 상태 반복 등 12종)는 반드시 0, 검출 의존 지표(비답변 인정, 메타 발화 인용, 확인 질문 반복)는 사용자 턴의 1% 이하. 홀드아웃 v4는 기록된 실패 수(반복 확인 4, 비답변 인정 1, 메타 인용 1)를 고정해 두었다. 지표가 바뀌면 테스트가 알려 주며, 기록은 의도적으로만 갱신한다.
 
