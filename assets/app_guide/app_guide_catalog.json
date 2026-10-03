@@ -264,9 +264,11 @@
         "알림 추가",
         "알림 삭제",
         "위치 기반 알림",
-        "반복 요일"
+        "반복 요일",
+        "알림 지우기",
+        "알림 시간 바꾸기"
       ],
-      "description": "불안을 자주 느끼는 시간·장소에 알림을 받는다. 홈의 '불안 완화 알림' 카드 → '알림 목록' → 오른쪽 아래 '알림 추가'에서 알림 이름, 시간, 반복 요일을 정하고 '위치 기반 알림'을 켜면 지도에서 장소를 고른다(위치 권한 '항상 허용' 필요). 카드의 스위치로 켜고 끄며, 왼쪽으로 밀거나 '알림 삭제'로 지운다. 알림을 누르면 불안 완화 흐름이 시작된다.",
+      "description": "불안을 자주 느끼는 시간·장소에 알림을 받는다. 홈의 '불안 완화 알림' 카드를 누르면 '알림 목록'이 열린다. 추가: 오른쪽 아래 '알림 추가'에서 알림 이름, 시간, 반복 요일을 정하고, '위치 기반 알림'을 켜면 지도에서 장소를 고른다(위치 권한 '항상 허용' 필요). 끄기·켜기: 알림 목록에서 그 알림 카드의 스위치. 삭제: 알림 카드를 왼쪽으로 밀거나, 카드를 눌러 '알림 삭제'. 수정: 카드를 눌러 바꾸고 '저장'. 알림을 누르면 불안 완화 흐름이 시작된다.",
       "available": true,
       "related_screens": [
         "alarm_settings_screen"
@@ -285,7 +287,7 @@
         "리마인더 설정",
         "알림 끄기"
       ],
-      "description": "마이페이지 → 톱니바퀴(설정) → '리마인더'에서 '교육 알림'(이번 주 교육을 안 했을 때 화·목·일 저녁)과 '오늘의 할 일 알림'(2일 넘게 쉬면 3일째 저녁)을 켜고 끈다.",
+      "description": "마이페이지 → 톱니바퀴(설정) → '리마인더'에서 '교육 알림'(이번 주 교육을 안 했을 때 화·목·일 저녁)과 '오늘의 할 일 알림'(2일 넘게 쉬면 3일째 저녁)을 켜고 끈다. 앱이 정한 알림이라 켜고 끄기만 되고 지우거나 시간을 바꿀 수는 없다.",
       "available": true,
       "related_screens": [
         "settings_screen"
@@ -778,8 +780,7 @@
       "steps": [
         "홈",
         "불안 완화 알림 카드",
-        "알림 목록",
-        "알림 추가"
+        "알림 목록"
       ],
       "source_refs": [
         "flutter:lib/navigation/screen/home_screen.dart",
@@ -993,6 +994,39 @@
     }
   ],
   "manual": [
+    {
+      "knowledge_id": "app_overview",
+      "title": "마인드리움에서 할 수 있는 것",
+      "content": "마인드리움 앱의 기능은 다음이 전부입니다: 8주 교육 프로그램(교육 탭), 주차별 이완 훈련(음성 안내), 걱정 일기(불안 평가·ABC 작성·위치/시간·걱정 그룹), 걱정 물고기와 해결하기(마인드리움 탭), 불안 완화 흐름(위젯·알림에서 시작, 이완 또는 도움이 되는 생각), 불안 완화 알림(시간·위치), 리마인더, 리포트(불안 변화·수행률), AI 마음상담, 마이페이지와 설정(핵심 가치, 권한, 계정, 앱 정보). 이 밖의 기능(예: 명상 음악, 수면 기록, 커뮤니티, 전문가 채팅)은 없습니다. 비슷한 도움이 필요하면 이완 훈련이나 걱정 일기를 권합니다.",
+      "related_features": [
+        "treatment_program",
+        "relaxation",
+        "worry_record",
+        "worry_archive",
+        "relief_flow",
+        "alarm_settings",
+        "report",
+        "ai_counseling",
+        "my_page"
+      ],
+      "source_refs": [
+        "flutter:lib/navigation/navigation.dart",
+        "flutter:lib/navigation/screen/home_screen.dart"
+      ]
+    },
+    {
+      "knowledge_id": "two_kinds_of_alarms",
+      "title": "알림 두 종류",
+      "content": "알림은 두 가지입니다. ① 불안 완화 알림: 홈의 '불안 완화 알림' 카드에서 내가 시간·장소를 정해 만들고, 카드 스위치로 켜고 끄며, 왼쪽으로 밀거나 '알림 삭제'로 지웁니다. ② 리마인더(교육 알림, 오늘의 할 일 알림): 앱이 정한 알림이라 마이페이지 → 설정 → 리마인더에서 켜고 끄기만 할 수 있습니다.",
+      "related_features": [
+        "alarm_settings",
+        "reminder_settings"
+      ],
+      "source_refs": [
+        "flutter:lib/features/alarm/alarm_settings_screen.dart",
+        "flutter:lib/features/settings/notification_preferences_screen.dart"
+      ]
+    },
     {
       "knowledge_id": "widget_add_guide",
       "title": "홈 화면에 위젯을 추가하는 방법",

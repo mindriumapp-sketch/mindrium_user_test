@@ -122,7 +122,7 @@ void main() {
       expect(c.appFactIds.where((id) => id.startsWith('manual:')).length, _guide.manualEntries.length);
       // a feature carries its navigation path and its availability
       final facts = (c.body['app_facts'] as List).cast<Map>();
-      expect(facts.firstWhere((f) => f['id'] == 'feature:alarm_settings')['text'], contains('경로: 홈 → 불안 완화 알림 카드'));
+      expect(facts.firstWhere((f) => f['id'] == 'feature:alarm_settings')['text'], contains('경로: 홈 → 불안 완화 알림 카드 → 알림 목록'));
       expect(facts.firstWhere((f) => f['id'] == 'feature:password_find')['text'], contains('[사용 불가'));
     });
   });
