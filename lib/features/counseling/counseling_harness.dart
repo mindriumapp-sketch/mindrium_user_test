@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
+import 'package:gad_app_team/features/counseling/policy/selectors/closing_decision_selector.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/features/assistant/app_guide/app_guide_repository.dart';
@@ -309,6 +310,12 @@ class CounselingHarness {
           limit: knowledgeLimit,
         );
     final knowledge = _withApprovedInterventions(retrieved, session);
+
+    // Phase 4: an end-only message ends the session from any stage. In
+    // closing with no pending proposal the closing selector finalizes.
+    if (session.state != CounselingState.closing && ClosingDecisionSelector.isEndOnly(userMessage)) {
+      session.state = CounselingState.closing;
+    }
 
     // 5~6. 허용 행위를 정하고 프롬프트를 만든다.
     final recentMessages = _recentMessages(session);

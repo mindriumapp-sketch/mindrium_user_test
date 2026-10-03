@@ -23,25 +23,37 @@ class ClosingDecisionSelector {
   /// target is found), so this never returns `isUnavailable: true`.
   // Phase 13.5: answers to the closing proposal.
   static final RegExp _wantsToContinue = RegExp(
-    r'(아니|아직|더\s*(이야기|얘기|말|하고|할래)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더)',
+    r'(아니|아직|더\s*(이야기|얘기|말|하고|할래|하자|해요|할게)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더|좀만\s*더|조금만?\s*더)',
   );
   /// The continue cues other than a bare "아니", which in "아니 싫어 그만해"
   /// is a refusal, not a wish to keep talking.
   static final RegExp _stronglyContinues = RegExp(
-    r'(아직|더\s*(이야기|얘기|말|하고|할래)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더)',
+    r'(아직|더\s*(이야기|얘기|말|하고|할래|하자|해요|할게)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더|좀만\s*더|조금만?\s*더)',
   );
   /// Phase 14.X: the user asks to end now, without a pending proposal
   /// ("오늘은 여기까지", "그만할게", "더 안 해 끝", "정리하자"), unless a strong
   /// continue cue is also there. Evidence the LLM-led path may finalize on.
+  // Phase 4: "그만큼", "이만큼", "여기까지 오는 데" are not end requests;
+  // these words count only with a verb of stopping or at the end.
   static final RegExp _endRequest = RegExp(
-    r'(여기까지|이만|이쯤|그만\s*(할|하|두|해|하자|할래|할게)?|(^|\s)끝(\s|$|이야|낼|내자)|종료|'
+    r'(여기까지\s*(할|하|만|요|$|[.!~]|정리|마무리)|이만\s*(할|하|마|줄|끝|$)|이쯤\s*(할|하|에서|마|끝|정리|$)|'
+    r'그만\s*(할래|할게|하자|할까|하겠|할\s*거|둘게|두자|둘래)|(^|\s)끝(\s|$|[.!~]|이야|낼|내자)|종료|'
     r'정리\s*(하자|할게|하죠|할래|해요|하겠|할까|해\s*주)|마무리\s*(하자|할게|하죠|할래|해요|해도|하겠|할까|해\s*주)|마칠게|마칠래|마칠까)',
   );
 
+  // "그만해", "그만 물어봐" ask to stop the questions (a repair), not to end.
+  static final RegExp _aboutQuestions = RegExp(r'(물어|묻|질문)');
+
   static bool isExplicitEnd(String text) {
     final t = text.trim();
-    return _endRequest.hasMatch(t) && !_stronglyContinues.hasMatch(t);
+    return _endRequest.hasMatch(t) && !_stronglyContinues.hasMatch(t) && !_aboutQuestions.hasMatch(t);
   }
+
+  /// Phase 4: a short message that only asks to end ("종료", "오늘은 이쯤
+  /// 할게요", "네 이제 정리해 주셔도 돼요"). The deterministic path ends the
+  /// session on it from any stage; a long message with an end cue may carry
+  /// new content and goes through the normal flow.
+  static bool isEndOnly(String text) => isExplicitEnd(text) && text.trim().length <= 30;
 
   static final RegExp _agrees = RegExp(
     r'^(네|넵|응|웅|어|그래|좋아|괜찮|알겠|고마워|고맙|감사|그만|마칠|마무리|여기까지|됐어|끝낼|끝내요|그렇게)',
@@ -110,6 +122,7 @@ class ClosingDecisionSelector {
     if (_wrapsUp.hasMatch(text) && !_stronglyContinues.hasMatch(text)) {
       return ClosingStep.finalized;
     }
+    if (isExplicitEnd(text)) return ClosingStep.finalized;
     if (_wantsToContinue.hasMatch(text)) return ClosingStep.continued;
     // Phase 13.8 (P4): "몰라" to "정리할까요, 더 이야기할까요?" is not a wish
     // to keep talking; reopening would ask the same kind of question again.
@@ -121,7 +134,11 @@ class ClosingDecisionSelector {
         text.isEmpty) {
       return ClosingStep.finalized;
     }
-    return ClosingStep.continued;
+    // Phase 4: at a proposal only new content reopens the talk; anything
+    // else ("ㅇㅇ", "그럴게요", "종료요") is taken as agreeing to wrap up.
+    return UserThoughtExtractor.isContentfulContribution(text)
+        ? ClosingStep.continued
+        : ClosingStep.finalized;
   }
 
   String? _summaryTarget(

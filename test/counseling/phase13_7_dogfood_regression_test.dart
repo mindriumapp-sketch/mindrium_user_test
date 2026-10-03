@@ -123,9 +123,12 @@ void main() {
       return replies.last.text;
     }
 
-    for (final t in ['오늘은 여기까지 할게요', '그만할래요', '다음에 이야기할게요']) {
-      test('stop: $t', () async => expect(await integrationFor(t), contains('바로 떠오르지 않아도')));
+    // Phase 4: an explicit end ends the session; "다음에 이야기할게요" (a
+    // postponement) still gets the no-pressure acknowledgment.
+    for (final t in ['오늘은 여기까지 할게요', '그만할래요']) {
+      test('end: $t', () async => expect(await integrationFor(t), startsWith('오늘 이야기 나눠 주셔서 감사합니다')));
     }
+    test('stop: 다음에 이야기할게요', () async => expect(await integrationFor('다음에 이야기할게요'), contains('바로 떠오르지 않아도')));
     for (final t in ['다음에는 더 잘할 수 있을 것 같아요', '한 번 실수해도 그만큼 배울 수 있어요']) {
       test('answer: $t', () async => expect((await integrationFor(t)).contains('바로 떠오르지 않아도'), isFalse));
     }

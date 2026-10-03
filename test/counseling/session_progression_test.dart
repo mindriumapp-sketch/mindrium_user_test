@@ -89,10 +89,12 @@ void main() {
       expect(steps.last.reply.interventionStep, InterventionStep.integration);
     });
 
-    test('an answer asking to stop is not credited with a technique outcome', () async {
+    // Phase 4: asking to end ends the session (no second confirmation), and
+    // the stop is still never credited with a technique outcome.
+    test('an answer asking to stop ends the session, not credited with a technique outcome', () async {
       final steps = await run(4, [...base, '오늘은 여기까지 할게요']);
-      expect(steps.last.reply.interventionStep, InterventionStep.integration);
-      expect(steps.last.reply.text, contains('바로 떠오르지 않아도 괜찮아요'));
+      expect(steps.last.reply.closingStep, ClosingStep.finalized);
+      expect(steps.last.reply.interventionCredited, isNot(true));
       expect(steps.last.reply.text.contains('현실적으로'), isFalse);
     });
 
