@@ -31,8 +31,8 @@ class HttpRespondApi implements CounselingRespondApi {
     for (var attempt = 0; ; attempt++) {
       try {
         return await _once(body, timeout);
-      } on HttpException catch (e) {
-        if (attempt >= 4 || !e.message.contains('upstream error')) rethrow;
+      } on CounselingRespondFailure catch (e) {
+        if (attempt >= 4 || !(e.requestStatus == 'http_429' || e.requestStatus == 'http_5xx')) rethrow;
         await Future<void>.delayed(Duration(seconds: 15 * (attempt + 1)));
       }
     }
@@ -48,7 +48,15 @@ class HttpRespondApi implements CounselingRespondApi {
       req.add(utf8.encode(jsonEncode(body)));
       final res = await req.close().timeout(timeout);
       final text = await res.transform(utf8.decoder).join();
-      if (res.statusCode >= 400) throw HttpException('status ${res.statusCode} $text');
+      if (res.statusCode >= 400) {
+        Object? body;
+        try {
+          body = jsonDecode(text);
+        } on FormatException {
+          body = null;
+        }
+        throw CounselingRespondFailure.fromResponse(res.statusCode, body);
+      }
       return jsonDecode(text) as Map<String, dynamic>;
     } finally {
       client.close(force: true);

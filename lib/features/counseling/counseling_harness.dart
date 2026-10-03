@@ -703,12 +703,25 @@ class CounselingHarness {
     try {
       res = await api.respond(ctx.body, timeout: timeout).timeout(timeout);
     } on TimeoutException {
-      return LlmLedTurn(status: 'timeout', latencyMs: sw.elapsedMilliseconds);
+      return LlmLedTurn(
+          status: 'timeout', latencyMs: sw.elapsedMilliseconds, failure: const CounselingRespondFailure('timeout'));
+    } on CounselingRespondFailure catch (f) {
+      return LlmLedTurn(
+        status: switch (f.requestStatus) {
+          'timeout' => 'timeout',
+          'schema_reject' => 'schema_reject',
+          _ => 'http_error',
+        },
+        latencyMs: sw.elapsedMilliseconds,
+        failure: f,
+        detail: f.toString(),
+      );
     } on Object catch (e) {
       final detail = e.toString();
       return LlmLedTurn(
         status: 'http_error',
         latencyMs: sw.elapsedMilliseconds,
+        failure: const CounselingRespondFailure('unknown'),
         detail: detail.length > 160 ? detail.substring(0, 160) : detail,
       );
     }
@@ -866,6 +879,22 @@ class LlmLedTurn {
   /// Error detail for http_error (status code / backend reason; no user text).
   final String? detail;
 
+  /// The classified transport/API failure, when the call did not answer.
+  final CounselingRespondFailure? failure;
+
+  /// success | the failure's request status | 'success' also for a reply the
+  /// validator rejected (the request itself succeeded).
+  String get requestStatus => failure?.requestStatus ?? 'success';
+
+  /// direct (B shown) | content_fallback (B answered, rejected) |
+  /// transport_fallback (no usable answer) | safety.
+  String get group => switch (status) {
+        'success' => 'direct',
+        'safety' => 'safety',
+        'rejected' || 'schema_reject' => 'content_fallback',
+        _ => 'transport_fallback',
+      };
+
   /// The most serious validator reason (grounding and safety first).
   String? get primaryRejection {
     if (violations.isEmpty) return null;
@@ -891,6 +920,7 @@ class LlmLedTurn {
     this.output,
     this.violations = const [],
     this.detail,
+    this.failure,
     this.timing = const {},
   });
 

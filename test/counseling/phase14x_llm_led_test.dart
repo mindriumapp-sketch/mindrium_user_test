@@ -62,6 +62,14 @@ class _Api implements CounselingRespondApi {
   }
 }
 
+class _FailApi implements CounselingRespondApi {
+  final Object error;
+  _FailApi(this.error);
+  @override
+  Future<Map<String, dynamic>> respond(Map<String, dynamic> body, {Duration timeout = const Duration(seconds: 8)}) =>
+      Future.error(error);
+}
+
 CounselingHarness _harness() => CounselingHarness.deterministic(
   llm: MockLlmService(), safetyGate: const KeywordSafetyGate(), knowledgeRepository: _repo);
 
@@ -321,6 +329,21 @@ void main() {
         expect((s.state, s.turnsInCurrentState, s.totalTurns), before);
       });
     }
+
+    test('a classified API failure: transport fallback with its status, no session change', () async {
+      final s = _session();
+      final t = await _harness().handleLlmLedTurn(
+          session: s, userMessage: '발표가 걱정돼요', api: _FailApi(const CounselingRespondFailure('http_429',
+              httpStatus: 429, retryAfter: true)), appGuide: _guide);
+      expect(t.result, isNull);
+      expect(t.status, 'http_error');
+      expect(t.group, 'transport_fallback');
+      expect(t.requestStatus, 'http_429');
+      expect(t.failure!.retryAfter, isTrue);
+      expect(s.messages, isEmpty);
+      expect(CounselingRespondFailure.fromResponse(502, {'detail': {'reason': 'http_5xx', 'upstream_status': 503}}).httpStatus, 503);
+      expect(CounselingRespondFailure.fromResponse(401, {'detail': 'x'}).requestStatus, 'http_4xx_other');
+    });
 
     test('crisis: the fixed safety reply, and the model is not called', () async {
       final api = _Api([_out()]);

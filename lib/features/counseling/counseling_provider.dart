@@ -510,6 +510,7 @@ class CounselingProvider extends ChangeNotifier {
   Future<CounselingTurnResult> _handleTurnLlmLedFirst(String userText) async {
     final api = llmLedApi;
     if (api == null || !_llmLedThisSession) return _handleTurnWithPerception(userText);
+    final endToEnd = Stopwatch()..start();
     final b = await harness.handleLlmLedTurn(
       session: _session,
       userMessage: userText,
@@ -518,23 +519,28 @@ class CounselingProvider extends ChangeNotifier {
       glossary: _glossary,
     );
     if (b.result != null) {
-      _logLlmLed(b, null);
+      _logLlmLed(b, null, endToEnd.elapsedMilliseconds);
       return b.result!;
     }
     final fallbackWatch = Stopwatch()..start();
     final a = await _handleTurnWithPerception(userText);
-    _logLlmLed(b, fallbackWatch.elapsedMilliseconds);
+    _logLlmLed(b, fallbackWatch.elapsedMilliseconds, endToEnd.elapsedMilliseconds);
     return a;
   }
 
   /// One line per LLM-led turn (no text): status, rejection reasons and the
   /// latency breakdown, plus the fallback (path A) time when it was used.
-  void _logLlmLed(LlmLedTurn b, int? fallbackMs) {
+  void _logLlmLed(LlmLedTurn b, int? fallbackMs, int endToEndMs) {
     final o = b.output;
     debugPrint('LLM_LED ${jsonEncode({
       'session': pseudonymize(_session.sessionId),
       'turn': _messages.where((m) => m.isUser).length,
       'status': b.status,
+      'group': b.group,
+      'request_status': b.requestStatus,
+      'http_status': b.failure?.httpStatus,
+      'retry_after': b.failure?.retryAfter,
+      'provider_request_id': b.failure?.providerRequestId,
       'fallback': b.result == null,
       'latency_ms': b.latencyMs,
       'domain': o?.domain,
@@ -545,6 +551,7 @@ class CounselingProvider extends ChangeNotifier {
       'violations': b.violations,
       ...b.timing,
       'fallback_ms': fallbackMs,
+      'end_to_end_ms': endToEndMs,
     })}');
   }
 

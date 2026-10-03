@@ -33,8 +33,11 @@ void main() {
     await guide.initialize();
     final glossary = await TermGlossary.load((p) => File(p).readAsString());
     final api = HttpRespondApi(base!, token!);
+    final only = env['E2_ONLY']?.split(',').toSet();
     final scripts = ((jsonDecode(File(fixture).readAsStringSync()) as Map)['scripts'] as List)
-        .cast<Map<String, dynamic>>();
+        .cast<Map<String, dynamic>>()
+        .where((sc) => only == null || only.contains(sc['id']))
+        .toList();
 
     Future<List<Map<String, Object?>>> run(Map<String, dynamic> script, bool llmLed) async {
       final harness = CounselingHarness.deterministic(
@@ -51,9 +54,16 @@ void main() {
         String? primary;
         String? definitionId;
         String? bText;
+        String? detail;
+        String? requestStatus;
+        String? group;
+        int? httpStatus;
+        int? fallbackMs;
+        int? endToEndMs;
         Map<String, int?> timing = const {};
         CounselingTurnResult r;
         if (llmLed) {
+          final e2e = Stopwatch()..start();
           final t = await harness.handleLlmLedTurn(session: s, userMessage: text, api: api, appGuide: guide, glossary: glossary,
               // evaluation: allow rate-limit retries (the app keeps 8 s)
               timeout: const Duration(minutes: 2));
@@ -62,8 +72,19 @@ void main() {
           definitionId = t.output?.definitionId;
           bText = t.output?.text;
           timing = t.timing;
+          detail = t.detail;
           primary = t.primaryRejection ?? (t.status == 'success' ? null : t.status);
-          r = t.result ?? await assistant.handleTurn(session: s, userMessage: text);
+          requestStatus = t.requestStatus;
+          group = t.group;
+          httpStatus = t.failure?.httpStatus;
+          if (t.result != null) {
+            r = t.result!;
+          } else {
+            final fb = Stopwatch()..start();
+            r = await assistant.handleTurn(session: s, userMessage: text);
+            fallbackMs = fb.elapsedMilliseconds;
+          }
+          endToEndMs = e2e.elapsedMilliseconds;
         } else {
           r = await assistant.handleTurn(session: s, userMessage: text);
         }
@@ -85,6 +106,12 @@ void main() {
           'definition_id': definitionId,
           'b_text': bText,
           'timing': timing,
+          'detail': detail,
+          'request_status': requestStatus,
+          'group': group,
+          'http_status': httpStatus,
+          'fallback_ms': fallbackMs,
+          'end_to_end_ms': endToEndMs,
           'violations': violations,
         });
         if (r.assistantMessage.closingStep == ClosingStep.finalized) break;

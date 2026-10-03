@@ -139,6 +139,14 @@ def user_prompt(payload: CounselingRespondRequest) -> str:
     )
 
 
+def upstream_reason(code: int) -> str:
+    if code == 429:
+        return "http_429"
+    if code >= 500:
+        return "http_5xx"
+    return "http_4xx_other"
+
+
 class RespondRejected(Exception):
     def __init__(self, reason: str):
         super().__init__(reason)
@@ -171,6 +179,24 @@ async def respond(
     if not settings.openai_api_key:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="not configured")
     started = time.monotonic()
+
+    def fail(code: int, reason: str, upstream=None) -> HTTPException:
+        """Classified failure (no prompt, no key): reason is one of http_429 |
+        http_4xx_other | http_5xx | network_error | timeout | schema_reject."""
+        detail = {
+            "reason": reason,
+            "upstream_status": upstream.status_code if upstream is not None else None,
+            "retry_after": bool(upstream is not None and upstream.headers.get("retry-after")),
+            "provider_request_id": upstream.headers.get("x-request-id") if upstream is not None else None,
+        }
+        logger.warning(
+            "counseling_respond: fail reason=%s upstream_status=%s retry_after=%s provider_request_id=%s "
+            "request_id=%s latency_ms=%d",
+            reason, detail["upstream_status"], detail["retry_after"], detail["provider_request_id"],
+            payload.request_id, int((time.monotonic() - started) * 1000),
+        )
+        return HTTPException(status_code=code, detail=detail)
+
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             res = await client.post(
@@ -188,22 +214,22 @@ async def respond(
                 },
             )
     except httpx.TimeoutException:
-        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="respond timeout")
+        raise fail(status.HTTP_504_GATEWAY_TIMEOUT, "timeout")
     except httpx.HTTPError:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="respond unreachable")
+        raise fail(status.HTTP_502_BAD_GATEWAY, "network_error")
     latency_ms = int((time.monotonic() - started) * 1000)
     if res.status_code >= 400:
-        logger.warning("counseling_respond: upstream status=%d", res.status_code)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="respond upstream error")
+        reason = upstream_reason(res.status_code)
+        raise fail(status.HTTP_502_BAD_GATEWAY, reason, res)
     try:
         body = res.json()
         output = parse_output(body["choices"][0]["message"]["content"])
         usage = body.get("usage") or {}
     except RespondRejected as e:
         logger.warning("counseling_respond: rejected reason=%s request_id=%s", e.reason, payload.request_id)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"respond {e.reason}")
+        raise fail(status.HTTP_502_BAD_GATEWAY, "schema_reject")
     except (KeyError, IndexError, TypeError, ValueError):
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="respond malformed")
+        raise fail(status.HTTP_502_BAD_GATEWAY, "schema_reject")
     logger.info("counseling_respond: ok request_id=%s latency_ms=%d", payload.request_id, latency_ms)
     return CounselingRespondResponse(
         request_id=payload.request_id,

@@ -2,7 +2,7 @@
 import json
 
 import pytest
-from routers.counseling_respond import RespondRejected, parse_output, response_format
+from routers.counseling_respond import RespondRejected, parse_output, response_format, upstream_reason
 from schemas.counseling_respond import CounselingRespondRequest
 
 REQ = CounselingRespondRequest.model_validate({
@@ -67,3 +67,9 @@ def test_definition_id_is_pinned_to_the_requested_term():
     assert response_format(unknown)["json_schema"]["schema"]["properties"]["definition_id"] == {"type": "null"}
     assert response_format(REQ)["json_schema"]["schema"]["properties"]["definition_id"] == {"type": "null"}
 
+
+
+def test_upstream_failures_are_classified():
+    assert upstream_reason(429) == "http_429"
+    assert upstream_reason(503) == "http_5xx"
+    assert upstream_reason(400) == "http_4xx_other"
