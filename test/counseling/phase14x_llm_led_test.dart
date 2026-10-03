@@ -287,6 +287,12 @@ void main() {
       // app guidance tied to app facts, and an approved technique prompt
       expect(vu('이완 훈련은 어디서 해요?', _out(domain: 'app_guide', moves: ['answer_app'], appIds: ['feature:relaxation'],
           text: '이완 훈련 메뉴에서 시작하는 것이 좋아요.')), isNot(contains('advice')));
+      // E2b v7: the counseling sentence next to app guidance is still advice
+      expect(vu('이런 걸 앱 어디에 적어두면 돼요?', _out(domain: 'mixed', moves: ['answer_app'], appIds: ['feature:relaxation'],
+          text: '그런 감정은 기록해 두는 것이 좋습니다. 이완 훈련 메뉴에서 볼 수 있어요.')), contains('advice'));
+      // a norm is never an affirmation, even when it echoes the user's words
+      expect(vu('그럼 좀 맘 편하게 할게요', _out(moves: ['acknowledge'],
+          text: '마음을 편하게 가지는 것이 중요하니까요.')), contains('advice'));
       expect(vu('네', _out(moves: ['intervention_question'], interventionId: 'week4_alternative_thought_01',
           text: '생각을 문장으로 적어 보는 것이 도움이 될 수 있어요. 지금 떠오르는 대로 적어 볼까요?')),
           isNot(contains('advice')));

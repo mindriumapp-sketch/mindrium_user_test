@@ -54,6 +54,7 @@ void main() {
         String? primary;
         String? definitionId;
         String? bText;
+        Map<String, Object?>? bMeta;
         String? detail;
         String? requestStatus;
         String? group;
@@ -71,6 +72,16 @@ void main() {
           violations = t.violations;
           definitionId = t.output?.definitionId;
           bText = t.output?.text;
+          final o = t.output;
+          bMeta = o == null
+              ? null
+              : {
+                  'domain': o.domain,
+                  'moves': o.moves,
+                  'intervention_step': o.interventionStep,
+                  'used_app_fact_ids': o.usedAppFactIds,
+                  'session_action': o.sessionAction,
+                };
           timing = t.timing;
           detail = t.detail;
           primary = t.primaryRejection ?? (t.status == 'success' ? null : t.status);
@@ -106,6 +117,7 @@ void main() {
           'primary_rejection': primary,
           'definition_id': definitionId,
           'b_text': bText,
+          'b_meta': bMeta,
           'timing': timing,
           'detail': detail,
           'request_status': requestStatus,

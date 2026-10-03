@@ -353,9 +353,11 @@ class LlmLedValidator {
   // 바랍니다"). Reflecting the user's own idea ("~라는 생각이 드시는군요")
   // and affirming a plan the user just named are not advice.
   static final RegExp _recommendation = RegExp(
-    r'((것이|게|건)\s*(중요|필요)(합니다|해요|하죠|할\s*수)|'
+    r'((것이|게|건)\s*(중요|필요)(하|해|할)|'
     r'(는|보는|두는)\s*(것|게|건)\s*(도|이|은|가)?\s*(좋|도움|중요|필요|방법))',
   );
+  // "~이 중요해요/필요해요" is a norm, never an affirmation of the user's plan.
+  static final RegExp _normative = RegExp(r'(중요|필요)');
   static final RegExp _exhortation = RegExp(r'((노력|시도)해\s*보(세요|시)|시길\s*(바랍|바라)|는\s*편이\s*나[아을])');
   static final RegExp _reflecting = RegExp(r'(생각이\s*드|생각하시|말씀|하셨|느끼시|라고|다고|겠다는|려는)');
   static final RegExp _quoted = RegExp('["“\'‘][^"”\'’]*["”\'’]');
@@ -375,12 +377,19 @@ class LlmLedValidator {
     return stems(sentence).intersection(stems(user)).isNotEmpty;
   }
 
+  /// Per sentence: in app guidance only a sentence about the app itself
+  /// (an app term or feature name) may recommend; the counseling sentence
+  /// next to it ("그런 감정은 기록해 두는 것이 좋습니다") may not.
   static bool _advises(LlmLedOutput o, LlmLedContext c) {
+    final appGuided = o.domain != 'counseling' && o.usedAppFactIds.isNotEmpty;
     for (final raw in _unquoted(o.statement).split(RegExp(r'(?<=[.?!])\s+'))) {
       final t = raw.trim();
       if (t.isEmpty) continue;
+      if (appGuided && (_appTerms.hasMatch(t) || c.appNames.any(t.contains))) continue;
       if (_exhortation.hasMatch(t)) return true;
-      if (_recommendation.hasMatch(t) && !_reflecting.hasMatch(t) && !_echoesUser(t, c.userMessage)) return true;
+      if (!_recommendation.hasMatch(t) || _reflecting.hasMatch(t)) continue;
+      final affirms = !_normative.hasMatch(t) && _echoesUser(t, c.userMessage);
+      if (!affirms) return true;
     }
     return false;
   }
@@ -470,8 +479,7 @@ class LlmLedValidator {
     if (_hasBanmal(_unquoted(o.text))) v.add('banmal_reply');
     // Phase 3: advice, domain-aware like directives — app guidance tied to
     // app facts and an approved technique prompt may guide; counseling may not.
-    final guidedSpeech = (o.domain != 'counseling' && o.usedAppFactIds.isNotEmpty) || o.interventionStep == 'prompt';
-    if (!guidedSpeech && _advises(o, c)) v.add('advice');
+    if (o.interventionStep != 'prompt' && _advises(o, c)) v.add('advice');
     if (_example.hasMatch(o.text) &&
         _quoted.hasMatch(o.text) &&
         _alternativeTalk.hasMatch(o.text) &&
