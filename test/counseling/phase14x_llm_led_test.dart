@@ -308,6 +308,30 @@ void main() {
       // a quoted example sentence is not the counselor's banmal
       expect(vu('어떻게 써야 할지 모르겠어요', _out(moves: ['acknowledge'], text: ex)), isNot(contains('banmal_reply')));
     });
+    test('device check: an invitation to talk is not a directive', () {
+      expect(v(_out(moves: ['acknowledge', 'listen'], text: '안녕하세요. 요즘 마음에 걸리는 일이 있으면 편하게 이야기해 보세요.')),
+          isNot(contains('directive')));
+      expect(v(_out(text: '그렇군요. 그 일을 말씀해 주세요.')), isNot(contains('directive')));
+      expect(v(_out(text: '안녕하세요. 만나서 반가워요.')), isNot(contains('directive')));
+      expect(v(_out(text: '오늘은 일찍 자 보세요.')), contains('directive'));
+    });
+    test('device check: asking what the technique is allows a short example', () {
+      List<String> vu(String u, Map<String, dynamic> raw) =>
+          LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, ctx(_session(), u));
+      const ex = '균형 잡힌 문장은 걱정과 다른 관점을 함께 담은 문장이에요. 예를 들어, "받아주지 않을 수도 있지만 진심은 전해질 수 있어"처럼요.';
+      expect(vu('그게 뭐야?', _out(moves: ['clarify'], text: ex)), isNot(contains('premature_example')));
+    });
+    test('device check: a new worry thought on the same topic may be explored', () {
+      final closed = _session(messages: [
+        _u('어제 친구랑 싸웠어'),
+        _a('어떤 기분이 드셨나요?'), _u('약속 취소가 서운해서 화를 냈어'),
+        _a('어떤 생각이 드셨나요?'), _u('지금은 후회돼'),
+        _a('어떻게 해결할 수 있을까요?'), _u('먼저 사과하는 게 좋을까'),
+        _a('어떤 방식으로 사과하고 싶으세요?'), _u('문자로 보낼까'),
+      ]);
+      expect(ctx(closed, '친구가 내 사과를 안받아주면 어떡하지?').newTopic, isTrue);
+      expect(ctx(closed, '문자로 보낼까 고민돼').newTopic, isFalse);
+    });
     test('respond_v2: an intervention step always carries an id', () {
       final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};
       expect(LlmLedOutput.tryParse(raw), isNull);

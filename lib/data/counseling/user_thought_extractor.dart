@@ -221,6 +221,11 @@ class UserThoughtExtractor {
     // Phase 13.9D: consonant-only chat shorthand of 1–3 letters ("ㅇㅇ",
     // "ㄴㄴ", "ㅁㄹ") carries no content either.
     if (RegExp(r'^[ㄱ-ㅎ]{1,3}$').hasMatch(compact)) return true;
+    // Phase 5 device check: a greeting or laughter is not a worry to reflect
+    // ("안녕 부분이 마음에 걸리시는 것 같아요").
+    if (RegExp(r'^(안녕(하세요)?|하이|ㅎㅇ|hi|hello|ㅋ+|ㅎ+|헐)$', caseSensitive: false).hasMatch(compact)) {
+      return true;
+    }
     return _onlyNothingTokens(value);
   }
 

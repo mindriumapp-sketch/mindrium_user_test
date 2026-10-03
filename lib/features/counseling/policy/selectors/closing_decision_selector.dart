@@ -23,12 +23,12 @@ class ClosingDecisionSelector {
   /// target is found), so this never returns `isUnavailable: true`.
   // Phase 13.5: answers to the closing proposal.
   static final RegExp _wantsToContinue = RegExp(
-    r'(아니|아직|더\s*(이야기|얘기|말|하고|할래|하자|해요|할게)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더|좀만\s*더|조금만?\s*더)',
+    r'(아니|아직|더\s*(이야기|얘기|말|하고|할래|하자|해요|할게|해\s*줘|해\s*주|해\s*봐|해\s*볼)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더|좀만\s*더|조금만?\s*더)',
   );
   /// The continue cues other than a bare "아니", which in "아니 싫어 그만해"
   /// is a refusal, not a wish to keep talking.
   static final RegExp _stronglyContinues = RegExp(
-    r'(아직|더\s*(이야기|얘기|말|하고|할래|하자|해요|할게)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더|좀만\s*더|조금만?\s*더)',
+    r'(아직|더\s*(이야기|얘기|말|하고|할래|하자|해요|할게|해\s*줘|해\s*주|해\s*봐|해\s*볼)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더|좀만\s*더|조금만?\s*더)',
   );
   /// Phase 14.X: the user asks to end now, without a pending proposal
   /// ("오늘은 여기까지", "그만할게", "더 안 해 끝", "정리하자"), unless a strong

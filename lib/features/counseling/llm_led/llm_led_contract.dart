@@ -258,7 +258,24 @@ bool _newTopic(String userMessage, List<CounselingMessage> round, String? roundW
     for (final m in round)
       if (m.isUser) ...EpisodeHistory.topicKeys(m.text),
   };
-  return before.isNotEmpty && now.intersection(before).isEmpty;
+  if (before.isNotEmpty && now.intersection(before).isEmpty) return true;
+  return _newWorry(userMessage, round, roundWorry);
+}
+
+// A worry thought ("친구가 사과를 안 받아주면 어떡하지?") not voiced earlier in
+// this round is new content even when it shares the topic's words.
+final RegExp _worryCue = RegExp(r'(어떡하지|어떻게\s*하지|면\s*어쩌|할까\s*봐|일까\s*봐|으면\s*어떡|걱정돼|걱정이에요|무서워|두려워)');
+
+bool _newWorry(String userMessage, List<CounselingMessage> round, String? roundWorry) {
+  if (!_worryCue.hasMatch(userMessage)) return false;
+  Set<String> words(String x) => {for (final w in x.split(RegExp(r'[^가-힣A-Za-z0-9]+'))) if (w.length >= 2) w};
+  final now = words(userMessage);
+  for (final earlier in [if (roundWorry != null) roundWorry, for (final m in round) if (m.isUser) m.text]) {
+    final b = words(earlier);
+    final union = now.union(b).length;
+    if (union > 0 && now.intersection(b).length / union >= 0.5) return false;
+  }
+  return true;
 }
 
 /// The model's answer (backend `output`).
@@ -336,6 +353,12 @@ class LlmLedValidator {
     r'(잘\s*될\s*거|괜찮을\s*거|문제\s*없을|걱정\s*(안\s*해도|하지\s*않아도)|반드시\s*(좋아|나아)|분명히?\s*(괜찮|잘)|나을\s*거|낫게\s*해)',
   );
   static final RegExp _directive = RegExp(r'(해야\s*(합니다|해요|돼요)|하셔야|(하|보|써|적어|해)\s*세요[.!]?(\s|$)|하십시오)');
+  // An invitation to talk ("편하게 이야기해 보세요", "말씀해 주세요") asks the
+  // user to speak; it is not a behavioral directive.
+  // Greetings ("안녕하세요", "안녕히 가세요") are not directives either.
+  static final RegExp _invitationToTalk = RegExp(
+    r'((이야기|얘기|말씀|말)(을|를)?\s*(편하게\s*)?(해|하)\s*(보|주)?\s*세요|안녕(하|히)\s*(세요|가세요|계세요))',
+  );
   // respond_v3: the counselor always speaks 해요체. A sentence ending in a
   // banmal ending (not followed by 요) is rejected.
   static final RegExp _banmalSentence = RegExp(
@@ -364,7 +387,8 @@ class LlmLedValidator {
   // An example of a balanced/alternative thought before the user tried one.
   static final RegExp _example = RegExp(r'예를\s*들(어|면)|예시로');
   static final RegExp _alternativeTalk = RegExp(r'(균형|대안|다른\s*(생각|관점|문장)|바꿔|바꾸)');
-  static final RegExp _asksExample = RegExp(r'(예시|예를|예로|어떻게\s*(써|적|해|하)|모르겠)');
+  // ...or asks what the technique is ("그게 뭐야?", "무슨 말이야").
+  static final RegExp _asksExample = RegExp(r'(예시|예를|예로|어떻게\s*(써|적|해|하)|모르겠|뭐야|뭔데|뭐예요|뭔가요|무슨|이해가\s*안|감이\s*안)');
 
   static String _unquoted(String s) => s.replaceAll(_quoted, ' ');
 
@@ -459,7 +483,7 @@ class LlmLedValidator {
     // A directive is an app operation in app guidance ("설정에서 찾아보세요"),
     // and approved technique guidance in a technique prompt; in counseling it
     // is unapproved advice.
-    if (_directive.hasMatch(_unquoted(o.text)) &&
+    if (_directive.hasMatch(_unquoted(o.text).replaceAll(_invitationToTalk, ' ')) &&
         !(o.domain != 'counseling' && o.usedAppFactIds.isNotEmpty) &&
         o.interventionStep != 'prompt') {
       v.add('directive');

@@ -63,7 +63,7 @@ void main() {
     for (final a in ['종료', '종료요', 'ㅇㅇ', '그럴게요', '이쯤 할게요']) {
       test('"$a" finalizes', () async => expect(await answer(a), ClosingStep.finalized));
     }
-    for (final a in ['아직 더 얘기하고 싶어요', '좀만 더 하자', '사실 회사 계약 연장도 불확실해서 걱정돼요']) {
+    for (final a in ['아직 더 얘기하고 싶어요', '좀만 더 하자', '더 해줘', '사실 회사 계약 연장도 불확실해서 걱정돼요']) {
       test('"$a" continues', () async => expect(await answer(a), ClosingStep.continued));
     }
   });
