@@ -15,6 +15,7 @@ import '../counseling_state.dart';
 import '../intervention_registry.dart';
 import '../policy/selectors/closing_decision_selector.dart';
 import 'package:gad_app_team/data/counseling/episode_history.dart';
+import 'package:gad_app_team/data/counseling/previous_session.dart';
 import 'term_glossary.dart';
 
 const _domains = {'counseling', 'app_guide', 'mixed'};
@@ -40,6 +41,10 @@ class LlmLedContext {
   final bool closingProposed;
   final List<String> recentQuestions;
   final TermRequest? termRequest;
+
+  /// respond_v11: the past episode code chose to recall this turn (the user
+  /// referred to the past), or null. The reply must state it, not ask for it.
+  final RecallRequest? recall;
   final bool exploreClosed;
 
   /// The user asked to end now (code-detected); finalize is allowed on it.
@@ -66,6 +71,7 @@ class LlmLedContext {
     required this.closingProposed,
     this.recentQuestions = const [],
     this.termRequest,
+    this.recall,
     this.exploreClosed = false,
     this.userEndRequest = false,
     this.newTopic = false,
@@ -173,6 +179,13 @@ class LlmLedContext {
 
     // respond_v2: structured progress evidence (advisory).
     final roundWorry = UserThoughtExtractor.roundWorryThought(UserThoughtExtractor.semanticContent(round));
+
+    // respond_v11: recall resolved by code, like term grounding.
+    final recall = RecallRequest.resolve(
+      userMessage: userMessage,
+      round: round,
+      episodes: ctx?.episodes ?? EpisodeHistory.empty,
+    );
     final askedGoals = {
       for (final m in round)
         if (!m.isUser && m.dialogueGoalId != null) m.dialogueGoalId!,
@@ -235,6 +248,7 @@ class LlmLedContext {
         'techniques': techniques.take(10).toList(),
         'app_facts': appFacts.take(40).toList(),
         'term_request': termRequest?.toJson(),
+        'recall': recall?.toJson(),
       },
       techniqueIds: types.keys.toSet(),
       techniqueTypes: types,
@@ -245,6 +259,7 @@ class LlmLedContext {
       closingProposed: lastAssistant?.closingStep == ClosingStep.proposed,
       recentQuestions: recentQuestions,
       termRequest: termRequest,
+      recall: recall,
       exploreClosed: exploreClosed,
       userEndRequest: ClosingDecisionSelector.isExplicitEnd(userMessage),
       userMessage: userMessage,
@@ -253,6 +268,63 @@ class LlmLedContext {
       ],
       newTopic: _newTopic(userMessage, round, roundWorry),
     );
+  }
+}
+
+/// A past episode to recall this turn. Code decides: the user refers to the
+/// past ("예전에도", "지난번에") and a completed episode shares the topic of
+/// this message or this round; one with a credited alternative thought first.
+class RecallRequest {
+  final String factId;
+  final String worry;
+  final String? alternative;
+
+  const RecallRequest({required this.factId, required this.worry, this.alternative});
+
+  static final RegExp _pastCue = RegExp(r'(예전|전에도|전에\s*(도|는|한|했)|지난번|저번|이전에|옛날|그때)');
+
+  static RecallRequest? resolve({
+    required String userMessage,
+    required List<CounselingMessage> round,
+    required EpisodeHistory episodes,
+  }) {
+    if (episodes.isEmpty || !_pastCue.hasMatch(userMessage)) return null;
+    final topics = {
+      ...EpisodeHistory.topicKeys(userMessage),
+      for (final m in round)
+        if (m.isUser) ...EpisodeHistory.topicKeys(m.text),
+    };
+    if (topics.isEmpty) return null;
+    PreviousSession? best;
+    for (final e in episodes.episodes) {
+      if (!e.isCompleted) continue;
+      final past = {...EpisodeHistory.topicKeys(e.coreThought ?? ''), ...EpisodeHistory.topicKeys(e.mainConcern ?? '')};
+      if (past.intersection(topics).isEmpty) continue;
+      final hasAlt = e.interventionOutcome == 'credited' && (e.alternativeThought?.trim().isNotEmpty ?? false);
+      if (hasAlt) {
+        best = e;
+        break;
+      }
+      best ??= e;
+    }
+    final worry = best?.coreThought ?? best?.mainConcern;
+    if (best == null || worry == null) return null;
+    return RecallRequest(
+      factId: 'session:${best.sessionId}',
+      worry: worry,
+      alternative: best.interventionOutcome == 'credited' ? best.alternativeThought?.trim() : null,
+    );
+  }
+
+  Map<String, Object?> toJson() => {'fact_id': factId, 'worry': worry, 'alternative': alternative};
+
+  /// The reply states the recalled content: at least two content stems of
+  /// the alternative (or of the worry when there is none) that the user's
+  /// message did not already supply.
+  bool statedIn(String reply, String userMessage) {
+    Set<String> stems(String x) => EpisodeHistory.topicKeys(x);
+    final target = stems(alternative ?? worry).difference(stems(userMessage));
+    return stems(reply).intersection(target).length >= 2;
   }
 }
 
@@ -512,6 +584,11 @@ class LlmLedValidator {
     }
     if (o.sessionAction == 'finalize' && !c.closingProposed && !c.userEndRequest) {
       v.add('finalize_without_proposal');
+    }
+    // respond_v11: a recall code resolved is stated, not asked back.
+    final r = c.recall;
+    if (r != null && (!o.usedUserFactIds.contains(r.factId) || !r.statedIn(o.statement, c.userMessage))) {
+      v.add('recall_not_stated');
     }
     // respond_v4: a definition is tied to the term code resolved.
     final t = c.termRequest;

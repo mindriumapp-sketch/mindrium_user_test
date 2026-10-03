@@ -75,6 +75,15 @@ class TermRequest(BaseModel):
     definition: Optional[str] = Field(None, max_length=1200)
 
 
+class RecallRequest(BaseModel):
+    """respond_v11: 사용자가 과거를 언급했을 때 코드가 고른 지난 에피소드."""
+
+    model_config = ConfigDict(extra="forbid")
+    fact_id: str = Field(..., max_length=120)
+    worry: str = Field(..., max_length=600)
+    alternative: Optional[str] = Field(None, max_length=600)
+
+
 class CounselingRespondRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     request_id: str = Field(..., min_length=1, max_length=64)
@@ -86,6 +95,8 @@ class CounselingRespondRequest(BaseModel):
     app_facts: List[Fact] = Field(default_factory=list, max_length=40)
     # respond_v4: the term this message asks about, resolved by the app.
     term_request: Optional["TermRequest"] = None
+    # respond_v11: the past episode to recall, resolved by the app.
+    recall: Optional[RecallRequest] = None
 
 
 class InterventionChoice(BaseModel):

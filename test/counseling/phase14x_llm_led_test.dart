@@ -5,6 +5,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gad_app_team/data/counseling/previous_session.dart';
+import 'package:gad_app_team/data/counseling/episode_history.dart';
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/data/counseling/local_cbt_knowledge_repository.dart';
@@ -337,6 +339,25 @@ void main() {
       expect(v(_out(moves: ['acknowledge'], text: '불안에 대한 이야기를 나누고 싶으신 것 같아요. 요즘 마음에 걸리는 걱정이 있다면 편하게 이야기해 주세요.'), s: s),
           contains('repeated_reply'));
       expect(v(_out(moves: ['acknowledge'], text: '네, 안녕하세요. 아까 이야기로 돌아가 볼까요?'), s: s), isEmpty);
+    });
+    test('respond_v11: a past reference recalls the episode, and the reply must state it', () {
+      final s = _session(messages: [_u('다음 주 발표 때문에 걱정돼요'), _a('어떤 부분이 가장 걱정되나요?')]);
+      s.userContext = const MindriumCounselingContext(currentWeek: 4).withEpisodes(EpisodeHistory([
+        PreviousSession(
+          sessionId: 'p1', week: 4, completionStatus: 'completed', interventionOutcome: 'credited',
+          coreThought: '발표하다 실수하면 사람들이 나를 안 좋게 볼 것 같다',
+          alternativeThought: '긴장해도 준비한 내용은 설명할 수 있다'),
+      ]));
+      const u = '나 예전에도 발표로 걱정한 적이 있었던 거 같아';
+      final c = ctx(s, u);
+      expect(c.recall?.factId, 'session:p1');
+      expect(ctx(s, '발표가 또 걱정돼요').recall, isNull, reason: 'no reference to the past');
+      List<String> vr(Map<String, dynamic> raw) => LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, c);
+      expect(vr(_out(moves: ['connect_past_record'], userIds: ['session:p1'],
+          text: '예전에도 발표 때문에 걱정하셨군요. 그때 어떤 걱정이 있었는지 기억나시나요?')), contains('recall_not_stated'));
+      expect(vr(_out(moves: ['connect_past_record'], userIds: ['session:p1'],
+          text: "지난번에도 발표 걱정을 이야기하셨어요. 그때 '긴장해도 준비한 내용은 설명할 수 있다'고 정리해 보셨죠. 그 생각이 이번에도 도움이 될 것 같으세요?")),
+          isNot(contains('recall_not_stated')));
     });
     test('respond_v2: an intervention step always carries an id', () {
       final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};

@@ -913,7 +913,7 @@ class LlmLedTurn {
   }
 
   static const _rejectionPriority = [
-    'definition_mismatch', 'unknown_term_defined', 'definition_without_request',
+    'definition_mismatch', 'unknown_term_defined', 'definition_without_request', 'recall_not_stated',
     'unauthorized_intervention', 'prompt_without_intervention', 'integration_without_prompt',
     'unsupported_user_fact', 'unsupported_app_fact', 'app_claim_without_fact',
     'diagnosis', 'outcome_guarantee', 'directive', 'advice', 'premature_example', 'finalize_without_proposal',

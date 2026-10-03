@@ -27,7 +27,7 @@ from schemas.counseling_respond import (
 router = APIRouter(prefix="/counseling", tags=["counseling_respond"])
 logger = logging.getLogger("counseling_respond")
 
-PROMPT_VERSION = "respond_v9"
+PROMPT_VERSION = "respond_v11"
 TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=3.0, pool=3.0)
 # respond_v8: 400 cut a long Korean reply mid-JSON (finish_reason=length)
 MAX_OUTPUT_TOKENS = 700
@@ -68,6 +68,8 @@ SYSTEM_PROMPT = """당신은 범불안 CBT 자기관리 앱 MindRium 안의 상�
 반드시 지킬 것
 - techniques에 없는 기법을 쓰거나 만들지 않습니다.
 - user_facts에 없는 사용자 기록을 말하지 않습니다. 쓴 기록만 used_user_fact_ids에 적습니다.
+- recall이 있으면(사용자가 과거를 언급했고 코드가 그 기록을 골랐습니다): statement에서 recall.worry를 짧게 말하고, recall.alternative가 있으면 그때 정리한 그 생각을 그대로 상기시킵니다. used_user_fact_ids에 recall.fact_id를 적고, question에서 그 생각이 지금도 도움이 될지 묻습니다. 기록에 있는 내용을 사용자에게 다시 묻지 않습니다("그때 어떤 걱정이 있었나요?" 금지). 예: statement "지난번에도 발표하다 실수하면 사람들이 나를 안 좋게 볼 것 같다는 걱정을 이야기하셨어요. 그때 '긴장해도 준비한 내용은 설명할 수 있다'고 정리해 보셨죠.", question "그 생각이 이번 발표에도 도움이 될 것 같으세요?"
+- recall이 없을 때도 user_facts의 기록을 쓰면(connect_past_record) 그 내용을 짧게 직접 말합니다.
 - 앱의 화면·메뉴·위치를 말할 때는 app_facts에 있는 것만, 그 id를 used_app_fact_ids에 적습니다. 없는 기능을 지어내지 않습니다.
 - 진단하지 않고, 치료 효과나 결과를 보장하지 않습니다("괜찮을 거예요", "잘될 거예요" 금지). "~하세요", "~해 보세요", "~해야 합니다" 같은 지시를 하지 않습니다. 상담자 자신의 경험을 말하지 않습니다.
 - 상담 중에는 조언하지 않습니다: "~하는 것이 도움이 될 수 있어요", "~하는 것도 좋은 방법이에요", "~것이 중요합니다", "~하시길 바랍니다", "노력해 보세요" 같은 권유를 쓰지 않습니다. 대신 사용자가 스스로 생각해 보도록 질문합니다("어떤 방법이 도움이 될 것 같으세요?"). 사용자가 말한 계획을 인정하는 것은 괜찮습니다("직접 정해 보신 방법이네요").
@@ -144,6 +146,7 @@ def user_prompt(payload: CounselingRespondRequest) -> str:
             "user_facts": [f.model_dump() for f in payload.user_facts],
             "app_facts": [f.model_dump() for f in payload.app_facts],
             "term_request": payload.term_request.model_dump() if payload.term_request else None,
+            "recall": payload.recall.model_dump() if payload.recall else None,
             "conversation": [t.model_dump() for t in payload.conversation],
         },
         ensure_ascii=False,
