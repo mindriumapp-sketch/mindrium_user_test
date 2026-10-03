@@ -337,7 +337,7 @@ class CounselingProvider extends ChangeNotifier {
   /// does not produce an accepted turn. Logs one line per turn (no text).
   Future<CounselingTurnResult> _handleTurnLlmLedFirst(String userText) async {
     final api = llmLedApi;
-    if (api == null || !_llmLedThisSession) return _committedA(await _turn(userText, null));
+    if (api == null || !_llmLedThisSession) return _committedA(await _turn(userText));
     final endToEnd = Stopwatch()..start();
     final b = await harness.handleLlmLedTurn(
       session: _session,
@@ -356,7 +356,7 @@ class CounselingProvider extends ChangeNotifier {
       return b.result!;
     }
     final fallbackWatch = Stopwatch()..start();
-    final a = await _turn(userText, null);
+    final a = await _turn(userText);
     _logLlmLed(b, fallbackWatch.elapsedMilliseconds, endToEnd.elapsedMilliseconds);
     // the discarded B output never reaches the avatar
     return _committedA(a);
@@ -399,11 +399,10 @@ class CounselingProvider extends ChangeNotifier {
     })}');
   }
 
-  Future<CounselingTurnResult> _turn(String userText, InteractionRepairReason? perceived) =>
+  Future<CounselingTurnResult> _turn(String userText) =>
       _assistantHarness.handleTurn(
         session: _session,
         userMessage: userText,
-        perceivedRepair: perceived,
         previousSessionContext: PreviousSessionContext(
           latestRelevantSession: _previousSession,
           carriedUnfinishedIssue: _carriedUnfinishedIssue,

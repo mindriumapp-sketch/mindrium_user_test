@@ -281,8 +281,6 @@ class CounselingHarness {
     required CounselingSessionState session,
     required String userMessage,
     PrecomputedTurnContext? precomputedContext,
-    /// Phase 14.2B: guarded semantic repair signal (see TurnPlanningContext).
-    InteractionRepairReason? perceivedRepair,
     /// Phase 10.6B: stable rollout cohort key for this session. Defaults
     /// to `session.sessionId` — pass explicitly only if some other stable
     /// identifier (e.g. a user id, once this call site has one) should
@@ -330,7 +328,6 @@ class CounselingHarness {
       knowledge: knowledge,
       userContext: session.userContext,
       recentMessages: recentMessages,
-      perceivedRepair: perceivedRepair,
       retrievalSummary: precomputedContext?.retrievalSummary ??
           retrievalSummaryBuilder.build(
             userMessage: userMessage,
