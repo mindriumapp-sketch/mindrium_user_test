@@ -13,6 +13,8 @@ import 'package:gad_app_team/features/assistant/app_guide/app_guide_repository.d
 import '../counseling_harness.dart' show CounselingSessionState;
 import '../counseling_state.dart';
 import '../intervention_registry.dart';
+import '../policy/selectors/closing_decision_selector.dart';
+import 'package:gad_app_team/data/counseling/episode_history.dart';
 import 'term_glossary.dart';
 
 const _domains = {'counseling', 'app_guide', 'mixed'};
@@ -40,6 +42,13 @@ class LlmLedContext {
   final TermRequest? termRequest;
   final bool exploreClosed;
 
+  /// The user asked to end now (code-detected); finalize is allowed on it.
+  final bool userEndRequest;
+
+  /// The user's message shares no topic with this round's worry so far
+  /// (code-detected): new content, which exploration may take up.
+  final bool newTopic;
+
   const LlmLedContext({
     required this.body,
     required this.techniqueIds,
@@ -52,6 +61,8 @@ class LlmLedContext {
     this.recentQuestions = const [],
     this.termRequest,
     this.exploreClosed = false,
+    this.userEndRequest = false,
+    this.newTopic = false,
   });
 
   static LlmLedContext build({
@@ -227,8 +238,22 @@ class LlmLedContext {
       recentQuestions: recentQuestions,
       termRequest: termRequest,
       exploreClosed: exploreClosed,
+      userEndRequest: ClosingDecisionSelector.isExplicitEnd(userMessage),
+      newTopic: _newTopic(userMessage, round, roundWorry),
     );
   }
+}
+
+bool _newTopic(String userMessage, List<CounselingMessage> round, String? roundWorry) {
+  if (!UserThoughtExtractor.isContentfulContribution(userMessage)) return false;
+  final now = EpisodeHistory.topicKeys(userMessage);
+  if (now.isEmpty) return false;
+  final before = <String>{
+    if (roundWorry != null) ...EpisodeHistory.topicKeys(roundWorry),
+    for (final m in round)
+      if (m.isUser) ...EpisodeHistory.topicKeys(m.text),
+  };
+  return before.isNotEmpty && now.intersection(before).isEmpty;
 }
 
 /// The model's answer (backend `output`).
@@ -378,8 +403,17 @@ class LlmLedValidator {
     }
     if (_diagnosis.hasMatch(o.text)) v.add('diagnosis');
     if (_guarantee.hasMatch(o.text)) v.add('outcome_guarantee');
-    if (_directive.hasMatch(o.text)) v.add('directive');
-    if (o.sessionAction == 'finalize' && !c.closingProposed) v.add('finalize_without_proposal');
+    // A directive is an app operation in app guidance ("설정에서 찾아보세요"),
+    // and approved technique guidance in a technique prompt; in counseling it
+    // is unapproved advice.
+    if (_directive.hasMatch(o.text) &&
+        !(o.domain != 'counseling' && o.usedAppFactIds.isNotEmpty) &&
+        o.interventionStep != 'prompt') {
+      v.add('directive');
+    }
+    if (o.sessionAction == 'finalize' && !c.closingProposed && !c.userEndRequest) {
+      v.add('finalize_without_proposal');
+    }
     // respond_v4: a definition is tied to the term code resolved.
     final t = c.termRequest;
     if (t != null && t.approved) {
@@ -390,6 +424,8 @@ class LlmLedValidator {
     }
     if (_hasBanmal(o.text)) v.add('banmal_reply');
     if (c.exploreClosed &&
+        !c.newTopic &&
+        !o.moves.contains('repair') &&
         o.question != null &&
         o.interventionStep != 'prompt' &&
         o.sessionAction != 'offer_close' &&

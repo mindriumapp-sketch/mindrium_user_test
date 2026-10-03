@@ -66,3 +66,8 @@ def test_definition_id_is_pinned_to_the_requested_term():
         "status": "unknown", "name": "탈파국화"}})
     assert response_format(unknown)["json_schema"]["schema"]["properties"]["definition_id"] == {"type": "null"}
     assert response_format(REQ)["json_schema"]["schema"]["properties"]["definition_id"] == {"type": "null"}
+
+
+def test_statement_cannot_carry_a_question():
+    statement = response_format(REQ)["json_schema"]["schema"]["properties"]["statement"]
+    assert statement["pattern"] == "^[^?？]*$"

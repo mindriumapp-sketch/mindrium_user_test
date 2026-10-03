@@ -27,7 +27,7 @@ from schemas.counseling_respond import (
 router = APIRouter(prefix="/counseling", tags=["counseling_respond"])
 logger = logging.getLogger("counseling_respond")
 
-PROMPT_VERSION = "respond_v4"
+PROMPT_VERSION = "respond_v5"
 TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=3.0, pool=3.0)
 MAX_OUTPUT_TOKENS = 400
 
@@ -53,13 +53,14 @@ SYSTEM_PROMPT = """당신은 범불안 CBT 자기관리 앱 MindRium 안의 상�
 - recent_no_progress_turns가 2 이상이면 더 묻지 말고 정리하거나 마무리를 제안합니다.
 - explore_closed가 true이면 탐색 질문을 하지 않습니다. 기법 질문(intervention prompt)이나 마무리 제안(offer_close), 또는 질문 없는 정리만 합니다. 사용자가 완전히 새로운 걱정을 꺼내면 그것을 받아 주고, 다음 상담에서 이어가거나 지금 계속할지 마무리 제안으로 묻습니다.
 - 기법 질문에 답이 오면 그 답을 받아 줍니다(intervention={같은 id, step:"integration"}, integrate). 기법을 마쳤으면(intervention_completed) 마무리를 제안할 수 있습니다.
+- 사용자가 먼저 끝내자고 하면("오늘은 여기까지", "그만할게", "종료") 마무리 제안 없이 바로 짧게 정리하고 마무리합니다(finalize, question=null).
 - 마무리 제안(offer_close)은 question에 "오늘은 여기까지 정리해 볼까요, 아니면 조금 더 이야기하고 싶으신가요?"처럼 하나로 묻습니다. 직전 응답이 마무리 제안이었고 사용자가 동의하면 마무리합니다(finalize, question=null). 더 이야기하고 싶어 하면 이어갑니다(continue).
 
 반드시 지킬 것
 - techniques에 없는 기법을 쓰거나 만들지 않습니다.
 - user_facts에 없는 사용자 기록을 말하지 않습니다. 쓴 기록만 used_user_fact_ids에 적습니다.
 - 앱의 화면·메뉴·위치를 말할 때는 app_facts에 있는 것만, 그 id를 used_app_fact_ids에 적습니다. 없는 기능을 지어내지 않습니다.
-- 진단하지 않고, 치료 효과나 결과를 보장하지 않습니다("괜찮을 거예요", "잘될 거예요" 금지). "~하세요", "~해 보세요", "~해야 합니다" 같은 지시를 하지 않습니다. 상담자 자신의 경험을 말하지 않습니다.
+- 진단하지 않고, 치료 효과나 결과를 보장하지 않습니다("괜찮을 거예요", "잘될 거예요" 금지). "~하세요", "~해 보세요", "~해야 합니다" 같은 지시를 하지 않습니다. 상담자 자신의 경험을 말하지 않습니다. 단, 앱 사용법 안내(app_guide)에서 app_facts에 있는 조작 방법은 "~에서 ~을 눌러 보세요"처럼 안내해도 됩니다.
 
 출력: 지정된 JSON 하나. statement에는 물음표를 쓰지 않고, 질문은 question에만 씁니다."""
 
@@ -115,7 +116,8 @@ def response_format(payload: CounselingRespondRequest) -> dict:
                         else {"type": "null"}
                     ),
                     "session_action": {"type": "string", "enum": list(SESSION_ACTIONS)},
-                    "statement": {"type": "string"},
+                    # respond_v5: a question in the statement made two questions
+                    "statement": {"type": "string", "pattern": "^[^?？]*$"},
                     "question": {"type": ["string", "null"]},
                 },
             },

@@ -132,7 +132,11 @@ void main() {
       expect(t, isNotNull);
       expect(t!.approved, isFalse);
       expect(t.name, '탈파국화');
-      expect(r("'가능성을 따져본다'는 게 무슨 뜻이에요?")!.approved, isFalse);
+      expect(r("'탈파국화'는 무슨 뜻이에요?")!.approved, isFalse);
+    });
+    test('a quoted sentence is asked as meaning (clarify), not as a term', () {
+      expect(r("'가능성을 따져본다'는 게 무슨 뜻이에요?"), isNull);
+      expect(r("제가 '이번 학기 망했다'고 했는데 그게 무슨 뜻이냐면요"), isNull);
     });
     test('a mention that is not a question is not a term request', () {
       expect(r('요즘 자꾸 회피하게 돼서 힘들어'), isNull);
@@ -215,6 +219,39 @@ void main() {
       expect(v(_out(text: '그렇군요. 그 외에 또 어떤 준비를 해볼 수 있을까요?'), s: closed), contains('exploring_after_closed'));
       expect(v(_out(moves: ['offer_close'], action: 'offer_close',
           text: '오늘 이야기 잘 정리됐어요. 오늘은 여기까지 정리해 볼까요?'), s: closed), isEmpty);
+    });
+    test('respond_v5: the user asking to end allows finalize without a proposal', () {
+      List<String> vu(String u, Map<String, dynamic> raw) =>
+          LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, ctx(_session(), u));
+      final fin = _out(moves: ['summarize', 'finalize'], action: 'finalize', text: '오늘 이야기 고마워요.');
+      for (final u in ['오늘은 여기까지 할게요', '그만할래', '종료', '이제 끝']) {
+        expect(vu(u, fin), isEmpty, reason: u);
+      }
+      for (final u in ['아직 끝내지 말고 좀 더 얘기할래', '발표가 끝나면 불안해']) {
+        expect(vu(u, fin), contains('finalize_without_proposal'), reason: u);
+      }
+    });
+    test('respond_v5: directives are domain-aware', () {
+      expect(v(_out(domain: 'app_guide', moves: ['answer_app'], appIds: ['feature:relaxation'],
+          text: '이완 훈련 메뉴에서 시작 버튼을 눌러 보세요.')), isNot(contains('directive')));
+      expect(v(_out(domain: 'counseling', text: '그 생각을 한번 적어 보세요.')), contains('directive'));
+      expect(v(_out(domain: 'app_guide', moves: ['answer_app'], text: '그냥 푹 쉬어 보세요.')), contains('directive'));
+    });
+    test('respond_v5: after exploration closed, a new worry or a repair may still ask', () {
+      final closed = _session(messages: [
+        _u('발표하다 말이 막히면 어떡하지'),
+        _a('어떤 근거가 있나요?'), _u('예전에 막혔어'),
+        _a('다른 관점은 어떤가요?'), _u('다들 긴장해'),
+        _a('가능성은 어느 정도일까요?'), _u('반반'),
+      ]);
+      List<String> vc(String u, Map<String, dynamic> raw) =>
+          LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, ctx(closed, u));
+      final ask = _out(text: '그 일도 마음이 쓰이셨겠어요. 어떤 점이 가장 걱정되세요?');
+      expect(ctx(closed, '사실 엄마 건강검진 결과가 더 걱정돼요').newTopic, isTrue);
+      expect(vc('사실 엄마 건강검진 결과가 더 걱정돼요', ask), isEmpty);
+      expect(vc('발표 때 또 막힐 것 같아요', ask), contains('exploring_after_closed'));
+      expect(vc('대화가 자꾸 겉도는 것 같아요',
+          _out(moves: ['repair'], text: '답답하셨겠어요. 지금 가장 이야기하고 싶은 건 무엇인가요?')), isEmpty);
     });
     test('respond_v2: an intervention step always carries an id', () {
       final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};

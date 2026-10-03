@@ -30,6 +30,19 @@ class ClosingDecisionSelector {
   static final RegExp _stronglyContinues = RegExp(
     r'(아직|더\s*(이야기|얘기|말|하고|할래)|계속|잠깐|벌써|끝내지|안\s*끝|좀\s*더)',
   );
+  /// Phase 14.X: the user asks to end now, without a pending proposal
+  /// ("오늘은 여기까지", "그만할게", "더 안 해 끝", "정리하자"), unless a strong
+  /// continue cue is also there. Evidence the LLM-led path may finalize on.
+  static final RegExp _endRequest = RegExp(
+    r'(여기까지|이만|그만\s*(할|하|두|해|하자|할래|할게)?|(^|\s)끝(\s|$|이야|낼|내자)|종료|'
+    r'정리(하자|할게|하죠|할래|해요|하겠)|마무리(하자|할게|하죠|할래|해요|해도|하겠)|마칠게|마칠래)',
+  );
+
+  static bool isExplicitEnd(String text) {
+    final t = text.trim();
+    return _endRequest.hasMatch(t) && !_stronglyContinues.hasMatch(t);
+  }
+
   static final RegExp _agrees = RegExp(
     r'^(네|넵|응|웅|어|그래|좋아|괜찮|알겠|고마워|고맙|감사|그만|마칠|마무리|여기까지|됐어|끝낼|끝내요|그렇게)',
   );

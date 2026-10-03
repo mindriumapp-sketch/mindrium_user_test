@@ -88,9 +88,12 @@ class TermGlossary {
       }
     }
 
-    // not in the glossary: a quoted word or a technical-looking word asked about
+    // not in the glossary: a quoted word or a technical-looking word asked
+    // about. A quoted phrase with spaces is someone's sentence ('이번 학기
+    // 망했다', '가능성을 따져본다'), explained as meaning, not a term.
     for (final m in [..._quoted.allMatches(text), ..._jargon.allMatches(text)]) {
       final name = m.group(1)!.trim();
+      if (name.contains(RegExp(r'\s'))) continue;
       final after = text.substring(m.end).trimLeft();
       final asked = text.substring(m.start, m.end).contains(RegExp(r'[?？]')) ||
           RegExp('^.{0,12}($_cue|[?？])').hasMatch(after);
