@@ -701,6 +701,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
     final latest = _provider.messages.isEmpty ? null : _provider.messages.last;
     if (latest != null && !latest.isUser) {
+      // The reply bubble was first drawn before this expression was chosen;
+      // give it the expression of this reply, not the previous one.
+      _messageAvatars[latest.id] = _currentAvatar;
       _appendJsonLogMessage(role: 'ai', text: latest.text);
     }
 
