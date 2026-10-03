@@ -1,5 +1,5 @@
 // Phase 13.6 — Week × multi-turn progression evaluation. See
-// docs/counseling/chatbot_system.md.
+// docs/counseling/chatbot_system.md (tag counseling-handover-v1).
 //
 // Every scenario family runs in every week 1–8 through the real
 // deterministic `CounselingHarness`. The simulated user is adaptive: it
@@ -161,7 +161,7 @@ class _Metrics {
   };
 
   /// Found in the 13.6 traces and fixed in 13.6b; not in the gate list (see
-  /// docs/counseling/chatbot_system.md, Q1/Q2).
+  /// docs/counseling/chatbot_system.md (tag counseling-handover-v1), Q1/Q2).
   final quality = <String, int>{
     // Q1: reflect's last question is sent in the turn that completes
     // reflect; the user's answer then lands in intervention and is
@@ -474,7 +474,7 @@ void main() {
   });
 
   // Found in 13.6, fixed in 13.6b. Kept at 0; see Q1/Q2 in
-  // docs/counseling/chatbot_system.md.
+  // docs/counseling/chatbot_system.md (tag counseling-handover-v1).
   group('quality findings Q1/Q2 (fixed)', () {
     test('Q1 reflect question dropped at reflect->intervention', () {
       expect(metrics.quality['reflectQuestionDroppedAtTransition'], _frozenQ1);

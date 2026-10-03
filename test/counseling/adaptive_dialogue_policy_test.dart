@@ -11,7 +11,7 @@ import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
 /// Adaptive Dialogue Policy Phase 1 통합 검증.
 ///
-/// docs/counseling/chatbot_system.md 4절: turnPlan이
+/// docs/counseling/chatbot_system.md (tag counseling-handover-v1) 4절: turnPlan이
 /// allowedActsForTurn을 제공하면, realizer(GPT)가 그 안에서 requiredAct와
 /// 다른 행위를 골라도 harness가 그 선택을 최종 메시지와 state 전이에 그대로
 /// 반영해야 한다. 반대로 검증에 실패한 선택은 항상 requiredAct/deterministic

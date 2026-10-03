@@ -38,7 +38,7 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 | 마인드리움 보관함 | 걱정 그룹을 캐릭터/수족관 형태로 시각화하고, 보관된 걱정 그룹을 조회 |
 | 리포트 | 일기, 교육, 이완 활동을 날짜/주 단위로 모아 보고 완료율과 SUD 추이를 확인 |
 | 스크린타임 기록 | 앱 포그라운드 사용 세션을 자동 기록하고 서버에 전송하는 기반 기능 |
-| AI 마음상담 | 걱정 하나를 짧은 CBT 상담 세션으로 다룸. GPT가 코드가 정한 경계(안전, 사용자 기록, 앱 사실, 승인 기법) 안에서 대화를 이끌고 검증기가 확인하며, 실패하면 결정론 경로로 대체. 지난 상담 기억과 앱 사용법 안내 포함. 구조와 실행은 [`docs/HANDOVER.md`](docs/HANDOVER.md) |
+| AI 마음상담 | 걱정 하나를 짧은 CBT 상담 세션으로 다룸. GPT가 코드가 정한 경계(안전, 사용자 기록, 앱 사실, 승인 기법) 안에서 대화를 이끌고 검증기가 확인하며, 실패하면 결정론 경로로 대체. 지난 상담 기억과 앱 사용법 안내 포함. 구조와 실행은 [`docs/chatbot_HANDOVER.md`](docs/chatbot_HANDOVER.md) |
 
 ## 8주 프로그램 구성
 
@@ -161,7 +161,7 @@ cd backend/app
 PYTHONPATH=. ../.venv/bin/python -m uvicorn main:app --reload --host 0.0.0.0 --port 8080
 ```
 
-상담 챗봇 개발·시연용 로컬 실행(포트 8090, 로컬 DB)은 [`docs/HANDOVER.md`](docs/HANDOVER.md) 2절을 따릅니다.
+상담 챗봇 개발·시연용 로컬 실행(포트 8090, 로컬 DB)은 [`docs/chatbot_HANDOVER.md`](docs/chatbot_HANDOVER.md) 2절을 따릅니다.
 
 필수 환경 변수는 `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`입니다. 백엔드 실행 후 Swagger 문서는 `http://localhost:8080/docs`, 상태 확인은 `http://localhost:8080/health`에서 확인할 수 있습니다.
 

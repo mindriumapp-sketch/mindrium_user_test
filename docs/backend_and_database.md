@@ -128,7 +128,7 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 `OPENAI_*`는 `routers/counseling_respond.py`(`POST /counseling/respond`, 상담 주 경로)와
 `routers/counseling_realize.py`(`POST /counseling/realize`, 대체 경로의 문장 표현)가 사용한다.
 모델은 `gpt-4o-mini`, 키는 서버에만 있고 앱은 백엔드를 거친다.
-[`counseling/chatbot_system.md`](counseling/chatbot_system.md) 2절 참고.
+[`chatbot_HANDOVER.md`](chatbot_HANDOVER.md) 1절 참고.
 
 ### 인증 모델
 
@@ -519,7 +519,7 @@ router update, 인덱스, Flutter parser를 함께 갱신해야 한다.
    어려울 수 있다.
 9. `OPENAI_API_KEY`가 없으면 `/counseling/respond`와 `/counseling/realize`는 실패한다. 앱은 이 경우 결정론 경로(A)와 결정론 문장으로
    대체하므로 오류가 화면에 드러나지 않는다.
-10. 리포지토리에 `.env.example`이 없다. 필요한 변수는 위 표와 `docs/HANDOVER.md` 2.2절을 따른다.
+10. 리포지토리에 `.env.example`이 없다. 필요한 변수는 위 표와 `docs/chatbot_HANDOVER.md` 2.2절을 따른다.
 
 ## 9. 변경 시 확인 목록
 

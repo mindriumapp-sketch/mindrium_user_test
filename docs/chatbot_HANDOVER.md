@@ -5,10 +5,11 @@
 
 | 더 볼 문서 | 내용 |
 |---|---|
-| [`counseling/chatbot_system.md`](counseling/chatbot_system.md) | 챗봇 구조 전체: 두 경로, B 계약과 검증 규칙, A 파이프라인, 개인화, 표정 규칙, 테스트 |
-| [`counseling/asis_tobe.md`](counseling/asis_tobe.md) | 예전 챗봇과 지금 챗봇 비교(AS-IS / TO-BE) |
 | [`backend_and_database.md`](backend_and_database.md) | 백엔드 API, 인증, MongoDB 컬렉션 |
 | [`../README.md`](../README.md) | 앱 전체(8주 프로그램, 화면, 기술 스택) |
+
+상세 설계(B 계약·검증 규칙 전체, A 파이프라인, 표정 규칙)와 예전 챗봇과의 비교(AS-IS/TO-BE) 문서는 태그 `counseling-handover-v1`의
+`docs/counseling/`에 있습니다(`git show counseling-handover-v1:docs/counseling/chatbot_system.md`).
 
 > 이 챗봇은 진단이나 치료를 대체하지 않습니다. 위기 감지는 키워드 기반이고, 상담 문장과 위기 응답, 1~3주차
 > 기법은 아직 임상 검수를 받지 않았습니다. 외부 사용자에게 공개하기 전에 검수가 필요합니다.
@@ -122,7 +123,7 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 lib/chatbot/
   chatbot_main.dart                       상담 화면(ChatPage). 엔진 조립, 두 박자 표정, 음성, 새 세션(↻)
-  affective/                              정서 단서 + 응답 행동 → 상담사 표정 (chatbot_system.md 11.1절)
+  affective/                              정서 단서 + 응답 행동 → 상담사 표정 (규칙: affective_adapter.dart의 respond)
 lib/features/counseling/
   llm_led/llm_led_contract.dart           B: 경계 구성(LlmLedContext), 출력 파싱, 검증기, 메타데이터 매핑, 회상(RecallRequest)
   llm_led/term_glossary.dart              B: 용어 질문 판정
@@ -141,7 +142,7 @@ assets/counseling/knowledge/              승인 CBT 코퍼스(week0~8.json). �
 assets/counseling/glossary.json           용어 이름·별칭(정의는 코퍼스에서 읽음)
 assets/app_guide/app_guide_catalog.json   앱 사용 안내 지식
 assets/npc_images/                        상담사 표정 그림
-backend/app/routers/counseling_respond.py POST /counseling/respond: 시스템 프롬프트(respond_v11), 요청별 JSON 스키마
+backend/app/routers/counseling_respond.py POST /counseling/respond: 시스템 프롬프트(respond_v13), 요청별 JSON 스키마
 backend/app/routers/counseling_realize.py POST /counseling/realize: A의 문장 표현
 backend/app/routers/counseling_sessions.py PUT/GET /counseling-sessions: 세션 요약
 backend/scripts/seed_demo_account.py      데모 계정과 합성 기록
@@ -248,7 +249,7 @@ cd backend/app && PYTHONPATH=. ../.venv/bin/python -m pytest -q tests  # 백엔�
 
 1. 백엔드 실행(2.2절 명령). 코드를 바꿨다면 반드시 재시작
 2. 사전 점검과 설치: `DEMO_PASSWORD='<데모 비밀번호>' tools/demo/preflight.sh --install`
-   - 점검 항목: 백엔드 응답, 데모 계정 로그인, 5주차, 과거 상담 기록, 상담 모델 응답(`respond_v11`, OpenAI 키), 기기 연결, 포트 포워딩, B 경로 빌드 설치
+   - 점검 항목: 백엔드 응답, 데모 계정 로그인, 5주차, 과거 상담 기록, 상담 모델 응답(`respond_v13`, OpenAI 키), 기기 연결, 포트 포워딩, B 경로 빌드 설치
    - 모두 `OK`여야 합니다. 무선 디버깅이 다시 붙으면 다시 실행합니다(포워딩을 다시 건다).
 3. 앱에서 데모 계정으로 로그인 → 홈에 "데모 사용자님", 5주차인지 확인
 4. 앱 내 확인(각 1턴). 확인 뒤에는 데모 계정을 다시 초기화하고 앱을 재시작합니다.

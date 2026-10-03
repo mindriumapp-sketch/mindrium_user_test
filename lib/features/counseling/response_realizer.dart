@@ -16,7 +16,7 @@ class RealizationRequest {
 
   /// [requiredAct] 대신 realizer가 골라도 되는 후보. 비어 있으면 선택권이
   /// 없다는 뜻이고, realizer는 항상 [requiredAct]로만 응답해야 한다.
-  /// docs/counseling/chatbot_system.md 4절 참고.
+  /// docs/counseling/chatbot_system.md (tag counseling-handover-v1) 4절 참고.
   final List<DialogueAct> allowedActs;
   final String? affect;
   final String tone;

@@ -1,5 +1,5 @@
 // Phase 13.9 — holdout v2: the session-flow gate on unseen users. See
-// docs/counseling/chatbot_system.md.
+// docs/counseling/chatbot_system.md (tag counseling-handover-v1).
 //
 // fixtures/holdout_v2.json was written by an agent without
 // access to the code, avoiding every phrasing used before (dev v1, holdout
@@ -31,7 +31,7 @@ void main() {
   // Holdout v2 FAILED on its first run (2026-09-30): metaAsTarget 33,
   // repeatedClarifyRun 14, nonAnswerCredited 2. Recorded here; the gate is
   // not met. Now seen, v2 can no longer certify a fix either. See
-  // docs/counseling/chatbot_system.md, "holdout v2".
+  // docs/counseling/chatbot_system.md (tag counseling-handover-v1), "holdout v2".
   //
   // Re-run after 13.9D on this now-seen set: all 0. Informational only; the
   // gate moved to holdout v3.

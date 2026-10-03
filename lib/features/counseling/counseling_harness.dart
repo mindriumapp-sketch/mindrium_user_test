@@ -244,7 +244,7 @@ class CounselingHarness {
   /// `DeterministicCounselingTurnPlanner`가 정하고, GPT는 그 결과를 자연스러운
   /// 한국어로 표현만 바꾼다. 검증 실패나 네트워크 오류 시 항상 `deterministic
   /// draft`로 되돌아간다. 자세한 경계는
-  /// docs/counseling/chatbot_system.md 9절 참고.
+  /// docs/counseling/chatbot_system.md (tag counseling-handover-v1) 9절 참고.
   factory CounselingHarness.remoteGpt({
     required LlmService llm,
     required SafetyGate safetyGate,
@@ -598,7 +598,7 @@ class CounselingHarness {
     // actOverride는 RemoteLlmRealizer가 이미 allowedActsForTurn 안에서
     // 검증한 GPT의 선택이다. 여기서도 state.allowedActs로 다시 확인해 이중
     // 방어선을 둔다 — Adaptive Dialogue Policy Phase 1
-    // (docs/counseling/chatbot_system.md 4절).
+    // (docs/counseling/chatbot_system.md (tag counseling-handover-v1) 4절).
     final act =
         (actOverride != null && state.allowedActs.contains(actOverride))
             ? actOverride

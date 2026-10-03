@@ -1,5 +1,5 @@
 /// Phase 10.6B: structural-only telemetry for a real turn's realization
-/// outcome, per `docs/counseling/chatbot_system.md`'s
+/// outcome, per `docs/counseling/chatbot_system.md` (tag counseling-handover-v1),
 /// telemetry section. Logs structure only, never content.
 ///
 /// **Never put raw content on this class.** No user message, no assistant
