@@ -154,11 +154,14 @@ Android 릴리즈 빌드는 `android/key.properties`의 release keystore 설정�
 ### 백엔드
 
 ```bash
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/app/requirements.txt
 cd backend/app
 # .env를 만들고 MONGO_URI, DB_NAME, JWT_SECRET, JWT_REFRESH_SECRET, OPENAI_API_KEY를 넣는다
-python3 -m pip install -r requirements.txt
-PYTHONPATH=. python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8080
+PYTHONPATH=. ../.venv/bin/python -m uvicorn main:app --reload --host 0.0.0.0 --port 8080
 ```
+
+상담 챗봇 개발·시연용 로컬 실행(포트 8090, 로컬 DB)은 [`docs/HANDOVER.md`](docs/HANDOVER.md) 2절을 따릅니다.
 
 필수 환경 변수는 `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`입니다. 백엔드 실행 후 Swagger 문서는 `http://localhost:8080/docs`, 상태 확인은 `http://localhost:8080/health`에서 확인할 수 있습니다.
 

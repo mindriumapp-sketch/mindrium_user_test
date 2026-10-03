@@ -1,6 +1,6 @@
 # Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
 
-기준: 2026-10-04, 태그 `chatbot-handover-2026-10-04`. 실행 방법과 인수인계 요약은 [`../HANDOVER.md`](../HANDOVER.md),
+기준: 2026-10-04, 태그 `counseling-handover-v1`. 실행 방법과 인수인계 요약은 [`../HANDOVER.md`](../HANDOVER.md),
 시연 절차는 [`../HANDOVER.md`](../HANDOVER.md) 7절, 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md)에 있습니다.
 
 이 기능은 의료 진단이나 전문 치료를 대체하지 않습니다. 안전 관문은 키워드 기반이고, 상담 문장과 위기 응답은
@@ -492,7 +492,7 @@ adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 
 ## 13. 테스트
 
-`flutter test`로 전체를 실행합니다(996개, 10초 안팎). 백엔드는 `cd backend/app && PYTHONPATH=. python3 -m pytest -q tests`.
+`flutter test`로 전체를 실행합니다(10초 안팎). 백엔드는 `cd backend/app && PYTHONPATH=. ../.venv/bin/python -m pytest -q tests`.
 
 | 묶음 | 위치 | 확인하는 것 |
 |---|---|---|
@@ -533,6 +533,6 @@ LLM_LED_BASE_URL=http://127.0.0.1:8090 LLM_LED_TOKEN=<로그인 토큰> \
 | 태그 | 내용 |
 |---|---|
 | `respond-v11-demo-freeze` | 데모 동결: B 주 경로 + A 대체, 코드가 보장하는 과거 기록 회상. 데모 스모크 19턴 대체 0 |
-| `chatbot-handover-2026-10-04` | 인수인계 정리: 꺼진 기능(의도 분류기, A/B 평가지, 벤치마크, 즉시 공감)과 과거 산출물 제거, 문서 정리, 두 박자 표정 |
+| `counseling-handover-v1` | 인수인계 기준점: 꺼진 기능(의도 분류기, A/B 평가지, 벤치마크, 즉시 공감)과 과거 산출물 제거, 문서 정리, 두 박자 표정. 이 커밋에서 데모·인수인계 대상 챗봇이 재현됨 |
 
 이전 개발 기록(단계별 설계, 평가 결과)은 저장소에서 지웠고 git 기록에만 있습니다(`git log -- docs/counseling test/counseling`).

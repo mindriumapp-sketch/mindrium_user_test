@@ -1,6 +1,6 @@
 # Mindrium 상담 챗봇 인수인계
 
-기준: 2026-10-04, 브랜치 `2027_demo`, 태그 `chatbot-handover-2026-10-04`. 상담 챗봇을 처음 맡는 개발자가
+기준: 2026-10-04, 브랜치 `2027_demo`, 태그 `counseling-handover-v1`(이 커밋에서 데모·인수인계 대상 챗봇이 재현됨). 상담 챗봇을 처음 맡는 개발자가
 실행하고, 구조를 파악하고, 고칠 곳을 찾는 데 필요한 내용만 담았습니다.
 
 | 더 볼 문서 | 내용 |
@@ -62,16 +62,22 @@ B는 허용 목록 계정에서만 켜집니다(사용자 원문이 OpenAI로 �
 | `OPENAI_API_KEY` | 예 | 없으면 B와 A의 문장 표현이 모두 실패하고 결정론 응답만 나감 |
 | `OPENAI_MODEL` | 아니오 | 기본 `gpt-4o-mini` |
 
+가상환경은 git에 없는 로컬 환경입니다. 의존성의 기준은 `backend/app/requirements.txt`입니다(Python 3.12에서 확인).
+
 ```bash
+# 처음 한 번: 환경 만들기
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/app/requirements.txt
+
+# 실행
 cd backend/app
-python3 -m pip install -r requirements.txt
 MONGO_URI=mongodb://127.0.0.1:27017 DB_NAME=mindrium_dogfood PYTHONPATH=. \
-  python3 -m uvicorn main:app --host 0.0.0.0 --port 8090
+  ../.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8090
 ```
 
 - `PYTHONPATH=.`이 없으면 `ModuleNotFoundError: core`가 납니다.
-- 저장소 루트의 `.venv`는 예전 폴더 경로로 만들어져 `uvicorn` 실행 파일이 깨져 있습니다. 위처럼
-  `python3 -m uvicorn`으로 띄우거나 가상환경을 새로 만드세요.
+- 시작할 때 `bcrypt ... __about__` 경고가 보이는데, passlib 버전 경고일 뿐 동작에는 영향이 없습니다.
+- 저장소 루트의 `.venv`는 예전에 쓰던 환경이라 쓰지 않습니다.
 - **프롬프트는 서버가 시작할 때 읽습니다.** `counseling_respond.py`를 고치면 반드시 재시작하세요.
 - 정상이면 `curl http://127.0.0.1:8090/health`가 200입니다.
 
@@ -173,9 +179,9 @@ tools/demo/                               preflight.sh(시연 전 점검), laten
 ## 5. 테스트와 진단
 
 ```bash
-flutter test                                              # 996개, 10초 안팎
+flutter test                                                       # 10초 안팎
 flutter analyze
-cd backend/app && PYTHONPATH=. python3 -m pytest -q tests  # 백엔드
+cd backend/app && PYTHONPATH=. ../.venv/bin/python -m pytest -q tests  # 백엔드
 ```
 
 | 묶음 | 위치 |
@@ -199,7 +205,7 @@ cd backend/app && PYTHONPATH=. python3 -m pytest -q tests  # 백엔드
 
 ## 6. 현재 상태와 남은 일
 
-**동작함 (실기기 확인)**
+**동작함 (실기기 확인)** — 인수인계 태그 시점에 `flutter analyze`, `flutter test`, 백엔드 테스트, `preflight.sh`가 모두 통과했습니다.
 - B 주 경로 + A 대체: 데모 스모크 19턴 대체 0, 상담 조언 노출 0, 지어낸 기록 0
 - 상담 중 앱 사용법 질문, 용어 질문(승인 정의만), 맥락 밖 입력(인사, "?", 엉뚱한 화제) 안내
 - 과거 기록 회상(사용자가 "예전에도"라고 하면 지난 상담의 걱정과 그때 정리한 생각을 직접 말함)
