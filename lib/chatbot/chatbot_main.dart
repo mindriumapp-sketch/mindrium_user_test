@@ -659,16 +659,16 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     _messageAvatars.clear();
     _notices.clear();
     _closingHintShown = false;
+    // Reset the face before the new session's greeting is drawn, so the
+    // greeting never carries the last session's expression.
+    _avatarSelector.reset();
+    _lastSignal = null;
+    _currentAvatar = _avatarSelector.asset;
 
     await _provider.reset();
     if (!mounted) return;
 
-    setState(() {
-      _avatarSelector.reset();
-      _lastSignal = null;
-      _currentAvatar = _avatarSelector.asset;
-      _sessionOpen = true;
-    });
+    setState(() => _sessionOpen = true);
     _jumpToBottom();
     await _speakLatestAssistantMessage();
   }

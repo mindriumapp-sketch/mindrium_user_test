@@ -13,8 +13,9 @@ class AvatarAssetResolver {
       '$_dir/counselor_profile_neutral.png',
       '$_dir/counselor_profile.png',
     ],
+    // warm is also the empathic face: the soft empathy image only (the broad
+    // smile read as cheerful next to a worry, device check 2026-10-03).
     AvatarExpression.warm: [
-      '$_dir/counselor_profile_warm_smile.png',
       '$_dir/counselor_profile_warm_empathy.png',
     ],
     AvatarExpression.attentive: [
@@ -33,6 +34,7 @@ class AvatarAssetResolver {
 
   /// 어느 표정에도 배정되지 않은 이미지. 놀람은 상담사 태도로 쓰지 않는다.
   static const List<String> unusedAssets = [
+    '$_dir/counselor_profile_warm_smile.png',
     '$_dir/counselor_profile_surprised.png',
   ];
 
