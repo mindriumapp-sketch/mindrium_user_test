@@ -688,6 +688,7 @@ class CounselingHarness {
       return LlmLedTurn(result: _safetyTurn(session, safety), status: 'safety');
     }
     final requestId = '${session.sessionId}_${session.totalTurns}';
+    final buildWatch = Stopwatch()..start();
     final ctx = LlmLedContext.build(
       requestId: requestId,
       session: session,
@@ -696,6 +697,7 @@ class CounselingHarness {
       appGuide: appGuide,
       glossary: glossary,
     );
+    final contextMs = buildWatch.elapsedMilliseconds;
     final sw = Stopwatch()..start();
     Map<String, dynamic> res;
     try {
@@ -711,11 +713,20 @@ class CounselingHarness {
       );
     }
     final latency = sw.elapsedMilliseconds;
+    final timing = {
+      'context_ms': contextMs,
+      'request_ms': latency,
+      'model_ms': (res['latency_ms'] as num?)?.toInt(),
+      'prompt_tokens': (res['prompt_tokens'] as num?)?.toInt(),
+    };
     final out = LlmLedOutput.tryParse(res['output']);
-    if (out == null) return LlmLedTurn(status: 'schema_reject', latencyMs: latency);
+    if (out == null) return LlmLedTurn(status: 'schema_reject', latencyMs: latency, timing: timing);
+    final validateWatch = Stopwatch()..start();
     final violations = LlmLedValidator.validate(out, ctx);
+    timing['validate_ms'] = validateWatch.elapsedMilliseconds;
     if (violations.isNotEmpty) {
-      return LlmLedTurn(status: 'rejected', latencyMs: latency, output: out, violations: violations);
+      return LlmLedTurn(
+          status: 'rejected', latencyMs: latency, output: out, violations: violations, timing: timing);
     }
 
     final stateBefore = session.state;
@@ -740,6 +751,7 @@ class CounselingHarness {
     return LlmLedTurn(
       status: 'success',
       latencyMs: latency,
+      timing: timing,
       output: out,
       result: CounselingTurnResult(
         assistantMessage: message,
@@ -879,5 +891,10 @@ class LlmLedTurn {
     this.output,
     this.violations = const [],
     this.detail,
+    this.timing = const {},
   });
+
+  /// Latency breakdown (ms): context build, request (network + model), model
+  /// alone (backend-reported), validation; plus prompt tokens.
+  final Map<String, int?> timing;
 }

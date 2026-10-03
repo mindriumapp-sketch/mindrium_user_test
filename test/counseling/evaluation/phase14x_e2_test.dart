@@ -50,6 +50,8 @@ void main() {
         List<String> violations = const [];
         String? primary;
         String? definitionId;
+        String? bText;
+        Map<String, int?> timing = const {};
         CounselingTurnResult r;
         if (llmLed) {
           final t = await harness.handleLlmLedTurn(session: s, userMessage: text, api: api, appGuide: guide, glossary: glossary,
@@ -58,6 +60,8 @@ void main() {
           status = t.status;
           violations = t.violations;
           definitionId = t.output?.definitionId;
+          bText = t.output?.text;
+          timing = t.timing;
           primary = t.primaryRejection ?? (t.status == 'success' ? null : t.status);
           r = t.result ?? await assistant.handleTurn(session: s, userMessage: text);
         } else {
@@ -79,6 +83,8 @@ void main() {
           'status': status,
           'primary_rejection': primary,
           'definition_id': definitionId,
+          'b_text': bText,
+          'timing': timing,
           'violations': violations,
         });
         if (r.assistantMessage.closingStep == ClosingStep.finalized) break;

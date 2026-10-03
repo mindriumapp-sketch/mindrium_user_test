@@ -517,6 +517,19 @@ class CounselingProvider extends ChangeNotifier {
       appGuide: appGuideRepository,
       glossary: _glossary,
     );
+    if (b.result != null) {
+      _logLlmLed(b, null);
+      return b.result!;
+    }
+    final fallbackWatch = Stopwatch()..start();
+    final a = await _handleTurnWithPerception(userText);
+    _logLlmLed(b, fallbackWatch.elapsedMilliseconds);
+    return a;
+  }
+
+  /// One line per LLM-led turn (no text): status, rejection reasons and the
+  /// latency breakdown, plus the fallback (path A) time when it was used.
+  void _logLlmLed(LlmLedTurn b, int? fallbackMs) {
     final o = b.output;
     debugPrint('LLM_LED ${jsonEncode({
       'session': pseudonymize(_session.sessionId),
@@ -530,8 +543,9 @@ class CounselingProvider extends ChangeNotifier {
       'intervention_step': o?.interventionStep,
       'primary_rejection': b.primaryRejection,
       'violations': b.violations,
+      ...b.timing,
+      'fallback_ms': fallbackMs,
     })}');
-    return b.result ?? await _handleTurnWithPerception(userText);
   }
 
   Future<CounselingTurnResult> _turn(String userText, InteractionRepairReason? perceived) =>
