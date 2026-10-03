@@ -689,11 +689,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
     setState(_controller.clear);
     _appendJsonLogMessage(role: 'user', text: text);
-    _applyAvatarFor(text);
+    // 첫 박자: 듣는 얼굴. 사용자 정서 단서는 지금 읽어 두고, 표정은 답이 확정될 때 정한다.
+    final signal = _readSignal(text);
+    setState(() => _currentAvatar = _avatarSelector.update(_adapter.listening()));
     _jumpToBottom();
 
     await _provider.sendMessage(text);
     if (!mounted) return;
+    // 두 번째 박자: 최종 응답이 확정된 순간, 말풍선·음성과 함께 바뀐다.
+    _applyResponseAvatar(signal);
 
     final latest = _provider.messages.isEmpty ? null : _provider.messages.last;
     if (latest != null && !latest.isUser) {
@@ -714,24 +718,25 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     await _speakLatestAssistantMessage();
   }
 
-  /// 이번 턴의 아바타를 고른다.
-  ///
-  /// 신호는 **사용자가 한 말**에서 읽는다. 상담자 응답으로 표정을 고르면
-  /// 상담사가 자기 말에 반응하는 꼴이 된다.
-  void _applyAvatarFor(String userMessage) {
+  /// 사용자가 방금 한 말에서 정서 단서를 읽는다(상담자 응답이 아니다).
+  AffectSignal _readSignal(String userMessage) {
     final signal = _detector.detect(
       userMessage: userMessage,
       recentSud: _provider.userContext?.recentSud?.latest,
       previous: _lastSignal,
     );
+    _lastSignal = signal;
+    return signal;
+  }
 
-    final expression = _adapter.adapt(
+  /// 두 박자 표정의 두 번째 박자: 사용자 정서 단서 × 실제로 나간 응답의 행동.
+  void _applyResponseAvatar(AffectSignal signal) {
+    final expression = _adapter.respond(
       signal: signal,
+      move: _provider.lastResponseMove,
       state: _provider.state,
       safetyLevel: _provider.lastSafetyLevel,
     );
-
-    _lastSignal = signal;
     _currentAvatar = _avatarSelector.update(expression);
   }
 

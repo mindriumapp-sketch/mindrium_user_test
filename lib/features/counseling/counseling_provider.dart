@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:gad_app_team/chatbot/affective/response_move.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
@@ -211,6 +212,11 @@ class CounselingProvider extends ChangeNotifier {
 
   /// 직전 턴의 안전 수준. 표시 계층이 위기 상황에서 연출을 줄이는 데 쓴다.
   SafetyLevel get lastSafetyLevel => _lastSafetyLevel;
+
+  /// 마지막으로 사용자에게 나간 응답의 행동(표정 두 번째 박자). B가 거절되어
+  /// A가 답했으면 A 응답 기준이다.
+  ResponseMove _lastResponseMove = ResponseMove.other;
+  ResponseMove get lastResponseMove => _lastResponseMove;
 
   /// 직전 턴에 만든 공감과 그 근거.
   EmpathyPlan? get lastEmpathy => _lastEmpathy;
@@ -509,7 +515,7 @@ class CounselingProvider extends ChangeNotifier {
   /// does not produce an accepted turn. Logs one line per turn (no text).
   Future<CounselingTurnResult> _handleTurnLlmLedFirst(String userText) async {
     final api = llmLedApi;
-    if (api == null || !_llmLedThisSession) return _handleTurnWithPerception(userText);
+    if (api == null || !_llmLedThisSession) return _committedA(await _handleTurnWithPerception(userText));
     final endToEnd = Stopwatch()..start();
     final b = await harness.handleLlmLedTurn(
       session: _session,
@@ -520,11 +526,25 @@ class CounselingProvider extends ChangeNotifier {
     );
     if (b.result != null) {
       _logLlmLed(b, null, endToEnd.elapsedMilliseconds);
+      final o = b.output;
+      _lastResponseMove = o == null
+          ? ResponseMove.fromMessage(b.result!.assistantMessage)
+          : ResponseMove.fromLlmLed(
+              domain: o.domain, moves: o.moves, interventionStep: o.interventionStep, sessionAction: o.sessionAction);
       return b.result!;
     }
     final fallbackWatch = Stopwatch()..start();
     final a = await _handleTurnWithPerception(userText);
     _logLlmLed(b, fallbackWatch.elapsedMilliseconds, endToEnd.elapsedMilliseconds);
+    // the discarded B output never reaches the avatar
+    return _committedA(a);
+  }
+
+  CounselingTurnResult _committedA(CounselingTurnResult a) {
+    _lastResponseMove = ResponseMove.fromMessage(
+      a.assistantMessage,
+      appGuide: a.promptVersion.startsWith('app_guide'),
+    );
     return a;
   }
 

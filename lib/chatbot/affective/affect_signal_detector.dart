@@ -22,10 +22,10 @@ class AffectSignalDetector {
   static const double _weakConfidence = 0.6;
 
   static final RegExp _distressed = RegExp(
-    r'(힘들|괴로|버겁|못 견|못견|우울|슬프|눈물|속상|절망|무너)',
+    r'(힘들|괴로|버겁|못 견|못견|우울|슬프|눈물|속상|절망|무너|서운|후회|화나|화가|외로|지쳐|지친|지치|답답|막막|짜증)',
   );
   static final RegExp _anxious = RegExp(
-    r'(불안|걱정|초조|두렵|무섭|긴장|떨리|조마조마|어떡하지|망칠)',
+    r'(불안|걱정|초조|두렵|두려워|두려운|무섭|무서워|긴장|떨리|조마조마|어떡하지|망칠)',
   );
   /// 대처에 성공했다는 명시적 보고. 표정을 바꿀 만큼 신호가 뚜렷하다.
   static final RegExp _positiveStrong = RegExp(

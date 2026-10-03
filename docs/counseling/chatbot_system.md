@@ -397,6 +397,22 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 
 ### 11.1 아바타 표정 (`lib/chatbot/affective/`)
 
+**두 박자 표정 (데모 기준):**
+1. 사용자가 보낸 직후, 답을 기다리는 동안 `attentive`(듣는 얼굴).
+2. 최종 응답이 확정되는 순간(말풍선·음성과 함께) `사용자 정서 단서 × 실제로 나간 응답의 행동(ResponseMove)`으로 정한다 (`AffectiveAdapter.respond`). B가 거절되어 A가 답하면 A 응답의 메타데이터를 쓰고, 버려진 B 행동은 쓰지 않는다.
+
+| 조건 (위에서부터) | 표정 |
+|---|---|
+| 위기 | attentive |
+| 응답이 불만을 받아 줌(repair) | concerned |
+| 강한 괴로움(힘들, 지치, 서운, 속상, 막막 …) | concerned |
+| 걱정·불안 + 공감 응답(acknowledge/reflect_emotion/restate) | warm |
+| 긍정 보고 또는 기법 답을 받아 줌(integrate) | encouraging |
+| 앱 안내, 마무리 | warm |
+| 그 외 | 상담 단계 기본값 |
+
+같은 상황이 이어지면 같은 표정을 유지한다(다양성을 위해 의미를 바꾸지 않는다). 아래는 첫 구현의 설명이다.
+
 ```
 사용자 발화 + 최근 SUD + 직전 신호
   → AffectSignalDetector   어휘 규칙, 모델 호출 없음 → AffectSignal(label, confidence, spike, streak)
