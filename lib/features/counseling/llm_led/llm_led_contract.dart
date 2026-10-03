@@ -145,33 +145,39 @@ class LlmLedContext {
       });
     }
 
-    // app catalog (small: the whole thing, with ids)
+    // app catalog: each feature with its navigation path(s), plus the
+    // how-to manual. Screens and paths are folded into the feature text so
+    // the whole catalog fits the request (screen names stay checkable below).
     final appFacts = <Map<String, String>>[];
     final appNames = <String>[];
     for (final f in appGuide.features) {
+      final paths = [
+        for (final n in appGuide.navigationPaths)
+          if (n.to == f.featureId) n.steps.join(' → '),
+      ];
       appFacts.add({
         'id': 'feature:${f.featureId}',
         'kind': 'feature',
-        'text': _clip('${f.name}(${f.aliases.join(', ')}): ${f.description}${f.available ? '' : ' [사용 불가]'}', 600),
+        'text': _clip(
+          '${f.name}(${f.aliases.join(', ')}): ${f.description}'
+          '${f.available ? '' : ' [사용 불가: 앱에 없거나 준비 중]'}'
+          '${paths.isEmpty ? '' : ' 경로: ${paths.join(' / ')}'}',
+          900,
+        ),
       });
       appNames
         ..add(f.name)
         ..addAll(f.aliases.where((a) => a.length >= 3));
     }
-    for (final s in appGuide.screens) {
+    for (final m in appGuide.manualEntries) {
       appFacts.add({
-        'id': 'screen:${s.screenId}',
-        'kind': 'screen',
-        'text': _clip('${s.displayName}: ${s.description}', 600),
+        'id': 'manual:${m.knowledgeId}',
+        'kind': 'manual',
+        'text': _clip('${m.title}: ${m.content}', 600),
       });
-      appNames.add(s.displayName);
     }
-    for (final n in appGuide.navigationPaths) {
-      appFacts.add({
-        'id': 'nav:${n.from}->${n.to}',
-        'kind': 'navigation',
-        'text': _clip('${n.from} → ${n.to}: ${n.steps.join(' → ')}', 600),
-      });
+    for (final s in appGuide.screens) {
+      appNames.add(s.displayName);
     }
 
     // respond_v4: the term this message asks about, resolved by code.
@@ -246,14 +252,14 @@ class LlmLedContext {
         'progress': progress,
         'user_facts': facts.take(20).toList(),
         'techniques': techniques.take(10).toList(),
-        'app_facts': appFacts.take(40).toList(),
+        'app_facts': appFacts.take(60).toList(),
         'term_request': termRequest?.toJson(),
         'recall': recall?.toJson(),
       },
       techniqueIds: types.keys.toSet(),
       techniqueTypes: types,
       userFactIds: facts.take(20).map((f) => f['id']!).toSet(),
-      appFactIds: appFacts.take(40).map((f) => f['id']!).toSet(),
+      appFactIds: appFacts.take(60).map((f) => f['id']!).toSet(),
       appNames: appNames.where((n) => n.trim().length >= 2).toList(),
       pendingInterventionId: pending,
       closingProposed: lastAssistant?.closingStep == ClosingStep.proposed,

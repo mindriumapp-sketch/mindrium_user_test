@@ -29,7 +29,7 @@ class Fact(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str = Field(..., max_length=120)
     kind: str = Field(..., max_length=40)
-    text: str = Field(..., max_length=600)
+    text: str = Field(..., max_length=900)
 
 
 class Technique(BaseModel):
@@ -92,7 +92,7 @@ class CounselingRespondRequest(BaseModel):
     progress: Progress
     user_facts: List[Fact] = Field(default_factory=list, max_length=20)
     techniques: List[Technique] = Field(default_factory=list, max_length=10)
-    app_facts: List[Fact] = Field(default_factory=list, max_length=40)
+    app_facts: List[Fact] = Field(default_factory=list, max_length=60)
     # respond_v4: the term this message asks about, resolved by the app.
     term_request: Optional["TermRequest"] = None
     # respond_v11: the past episode to recall, resolved by the app.

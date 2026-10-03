@@ -116,7 +116,14 @@ void main() {
     test('the app catalog goes with ids', () {
       final c = ctx(_session(), 'x');
       expect(c.appFactIds, contains('feature:relaxation'));
-      expect(c.appFactIds.any((id) => id.startsWith('screen:')), isTrue);
+      expect(c.appFactIds.any((id) => id.startsWith('manual:')), isTrue);
+      // the whole catalog fits: every feature and manual entry is sent
+      expect(c.appFactIds.where((id) => id.startsWith('feature:')).length, _guide.features.length);
+      expect(c.appFactIds.where((id) => id.startsWith('manual:')).length, _guide.manualEntries.length);
+      // a feature carries its navigation path and its availability
+      final facts = (c.body['app_facts'] as List).cast<Map>();
+      expect(facts.firstWhere((f) => f['id'] == 'feature:alarm_settings')['text'], contains('경로: 홈 → 불안 완화 알림 카드'));
+      expect(facts.firstWhere((f) => f['id'] == 'feature:password_find')['text'], contains('[사용 불가'));
     });
   });
 
