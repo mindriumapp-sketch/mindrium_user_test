@@ -1,5 +1,5 @@
 // Phase 13.9 — holdout v5: the two-tier gate (13.9F, fixed before this set
-// was written). See docs/counseling/chatbot_system.md (tag counseling-handover-v1).
+// was written). See docs/counseling/chatbot_system.md.
 //
 // fixtures/holdout_v5.json was written by an agent without
 // access to the code, avoiding the 443 phrasings used before, and frozen

@@ -1,6 +1,6 @@
 /// Phase 10.6B: canary rollout configuration and the pure decision function
 /// that gates a real turn's Remote-realization attempt, per
-/// `docs/counseling/chatbot_system.md` (tag counseling-handover-v1).
+/// `docs/counseling/chatbot_system.md`.
 ///
 /// This file is infrastructure only — constructing a [RolloutConfig] with
 /// anything other than the fully-off default and wiring it into a real

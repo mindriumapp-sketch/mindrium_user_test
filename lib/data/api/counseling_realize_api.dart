@@ -6,7 +6,7 @@ import 'api_client.dart';
 ///
 /// 이 API는 상담 전략을 정하지 않는다. Harness가 이미 확정한 초안을 더
 /// 자연스러운 한국어로 다듬는 선택적 표현 계층이다. 자세한 책임 경계는
-/// docs/counseling/chatbot_system.md (tag counseling-handover-v1) 9절 참고.
+/// docs/counseling/chatbot_system.md 9절 참고.
 ///
 /// 인터페이스로 분리해 `RemoteLlmRealizer` 테스트에서 실제 네트워크 없이
 /// fake 구현을 주입할 수 있게 한다.

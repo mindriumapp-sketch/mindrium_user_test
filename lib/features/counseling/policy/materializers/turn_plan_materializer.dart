@@ -449,7 +449,7 @@ class TurnPlanMaterializer {
           'TurnPlanMaterializer.reflect: '
           '${decision.goalExhaustionRecovery} is not yet implemented — '
           'Phase 11.3 scope freeze (see '
-          'docs/counseling/chatbot_system.md (tag counseling-handover-v1)).',
+          'docs/counseling/chatbot_system.md).',
         );
     }
 

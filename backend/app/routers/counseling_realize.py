@@ -12,7 +12,7 @@ router = APIRouter(prefix="/counseling", tags=["counseling_realize"])
 logger = logging.getLogger("counseling_realize")
 
 # deterministic 응답이 이미 있으므로 원격 호출을 오래 기다릴 이유가 없다.
-# docs/counseling/chatbot_system.md (tag counseling-handover-v1) 9절.
+# docs/counseling/chatbot_system.md 9절.
 _TIMEOUT = httpx.Timeout(connect=3.0, read=6.0, write=3.0, pool=3.0)
 _MAX_OUTPUT_TOKENS = 150
 

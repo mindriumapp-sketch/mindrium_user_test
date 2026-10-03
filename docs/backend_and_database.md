@@ -128,7 +128,7 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 `OPENAI_*`는 `routers/counseling_respond.py`(`POST /counseling/respond`, 상담 주 경로)와
 `routers/counseling_realize.py`(`POST /counseling/realize`, 대체 경로의 문장 표현)가 사용한다.
 모델은 `gpt-4o-mini`, 키는 서버에만 있고 앱은 백엔드를 거친다.
-[`chatbot_HANDOVER.md`](chatbot_HANDOVER.md) 1절 참고.
+[`counseling/chatbot_system.md`](counseling/chatbot_system.md) 2절 참고.
 
 ### 인증 모델
 

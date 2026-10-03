@@ -1,5 +1,5 @@
 // Phase 12.2 — Multi-turn frozen evaluation. See
-// docs/counseling/chatbot_system.md (tag counseling-handover-v1).
+// docs/counseling/chatbot_system.md.
 //
 // Each scenario runs 4-8 user turns sequentially through the real
 // deterministic `CounselingHarness` (SafetyGate -> retrieval ->
@@ -740,7 +740,7 @@ void main() {
 
   // Known failures, frozen at their current values (not fixed in 12.2).
   // Each must change deliberately, together with the failure corpus in
-  // docs/counseling/chatbot_system.md (tag counseling-handover-v1).
+  // docs/counseling/chatbot_system.md.
   group('frozen known failures', () {
     // Phase 12.2 value was 2 / 2 (M2, M6: summarize -> summarize).
     test('F1 fixed (12.3C): no consecutive identical recovery', () {

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 # GPT는 상담 전략을 정하지 않는다. Harness가 이미 확정한 초안을 자연스러운
 # 한국어로 다듬는 선택적 표현 계층이다. 자세한 책임 경계는
-# docs/counseling/chatbot_system.md (tag counseling-handover-v1) 9절 참고.
+# docs/counseling/chatbot_system.md 9절 참고.
 
 
 class RecentTurn(BaseModel):
@@ -20,7 +20,7 @@ class CounselingRealizeRequest(BaseModel):
     question_goal: str
     required_act: str
     # required_act 대신 골라도 되는 행위 후보. 비어 있으면 required_act로만
-    # 응답해야 한다. docs/counseling/chatbot_system.md (tag counseling-handover-v1) 4절.
+    # 응답해야 한다. docs/counseling/chatbot_system.md 4절.
     allowed_acts: List[str] = Field(default_factory=list)
     affect: Optional[str] = None
     tone: str = "warm, calm, concise"

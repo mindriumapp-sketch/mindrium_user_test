@@ -5,11 +5,10 @@
 
 | 더 볼 문서 | 내용 |
 |---|---|
+| [`counseling/chatbot_system.md`](counseling/chatbot_system.md) | 챗봇 구조 전체: 두 경로, B 계약과 검증 규칙, A 파이프라인, 개인화, 표정 규칙, 테스트 |
+| [`counseling/asis_tobe.md`](counseling/asis_tobe.md) | 예전 챗봇과 지금 챗봇 비교(AS-IS / TO-BE) |
 | [`backend_and_database.md`](backend_and_database.md) | 백엔드 API, 인증, MongoDB 컬렉션 |
 | [`../README.md`](../README.md) | 앱 전체(8주 프로그램, 화면, 기술 스택) |
-
-상세 설계(B 계약·검증 규칙 전체, A 파이프라인, 표정 규칙)와 예전 챗봇과의 비교(AS-IS/TO-BE) 문서는 태그 `counseling-handover-v1`의
-`docs/counseling/`에 있습니다(`git show counseling-handover-v1:docs/counseling/chatbot_system.md`).
 
 > 이 챗봇은 진단이나 치료를 대체하지 않습니다. 위기 감지는 키워드 기반이고, 상담 문장과 위기 응답, 1~3주차
 > 기법은 아직 임상 검수를 받지 않았습니다. 외부 사용자에게 공개하기 전에 검수가 필요합니다.
@@ -123,7 +122,7 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 lib/chatbot/
   chatbot_main.dart                       상담 화면(ChatPage). 엔진 조립, 두 박자 표정, 음성, 새 세션(↻)
-  affective/                              정서 단서 + 응답 행동 → 상담사 표정 (규칙: affective_adapter.dart의 respond)
+  affective/                              정서 단서 + 응답 행동 → 상담사 표정 (chatbot_system.md 11.1절)
 lib/features/counseling/
   llm_led/llm_led_contract.dart           B: 경계 구성(LlmLedContext), 출력 파싱, 검증기, 메타데이터 매핑, 회상(RecallRequest)
   llm_led/term_glossary.dart              B: 용어 질문 판정

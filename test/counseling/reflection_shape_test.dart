@@ -1,6 +1,6 @@
 // Phase 10.3B: Reflection Surface Robustness. Narrow follow-up to Phase
 // 10.3 — fixes exactly two target-shape composition defects found via the
-// 72-scenario dev comparison export (docs/counseling/chatbot_system.md (tag counseling-handover-v1)'s
+// 72-scenario dev comparison export (docs/counseling/chatbot_system.md's
 // "Known limitation" section), and nothing else. Not broad style tuning:
 // R2/R3(non-intervention)/R5/R8/R11/R12 are explicitly out of scope here.
 import 'package:flutter_test/flutter_test.dart';

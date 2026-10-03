@@ -11,7 +11,7 @@ import 'realization_spec.dart';
 /// (`DeterministicResponseRealizer`, still production default).
 ///
 /// This is a PARALLEL implementation, not a replacement — see
-/// `docs/counseling/chatbot_system.md` (tag counseling-handover-v1) for why it is not
+/// `docs/counseling/chatbot_system.md` for why it is not
 /// wired into `counseling_harness.dart`'s default yet. It targets exactly
 /// the two structural findings from `phase10_1_failure_taxonomy.md`:
 ///
@@ -30,7 +30,7 @@ import 'realization_spec.dart';
 /// suffix-concatenation template `_renderTargetText` uses
 /// (`"$clean 부분이 마음에 걸리시는 것 같아요."`), and fall back to a generic
 /// grounded acknowledgment instead of a broken concatenation — see
-/// `docs/counseling/chatbot_system.md` (tag counseling-handover-v1) for the two
+/// `docs/counseling/chatbot_system.md` for the two
 /// production-scenario examples that motivated this (`holdout_checkIn_3`,
 /// `holdout_intervention_already_used_1`).
 enum ReflectionTargetShape {
