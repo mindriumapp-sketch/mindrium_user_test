@@ -1,7 +1,7 @@
 // Phase 13.9B — holdout v1, now a seen set. See
 // docs/counseling/chatbot_system.md.
 //
-// The utterances in fixtures/phase13_9b_holdout.json were written blind and
+// The utterances in fixtures/holdout_v1.json were written blind and
 // frozen before the first run (3f714c2). That first run failed the flow
 // gate: stateLoop 2, nonAnswerCredited 17, metaAsTarget 54,
 // repeatedClarifyRun 30. Once seen, a holdout can't certify a fix, so the
@@ -17,7 +17,7 @@ void main() {
   late HoldoutResult result;
 
   setUpAll(() async {
-    result = await runHoldout('test/counseling/evaluation/fixtures/phase13_9b_holdout.json');
+    result = await runHoldout('test/counseling/regression/fixtures/holdout_v1.json');
     // ignore: avoid_print
     print(result.report('PHASE13_9B_REPORT'));
   });

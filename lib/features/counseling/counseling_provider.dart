@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:gad_app_team/chatbot/affective/response_move.dart';
@@ -19,12 +18,10 @@ import 'package:gad_app_team/features/assistant/app_guide/app_guide_repository.d
 import 'package:gad_app_team/features/assistant/app_guide/local_app_guide_repository.dart';
 import 'package:gad_app_team/features/assistant/mindrium_assistant_harness.dart';
 
-import 'counseling_benchmark.dart';
-import 'empathy_planner.dart';
 import 'counseling_harness.dart';
 import 'counseling_state.dart';
 import 'llm_led/term_glossary.dart';
-import 'perception/shadow_perception.dart';
+import 'llm_led/pseudonym.dart';
 import 'safety_gate.dart';
 import 'turn_plan.dart';
 
@@ -59,53 +56,16 @@ class CounselingProvider extends ChangeNotifier {
   /// 없으면 개인화 없이 동작한다. 서버에 접근할 수 없는 환경도 있으므로 선택으로 둔다.
   final MindriumContextBuilder? contextBuilder;
 
-  /// 실제 모델이 답을 만드는 동안 현재 발화에 근거한 짧은 공감을 먼저 보여준다.
-  final bool instantEmpathy;
-
-  /// 공감 문장을 만든다. 근거 없는 과거 언급을 막는 정책이 여기 있다.
-  final EmpathyPlanner empathyPlanner;
-
   /// 세션 요약을 서버에 남긴다. 없으면 저장하지 않고 상담만 진행한다.
   final CounselingSessionsApi? sessionsApi;
-
-  /// Phase 14.2A-4: 의미 분류기 그림자 관찰. 결과는 기록만 하고 상담 결정에
-  /// 쓰지 않는다. null이면 꺼짐(기본).
-  final ShadowPerception? shadowPerception;
-
-  /// Phase 14.2B: use [shadowPerception]'s guarded `stop_questioning` /
-  /// `assistant_not_understood` as policy input (rules OR model). Off by
-  /// default; when off the classifier is shadow-only.
-  final bool causalPerception;
-
-  /// How long a turn waits for the classifier before using the rules alone.
-  final Duration perceptionTimeout;
 
   /// Phase 14.X: the Bounded LLM-led path. When set, each non-crisis turn
   /// goes to it first; a timeout, error or validator rejection falls back to
   /// the deterministic path for that turn. Null = off (default).
   final CounselingRespondApi? llmLedApi;
 
-  /// Phase 14.X E3: assign each session to A or B at random (balanced
-  /// blocks of 2 A + 2 B, shuffled), without showing which. The path is
-  /// logged per session.
-  final bool llmLedAlternate;
-  final Random _random;
-  final List<bool> _block = [];
-  int _sessionOrdinal = 0;
   TermGlossary _glossary = TermGlossary.empty;
-  bool _pathB = true;
-  bool get _llmLedThisSession => llmLedApi != null && (!llmLedAlternate || _pathB);
-
-  /// Pseudonymous id of the current session (for experiment logs).
-  String get sessionPseudonym => pseudonymize(_session.sessionId);
-
-  /// Path of the current session, for the E3 rating log only ('A' | 'B').
-  String get experimentPath => _llmLedThisSession ? 'B' : 'A';
-
-  bool _nextPathB() {
-    if (_block.isEmpty) _block.addAll([true, true, false, false]..shuffle(_random));
-    return _block.removeLast();
-  }
+  bool get _llmLedThisSession => llmLedApi != null;
 
   /// 지난 세션 중 어느 것을 참고할지 정한다.
   final PreviousSessionSelector previousSessionSelector;
@@ -120,9 +80,6 @@ class CounselingProvider extends ChangeNotifier {
   String? _pendingUiActionMessageId;
   SafetyLevel _lastSafetyLevel = SafetyLevel.normal;
 
-  /// 직전 턴에 관찰한 SUD. 턴 사이 정서 변화를 보는 데 쓴다.
-  int? _previousSud;
-  EmpathyPlan? _lastEmpathy;
 
   /// 직전 턴에 만든 검색 요약. 세션 기억을 채우는 데 쓴다.
   RetrievalSummary? _lastRetrievalSummary;
@@ -170,19 +127,11 @@ class CounselingProvider extends ChangeNotifier {
     required int currentWeek,
     AppGuideRepository? appGuideRepository,
     this.contextBuilder,
-    this.instantEmpathy = false,
-    this.empathyPlanner = const EmpathyPlanner(),
     this.sessionsApi,
-    this.shadowPerception,
-    this.causalPerception = false,
-    this.perceptionTimeout = const Duration(seconds: 2),
     this.llmLedApi,
-    this.llmLedAlternate = false,
-    Random? random,
     this.previousSessionSelector = const PreviousSessionSelector(),
     String? sessionId,
-  }) : _random = random ?? Random(),
-       appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
+  }) : appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
        _session = CounselingSessionState(
          sessionId:
              sessionId ?? 'session_${DateTime.now().millisecondsSinceEpoch}',
@@ -218,9 +167,6 @@ class CounselingProvider extends ChangeNotifier {
   ResponseMove _lastResponseMove = ResponseMove.other;
   ResponseMove get lastResponseMove => _lastResponseMove;
 
-  /// 직전 턴에 만든 공감과 그 근거.
-  EmpathyPlan? get lastEmpathy => _lastEmpathy;
-
   /// 지금까지 누적된 세션 요약.
   CounselingSessionSummary get sessionSummary => _memory.summary;
 
@@ -233,21 +179,6 @@ class CounselingProvider extends ChangeNotifier {
   /// 지난 세션에서 이어받은 미해결 주제. 없으면 null.
   String? get carriedUnfinishedIssue => _carriedUnfinishedIssue;
 
-  /// 직전 턴 대비 정서 변화를 SUD 로 판단한다.
-  ///
-  /// 서버가 주는 [RetrievalSummary.sudTrend] 는 주 단위 추이라 한 세션 안의
-  /// 변화를 보여주지 못한다. 세션 안에서는 턴 사이 SUD 를 직접 비교한다.
-  AffectChange _affectChange(RetrievalSummary summary) {
-    final current = summary.recentSud;
-    final previous = _previousSud;
-    _previousSud = current ?? previous;
-
-    if (current == null || previous == null) return AffectChange.unknown;
-    if (current < previous) return AffectChange.improved;
-    if (current > previous) return AffectChange.worsened;
-    return AffectChange.steady;
-  }
-
   /// 이번 세션에 쓰는 사용자 컨텍스트. 서버 조회에 실패하면 null 이거나 degraded 다.
   MindriumCounselingContext? get userContext => _session.userContext;
 
@@ -255,7 +186,6 @@ class CounselingProvider extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isReady) return;
 
-    final stopwatch = Stopwatch()..start();
     await knowledgeRepository.initialize();
     // App Guide 지식은 아직 상담 응답에 쓰이지 않는다(Phase 6). 그래서
     // 로드에 실패해도(자산 누락, 테스트 환경 등) 상담 자체를 막아서는 안
@@ -267,11 +197,6 @@ class CounselingProvider extends ChangeNotifier {
     } on Object catch (e) {
       debugPrint('[CounselingProvider] App Guide 지식 로드 실패: $e');
     }
-    CounselingBenchmark.emit('corpus_loaded', {
-      'ms': stopwatch.elapsedMilliseconds,
-      'items': knowledgeRepository.allIds.length,
-    });
-
     // 사용자 컨텍스트는 세션 시작 시 한 번만 읽는다. 턴마다 다시 조회하지 않는다.
     _session.userContext = await _buildContext();
     await _loadPreviousSession();
@@ -282,14 +207,8 @@ class CounselingProvider extends ChangeNotifier {
         debugPrint('[CounselingProvider] glossary load failed: $e');
       }
     }
-    _sessionOrdinal++;
-    _pathB = llmLedAlternate ? _nextPathB() : true;
     if (llmLedApi != null) {
-      debugPrint('LLM_LED_SESSION ${jsonEncode({
-        'session': pseudonymize(_session.sessionId),
-        'path': _llmLedThisSession ? 'B' : 'A',
-        'ordinal': _sessionOrdinal,
-      })}');
+      debugPrint('LLM_LED_SESSION ${jsonEncode({'session': pseudonymize(_session.sessionId)})}');
     }
 
     _messages.add(
@@ -305,14 +224,6 @@ class CounselingProvider extends ChangeNotifier {
     );
 
     _isReady = true;
-    stopwatch.stop();
-    CounselingBenchmark.emit('provider_ready', {
-      'ms': stopwatch.elapsedMilliseconds,
-      'context':
-          _session.userContext == null
-              ? 'none'
-              : (_session.userContext!.degraded ? 'degraded' : 'ok'),
-    });
     notifyListeners();
   }
 
@@ -382,75 +293,14 @@ class CounselingProvider extends ChangeNotifier {
               : 'recent_message';
     }
 
-    // 무의미한 입력·욕설·부적절한 요청에는 "말씀하신 일이 계속 걸리시는군요"
-    // 같은 즉시 공감을 붙이면 안 된다 — 실제로 걸릴 만한 내용이 없는데 있는
-    // 것처럼 반응하게 된다. 이런 입력은 뒤이어 오는 input guard 응답이
-    // 유일한 답이어야 한다.
-    final skipEmpathy = DeterministicInputGuardTurnPlanner
-        .looksInvalidOrInappropriate(trimmed);
-    if (instantEmpathy && !skipEmpathy) {
-      final empathy = empathyPlanner.plan(
-        userMessage: trimmed,
-        summary: summary,
-        change: _affectChange(summary),
-        recentMessages: _messages,
-      );
-      _lastEmpathy = empathy;
-
-      _messages.add(
-        CounselingMessage(
-          id: '${_session.sessionId}_${_messages.length}_empathy',
-          role: 'assistant',
-          text: empathy.sentence,
-          createdAt: DateTime.now(),
-          dialogueAct: DialogueAct.reflect,
-          referencedUserContextIds: empathy.provenanceIds,
-        ),
-      );
-      // 모델을 기다리지 않고 화면에 먼저 표시한다.
-      _session.messages
-        ..clear()
-        ..addAll(_messages);
-    }
     _isGenerating = true;
     _pendingUiAction = null;
     _pendingUiActionMessageId = null;
     notifyListeners();
 
-    final stopwatch = Stopwatch()..start();
     try {
       // 컨텍스트는 위에서 이미 이번 발화 기준으로 다시 선택했다.
       final result = await _handleTurnLlmLedFirst(trimmed);
-      stopwatch.stop();
-
-      // 한 턴의 전체 비용. Step 3 에서는 여기에 모델 추론 시간이 더해진다.
-      CounselingBenchmark.emit('turn', {
-        'ms': stopwatch.elapsedMilliseconds,
-        'llm_ms': result.assistantMessage.latency?.inMilliseconds,
-        'state_before': result.stateBefore.wireName,
-        'state_after': result.state.wireName,
-        'act': result.assistantMessage.dialogueAct?.wireName,
-        'safety': result.safety.level.name,
-        'handled_by_safety': result.handledBySafety,
-        'parse': result.assistantMessage.parseStatus?.name,
-        // 제공한 수와 인용한 수를 함께 남긴다. 둘을 비교해야 retrieval 문제인지
-        // 모델이 근거를 무시한 것인지 구분할 수 있다.
-        'offered_cbt_ids': result.offeredCbtIdCount,
-        'referenced_cbt_ids': result.assistantMessage.referencedCbtIds.length,
-        'offered_user_ids': result.offeredUserContextIdCount,
-        'referenced_user_ids':
-            result.assistantMessage.referencedUserContextIds.length,
-        // harness 가 문장을 구성할 때 실제로 사용한 기록.
-        'construction_ids': result.retrievalProvenanceIds.length,
-        // 이번 턴을 어떻게 실현했는지. LLM 호출률을 집계하는 근거다.
-        'complexity': result.routing?.complexity.name,
-        'llm_allowed': result.routing?.allowLlm,
-        'routing_reason': result.routing?.reason,
-        'realization_source': result.realizationSource.name,
-        // Adaptive Dialogue Policy Phase 1: GPT가 requiredAct가 아닌 다른
-        // 허용 행위를 실제로 선택했는지. 도입 전에는 항상 false다.
-        'act_chosen_by_model': result.actChosenByModel,
-      });
 
       // 정상 종료 판정은 **closing 으로 처음 넘어가는 순간**이다.
       // closing 상태는 여러 턴 유지될 수 있어 "closing 인 매 턴"으로 잡으면
@@ -462,7 +312,6 @@ class CounselingProvider extends ChangeNotifier {
           result.assistantMessage.closingStep == ClosingStep.finalized &&
           !isSessionFinalized;
 
-      if (!causalPerception) _observeShadow(trimmed, result.assistantMessage);
       _messages.add(result.assistantMessage);
       // CTA 는 이 메시지에 붙는다. 한 턴에 하나이며, 다음 턴에 새 제안이 오면
       // 이전 것은 사라진다.
@@ -484,38 +333,11 @@ class CounselingProvider extends ChangeNotifier {
     }
   }
 
-  /// Phase 14.2A-4: 이번 사용자 턴을 그림자로 분류해 기록한다. 기다리지 않고,
-  /// 결과는 어떤 상태에도 쓰지 않는다. 규칙 신호는 이번 응답의 메타데이터다.
-  void _observeShadow(String userText, CounselingMessage reply) {
-    final shadow = shadowPerception;
-    if (shadow == null) return;
-    // 이번 사용자 발화 바로 앞의 상담자 발화(_messages 끝은 이번 사용자 발화).
-    final prev = _messages.reversed.skip(1).where((m) => !m.isUser).firstOrNull;
-    final ruleSignal = switch (reply.interactionRepairReason) {
-      InteractionRepairReason.repeatedQuestion => 'repeated_question',
-      InteractionRepairReason.stopQuestioning => 'stop_questioning',
-      InteractionRepairReason.processFrustration => 'process_resistance',
-      InteractionRepairReason.assistantNotUnderstood => 'assistant_not_understood',
-      null => switch (reply.closingStep) {
-        ClosingStep.finalized => 'closing_accept',
-        ClosingStep.continued => 'closing_continue',
-        _ => 'none',
-      },
-    };
-    unawaited(shadow.observe(
-      sessionId: _session.sessionId,
-      turnIndex: _messages.where((m) => m.isUser).length,
-      userText: userText,
-      assistantPrev: prev?.text,
-      ruleSignal: ruleSignal,
-    ));
-  }
-
   /// Phase 14.X: the LLM-led path first, the deterministic path when it
   /// does not produce an accepted turn. Logs one line per turn (no text).
   Future<CounselingTurnResult> _handleTurnLlmLedFirst(String userText) async {
     final api = llmLedApi;
-    if (api == null || !_llmLedThisSession) return _committedA(await _handleTurnWithPerception(userText));
+    if (api == null || !_llmLedThisSession) return _committedA(await _turn(userText, null));
     final endToEnd = Stopwatch()..start();
     final b = await harness.handleLlmLedTurn(
       session: _session,
@@ -534,7 +356,7 @@ class CounselingProvider extends ChangeNotifier {
       return b.result!;
     }
     final fallbackWatch = Stopwatch()..start();
-    final a = await _handleTurnWithPerception(userText);
+    final a = await _turn(userText, null);
     _logLlmLed(b, fallbackWatch.elapsedMilliseconds, endToEnd.elapsedMilliseconds);
     // the discarded B output never reaches the avatar
     return _committedA(a);
@@ -587,131 +409,6 @@ class CounselingProvider extends ChangeNotifier {
           carriedUnfinishedIssue: _carriedUnfinishedIssue,
         ),
       );
-
-  static String _signalName(InteractionRepairReason? r) => switch (r) {
-    InteractionRepairReason.repeatedQuestion => 'repeated_question',
-    InteractionRepairReason.stopQuestioning => 'stop_questioning',
-    InteractionRepairReason.processFrustration => 'process_resistance',
-    InteractionRepairReason.assistantNotUnderstood => 'assistant_not_understood',
-    null => 'none',
-  };
-
-  /// Phase 14.2B: one turn with the semantic classifier as policy input,
-  /// speculative execution behind a commit barrier.
-  ///
-  /// The classifier fills the rules' semantic gap only, so it is not called
-  /// on safety turns, app-guide-only turns, invalid input, or turns where
-  /// the rules already caught stop-asking or not-understood. Otherwise it
-  /// runs in parallel with the provisional (normal) turn, which may already
-  /// request remote wording. Nothing is committed until the classifier
-  /// answers or [perceptionTimeout] passes: a guarded repair discards the
-  /// provisional result (session counters restored) and re-plans the turn
-  /// deterministically with that repair; otherwise the provisional result
-  /// stands. A timeout or failure means rules only.
-  Future<CounselingTurnResult> _handleTurnWithPerception(String userText) async {
-    final shadow = shadowPerception;
-    if (!causalPerception || shadow == null) return _turn(userText, null);
-
-    final before = _messages.sublist(0, _messages.length - 1);
-    final turnIndex = _messages.where((m) => m.isUser).length;
-    final session = pseudonymize(_session.sessionId);
-    var ruleSignal = 'none';
-    String? skip;
-    try {
-      if (!(await harness.safetyGate.evaluate(userText)).isNormal) {
-        skip = 'safety';
-      } else if (_assistantHarness
-          .detectIntent(userText, counselingInProgress: true)
-          .isAppGuideOnly) {
-        skip = 'app_guide_only';
-      } else if (DeterministicInputGuardTurnPlanner.looksInvalidOrInappropriate(userText)) {
-        skip = 'invalid_input';
-      } else {
-        // Computed on its own, before the classifier, and logged as is.
-        final rule = const DeterministicProcessSignalTurnPlanner().plan(
-          TurnPlanningContext(
-            state: _session.state,
-            currentWeek: _session.currentWeek,
-            userMessage: userText,
-            knowledge: const [],
-            recentMessages: before,
-          ),
-        );
-        ruleSignal = _signalName(rule?.interactionRepairReason);
-        // The rules already caught one of the two signals: use them. A lower
-        // repair still asks the model, since stop asking outranks it.
-        if (ruleSignal == 'stop_questioning' || ruleSignal == 'assistant_not_understood') {
-          skip = 'rule_caught';
-        }
-      }
-    } on Object catch (e) {
-      debugPrint('[CounselingProvider] perception gate failed: $e');
-      skip = 'gate_error';
-    }
-
-    if (skip != null) {
-      final result = await _turn(userText, null);
-      shadow.emit(ShadowPerceptionEvent(
-        sessionHash: session, turnIndex: turnIndex, ruleSignal: ruleSignal, causal: true,
-        classifierStatus: 'skipped', fallbackReason: skip,
-        effectiveSignal: ruleSignal == 'none' ? null : ruleSignal,
-      ));
-      return result;
-    }
-
-    final prev = before.reversed.where((m) => !m.isUser).firstOrNull;
-    final classifier = shadow
-        .classifyOnly(
-          sessionId: _session.sessionId,
-          turnIndex: turnIndex,
-          userText: userText,
-          assistantPrev: prev?.text,
-        )
-        .timeout(
-          perceptionTimeout,
-          onTimeout: () => PerceptionOutcome(
-            status: 'timeout',
-            latencyMs: perceptionTimeout.inMilliseconds,
-          ),
-        );
-    final snapshot = (_session.state, _session.turnsInCurrentState, _session.totalTurns);
-    final provisional = await _turn(userText, null);
-    final outcome = await classifier; // commit barrier
-    final remoteRequested = provisional.routing?.allowLlm ?? false;
-    final perceived = switch (outcome.signal) {
-      SemanticRepairSignal.stopQuestioning => InteractionRepairReason.stopQuestioning,
-      SemanticRepairSignal.assistantNotUnderstood => InteractionRepairReason.assistantNotUnderstood,
-      null => null,
-    };
-
-    CounselingTurnResult result = provisional;
-    if (perceived != null) {
-      // Discard the speculative turn; a repair is always deterministic.
-      _session
-        ..state = snapshot.$1
-        ..turnsInCurrentState = snapshot.$2
-        ..totalTurns = snapshot.$3;
-      result = await _turn(userText, perceived);
-    }
-    shadow.emit(ShadowPerceptionEvent(
-      sessionHash: session,
-      turnIndex: turnIndex,
-      ruleSignal: ruleSignal,
-      modelRaw: outcome.raw,
-      guarded: outcome.guarded,
-      latencyMs: outcome.latencyMs,
-      causal: true,
-      classifierStatus: outcome.status,
-      effectiveSignal: perceived != null
-          ? _signalName(perceived)
-          : (ruleSignal == 'none' ? null : ruleSignal),
-      remoteRequested: remoteRequested,
-      remoteUsed: perceived == null &&
-          provisional.realizationSource.name != 'deterministic',
-      discardReason: perceived != null ? 'causal_repair_override' : null,
-    ));
-    return result;
-  }
 
   /// 지난 상담 기록을 읽어 참고 대상을 정한다.
   ///
@@ -859,8 +556,6 @@ class CounselingProvider extends ChangeNotifier {
     _messages.clear();
     _pendingUiAction = null;
     _pendingUiActionMessageId = null;
-    _previousSud = null;
-    _lastEmpathy = null;
     _savedAsCompleted = false;
     _startedAt = DateTime.now();
     _persistQueue = Future<void>.value();

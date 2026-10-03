@@ -2,7 +2,6 @@
 // after it, mapping onto turn metadata, and fallback to the deterministic
 // path on anything not accepted.
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/counseling/previous_session.dart';
@@ -457,10 +456,10 @@ void main() {
   });
 
   group('provider', () {
-    Future<CounselingProvider> make(CounselingRespondApi api, {bool alternate = false}) async {
+    Future<CounselingProvider> make(CounselingRespondApi api) async {
       final p = CounselingProvider(
-        knowledgeRepository: _repo, appGuideRepository: _guide, currentWeek: 4, instantEmpathy: false,
-        llmLedApi: api, llmLedAlternate: alternate, harness: _harness());
+        knowledgeRepository: _repo, appGuideRepository: _guide, currentWeek: 4,
+        llmLedApi: api, harness: _harness());
       await p.initialize();
       return p;
     }
@@ -483,22 +482,5 @@ void main() {
       expect(p.messages.last.text, contains('0에서 10')); // the deterministic check-in
     });
 
-    test('A/B: balanced hidden assignment (2 A + 2 B per block of four sessions)', () async {
-      final api = _Api([_out(moves: ['acknowledge', 'open_question'], text: 'B 경로 응답이에요. 어떤 점이 걱정되나요?')]);
-      final p = CounselingProvider(
-        knowledgeRepository: _repo, appGuideRepository: _guide, currentWeek: 4, instantEmpathy: false,
-        llmLedApi: api, llmLedAlternate: true, random: Random(7), harness: _harness());
-      await p.initialize();
-      final paths = <String>[];
-      for (var i = 0; i < 8; i++) {
-        if (i > 0) await p.reset();
-        await p.sendMessage('발표가 있어');
-        final b = p.messages.last.text.startsWith('B 경로');
-        expect(p.experimentPath, b ? 'B' : 'A');
-        paths.add(p.experimentPath);
-      }
-      expect(paths.where((x) => x == 'B').length, 4, reason: '$paths');
-      expect(paths.take(4).where((x) => x == 'B').length, 2, reason: '$paths');
-    });
   });
 }

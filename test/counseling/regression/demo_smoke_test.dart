@@ -1,9 +1,14 @@
-// Phase 14.X E2: the frozen cross-domain scripts through path A and path B.
-// Records every reply (text + closing metadata + B status); scoring is
-// tools/llm_led_eval/score_e2.py. Env-gated like E1:
+// Demo smoke regression: the frozen demo scripts (fixtures/demo_smoke_v1.json)
+// through path A and path B against a live backend. Records every reply
+// (text, closing metadata, B status, violations, timing). Env-gated:
 //
-//   LLM_LED_BASE_URL=... LLM_LED_TOKEN=... E2_OUT=build/llm_led/e2.json \
-//   flutter test test/counseling/evaluation/phase14x_e2_test.dart
+//   LLM_LED_BASE_URL=http://127.0.0.1:8090 LLM_LED_TOKEN=<token> \
+//   SMOKE_OUT=build/demo_smoke.json \
+//   flutter test test/counseling/regression/demo_smoke_test.dart
+//
+// Pass: every B turn accepted or safely fallen back, crisis → safety reply,
+// end requests finalize, no fabricated record, no non-Korean question mark.
+// Reference run: baseline/demo_smoke_respond_v11.json.
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,23 +22,23 @@ import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
 import 'package:gad_app_team/features/counseling/safety_gate.dart';
 
-import 'phase14x_e1_test.dart' show HttpRespondApi;
+import 'support/http_respond_api.dart';
 
 void main() {
   final env = Platform.environment;
   final base = env['LLM_LED_BASE_URL'];
   final token = env['LLM_LED_TOKEN'];
-  final fixture = env['E2_FIXTURE'] ?? 'test/counseling/evaluation/fixtures/phase14x_e2_cross_domain_v1.json';
-  final out = env['E2_OUT'] ?? 'build/llm_led/e2.json';
+  final fixture = env['SMOKE_FIXTURE'] ?? 'test/counseling/regression/fixtures/demo_smoke_v1.json';
+  final out = env['SMOKE_OUT'] ?? 'build/demo_smoke.json';
 
-  test('E2: A vs B on the cross-domain scripts', () async {
+  test('demo smoke: A vs B on the frozen demo scripts', () async {
     final repo = LocalCbtKnowledgeRepository(loadAsset: (p) => File(p).readAsString());
     await repo.initialize();
     final guide = LocalAppGuideRepository(loadAsset: (p) => File(p).readAsString());
     await guide.initialize();
     final glossary = await TermGlossary.load((p) => File(p).readAsString());
     final api = HttpRespondApi(base!, token!);
-    final only = env['E2_ONLY']?.split(',').toSet();
+    final only = env['SMOKE_ONLY']?.split(',').toSet();
     final scripts = ((jsonDecode(File(fixture).readAsStringSync()) as Map)['scripts'] as List)
         .cast<Map<String, dynamic>>()
         .where((sc) => only == null || only.contains(sc['id']))
@@ -134,7 +139,7 @@ void main() {
     }
 
     final results = <Map<String, Object?>>[];
-    final n = int.tryParse(env['E2_CONCURRENCY'] ?? '') ?? 2;
+    final n = int.tryParse(env['SMOKE_CONCURRENCY'] ?? '') ?? 2;
     for (var i = 0; i < scripts.length; i += n) {
       final batch = scripts.skip(i).take(n);
       results.addAll(await Future.wait(batch.map((sc) async => {

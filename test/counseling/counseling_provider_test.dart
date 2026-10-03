@@ -117,27 +117,4 @@ void main() {
     expect(provider.messages.last.text, isNotEmpty);
   });
 
-  test('무의미한 입력에는 즉시 공감을 붙이지 않는다', () async {
-    final provider = CounselingProvider(
-      knowledgeRepository: repository,
-      currentWeek: 4,
-      contextBuilder: null,
-      harness: CounselingHarness.deterministic(
-        llm: MockLlmService(),
-        safetyGate: const KeywordSafetyGate(),
-        knowledgeRepository: repository,
-      ),
-      instantEmpathy: true,
-    );
-
-    await provider.initialize();
-    await provider.sendMessage('asdfasdf ㅁㄴㅇㄹ');
-
-    // 즉시 공감(고정 문장) 없이 user + input guard 응답, 총 2개만 추가된다.
-    expect(provider.messages.length, 3);
-    expect(
-      provider.messages.any((m) => m.text.contains('마음에 계속 걸리고')),
-      isFalse,
-    );
-  });
 }

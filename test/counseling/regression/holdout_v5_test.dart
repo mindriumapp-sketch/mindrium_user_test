@@ -1,7 +1,7 @@
 // Phase 13.9 — holdout v5: the two-tier gate (13.9F, fixed before this set
 // was written). See docs/counseling/chatbot_system.md.
 //
-// fixtures/phase13_9_holdout_v5.json was written by an agent without
+// fixtures/holdout_v5.json was written by an agent without
 // access to the code, avoiding the 443 phrasings used before, and frozen
 // before its first run. Never edited, never used to tune detectors.
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +13,7 @@ void main() {
   late HoldoutResult result;
 
   setUpAll(() async {
-    result = await runHoldout('test/counseling/evaluation/fixtures/phase13_9_holdout_v5.json');
+    result = await runHoldout('test/counseling/regression/fixtures/holdout_v5.json');
     // ignore: avoid_print
     print(result.report('PHASE13_9_HOLDOUT_V5_REPORT'));
   });

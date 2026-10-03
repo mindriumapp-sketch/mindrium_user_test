@@ -1,7 +1,7 @@
 // Phase 13.9 — holdout v2: the session-flow gate on unseen users. See
 // docs/counseling/chatbot_system.md.
 //
-// fixtures/phase13_9_holdout_v2.json was written by an agent without
+// fixtures/holdout_v2.json was written by an agent without
 // access to the code, avoiding every phrasing used before (dev v1, holdout
 // v1, dev v2), and frozen before its first run (5408154). The utterances
 // are never edited and never used to tune detectors. If this gate fails,
@@ -19,7 +19,7 @@ void main() {
   late HoldoutResult result;
 
   setUpAll(() async {
-    result = await runHoldout('test/counseling/evaluation/fixtures/phase13_9_holdout_v2.json');
+    result = await runHoldout('test/counseling/regression/fixtures/holdout_v2.json');
     // ignore: avoid_print
     print(result.report('PHASE13_9_HOLDOUT_V2_REPORT'));
   });

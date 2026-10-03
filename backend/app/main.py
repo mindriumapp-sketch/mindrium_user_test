@@ -19,7 +19,6 @@ from routers.screen_time import router as screen_time_router
 from routers.edu_sessions import router as edu_sessions_router
 from routers.counseling_sessions import router as counseling_sessions_router
 from routers.counseling_realize import router as counseling_realize_router
-from routers.counseling_classify import router as counseling_classify_router
 from routers.counseling_respond import router as counseling_respond_router
 from routers.treatment_progress import router as treatment_progress_router
 from routers.worry_groups import router as worry_groups_router
@@ -354,7 +353,6 @@ app.include_router(edu_sessions_router)
 app.include_router(treatment_progress_router)
 app.include_router(counseling_sessions_router)
 app.include_router(counseling_realize_router)
-app.include_router(counseling_classify_router)
 app.include_router(counseling_respond_router)
 app.include_router(custom_tags_router)
 app.include_router(worry_groups_router)

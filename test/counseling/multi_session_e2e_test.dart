@@ -109,7 +109,6 @@ void main() {
     knowledgeRepository: repository,
     currentWeek: 4,
     sessionsApi: api,
-    instantEmpathy: true,
     contextBuilder: MindriumContextBuilder(dataSource: _EmptyDataSource()),
     harness: CounselingHarness(
       llm: MockLlmService(),
@@ -146,71 +145,15 @@ void main() {
     return provider;
   }
 
-  test('G 세션1 종료 → 저장 → 세션2 개인화가 이어진다', () async {
+  test('G 완료한 세션은 다음 세션의 참고 대상이 된다', () async {
     final api = _InMemorySessionsApi();
-
-    // ── 세션 1 ──
     final first = await runFullSession(api);
-    await first.finalizeIfIncomplete();
+    expect(first.isSessionFinalized, isTrue);
 
-    final saved = await api.listSessions();
-    expect(saved, hasLength(1), reason: '세션 하나만 저장되어야 한다');
-    expect(saved.single['core_thought'], isNotNull);
-
-    // ── 세션 2 ──
     final second = newSession(api);
     await second.initialize();
-
-    expect(second.previousSession, isNotNull, reason: '지난 세션을 읽어야 한다');
+    expect(second.previousSession, isNotNull);
     expect(second.previousSession!.isCompleted, isTrue);
-
-    // 같은 주제로 다시 이야기하면 지난 상담을 이어받는다.
-    await second.sendMessage('또 발표가 있는데 걱정돼요.');
-
-    final empathy = second.lastEmpathy!;
-    expect(empathy.referencedPast, isTrue);
-    expect(empathy.sentence, contains('지난 상담'));
-    expect(
-      empathy.provenanceIds.any((id) => id.startsWith('session:')),
-      isTrue,
-      reason: '근거로 세션 id 를 남겨야 한다',
-    );
-  });
-
-  test('G 다른 주제면 지난 상담을 꺼내지 않는다', () async {
-    final api = _InMemorySessionsApi();
-    final first = await runFullSession(api);
-    await first.finalizeIfIncomplete();
-
-    final second = newSession(api);
-    await second.initialize();
-
-    await second.sendMessage('요즘 친구랑 사이가 어색해요.');
-
-    final empathy = second.lastEmpathy!;
-    // 지난 세션은 발표였다. 인간관계 이야기에 꺼내면 안 된다.
-    expect(empathy.sentence, isNot(contains('지난 상담')));
-    expect(
-      empathy.provenanceIds.any((id) => id.startsWith('session:')),
-      isFalse,
-    );
-  });
-
-  test('G 공감과 질문이 한 턴에 겹치지 않는다', () async {
-    final api = _InMemorySessionsApi();
-    final first = await runFullSession(api);
-    await first.finalizeIfIncomplete();
-
-    final second = newSession(api);
-    await second.initialize();
-    await second.sendMessage('또 발표가 있는데 걱정돼요.');
-
-    final empathy = second.lastEmpathy!.sentence;
-    final reply = second.messages.last.text;
-
-    // 공감에는 질문이 없고, 상담 응답에만 질문이 하나 있다.
-    expect(empathy.contains('?'), isFalse);
-    expect('?'.allMatches(reply).length, lessThanOrEqualTo(1));
   });
 
   test('G 중단된 세션은 주 참고 대상이 되지 않는다', () async {

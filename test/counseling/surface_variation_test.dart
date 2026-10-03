@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
-import 'package:gad_app_team/features/counseling/empathy_planner.dart';
 import 'package:gad_app_team/features/counseling/surface_variation.dart';
 
 CounselingMessage _assistant(String text) => CounselingMessage(
@@ -39,15 +38,4 @@ void main() {
     expect(first, second);
   });
 
-  test('일반 불안 공감은 직전과 다른 안전 문형을 쓴다', () {
-    const planner = EmpathyPlanner();
-    final first = planner.plan(userMessage: '발표가 불안해요.');
-    final second = planner.plan(
-      userMessage: '질문도 걱정돼요.',
-      recentMessages: [_assistant(first.sentence)],
-    );
-
-    expect(second.sentence, isNot(first.sentence));
-    expect(second.sentence.contains('?'), isFalse);
-  });
 }

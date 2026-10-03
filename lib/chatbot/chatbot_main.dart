@@ -6,7 +6,6 @@
 // 이 파일에 있으면 안 되는 것:
 //   프롬프트 생성, 검색, CBT 상태 결정, 환자 기록 선택, 모델 호출, 응답 검증
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io'
     if (dart.library.html) 'utils/file_stub.dart'
     show Directory;
@@ -31,13 +30,10 @@ import 'package:gad_app_team/data/user_provider.dart';
 import 'package:gad_app_team/features/counseling/policy/rollout/internal_account_allowlist.dart';
 import 'package:gad_app_team/features/counseling/policy/rollout/local_realization_telemetry_sink.dart';
 import 'package:gad_app_team/features/counseling/policy/rollout/rollout_config.dart';
-import 'package:gad_app_team/features/counseling/counseling_benchmark.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/chatbot/services/chat_transcript_log.dart';
-import 'package:gad_app_team/data/api/counseling_classify_api.dart';
 import 'package:gad_app_team/data/api/counseling_realize_api.dart';
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
-import 'package:gad_app_team/features/counseling/perception/shadow_perception.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
 import 'package:gad_app_team/features/counseling/remote_llm_realizer.dart';
 import 'package:gad_app_team/features/counseling/llm_service.dart';
@@ -115,32 +111,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     defaultValue: false,
   );
 
-  /// Phase 14.2A-4: 의미 분류기 그림자 관찰. 켜도 결과는 기록만 하고 상담
-  /// 결정에 쓰지 않는다. 사용자 발화가 백엔드를 거쳐 외부 모델로 가므로 내부
-  /// 계정 허용 목록에 있는 계정에서만 동작한다. 기본값 false.
-  static const bool _shadowClassifierEnabled = bool.fromEnvironment(
-    'COUNSELING_SHADOW_CLASSIFIER',
-    defaultValue: false,
-  );
-
-  /// Phase 14.2B: 분류기의 두 신호(질문 중단, 챗봇 말을 못 알아들음)를 guard 뒤에서
-  /// 정책 입력으로 쓴다(규칙 OR 모델). 내부 계정에서만, 기본값 false. 켜면 그림자
-  /// 관찰도 함께 켜진 것으로 본다.
-  static const bool _semanticRepairEnabled = bool.fromEnvironment(
-    'COUNSELING_SEMANTIC_REPAIR',
-    defaultValue: false,
-  );
-
   /// Phase 14.X: Bounded LLM-led 경로(시제품). 내부 계정에서만, 기본값 false.
   /// docs/counseling/phase14x_bounded_llm_led.md.
   static const bool _llmLedEnabled = bool.fromEnvironment(
     'COUNSELING_LLM_LED_PATH',
-    defaultValue: false,
-  );
-
-  /// Phase 14.X E3: LLM-led 경로를 세션마다 번갈아 쓴다(화면에 표시하지 않음).
-  static const bool _llmLedAlternate = bool.fromEnvironment(
-    'COUNSELING_LLM_LED_AB',
     defaultValue: false,
   );
 
@@ -303,103 +277,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       currentWeek: week,
       contextBuilder: contextBuilder,
       sessionsApi: sessionsApi,
-      shadowPerception: _shadowPerception(),
-      causalPerception: _semanticRepairEnabled && _shadowPerception() != null,
       llmLedApi: _llmLedApi(),
-      llmLedAlternate: _llmLedAlternate,
-      // Phase 10.6C-DOGFOOD: disabled per real-device feedback — showing
-      // this deterministic placeholder bubble ahead of the real answer
-      // made every Remote-eligible turn render as two disconnected
-      // messages, which the Phase 10.5 review artifacts (one reply per
-      // scenario) never showed reviewers. `instantEmpathy` itself stays a
-      // supported CounselingProvider feature (see counseling_provider_test.dart),
-      // just not wired to true at this real call site anymore.
-      instantEmpathy: false,
       harness: harness,
     );
-  }
-
-  /// Phase 14.X E3: rate the session that just ended. The path (A/B) is not
-  /// shown; it is logged with the session pseudonym (`LLM_LED_RATING`).
-  Future<void> _askSessionRating() async {
-    const items = {
-      'natural': '실제 대화처럼 자연스럽게 이어졌나요?',
-      'context': '방금 한 말을 제대로 이해하고 반응했나요?',
-      'flexible': '앱 질문, 새 주제, 불만에 적절히 대응했나요?',
-      'progress': '빙빙 돌지 않고 적절히 진행됐나요?',
-    };
-    final scores = <String, int>{};
-    int? again;
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('이번 상담 평가 (1~5)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 12),
-                for (final e in items.entries) ...[
-                  Text(e.value),
-                  Wrap(spacing: 6, children: [
-                    for (var v = 1; v <= 5; v++)
-                      ChoiceChip(
-                        label: Text('$v'),
-                        selected: scores[e.key] == v,
-                        onSelected: (_) => setSheet(() => scores[e.key] = v),
-                      ),
-                  ]),
-                  const SizedBox(height: 8),
-                ],
-                const Text('실제로 이 챗봇과 상담을 계속하고 싶다고 느꼈나요?'),
-                Wrap(spacing: 6, children: [
-                  for (var v = 1; v <= 5; v++)
-                    ChoiceChip(label: Text('$v'), selected: again == v, onSelected: (_) => setSheet(() => again = v)),
-                ]),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: scores.length == items.length && again != null
-                        ? () => Navigator.of(ctx).pop(true)
-                        : null,
-                    child: const Text('제출'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    if (ok != true) return;
-    debugPrint('LLM_LED_RATING ${jsonEncode({
-      'session': _provider.sessionPseudonym,
-      'path': _provider.experimentPath,
-      ...scores,
-      'continue_wish': again,
-    })}');
   }
 
   CounselingRespondApi? _llmLedApi() {
     if (!_llmLedEnabled || widget.llm != null) return null;
     if (!isInternalAccountEmail(context.read<UserProvider>().userEmail)) return null;
     return DioCounselingRespondApi(ApiClient(tokens: TokenStorage()));
-  }
-
-  ShadowPerception? _shadowPerception() {
-    if (!(_shadowClassifierEnabled || _semanticRepairEnabled) || widget.llm != null) {
-      return null;
-    }
-    final email = context.read<UserProvider>().userEmail;
-    if (!isInternalAccountEmail(email)) return null;
-    return ShadowPerception(
-      api: DioCounselingClassifyApi(ApiClient(tokens: TokenStorage())),
-    );
   }
 
   void _handleProviderChanged() {
@@ -418,9 +304,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   // 상담 엔진을 가장 먼저 올린다. 로그·마이크·스피커는 보조 기능이라, 그중 하나가
   // 실패하거나 응답하지 않아도 대화는 시작될 수 있어야 한다.
   Future<void> _bootstrap() async {
-    // 화면 진입부터 대화가 그려질 때까지. Activity cold start 와는 다른 값이다.
-    final readyWatch = Stopwatch()..start();
-
     try {
       await _provider.initialize();
     } catch (e, st) {
@@ -433,10 +316,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     setState(() {});
     _jumpToBottom();
 
-    readyWatch.stop();
-    CounselingBenchmark.emit('chat_page_ready', {
-      'ms': readyWatch.elapsedMilliseconds,
-    });
 
     Future<void> step(String label, Future<void> Function() run) async {
       try {
@@ -715,7 +594,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       _appendNotice(
         '오늘 상담은 여기까지예요. 새로운 주제로 다시 이야기하고 싶다면 오른쪽 위 새로고침 버튼을 눌러주세요.',
       );
-      if (_llmLedEnabled && _llmLedAlternate) unawaited(_askSessionRating());
     }
 
     await _speakLatestAssistantMessage();

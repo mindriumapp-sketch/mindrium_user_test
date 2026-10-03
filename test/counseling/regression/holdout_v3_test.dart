@@ -1,7 +1,7 @@
 // Phase 13.9 — holdout v3: the session-flow gate on unseen users. See
 // docs/counseling/chatbot_system.md.
 //
-// fixtures/phase13_9_holdout_v3.json was written by an agent without
+// fixtures/holdout_v3.json was written by an agent without
 // access to the code, avoiding all 264 phrasings used before, and frozen
 // before its first run. The utterances are never edited and never used to
 // tune detectors.
@@ -17,7 +17,7 @@ void main() {
   late HoldoutResult result;
 
   setUpAll(() async {
-    result = await runHoldout('test/counseling/evaluation/fixtures/phase13_9_holdout_v3.json');
+    result = await runHoldout('test/counseling/regression/fixtures/holdout_v3.json');
     // ignore: avoid_print
     print(result.report('PHASE13_9_HOLDOUT_V3_REPORT'));
   });
