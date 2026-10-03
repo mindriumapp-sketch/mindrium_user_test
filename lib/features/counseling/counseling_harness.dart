@@ -909,7 +909,7 @@ class LlmLedTurn {
     'definition_mismatch', 'unknown_term_defined', 'definition_without_request',
     'unauthorized_intervention', 'prompt_without_intervention', 'integration_without_prompt',
     'unsupported_user_fact', 'unsupported_app_fact', 'app_claim_without_fact',
-    'diagnosis', 'outcome_guarantee', 'directive', 'finalize_without_proposal',
+    'diagnosis', 'outcome_guarantee', 'directive', 'advice', 'premature_example', 'finalize_without_proposal',
     'question_after_no_question_promise', 'too_many_questions', 'question_shape',
     'repeated_question', 'exploring_after_closed', 'banmal_reply', 'second_person', 'too_long',
   ];

@@ -268,6 +268,40 @@ void main() {
       expect(vc('대화가 자꾸 겉도는 것 같아요',
           _out(moves: ['repair'], text: '답답하셨겠어요. 지금 가장 이야기하고 싶은 건 무엇인가요?')), isEmpty);
     });
+    test('Phase 3: counseling advice is rejected; reflection, affirmation and guided speech are not', () {
+      List<String> vu(String u, Map<String, dynamic> raw) =>
+          LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, ctx(_session(), u));
+      for (final t in [
+        '감정을 나누는 것이 도움이 될 수 있어요.',
+        '불안할 때는 호흡에 집중하는 것이 중요합니다.',
+        '계속해서 자신감을 키워 나가시길 바랍니다.',
+        '조금씩 노력해 보세요.',
+      ]) {
+        expect(vu('발표가 걱정돼요', _out(moves: ['acknowledge'], text: t)), contains('advice'), reason: t);
+      }
+      // reflecting the user's idea, affirming the user's own plan
+      expect(vu('발표가 걱정돼요', _out(moves: ['reflect_emotion'],
+          text: '미리 연습하는 것이 도움이 될 것 같다는 생각이 드시는군요.')), isNot(contains('advice')));
+      expect(vu('예상 질문 리스트 미리 뽑아 볼게요', _out(moves: ['acknowledge'],
+          text: '예상 질문 리스트를 뽑는 것은 좋은 방법이네요.')), isNot(contains('advice')));
+      // app guidance tied to app facts, and an approved technique prompt
+      expect(vu('이완 훈련은 어디서 해요?', _out(domain: 'app_guide', moves: ['answer_app'], appIds: ['feature:relaxation'],
+          text: '이완 훈련 메뉴에서 시작하는 것이 좋아요.')), isNot(contains('advice')));
+      expect(vu('네', _out(moves: ['intervention_question'], interventionId: 'week4_alternative_thought_01',
+          text: '생각을 문장으로 적어 보는 것이 도움이 될 수 있어요. 지금 떠오르는 대로 적어 볼까요?')),
+          isNot(contains('advice')));
+      // a suggestion asked as a question is the user's choice
+      expect(vu('발표가 걱정돼요', _out(text: '그렇군요. 어떤 방법이 도움이 될 것 같으세요?')), isEmpty);
+    });
+    test('Phase 3: no example of a balanced thought before the user tries one', () {
+      List<String> vu(String u, Map<String, dynamic> raw) =>
+          LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, ctx(_session(), u));
+      const ex = '좀 더 균형 잡힌 문장으로 바꿔 볼 수 있어요. 예를 들어, "불안하긴 하지만 크게 흘러가지 않을 수 있어"처럼요.';
+      expect(vu('손에 땀이 나요', _out(moves: ['acknowledge'], text: ex)), contains('premature_example'));
+      expect(vu('어떻게 써야 할지 모르겠어요', _out(moves: ['acknowledge'], text: ex)), isNot(contains('premature_example')));
+      // a quoted example sentence is not the counselor's banmal
+      expect(vu('어떻게 써야 할지 모르겠어요', _out(moves: ['acknowledge'], text: ex)), isNot(contains('banmal_reply')));
+    });
     test('respond_v2: an intervention step always carries an id', () {
       final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};
       expect(LlmLedOutput.tryParse(raw), isNull);

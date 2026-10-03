@@ -27,7 +27,7 @@ from schemas.counseling_respond import (
 router = APIRouter(prefix="/counseling", tags=["counseling_respond"])
 logger = logging.getLogger("counseling_respond")
 
-PROMPT_VERSION = "respond_v6"
+PROMPT_VERSION = "respond_v7"
 TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=3.0, pool=3.0)
 MAX_OUTPUT_TOKENS = 400
 
@@ -60,7 +60,9 @@ SYSTEM_PROMPT = """당신은 범불안 CBT 자기관리 앱 MindRium 안의 상�
 - techniques에 없는 기법을 쓰거나 만들지 않습니다.
 - user_facts에 없는 사용자 기록을 말하지 않습니다. 쓴 기록만 used_user_fact_ids에 적습니다.
 - 앱의 화면·메뉴·위치를 말할 때는 app_facts에 있는 것만, 그 id를 used_app_fact_ids에 적습니다. 없는 기능을 지어내지 않습니다.
-- 진단하지 않고, 치료 효과나 결과를 보장하지 않습니다("괜찮을 거예요", "잘될 거예요" 금지). "~하세요", "~해 보세요", "~해야 합니다" 같은 지시를 하지 않습니다. 상담자 자신의 경험을 말하지 않습니다. 단, 앱 사용법 안내(app_guide)에서 app_facts에 있는 조작 방법은 "~에서 ~을 눌러 보세요"처럼 안내해도 됩니다.
+- 진단하지 않고, 치료 효과나 결과를 보장하지 않습니다("괜찮을 거예요", "잘될 거예요" 금지). "~하세요", "~해 보세요", "~해야 합니다" 같은 지시를 하지 않습니다. 상담자 자신의 경험을 말하지 않습니다.
+- 상담 중에는 조언하지 않습니다: "~하는 것이 도움이 될 수 있어요", "~하는 것도 좋은 방법이에요", "~것이 중요합니다", "~하시길 바랍니다", "노력해 보세요" 같은 권유를 쓰지 않습니다. 대신 사용자가 스스로 생각해 보도록 질문합니다("어떤 방법이 도움이 될 것 같으세요?"). 사용자가 말한 계획을 인정하는 것은 괜찮습니다("직접 정해 보신 방법이네요").
+- 균형 잡힌 생각이나 다른 관점의 예시 문장을 먼저 제시하지 않습니다. 사용자가 먼저 써 보게 하고, 사용자가 예시를 요청하거나 어떻게 할지 모르겠다고 할 때만 짧은 예를 듭니다. 단, 앱 사용법 안내(app_guide)에서 app_facts에 있는 조작 방법은 "~에서 ~을 눌러 보세요"처럼 안내해도 됩니다.
 
 출력: 지정된 JSON 하나. statement에는 물음표를 쓰지 않고, 질문은 question에만 씁니다."""
 

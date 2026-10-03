@@ -45,6 +45,9 @@ class LlmLedContext {
   /// The user asked to end now (code-detected); finalize is allowed on it.
   final bool userEndRequest;
 
+  /// This turn's user message (for affirmation / example-request checks).
+  final String userMessage;
+
   /// The user's message shares no topic with this round's worry so far
   /// (code-detected): new content, which exploration may take up.
   final bool newTopic;
@@ -63,6 +66,7 @@ class LlmLedContext {
     this.exploreClosed = false,
     this.userEndRequest = false,
     this.newTopic = false,
+    this.userMessage = '',
   });
 
   static LlmLedContext build({
@@ -239,6 +243,7 @@ class LlmLedContext {
       termRequest: termRequest,
       exploreClosed: exploreClosed,
       userEndRequest: ClosingDecisionSelector.isExplicitEnd(userMessage),
+      userMessage: userMessage,
       newTopic: _newTopic(userMessage, round, roundWorry),
     );
   }
@@ -343,6 +348,43 @@ class LlmLedValidator {
   static bool _definesName(String text, String name) => RegExp(
         '${RegExp.escape(name)}\\S{0,3}\\s*(은|는|이란|란|이라는\\s*것은|라는\\s*것은)[^.?!]{0,80}$_definitional',
       ).hasMatch(text);
+  // Phase 3: counseling advice. A recommendation ("~하는 것이 도움이 될 수
+  // 있어요", "~것이 중요합니다") or an exhortation ("노력해 보세요", "~하시길
+  // 바랍니다"). Reflecting the user's own idea ("~라는 생각이 드시는군요")
+  // and affirming a plan the user just named are not advice.
+  static final RegExp _recommendation = RegExp(
+    r'((것이|게|건)\s*(중요|필요)(합니다|해요|하죠|할\s*수)|'
+    r'(는|보는|두는)\s*(것|게|건)\s*(도|이|은|가)?\s*(좋|도움|중요|필요|방법))',
+  );
+  static final RegExp _exhortation = RegExp(r'((노력|시도)해\s*보(세요|시)|시길\s*(바랍|바라)|는\s*편이\s*나[아을])');
+  static final RegExp _reflecting = RegExp(r'(생각이\s*드|생각하시|말씀|하셨|느끼시|라고|다고|겠다는|려는)');
+  static final RegExp _quoted = RegExp('["“\'‘][^"”\'’]*["”\'’]');
+  // An example of a balanced/alternative thought before the user tried one.
+  static final RegExp _example = RegExp(r'예를\s*들(어|면)|예시로');
+  static final RegExp _alternativeTalk = RegExp(r'(균형|대안|다른\s*(생각|관점|문장)|바꿔|바꾸)');
+  static final RegExp _asksExample = RegExp(r'(예시|예를|예로|어떻게\s*(써|적|해|하)|모르겠)');
+
+  static String _unquoted(String s) => s.replaceAll(_quoted, ' ');
+
+  /// Content words (2+ chars, first two syllables) shared with the user.
+  static bool _echoesUser(String sentence, String user) {
+    Set<String> stems(String x) => {
+          for (final w in x.split(RegExp(r'[^가-힣A-Za-z0-9]+')))
+            if (w.length >= 2) w.substring(0, 2),
+        };
+    return stems(sentence).intersection(stems(user)).isNotEmpty;
+  }
+
+  static bool _advises(LlmLedOutput o, LlmLedContext c) {
+    for (final raw in _unquoted(o.statement).split(RegExp(r'(?<=[.?!])\s+'))) {
+      final t = raw.trim();
+      if (t.isEmpty) continue;
+      if (_exhortation.hasMatch(t)) return true;
+      if (_recommendation.hasMatch(t) && !_reflecting.hasMatch(t) && !_echoesUser(t, c.userMessage)) return true;
+    }
+    return false;
+  }
+
   static final RegExp _appTerms = RegExp(r'(메뉴|화면|탭|버튼|설정에서|홈에서|들어가)');
   static final RegExp _secondPerson = RegExp(r'당신');
   static final RegExp _noQuestionPromise = RegExp(
@@ -408,7 +450,7 @@ class LlmLedValidator {
     // A directive is an app operation in app guidance ("설정에서 찾아보세요"),
     // and approved technique guidance in a technique prompt; in counseling it
     // is unapproved advice.
-    if (_directive.hasMatch(o.text) &&
+    if (_directive.hasMatch(_unquoted(o.text)) &&
         !(o.domain != 'counseling' && o.usedAppFactIds.isNotEmpty) &&
         o.interventionStep != 'prompt') {
       v.add('directive');
@@ -424,7 +466,18 @@ class LlmLedValidator {
       if (o.definitionId != null) v.add('definition_without_request');
       if (t != null && _definesName(o.text, t.name)) v.add('unknown_term_defined');
     }
-    if (_hasBanmal(o.text)) v.add('banmal_reply');
+    // quoted words are someone's sentence, not the counselor's speech
+    if (_hasBanmal(_unquoted(o.text))) v.add('banmal_reply');
+    // Phase 3: advice, domain-aware like directives — app guidance tied to
+    // app facts and an approved technique prompt may guide; counseling may not.
+    final guidedSpeech = (o.domain != 'counseling' && o.usedAppFactIds.isNotEmpty) || o.interventionStep == 'prompt';
+    if (!guidedSpeech && _advises(o, c)) v.add('advice');
+    if (_example.hasMatch(o.text) &&
+        _quoted.hasMatch(o.text) &&
+        _alternativeTalk.hasMatch(o.text) &&
+        !_asksExample.hasMatch(c.userMessage)) {
+      v.add('premature_example');
+    }
     if (c.exploreClosed &&
         !c.newTopic &&
         !o.moves.contains('repair') &&
