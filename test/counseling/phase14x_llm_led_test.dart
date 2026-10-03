@@ -332,6 +332,12 @@ void main() {
       expect(ctx(closed, '친구가 내 사과를 안받아주면 어떡하지?').newTopic, isTrue);
       expect(ctx(closed, '문자로 보낼까 고민돼').newTopic, isFalse);
     });
+    test('device check: the same reply twice in a row is rejected', () {
+      final s = _session(messages: [_u('안녕?'), _a('불안에 대한 이야기를 나누고 싶으신 것 같아요. 요즘 마음에 걸리는 걱정이 있다면 편하게 이야기해 주세요.')]);
+      expect(v(_out(moves: ['acknowledge'], text: '불안에 대한 이야기를 나누고 싶으신 것 같아요. 요즘 마음에 걸리는 걱정이 있다면 편하게 이야기해 주세요.'), s: s),
+          contains('repeated_reply'));
+      expect(v(_out(moves: ['acknowledge'], text: '네, 안녕하세요. 아까 이야기로 돌아가 볼까요?'), s: s), isEmpty);
+    });
     test('respond_v2: an intervention step always carries an id', () {
       final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};
       expect(LlmLedOutput.tryParse(raw), isNull);

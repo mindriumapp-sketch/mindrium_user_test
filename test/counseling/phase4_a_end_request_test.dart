@@ -36,7 +36,7 @@ void main() {
 
   const base = ['발표가 너무 걱정돼요', '말이 막히면 다들 비웃을 것 같아요'];
 
-  for (final end in ['종료', '오늘은 이쯤 할게요', '그만할래', '이제 정리해 주셔도 돼요', '끝', '이제 마무리할까요', '오늘은 여기까지요', '오늘은 여기까지 해도 될 거 같아요']) {
+  for (final end in ['종료', '오늘은 이쯤 할게요', '그만할래', '이제 정리해 주셔도 돼요', '끝', '이제 마무리할까요', '오늘은 여기까지요', '오늘은 여기까지 해도 될 거 같아요', '그만']) {
     test('mid-session "$end" ends the session', () async {
       final r = await run([...base, end]);
       expect(r.last.assistantMessage.closingStep, ClosingStep.finalized);

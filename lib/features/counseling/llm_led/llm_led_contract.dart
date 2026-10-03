@@ -48,6 +48,9 @@ class LlmLedContext {
   /// This turn's user message (for affirmation / example-request checks).
   final String userMessage;
 
+  /// The last two assistant replies (for repeated-reply checks).
+  final List<String> recentReplies;
+
   /// The user's message shares no topic with this round's worry so far
   /// (code-detected): new content, which exploration may take up.
   final bool newTopic;
@@ -67,6 +70,7 @@ class LlmLedContext {
     this.userEndRequest = false,
     this.newTopic = false,
     this.userMessage = '',
+    this.recentReplies = const [],
   });
 
   static LlmLedContext build({
@@ -244,6 +248,9 @@ class LlmLedContext {
       exploreClosed: exploreClosed,
       userEndRequest: ClosingDecisionSelector.isExplicitEnd(userMessage),
       userMessage: userMessage,
+      recentReplies: [
+        for (final m in session.messages.reversed.where((m) => !m.isUser).take(2)) m.text,
+      ],
       newTopic: _newTopic(userMessage, round, roundWorry),
     );
   }
@@ -440,6 +447,18 @@ class LlmLedValidator {
     return false;
   }
 
+  /// Word Jaccard ≥ 0.7 with one of the last two assistant replies.
+  static bool _repeatsReply(String text, List<String> recent) {
+    final a = _words(text);
+    if (a.length < 4) return false;
+    for (final r in recent) {
+      final b = _words(r);
+      final union = a.union(b).length;
+      if (union > 0 && a.intersection(b).length / union >= 0.7) return true;
+    }
+    return false;
+  }
+
   static bool _hasBanmal(String text) {
     for (final sentence in text.split(RegExp(r'(?<=[.?!])\s+'))) {
       final t = sentence.trim();
@@ -478,6 +497,9 @@ class LlmLedValidator {
     if (o.question != null && o.sessionAction != 'offer_close' && _repeats(o.question!, c.recentQuestions)) {
       v.add('repeated_question');
     }
+    // Device check: the same explanation or reply twice in a row ("안녕?" →
+    // the identical answer again) reads as a script, however it is phrased.
+    if (_repeatsReply(o.text, c.recentReplies)) v.add('repeated_reply');
     if (_diagnosis.hasMatch(o.text)) v.add('diagnosis');
     if (_guarantee.hasMatch(o.text)) v.add('outcome_guarantee');
     // A directive is an app operation in app guidance ("설정에서 찾아보세요"),

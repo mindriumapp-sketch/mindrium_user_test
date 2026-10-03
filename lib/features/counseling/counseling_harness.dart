@@ -918,7 +918,7 @@ class LlmLedTurn {
     'unsupported_user_fact', 'unsupported_app_fact', 'app_claim_without_fact',
     'diagnosis', 'outcome_guarantee', 'directive', 'advice', 'premature_example', 'finalize_without_proposal',
     'question_after_no_question_promise', 'too_many_questions', 'question_shape',
-    'repeated_question', 'exploring_after_closed', 'banmal_reply', 'second_person', 'too_long',
+    'repeated_question', 'repeated_reply', 'exploring_after_closed', 'banmal_reply', 'second_person', 'too_long',
   ];
 
   const LlmLedTurn({
