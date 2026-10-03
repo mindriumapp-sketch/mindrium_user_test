@@ -391,7 +391,9 @@ class LlmLedValidator {
     if (mentionsApp && o.usedAppFactIds.isEmpty && o.domain != 'counseling') {
       v.add('app_claim_without_fact');
     }
-    if ('?'.allMatches(o.text).length + '？'.allMatches(o.text).length > 1) v.add('too_many_questions');
+    if (RegExp('[?？؟]').allMatches(o.text).length > 1) v.add('too_many_questions');
+    // respond_v5 E2b: a model kept off "?" wrote "؟" instead; never shown
+    if (o.text.contains('؟')) v.add('foreign_question_mark');
     // respond_v2 r2: a question mark inside the statement is only a format
     // slip when the reply still has one question in total (the user sees the
     // same text), so only the total is checked (too_many_questions above).

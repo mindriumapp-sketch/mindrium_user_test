@@ -34,8 +34,8 @@ class ClosingDecisionSelector {
   /// ("오늘은 여기까지", "그만할게", "더 안 해 끝", "정리하자"), unless a strong
   /// continue cue is also there. Evidence the LLM-led path may finalize on.
   static final RegExp _endRequest = RegExp(
-    r'(여기까지|이만|그만\s*(할|하|두|해|하자|할래|할게)?|(^|\s)끝(\s|$|이야|낼|내자)|종료|'
-    r'정리(하자|할게|하죠|할래|해요|하겠)|마무리(하자|할게|하죠|할래|해요|해도|하겠)|마칠게|마칠래)',
+    r'(여기까지|이만|이쯤|그만\s*(할|하|두|해|하자|할래|할게)?|(^|\s)끝(\s|$|이야|낼|내자)|종료|'
+    r'정리\s*(하자|할게|하죠|할래|해요|하겠|할까|해\s*주)|마무리\s*(하자|할게|하죠|할래|해요|해도|하겠|할까|해\s*주)|마칠게|마칠래|마칠까)',
   );
 
   static bool isExplicitEnd(String text) {

@@ -27,7 +27,7 @@ from schemas.counseling_respond import (
 router = APIRouter(prefix="/counseling", tags=["counseling_respond"])
 logger = logging.getLogger("counseling_respond")
 
-PROMPT_VERSION = "respond_v5"
+PROMPT_VERSION = "respond_v6"
 TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=3.0, pool=3.0)
 MAX_OUTPUT_TOKENS = 400
 
@@ -116,8 +116,7 @@ def response_format(payload: CounselingRespondRequest) -> dict:
                         else {"type": "null"}
                     ),
                     "session_action": {"type": "string", "enum": list(SESSION_ACTIONS)},
-                    # respond_v5: a question in the statement made two questions
-                    "statement": {"type": "string", "pattern": "^[^?？]*$"},
+                    "statement": {"type": "string"},
                     "question": {"type": ["string", "null"]},
                 },
             },

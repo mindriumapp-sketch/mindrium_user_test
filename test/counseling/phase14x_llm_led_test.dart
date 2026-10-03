@@ -188,6 +188,12 @@ void main() {
           contains('app_claim_without_fact'));
     });
     test('two questions', () => expect(v(_out(text: '어떤가요? 그리고 언제인가요?')), contains('too_many_questions')));
+    test('a non-Korean question mark is never shown', () {
+      final raw = Map<String, dynamic>.from(_out()['output'] as Map)
+        ..['statement'] = '그렇군요. 어떤 기분이 드셨나요؟'
+        ..['question'] = null;
+      expect(LlmLedValidator.validate(LlmLedOutput.tryParse(raw)!, ctx(_session(), 'x')), contains('foreign_question_mark'));
+    });
     test('outcome guarantee and diagnosis and directive', () {
       expect(v(_out(text: '분명 잘될 거예요.')), contains('outcome_guarantee'));
       expect(v(_out(text: '공황장애가 있는 것 같아요.')), contains('diagnosis'));
@@ -224,7 +230,8 @@ void main() {
       List<String> vu(String u, Map<String, dynamic> raw) =>
           LlmLedValidator.validate(LlmLedOutput.tryParse(raw['output'])!, ctx(_session(), u));
       final fin = _out(moves: ['summarize', 'finalize'], action: 'finalize', text: '오늘 이야기 고마워요.');
-      for (final u in ['오늘은 여기까지 할게요', '그만할래', '종료', '이제 끝']) {
+      for (final u in ['오늘은 여기까지 할게요', '그만할래', '종료', '이제 끝', '오늘은 이쯤 할게요',
+          '이제 정리해 주셔도 돼요', '이제 마무리할까요']) {
         expect(vu(u, fin), isEmpty, reason: u);
       }
       for (final u in ['아직 끝내지 말고 좀 더 얘기할래', '발표가 끝나면 불안해']) {
