@@ -739,6 +739,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       move: _provider.lastResponseMove,
       state: _provider.state,
       safetyLevel: _provider.lastSafetyLevel,
+      replyText: _provider.messages.isEmpty || _provider.messages.last.isUser ? null : _provider.messages.last.text,
     );
     _currentAvatar = _avatarSelector.update(expression);
   }

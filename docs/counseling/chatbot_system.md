@@ -397,21 +397,36 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 
 ### 11.1 아바타 표정 (`lib/chatbot/affective/`)
 
-**두 박자 표정 (데모 기준):**
-1. 사용자가 보낸 직후, 답을 기다리는 동안 `attentive`(듣는 얼굴).
-2. 최종 응답이 확정되는 순간(말풍선·음성과 함께) `사용자 정서 단서 × 실제로 나간 응답의 행동(ResponseMove)`으로 정한다 (`AffectiveAdapter.respond`). B가 거절되어 A가 답하면 A 응답의 메타데이터를 쓰고, 버려진 B 행동은 쓰지 않는다.
+**상담사 표정 규칙 (데모 기준, `AffectiveAdapter`)**
 
-| 조건 (위에서부터) | 표정 |
-|---|---|
-| 위기 | attentive |
-| 응답이 불만을 받아 줌(repair) | concerned |
-| 강한 괴로움(힘들, 지치, 서운, 속상, 막막 …) | concerned |
-| 걱정·불안 + 공감 응답(acknowledge/reflect_emotion/restate) | warm |
-| 긍정 보고 또는 기법 답을 받아 줌(integrate) | encouraging |
-| 앱 안내, 마무리 | warm |
-| 그 외 | 상담 단계 기본값 |
+그림은 `assets/npc_images/`에 있는 것만 쓴다(테스트 `avatar_assets_test.dart`가 확인).
 
-같은 상황이 이어지면 같은 표정을 유지한다(다양성을 위해 의미를 바꾸지 않는다). 아래는 첫 구현의 설명이다.
+| 표정 | 그림 | 뜻 |
+|---|---|---|
+| neutral | `counselor_profile_neutral.png` | 세션 시작 |
+| attentive | `counselor_profile_thinking.png` | 듣고 생각함 |
+| warm | `counselor_profile_reassure.png` | 잔잔한 공감 미소 |
+| concerned | `counselor_profile_sad.png` | 안타까워함 |
+| encouraging | `counselor_profile_warm_smile.png` | 반가워하고 격려함 |
+
+쓰지 않는 그림: `counselor_profile.png`(입을 벌린 웃음), `counselor_profile_careful.png`(땀방울, 상담사가 불안해 보임), `counselor_profile_surprised.png`(놀람).
+
+**두 박자:** 사용자가 보내면 바로 `attentive`(듣는 얼굴). 최종 응답이 확정되는 순간(말풍선·음성과 함께) 아래 규칙으로 바꾸고, 그 답 말풍선에도 같은 표정을 붙인다. B가 거절되어 A가 답했으면 A 응답 기준이며, 버려진 B의 행동은 쓰지 않는다. 새 세션은 `neutral`에서 시작한다.
+
+| 순위 | 조건 | 표정 |
+|---|---|---|
+| 1 | 위기 응답 | attentive |
+| 2 | 응답이 대화 불만을 받아 줌(repair) | concerned |
+| 3 | 사용자 말에 강한 괴로움(힘들, 지치, 서운, 속상, 막막, 후회, 외로, 답답, 짜증 …) | concerned |
+| 4 | 사용자 말에 걱정·불안 + 응답이 공감(인정·감정 되짚기·되말하기) | warm |
+| 5 | 사용자 말이 긍정적 변화, 또는 응답이 기법 답을 받아 줌(integrate) | encouraging |
+| 6 | 앱 안내, 마무리 | warm |
+| 7 | (예전 규칙에서 가져온 보조 신호) 상담사 답의 톤: 미안·안타깝·속상하셨 → concerned / 다행·잘하셨·좋은 방법 → encouraging / 이해해요·그럴 수 있·괜찮아요 → warm | 해당 표정 |
+| 8 | 그 외 | 상담 단계 기본값: 시작·마무리 warm, 탐색·되짚기 attentive, 기법 encouraging |
+
+원칙: 사용자의 감정을 따라 하지 않고 대응한다(괴로움에 괴로운 얼굴이 아니라 안타까운 얼굴). 같은 상황이 이어지면 같은 표정을 유지한다(다양성을 위해 의미를 바꾸지 않는다). 표정 판단에 모델을 추가로 부르지 않는다(예전 구현은 매 턴 GPT를 한 번 더 불렀다).
+
+아래는 첫 구현(단계 기본값 중심)의 설명이다.
 
 ```
 사용자 발화 + 최근 SUD + 직전 신호

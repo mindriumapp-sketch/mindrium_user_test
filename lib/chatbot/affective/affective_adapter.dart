@@ -56,6 +56,7 @@ class AffectiveAdapter {
     required ResponseMove move,
     required CounselingState state,
     SafetyLevel safetyLevel = SafetyLevel.normal,
+    String? replyText,
   }) {
     if (safetyLevel != SafetyLevel.normal) return AvatarExpression.attentive;
     if (move == ResponseMove.repair) return AvatarExpression.concerned;
@@ -67,7 +68,23 @@ class AffectiveAdapter {
       return AvatarExpression.encouraging;
     }
     if (move == ResponseMove.appGuide || move == ResponseMove.closing) return AvatarExpression.warm;
+    // 보조 신호 (예전 규칙에서 가져옴): 앞의 규칙이 정하지 못했을 때만 상담사
+    // 답의 톤을 본다. 추가 모델 호출 없이 어휘로만 본다.
+    final tone = _replyTone(replyText);
+    if (tone != null) return tone;
     return _baseFor(state);
+  }
+
+  static final RegExp _pityTone = RegExp(r'(미안|죄송|안타깝|속상하셨|힘드셨|마음이 아프|괴로우셨)');
+  static final RegExp _praiseTone = RegExp(r'(다행|잘하셨|해내셨|좋은 방법|멋지|훌륭|대단|좋아지)');
+  static final RegExp _comfortTone = RegExp(r'(이해해요|이해합니다|그럴 수 있|자연스러운|충분히|괜찮아요|고마워요|감사합니다)');
+
+  AvatarExpression? _replyTone(String? reply) {
+    if (reply == null || reply.isEmpty) return null;
+    if (_pityTone.hasMatch(reply)) return AvatarExpression.concerned;
+    if (_praiseTone.hasMatch(reply)) return AvatarExpression.encouraging;
+    if (_comfortTone.hasMatch(reply)) return AvatarExpression.warm;
+    return null;
   }
 
   /// 상담 단계가 정하는 기본 태도.

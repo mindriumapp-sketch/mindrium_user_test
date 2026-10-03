@@ -29,6 +29,19 @@ void main() {
     expect(face('오늘은 여기까지', ResponseMove.closing, state: CounselingState.closing), AvatarExpression.warm);
   });
 
+  test('reply tone decides only when user affect × move did not', () {
+    AvatarExpression withReply(String user, String reply) => adapter.respond(
+        signal: detector.detect(userMessage: user), move: ResponseMove.other,
+        state: CounselingState.explore, replyText: reply);
+    expect(withReply('음', '그런 일이 있었다니 안타깝네요. 어떤 점이 가장 컸나요?'), AvatarExpression.concerned);
+    expect(withReply('음', '잘하셨어요. 그때 어떤 생각이 드셨나요?'), AvatarExpression.encouraging);
+    expect(withReply('음', '그럴 수 있어요. 조금 더 이야기해 주실래요?'), AvatarExpression.warm);
+    expect(withReply('음', '언제 그런 생각이 드셨나요?'), AvatarExpression.attentive);
+    // the user's distress outranks a cheerful reply tone
+    expect(adapter.respond(signal: detector.detect(userMessage: '너무 힘들어'), move: ResponseMove.other,
+        state: CounselingState.explore, replyText: '잘하셨어요.'), AvatarExpression.concerned);
+  });
+
   test('crisis is always attentive', () {
     expect(face('너무 힘들어', ResponseMove.empathize, safety: SafetyLevel.crisis), AvatarExpression.attentive);
   });
