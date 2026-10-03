@@ -8,33 +8,22 @@ class AvatarAssetResolver {
   static const String _dir = 'assets/npc_images';
 
   /// 표정별 변형. 첫 번째가 기본이다.
+  // Only files that exist in assets/npc_images/ (checked by test).
+  // warm doubles as the empathic face, so it uses the soft smile (reassure);
+  // the broad closed-eye smile reads as cheerful and is kept for encouraging.
   static const Map<AvatarExpression, List<String>> variants = {
-    AvatarExpression.neutral: [
-      '$_dir/counselor_profile_neutral.png',
-      '$_dir/counselor_profile.png',
-    ],
-    // warm is also the empathic face: the soft empathy image only (the broad
-    // smile read as cheerful next to a worry, device check 2026-10-03).
-    AvatarExpression.warm: [
-      '$_dir/counselor_profile_warm_empathy.png',
-    ],
-    AvatarExpression.attentive: [
-      '$_dir/counselor_profile_thinking.png',
-      '$_dir/counselor_profile_careful.png',
-    ],
-    AvatarExpression.concerned: [
-      '$_dir/counselor_profile_sad.png',
-      '$_dir/counselor_profile_sad2.png',
-    ],
-    AvatarExpression.encouraging: [
-      '$_dir/counselor_profile_reassure.png',
-      '$_dir/counselor_profile_warm_empathy.png',
-    ],
+    AvatarExpression.neutral: ['$_dir/counselor_profile_neutral.png'],
+    AvatarExpression.warm: ['$_dir/counselor_profile_reassure.png'],
+    AvatarExpression.attentive: ['$_dir/counselor_profile_thinking.png'],
+    AvatarExpression.concerned: ['$_dir/counselor_profile_sad.png'],
+    AvatarExpression.encouraging: ['$_dir/counselor_profile_warm_smile.png'],
   };
 
-  /// 어느 표정에도 배정되지 않은 이미지. 놀람은 상담사 태도로 쓰지 않는다.
+  /// In the folder but not used as a counselor attitude: an open-mouth grin,
+  /// a sweat-drop (reads as the counselor being anxious), surprise.
   static const List<String> unusedAssets = [
-    '$_dir/counselor_profile_warm_smile.png',
+    '$_dir/counselor_profile.png',
+    '$_dir/counselor_profile_careful.png',
     '$_dir/counselor_profile_surprised.png',
   ];
 
