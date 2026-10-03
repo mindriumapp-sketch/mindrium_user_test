@@ -64,10 +64,9 @@ if [ "${1:-}" = "--install" ] && [ -n "$DEV" ]; then
     --dart-define=API_BASE_URL=$BASE \
     --dart-define=COUNSELING_REMOTE_REALIZER=true \
     --dart-define=COUNSELING_REMOTE_REALIZER_KILL_SWITCH=false \
-    --dart-define=COUNSELING_LLM_LED_PATH=true \
-    --dart-define=COUNSELING_LLM_LED_AB=false 2>&1 | tail -1
+    --dart-define=COUNSELING_LLM_LED_PATH=true 2>&1 | tail -1
   adb -s "$DEV" install -r build/app/outputs/flutter-apk/app-debug.apk 2>&1 | tail -1 | grep -q Success \
-    && ok "앱 설치 (B 경로 ON, A/B 배정 OFF)" || bad "앱 설치 실패"
+    && ok "앱 설치 (B 경로 ON)" || bad "앱 설치 실패"
 fi
 
 echo

@@ -1,8 +1,7 @@
 # Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
 
-기준: 2026-10-03, 데모 동결 태그 `respond-v11-demo-freeze`. 실행 방법과 인수인계 요약은
-[`../HANDOVER.md`](../HANDOVER.md), 시연 절차는 [`../demo_checklist.md`](../demo_checklist.md)에 있습니다.
-LLM 주도 경로(B)의 설계·평가 기록은 [`phase14x_bounded_llm_led.md`](phase14x_bounded_llm_led.md)에 있습니다.
+기준: 2026-10-04, 태그 `chatbot-handover-2026-10-04`. 실행 방법과 인수인계 요약은 [`../HANDOVER.md`](../HANDOVER.md),
+시연 절차는 [`../demo_checklist.md`](../demo_checklist.md), 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md)에 있습니다.
 
 이 기능은 의료 진단이나 전문 치료를 대체하지 않습니다. 안전 관문은 키워드 기반이고, 상담 문장과 위기 응답은
 아직 임상 전문가의 검수를 받지 않았습니다. 외부 사용자에게 공개하기 전에 검수가 필요합니다.
@@ -36,7 +35,7 @@ flowchart TD
   CTX --> B[POST /counseling/respond<br/>GPT 1회 · 요청마다 id enum을 고정한 JSON 스키마]
   B --> V[LlmLedValidator<br/>근거·안전·형식·조언·반복 검사]
   V -->|통과| OUT[B 응답 + 턴 메타데이터<br/>LlmLedMapping]
-  V -->|거절 / 오류 / 시간초과| A[A: 결정론 파이프라인<br/>2.2절]
+  V -->|거절 / 오류 / 시간초과| A[A: 결정론 파이프라인<br/>2.3절]
   A --> OUT2[A 응답]
 ```
 
@@ -51,7 +50,42 @@ LLM 호출 전에 코드가 정하는 경계:
 
 응답 뒤 검증기가 거절하는 것 (주요 항목): 승인되지 않은 기법, 주지 않은 사용자·앱 사실, 진단·결과 보장, 상담 지시·조언(`directive`, `advice`), 사용자가 시도하기 전의 예시 문장(`premature_example`), 질문 2개 이상, 반복 질문·반복 응답, 반말, 제안 없는 종료, 탐색 종료 후 같은 걱정 재탐색, 용어 정의 불일치. 거절 사유는 `LLM_LED` 로그에 남는다(텍스트 없음).
 
-### 2.2 대체 경로 A (결정론 파이프라인)
+### 2.2 B 경로 계약 (`POST /counseling/respond`, 프롬프트 `respond_v11`)
+
+**켜는 조건:** 빌드 플래그 `COUNSELING_LLM_LED_PATH=true` + 허용 목록 계정(`internal_account_allowlist.dart`). 비위기 턴마다 B를 먼저 부르고, 시간 제한은 8초, 재시도는 하지 않는다. 실패한 턴만 A가 답한다.
+
+**입력 (`LlmLedContext.build`)**
+
+| 필드 | 내용 |
+|---|---|
+| `conversation` | 최근 대화 최대 12개(마지막은 이번 사용자 발화) |
+| `progress` | 참고용 진행 근거: 걱정·생각 파악 여부, 근거·관점 탐색 여부, `explore_closed`, 최근 질문 3개, 진전 없는 턴 수, 기법 대기·완료, 마무리 제안 여부 등. 특정 질문을 강제하지 않는다 |
+| `user_facts` | `{id, kind, text}`: 지난 완료 상담(`session:<id>`, 걱정과 그때 정리한 생각), 일기, 효과 있었던 기법 |
+| `techniques` | 현재 주차까지의 승인 기법만 |
+| `app_facts` | 앱 안내 카탈로그(기능·화면·이동 경로) |
+| `term_request` | 코드가 판정한 용어 질문(`TermGlossary`). 승인 용어면 승인 코퍼스의 정의 하나, 아니면 `unknown` |
+| `recall` | 사용자가 과거를 언급했을 때 코드가 고른 지난 상담(`RecallRequest`) |
+
+**출력 (strict JSON schema, 요청마다 id enum 고정)**
+
+`domain`(counseling·app_guide·mixed), `dialogue_moves`(acknowledge, restate, reflect_emotion, clarify, open_question, ask_evidence, ask_alternative, ask_probability, connect_past_record, summarize, listen, repair, intervention_question, integrate, answer_app, offer_close, finalize), `intervention {id, step: prompt|integration}`, `used_user_fact_ids`, `used_app_fact_ids`, `definition_id`, `session_action`(continue·offer_close·finalize), `statement`, `question`(0~1개).
+
+출력은 `LlmLedMapping`이 A와 같은 턴 메타데이터(단계, 목표, 기법 단계, 마무리 단계)로 옮긴다. 그래서 중간에 A로 대체돼도 흐름과 저장이 이어진다. 기법 성과 인정은 모델이 아니라 코드 규칙이 정한다.
+
+**검증 (`LlmLedValidator`, 하나라도 걸리면 이번 턴은 A)**
+
+| 묶음 | 규칙 |
+|---|---|
+| 근거 | `unauthorized_intervention`, `unsupported_user_fact`, `unsupported_app_fact`, `app_claim_without_fact`, `definition_mismatch`, `definition_without_request`, `unknown_term_defined`, `recall_not_stated` |
+| 안전·임상 | `diagnosis`, `outcome_guarantee`, `directive`(상담 지시. 앱 조작 안내·승인 기법 질문·대화 권유·인사는 제외), `advice`(상담 권유·당부), `premature_example`(사용자가 써 보기 전의 균형 문장 예시) |
+| 대화 | `too_many_questions`, `question_shape`, `foreign_question_mark`, `repeated_question`, `repeated_reply`, `question_after_no_question_promise`, `exploring_after_closed`, `finalize_without_proposal`(사용자가 먼저 끝내자고 하면 허용) |
+| 말투·길이 | `banmal_reply`, `second_person`, `too_long` |
+
+회상(`recall`)은 응답이 그 기록을 말하지 않으면 코드가 저장된 기록 그대로 회상 문장을 붙인다(`RecallRequest.ensureStated`).
+
+**계측:** 턴마다 기기 로그 `LLM_LED {...}`(문장 없음): 그룹(`direct`·`content_fallback`·`transport_fallback`·`safety`), 거절 사유, 요청 상태(`http_429`·`http_4xx_other`·`http_5xx`·`network_error`·`timeout`·`schema_reject`), 지연 분해, 토큰 수. `tools/demo/latency_breakdown.py`로 집계한다.
+
+### 2.3 대체 경로 A (결정론 파이프라인)
 
 ```mermaid
 flowchart TD
@@ -121,6 +155,7 @@ flowchart TD
 | 파일 | 역할 |
 |---|---|
 | `llm_led_contract.dart` | `LlmLedContext`(경계 구성), `LlmLedOutput`(응답 파싱), `LlmLedValidator`(검증), `LlmLedMapping`(응답 → 다음 상태와 턴 메타데이터, 기법 인정은 코드 규칙) |
+| `pseudonym.dart` | 로그용 세션 가명 |
 | `term_glossary.dart` | 용어 질문 판정. `assets/counseling/glossary.json`은 이름·별칭만 갖고, 정의는 승인 코퍼스에서 읽는다 |
 | `../counseling_harness.dart` `handleLlmLedTurn` | 안전 → 경계 → 호출 → 검증. 실패하면 세션을 바꾸지 않고 null을 돌려 A가 그 턴을 처리한다 |
 | `../counseling_provider.dart` `_handleTurnLlmLedFirst` | B 먼저, 실패 시 A. 턴마다 `LLM_LED` 로그(상태, 그룹, 거절 사유, 지연 분해) |
@@ -182,7 +217,7 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 | closing | 마무리 제안 → 확정 또는 1회 계속 | 세션 상한 | - | 계속하기면 reflect로 1회 복귀 |
 
 - **세션 상한:** 20턴. 넘으면 closing으로 갑니다.
-- **완료 기반 전이 (Phase 13):** reflect와 intervention은 턴 수가 아니라 계획이 보고하는 `StageProgress`로 넘어갑니다. 복구 턴은 완료로 세지 않습니다.
+- **완료 기반 전이:** reflect와 intervention은 턴 수가 아니라 계획이 보고하는 `StageProgress`로 넘어갑니다. 복구 턴은 완료로 세지 않습니다.
 - **조기 마무리 (`StageProgress.wrapUp`):** 어느 단계에서든 closing으로 갑니다(8.4절).
 - **알 수 없는 입력:** 진행으로 세지 않습니다. 단, explore/reflect에서 단계 최대 턴에 닿으면 넘어갑니다.
 
@@ -302,10 +337,10 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 | 기법 성과 인정 조건 | 기법 답 통합에서 성과를 말하는 문장은 다음을 모두 만족할 때만 씁니다. (1) 내용이 있음 (2) 챗봇에게 되묻는 형태가 아님 (3) 해당 기법을 수행한 흔적이 있음. 균형 사고면 "~지만/~해도/~수도", 회피·직면이면 "피하/마주" 같은 표지입니다. 저정보 답에는 "바로 떠오르지 않아도 괜찮아요"를 쓰고, 그 밖에는 성과를 말하지 않는 중립 문장을 씁니다 |
 | 저정보 답 연속 | explore/reflect에서 답이 아닌 발화가 두 번 연속이면 더 묻지 않고 마무리를 제안합니다(`EarlyWrapUp.lowInformation`) |
 | 헷갈림 연속 | 헷갈림 복구가 두 번 연속이면 마무리를 제안합니다(`notUnderstood`) |
-| 진전 없음 | reflect에서 **새 내용 없이 답한 확인 질문**이 두 번 이어졌고, 라운드에 쓸 걱정이 없으면 마무리를 제안합니다(`noProgress`). 사이에 내용 있는 답이 하나라도 있으면 다시 0부터 셉니다(Phase 14.3, `DialogueProgressLedger`) |
-| 확인 질문 반복 금지 | 확인 질문에 새 내용 없이 답하면 같은 확인 질문을 다시 하지 않고 질문 없이 들어 주는 턴(`listenWithoutQuestion`)을 한 번 씁니다. 이 턴은 단계 완료로 세지 않습니다(Phase 14.3) |
-| 기법 대상 보호 | 기법은 걱정 생각(또는 사용자가 말한 행동)에만 적용합니다. 없으면 기법을 쓰지 않고 짧게 정리한 뒤 마무리를 제안하며, 아무것도 인용하지 않습니다(Phase 14.3) |
-| 마무리 거절 우선 | 마무리 제안에 "그만해", "끝낼래" 같은 마무리 표현이 있으면, "아직", "좀 더", "끝내지 말자" 같은 강한 계속 표현이 함께 있지 않은 한 마무리합니다. 맨 앞의 "아니"만으로는 계속하지 않습니다(Phase 14.3) |
+| 진전 없음 | reflect에서 **새 내용 없이 답한 확인 질문**이 두 번 이어졌고, 라운드에 쓸 걱정이 없으면 마무리를 제안합니다(`noProgress`). 사이에 내용 있는 답이 하나라도 있으면 다시 0부터 셉니다 |
+| 확인 질문 반복 금지 | 확인 질문에 새 내용 없이 답하면 같은 확인 질문을 다시 하지 않고 질문 없이 들어 주는 턴(`listenWithoutQuestion`)을 한 번 씁니다. 이 턴은 단계 완료로 세지 않습니다 |
+| 기법 대상 보호 | 기법은 걱정 생각(또는 사용자가 말한 행동)에만 적용합니다. 없으면 기법을 쓰지 않고 짧게 정리한 뒤 마무리를 제안하며, 아무것도 인용하지 않습니다 |
+| 마무리 거절 우선 | 마무리 제안에 "그만해", "끝낼래" 같은 마무리 표현이 있으면, "아직", "좀 더", "끝내지 말자" 같은 강한 계속 표현이 함께 있지 않은 한 마무리합니다. 맨 앞의 "아니"만으로는 계속하지 않습니다 |
 | 불만 인정 | 조기 마무리 턴에 불만이 섞여 있으면 "계속 질문이 이어져서 답답하셨을 것 같아요."로 시작합니다 |
 | 반복 방지 | 같은 문장이 연달아 나오지 않게 후보를 바꿉니다. 저정보 답에 대한 문장이 두 번 이어지면 다른 문구를 씁니다 |
 
@@ -426,21 +461,6 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 
 원칙: 사용자의 감정을 따라 하지 않고 대응한다(괴로움에 괴로운 얼굴이 아니라 안타까운 얼굴). 같은 상황이 이어지면 같은 표정을 유지한다(다양성을 위해 의미를 바꾸지 않는다). 표정 판단에 모델을 추가로 부르지 않는다(예전 구현은 매 턴 GPT를 한 번 더 불렀다).
 
-아래는 첫 구현(단계 기본값 중심)의 설명이다.
-
-```
-사용자 발화 + 최근 SUD + 직전 신호
-  → AffectSignalDetector   어휘 규칙, 모델 호출 없음 → AffectSignal(label, confidence, spike, streak)
-  → AffectiveAdapter       + 상담 상태 + 안전 수준 → AvatarExpression(의미 상태 5개)
-  → AvatarSelector         표정이 바뀔 때만 assets/npc_images/*.png 교체
-```
-
-- 감정 인식이 아니라 **정서 단서 탐지와 상담 태도 조정**입니다. `confidence`는 규칙의 강도이지 보정된 확률이
-  아닙니다. 보고서에서 정확도처럼 쓰면 안 됩니다.
-- 사용자 신호와 상담사 표정은 다른 enum입니다. 사용자가 괴로워해도 상담사는 괴로운 표정이 아니라 걱정하는
-  표정(`concerned`)을 짓습니다(distressed→concerned, anxious→attentive, positive→encouraging).
-- 안전 수준이 normal이 아니면 다른 규칙을 무시하고 `attentive`로 고정합니다.
-
 ---
 
 ## 12. 빌드와 실행
@@ -451,7 +471,6 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 | `COUNSELING_REMOTE_REALIZER` | `false` | 원격 GPT 표현 사용 |
 | `COUNSELING_REMOTE_REALIZER_KILL_SWITCH` | `false` | 원격 표현 즉시 차단 |
 | `COUNSELING_LLM_LED_PATH` | `false` | **B 경로 사용. 데모에서는 반드시 `true`** (허용 목록 계정만 해당) |
-| `COUNSELING_LLM_LED_AB` | `false` | 세션마다 A/B를 블라인드로 배정하고 끝에 평가지를 띄운다(평가용). 데모에서는 `false` |
 
 **실기기 dogfood:** 개발 Mac의 IP가 자주 바뀌므로, adb 포트 포워딩을 걸고 로컬 주소로 빌드합니다. 포워딩은 무선 디버깅이 다시 연결되면 새로 걸어야 합니다.
 
@@ -463,8 +482,7 @@ flutter build apk --debug \
   --dart-define=API_BASE_URL=http://127.0.0.1:8090 \
   --dart-define=COUNSELING_REMOTE_REALIZER=true \
   --dart-define=COUNSELING_REMOTE_REALIZER_KILL_SWITCH=false \
-  --dart-define=COUNSELING_LLM_LED_PATH=true \
-  --dart-define=COUNSELING_LLM_LED_AB=false
+  --dart-define=COUNSELING_LLM_LED_PATH=true
 adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
@@ -472,35 +490,27 @@ adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 
 ---
 
-## 13. 테스트와 평가 게이트
+## 13. 테스트
 
-`flutter test`로 전체를 실행합니다(934개). 묶음별 위치와 결함을 고치는 순서는 [`../HANDOVER.md`](../HANDOVER.md)
-5절에 있습니다.
+`flutter test`로 전체를 실행합니다(996개, 10초 안팎). 백엔드는 `cd backend/app && PYTHONPATH=. python3 -m pytest -q tests`.
 
-**평가 게이트 (`test/counseling/evaluation/`, Phase 13.11에 복원).** 코드를 보지 않은 사람이 쓰고 첫 실행 전에
-동결한 발화 세트(holdout)로 72세션을 돌려 채점합니다. 채점은 `support/session_flow_metrics.dart`입니다.
-
-| 층 | 지표 | 기준 |
+| 묶음 | 위치 | 확인하는 것 |
 |---|---|---|
-| A층 (구조) | 교착, 조기 종료, 기법 답 누락, 미래 주차 기법, 승인 외 CBT, noEligible 교착, 계속 요청 무시, 조기 완료, 상태 반복, 미완료, 복구 턴 원격 실현, 질문 없는 대기 (12종) | 반드시 0 |
-| B층 (검출 의존) | 비답변 인정, 메타 발화 인용, 확인 질문 반복 (3종) | 사용자 턴의 1% 이하 |
-| 기록만 | 메타 발화 놓침(`metaIgnored`), 메타 오탐(`metaFalsePositive`), 범주별 인식률(probe) | 기준 없음 |
+| 단위 | `test/counseling/*_test.dart` | B 계약·검증기(`llm_led_test`), 표정(`avatar_*`), A의 planner·selector·materializer·라우터·발화 해석, 저장·개인화 |
+| A 경로 회귀 | `test/counseling/regression/` | 동결 발화 세트(holdout v1~v5)로 세션 흐름 채점, 멀티턴·주차별 진행·비협조 사용자·감지 게이트. 채점은 `support/session_flow_metrics.dart` |
+| 데모 스모크 | `test/counseling/regression/demo_smoke_test.dart` | 실제 백엔드로 데모 시나리오(`fixtures/demo_smoke_v1.json`)를 A·B 모두 실행. 환경 변수가 없으면 건너뜀. 기준 결과 `baseline/demo_smoke_respond_v11.json` |
+| 실기기 | `integration_test/` | 설치된 앱과 같은 A 경로로 시나리오 실행 |
 
-v1~v5는 모두 이미 본 세트라 **회귀 확인용**입니다. 새 구조를 판정하려면 새 세트를 따로 동결해야 합니다.
+**A 경로 회귀 기준.** 구조 지표(교착, 조기 종료, 기법 답 누락, 미래 주차 기법, 승인 외 CBT, 계속 요청 무시, 상태 반복 등 12종)는 반드시 0, 검출 의존 지표(비답변 인정, 메타 발화 인용, 확인 질문 반복)는 사용자 턴의 1% 이하. 홀드아웃 v4는 기록된 실패 수(반복 확인 4, 비답변 인정 1, 메타 인용 1)를 고정해 두었다. 지표가 바뀌면 테스트가 알려 주며, 기록은 의도적으로만 갱신한다.
 
-**기준선 (2026-10-02, Phase 14 시작 전).**
+**데모 스모크 실행:**
 
-| 세트 | 사용자 턴 | A층 | B층 | 메타 놓침 | 헷갈림 인식 | 반복 지적 | 중단·불만 | 비답변 인식 | 오탐 |
-|---|---|---|---|---|---|---|---|---|---|
-| v1 | 559 | 0 | 0 | 5 | 6/10 | 6/6 | 5/6 | 8/8 | 0/8 |
-| v2 | 614 | 0 | 0 | 18 | 3/12 | 4/8 | 4/8 | 5/10 | 0/10 |
-| v3 | 609 | 0 | 0 | 24 | 2/12 | 2/8 | 2/8 | 6/10 | 0/10 |
-| v4 | 594 | 0 | 7 | 23 | 1/12 | 1/8 | 3/8 | 5/10 | 0/10 |
-| v5 | 608 | 0 | 0 | 21 | 0/12 | 3/8 | 2/8 | 2/10 | 0/10 |
+```bash
+LLM_LED_BASE_URL=http://127.0.0.1:8090 LLM_LED_TOKEN=<로그인 토큰> \
+  flutter test test/counseling/regression/demo_smoke_test.dart
+```
 
-읽는 법: 흐름 구조(A층)는 모든 세트에서 지켜지지만, 처음 보는 메타 발화의 인식률은 세트가 새로울수록
-떨어집니다(v1은 규칙을 만들 때 본 세트). 놓친 발화는 일반 내용으로 처리되고 흐름 안전장치(8.4절)가 피해를
-막습니다. v4의 B층 7건은 당시 불합격으로 기록된 것과 같은 결과입니다.
+통과 기준: 모든 B 턴이 채택되거나 안전하게 A로 대체됨, 위기 → 위기 응답, 종료 요청 → 마무리, 지어낸 기록 0, `؟` 0.
 
 ---
 
@@ -513,22 +523,17 @@ v1~v5는 모두 이미 본 세트라 **회귀 확인용**입니다. 새 구조�
 - **A 대체 응답의 어색함:** B가 대체될 때 A가 사용자 말을 따옴표로 되짚거나 맥락 밖 말에 일반적인 질문을 할 수 있습니다(데모 스모크 20턴 중 2턴).
 - **개인화 데이터 공백:** 이완 과제 API가 SUD를 돌려주지 않아 "효과 있었던 기법"은 과거 상담 세션에서만 옵니다. 일기 요약 API는 대안 생각을 돌려주지 않습니다.
 
-**A 경로 개발 당시의 한계** (B 도입 전 기록)
-
-1. **처음 보는 표현 인식:** 메타 발화와 저정보 답의 검출률이 낮습니다. 마지막 평가 세트 기준으로 처음 보는 헷갈림 표현 0/12, 저정보 답 2/10을 알아봤습니다. 지금은 8.4절의 안전장치가 피해를 막습니다. 근본 해결은 원격 모델 기반 의도 분류입니다(Phase 14 후보).
-2. **원격 GPT 표현 품질:** 딱딱한 표현, 해결책 쪽으로 유도하는 질문, 한 턴에 질문 두 개가 나오는 경우가 있습니다(Phase 14).
-3. **임상 콘텐츠:** 1~3주차 기법 승인, 기법 예시 문장(예시 요청에 답하기), 위기 응답과 상담 문장의 전문가 검수가 필요합니다.
-4. **운영 준비:** 릴리스 빌드와 HTTPS, 원격 kill switch(현재는 빌드 플래그뿐), 서버 측 텔레메트리, 로그인 세션 만료 처리가 남았습니다.
-5. **"~할 수 있을까" 형태:** "내일 시험은 잘 볼 수 있을까" 같은 의문형 걱정은 아직 생각 형태로 보지 않습니다.
+- **A 경로의 규칙 인식 한계:** 처음 보는 메타 발화·저정보 답을 놓칠 수 있습니다(B가 주 경로라 영향은 대체 턴에 한정). 흐름 안전장치(8.4절)가 피해를 막습니다.
+- **"~할 수 있을까" 형태:** "내일 시험은 잘 볼 수 있을까" 같은 의문형 걱정을 A는 생각 형태로 보지 않습니다.
+- **운영 준비:** 릴리스 빌드와 HTTPS, 서버 측 kill switch(지금은 빌드 플래그뿐), 서버 텔레메트리(지금은 기기 로그), 운영 서버 배포.
 
 ---
 
-## 15. 버전 기록
+## 15. 버전
 
 | 태그 | 내용 |
 |---|---|
-| `counseling-v1-clean-baseline` | 결정론 선택 + 검증된 원격 표현 + 안전한 대체 + rollout 인프라 |
-| `counseling-v1.1-selection-repair` | 메타 발화 복구, 목표 소진 대응, 멀티턴 견고성 |
-| `counseling-v1.2-session-flow` | 완료 기반 세션 흐름, 누적 기법, 마무리 핸드셰이크, 헷갈림·저정보 처리, 흐름 안전장치, 두 층 게이트 |
-| `respond-v11-demo-freeze` | v9 + 코드가 고르고 보장하는 과거 기록 회상(`RecallRequest`), 권유·점심 메뉴 오탐 수정. 데모 스모크 19턴 대체 0 |
-| `respond-v9-demo-freeze` | B 경로(Bounded LLM-led) 주 경로화, A는 대체 경로. 조언 차단, 종료 처리, 맥락 밖 입력 안내, 실패 분류 계측. 데모 스모크(`fixtures/demo_smoke_v1.json`) 통과 후 동결 |
+| `respond-v11-demo-freeze` | 데모 동결: B 주 경로 + A 대체, 코드가 보장하는 과거 기록 회상. 데모 스모크 19턴 대체 0 |
+| `chatbot-handover-2026-10-04` | 인수인계 정리: 꺼진 기능(의도 분류기, A/B 평가지, 벤치마크, 즉시 공감)과 과거 산출물 제거, 문서 정리, 두 박자 표정 |
+
+이전 개발 기록(단계별 설계, 평가 결과)은 저장소에서 지웠고 git 기록에만 있습니다(`git log -- docs/counseling test/counseling`).

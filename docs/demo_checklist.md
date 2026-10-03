@@ -1,6 +1,6 @@
 # 시연 체크리스트 (MindRium 상담 챗봇 데모)
 
-기준: 태그 `respond-v11-demo-freeze`. 시연 전에는 상담 로직과 프롬프트를 바꾸지 않습니다.
+기준: 태그 `chatbot-handover-2026-10-04` (상담 응답은 `respond-v11-demo-freeze`와 같음). 시연 전에는 상담 로직과 프롬프트를 바꾸지 않습니다.
 구조 설명은 [`counseling/chatbot_system.md`](counseling/chatbot_system.md)에 있습니다.
 
 ## 0. 준비물 (하루 전)

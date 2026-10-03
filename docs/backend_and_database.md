@@ -1,6 +1,6 @@
 # Mindrium Backend 및 Database 구조
 
-> 기준: 2026-09-05 작성, 2026-10-02 상담 부분 갱신. 이 문서는 배포 중인 서버를 역추적한 문서가
+> 기준: 2026-09-05 작성, 2026-10-04 상담 부분 갱신. 이 문서는 배포 중인 서버를 역추적한 문서가
 > 아니라 `backend/app`, `lib/data/api`, `lib/data/storage`의 실제 구현을 기준으로 한다.
 
 ## 1. 전체 구조
@@ -87,6 +87,8 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 | `TreatmentProgressApi` | `/treatment-progress` | 1~8주 진행 상태 |
 | `ScreenTimeApi` | `/screen-time` | 앱 사용 세션과 통계 |
 | `CounselingSessionsApi` | `/counseling-sessions` | 상담 원문이 아닌 구조화 세션 요약 upsert/조회 |
+| `DioCounselingRespondApi` | `/counseling/respond` | 상담 주 경로(B): 경계 안에서 다음 응답 하나를 GPT가 JSON으로 결정 |
+| `DioCounselingRealizeApi` | `/counseling/realize` | 대체 경로(A)의 문장 표현 |
 | `AlarmSettingsApi` | `/alarm-settings` | 서버 동기화 알림 설정 |
 
 화면에서 wrapper를 직접 생성하는 곳이 많고 중앙 DI container는 없다.
@@ -121,12 +123,12 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 | `PLATFORM_SIGNUP_URL` | 외부 플랫폼 회원가입 endpoint | 없음 |
 | `CORS_ORIGINS` | 허용 origin 설정값 | localhost 목록 |
 | `SMTP_*`, `EMAIL_FROM` | 이메일 전송 설정 | 없음 |
-| `OPENAI_*` | GPT 상담 표현 계층(realize) 설정 | `backend/app/.env`에 실제 key 설정 |
+| `OPENAI_*` | 상담 GPT 호출(respond, realize) 설정 | `backend/app/.env`에 실제 key 설정 |
 
-`OPENAI_*`는 `routers/counseling_realize.py`가 `POST /counseling/realize`에서
-실제로 사용한다. 상담 문장 표현은 이 backend proxy를 통해 GPT(`gpt-4o-mini`)를
-호출하며, 앱은 OpenAI API를 직접 호출하지 않는다. 연동 계약은
-[`counseling/chatbot_system.md`](counseling/chatbot_system.md) 9절 참고.
+`OPENAI_*`는 `routers/counseling_respond.py`(`POST /counseling/respond`, 상담 주 경로)와
+`routers/counseling_realize.py`(`POST /counseling/realize`, 대체 경로의 문장 표현)가 사용한다.
+모델은 `gpt-4o-mini`, 키는 서버에만 있고 앱은 백엔드를 거친다.
+[`counseling/chatbot_system.md`](counseling/chatbot_system.md) 2절 참고.
 
 ### 인증 모델
 
@@ -161,7 +163,8 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 - `/screen-time`: 사용 세션 생성·목록·요약
 - `/alarm-settings`: 사용자 알림 전체 조회·replace
 - `/counseling-sessions`: 상담 세션 요약 upsert(`PUT /{session_id}`)·최근 목록(`GET`)
-- `/counseling/realize`: 상담 문장 GPT 표현(`POST`)
+- `/counseling/respond`: 상담 주 경로(`POST`). 실패는 `detail.reason`으로 분류해 502/504로 돌려준다(`http_429`, `http_4xx_other`, `http_5xx`, `network_error`, `timeout`, `schema_reject`)
+- `/counseling/realize`: 대체 경로의 상담 문장 GPT 표현(`POST`)
 
 대부분 인증이 필요하다. `/auth/*`, `/`, `/health`가 대표적인 공개 경로다.
 
@@ -514,7 +517,7 @@ router update, 인덱스, Flutter parser를 함께 갱신해야 한다.
    감시해야 한다.
 8. API wrapper 생성이 화면별로 분산돼 있어 base URL, retry, mock 주입의 일관된 테스트가
    어려울 수 있다.
-9. `OPENAI_API_KEY`가 없으면 `/counseling/realize`는 실패한다. 앱은 이 경우 결정론 문장으로
+9. `OPENAI_API_KEY`가 없으면 `/counseling/respond`와 `/counseling/realize`는 실패한다. 앱은 이 경우 결정론 경로(A)와 결정론 문장으로
    대체하므로 오류가 화면에 드러나지 않는다.
 10. 리포지토리에 `.env.example`이 없다. 필요한 변수는 위 표와 `docs/HANDOVER.md` 2.2절을 따른다.
 
@@ -545,4 +548,6 @@ router update, 인덱스, Flutter parser를 함께 갱신해야 한다.
 - Flutter endpoint wrappers: `lib/data/api/`
 - token/session storage: `lib/data/storage/`
 - 상담 harness/orchestration: `lib/features/counseling/`
-- GPT 상담 realize proxy: `backend/app/routers/counseling_realize.py`
+- 상담 주 경로(B): `backend/app/routers/counseling_respond.py`, `schemas/counseling_respond.py`
+- 대체 경로(A) 문장 표현: `backend/app/routers/counseling_realize.py`
+- 데모 계정 시드: `backend/scripts/seed_demo_account.py`
