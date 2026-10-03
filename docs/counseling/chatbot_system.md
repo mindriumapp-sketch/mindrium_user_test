@@ -1,6 +1,6 @@
 # Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
 
-기준: 2026-10-03, 데모 동결 태그 `respond-v9-demo-freeze`. 실행 방법과 인수인계 요약은
+기준: 2026-10-03, 데모 동결 태그 `respond-v11-demo-freeze`. 실행 방법과 인수인계 요약은
 [`../HANDOVER.md`](../HANDOVER.md), 시연 절차는 [`../demo_checklist.md`](../demo_checklist.md)에 있습니다.
 LLM 주도 경로(B)의 설계·평가 기록은 [`phase14x_bounded_llm_led.md`](phase14x_bounded_llm_led.md)에 있습니다.
 
@@ -46,6 +46,7 @@ LLM 호출 전에 코드가 정하는 경계:
 - **기법 자격:** 현재 주차까지의 승인 기법만 enum으로 준다.
 - **앱 사실:** 앱 안내 지식(기능, 화면, 이동 경로, id 포함).
 - **용어:** 사용자가 물은 용어를 코드가 판정하고(`TermGlossary`), 승인 코퍼스의 정의 하나만 준다.
+- **회상:** 사용자가 과거를 언급하면("예전에도", "지난번") 코드가 주제가 겹치는 지난 완료 상담을 고른다(`RecallRequest`). 응답이 그 기록(걱정, 그때 정리한 생각)을 말하지 않으면 코드가 저장된 기록 그대로 회상 문장을 붙인다.
 - **진행 근거:** 걱정 파악, 근거·관점 탐색, 탐색 종료(`explore_closed`), 최근 질문, 종료 요청, 새 주제 여부.
 
 응답 뒤 검증기가 거절하는 것 (주요 항목): 승인되지 않은 기법, 주지 않은 사용자·앱 사실, 진단·결과 보장, 상담 지시·조언(`directive`, `advice`), 사용자가 시도하기 전의 예시 문장(`premature_example`), 질문 2개 이상, 반복 질문·반복 응답, 반말, 제안 없는 종료, 탐색 종료 후 같은 걱정 재탐색, 용어 정의 불일치. 거절 사유는 `LLM_LED` 로그에 남는다(텍스트 없음).
@@ -148,7 +149,7 @@ flowchart TD
 
 | 엔드포인트 | 역할 |
 |---|---|
-| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v9`, `gpt-4o-mini`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
+| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v11`, `gpt-4o-mini`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
 | `POST /counseling/realize` | 결정론 초안과 계획을 받아 GPT로 다시 표현한다(`counseling_realize.py`, 시스템 프롬프트 포함). 모델은 서버 설정 `openai_model`을 따른다 |
 | `PUT /counseling-sessions/{session_id}` | 세션 요약 upsert |
 | `GET /counseling-sessions` | 최근 세션 조회(이전 세션 맥락용) |
@@ -474,7 +475,7 @@ v1~v5는 모두 이미 본 세트라 **회귀 확인용**입니다. 새 구조�
 
 ## 14. 알려진 한계와 다음 단계
 
-**데모 동결 시점(respond_v9)의 한계**
+**데모 동결 시점(respond_v11)의 한계**
 - **임상:** 1~3주차 기법은 임상 승인 전입니다. 위기 감지는 키워드 기반이고 위기 응답 문구는 전문가 검수 전입니다.
 - **운영:** 개발용 백엔드(Mac에서 실행), debug 빌드, HTTP, adb 포트 포워딩에 의존합니다. OpenAI 처리는 허용 목록의 내부·데모 계정에서만 일어납니다.
 - **B 경로 잔여 결함:** statement 안의 숨은 두 번째 질문은 검증기가 막고 A로 대체됩니다(약 2~3%). "사용자가 하지 않은 말 인용"은 프롬프트로만 막습니다. 앱 기능을 권하는 문장은 앱 안내로 보고 허용합니다.
@@ -498,4 +499,5 @@ v1~v5는 모두 이미 본 세트라 **회귀 확인용**입니다. 새 구조�
 | `counseling-v1-clean-baseline` | 결정론 선택 + 검증된 원격 표현 + 안전한 대체 + rollout 인프라 |
 | `counseling-v1.1-selection-repair` | 메타 발화 복구, 목표 소진 대응, 멀티턴 견고성 |
 | `counseling-v1.2-session-flow` | 완료 기반 세션 흐름, 누적 기법, 마무리 핸드셰이크, 헷갈림·저정보 처리, 흐름 안전장치, 두 층 게이트 |
+| `respond-v11-demo-freeze` | v9 + 코드가 고르고 보장하는 과거 기록 회상(`RecallRequest`), 권유·점심 메뉴 오탐 수정. 데모 스모크 19턴 대체 0 |
 | `respond-v9-demo-freeze` | B 경로(Bounded LLM-led) 주 경로화, A는 대체 경로. 조언 차단, 종료 처리, 맥락 밖 입력 안내, 실패 분류 계측. 데모 스모크(`fixtures/demo_smoke_v1.json`) 통과 후 동결 |

@@ -740,8 +740,11 @@ class CounselingHarness {
       'prompt_tokens': (res['prompt_tokens'] as num?)?.toInt(),
       'completion_tokens': (res['completion_tokens'] as num?)?.toInt(),
     };
-    final out = LlmLedOutput.tryParse(res['output']);
-    if (out == null) return LlmLedTurn(status: 'schema_reject', latencyMs: latency, timing: timing);
+    final parsed = LlmLedOutput.tryParse(res['output']);
+    if (parsed == null) return LlmLedTurn(status: 'schema_reject', latencyMs: latency, timing: timing);
+    // A recall code resolved is always stated (from the stored record).
+    final out = ctx.recall?.ensureStated(parsed, userMessage) ?? parsed;
+    if (!identical(out, parsed)) timing['recall_composed'] = 1;
     final validateWatch = Stopwatch()..start();
     final violations = LlmLedValidator.validate(out, ctx);
     timing['validate_ms'] = validateWatch.elapsedMilliseconds;

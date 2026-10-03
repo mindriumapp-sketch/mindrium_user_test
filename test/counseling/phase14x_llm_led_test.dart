@@ -315,6 +315,9 @@ void main() {
           isNot(contains('directive')));
       expect(v(_out(text: '그렇군요. 그 일을 말씀해 주세요.')), isNot(contains('directive')));
       expect(v(_out(text: '안녕하세요. 만나서 반가워요.')), isNot(contains('directive')));
+      expect(v(_out(moves: ['listen'], text: '알겠습니다. 마음속에 있는 이야기를 편하게 나눠 보세요.')), isNot(contains('directive')));
+      expect(v(_out(domain: 'mixed', moves: ['listen'], text: '점심 메뉴를 고민하고 계시는군요. 어떤 이야기를 나눠 볼까요?')),
+          isNot(contains('app_claim_without_fact')));
       expect(v(_out(text: '오늘은 일찍 자 보세요.')), contains('directive'));
     });
     test('device check: asking what the technique is allows a short example', () {
@@ -358,6 +361,14 @@ void main() {
       expect(vr(_out(moves: ['connect_past_record'], userIds: ['session:p1'],
           text: "지난번에도 발표 걱정을 이야기하셨어요. 그때 '긴장해도 준비한 내용은 설명할 수 있다'고 정리해 보셨죠. 그 생각이 이번에도 도움이 될 것 같으세요?")),
           isNot(contains('recall_not_stated')));
+      // an ask-back is replaced by the stored record, in code's words
+      final asked = LlmLedOutput.tryParse(_out(moves: ['acknowledge', 'listen'],
+          text: '예전에도 발표 때문에 걱정하셨군요. 그때 어떤 걱정이 있었는지 기억나시나요?')['output'])!;
+      final fixed = c.recall!.ensureStated(asked, u);
+      expect(fixed.statement, startsWith('예전에도 발표 때문에 걱정하셨군요.'));
+      expect(fixed.statement, contains('긴장해도 준비한 내용은 설명할 수 있다'));
+      expect(fixed.usedUserFactIds, contains('session:p1'));
+      expect(LlmLedValidator.validate(fixed, c), isEmpty);
     });
     test('respond_v2: an intervention step always carries an id', () {
       final raw = Map<String, dynamic>.from(_out()['output'] as Map)..['intervention'] = {'step': 'prompt'};

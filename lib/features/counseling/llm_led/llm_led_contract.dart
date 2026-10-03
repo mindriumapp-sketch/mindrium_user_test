@@ -318,6 +318,35 @@ class RecallRequest {
 
   Map<String, Object?> toJson() => {'fact_id': factId, 'worry': worry, 'alternative': alternative};
 
+  /// The recall in code's words, from the stored record only.
+  String get sentence => alternative != null
+      ? "지난번에도 '$worry'라는 걱정을 이야기하셨어요. 그때 '$alternative'라고 정리해 보셨죠."
+      : "지난번에도 '$worry'라는 걱정을 이야기하셨어요.";
+
+  String get followUp => alternative != null ? '그 생각이 이번에도 도움이 될 것 같으세요?' : '이번에는 그때와 어떤 점이 비슷하거나 다른 것 같으세요?';
+
+  /// Demo check (v11): the model stated the recall 2 times in 5 and asked
+  /// it back otherwise. When the reply does not state it, code states it:
+  /// the model's first sentence (its acknowledgment) + the stored record +
+  /// a fixed follow-up. Nothing the record does not say is added.
+  LlmLedOutput ensureStated(LlmLedOutput o, String userMessage) {
+    if (statedIn(o.statement, userMessage) && o.usedUserFactIds.contains(factId)) return o;
+    final first = o.statement.split(RegExp(r'(?<=[.!])\s+')).first.trim();
+    final ack = first.contains(RegExp('[?？]')) || first.isEmpty ? '' : '$first ';
+    return LlmLedOutput(
+      domain: o.domain,
+      moves: {...o.moves.where((m) => m != 'open_question' && m != 'listen'), 'connect_past_record'}.toList(),
+      interventionId: null,
+      interventionStep: null,
+      usedUserFactIds: {...o.usedUserFactIds, factId}.toList(),
+      usedAppFactIds: o.usedAppFactIds,
+      definitionId: o.definitionId,
+      sessionAction: 'continue',
+      statement: '$ack$sentence',
+      question: followUp,
+    );
+  }
+
   /// The reply states the recalled content: at least two content stems of
   /// the alternative (or of the worry when there is none) that the user's
   /// message did not already supply.
@@ -436,7 +465,7 @@ class LlmLedValidator {
   // user to speak; it is not a behavioral directive.
   // Greetings ("안녕하세요", "안녕히 가세요") are not directives either.
   static final RegExp _invitationToTalk = RegExp(
-    r'((이야기|얘기|말씀|말)(을|를)?\s*(편하게\s*)?(해|하)\s*(보|주)?\s*세요|안녕(하|히)\s*(세요|가세요|계세요))',
+    r'((이야기|얘기|말씀|말)(을|를)?\s*(편하게\s*)?(해|하)\s*(보|주)?\s*세요|(나눠|털어놓아|들려)\s*(보|주)\s*세요|안녕(하|히)\s*(세요|가세요|계세요))',
   );
   // respond_v3: the counselor always speaks 해요체. A sentence ending in a
   // banmal ending (not followed by 요) is rejected.
@@ -553,7 +582,9 @@ class LlmLedValidator {
     }
     if (!o.usedUserFactIds.every(c.userFactIds.contains)) v.add('unsupported_user_fact');
     if (!o.usedAppFactIds.every(c.appFactIds.contains)) v.add('unsupported_app_fact');
-    final mentionsApp = _appTerms.hasMatch(o.text) || c.appNames.any((n) => o.text.contains(n));
+    // "점심 메뉴" is food, not an app menu.
+    final appText = o.text.replaceAll(RegExp(r'(점심|저녁|아침|식사|음식|식당)\s*메뉴'), ' ');
+    final mentionsApp = _appTerms.hasMatch(appText) || c.appNames.any((n) => appText.contains(n));
     if (mentionsApp && o.usedAppFactIds.isEmpty && o.domain != 'counseling') {
       v.add('app_claim_without_fact');
     }
