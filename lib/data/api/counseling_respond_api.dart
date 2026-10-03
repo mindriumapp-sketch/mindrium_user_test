@@ -14,8 +14,13 @@ class CounselingRespondFailure implements Exception {
   final bool retryAfter;
   final String? providerRequestId;
 
+  /// schema_reject only: empty | malformed_json | schema_reject | malformed,
+  /// and the model's finish_reason ("length": cut off at max_tokens).
+  final String? cause;
+  final String? finishReason;
+
   const CounselingRespondFailure(this.requestStatus,
-      {this.httpStatus, this.retryAfter = false, this.providerRequestId});
+      {this.httpStatus, this.retryAfter = false, this.providerRequestId, this.cause, this.finishReason});
 
   static const _reasons = {
     'http_429', 'http_4xx_other', 'http_5xx', 'network_error', 'timeout', 'schema_reject',
@@ -30,6 +35,8 @@ class CounselingRespondFailure implements Exception {
         httpStatus: (detail['upstream_status'] as num?)?.toInt() ?? status,
         retryAfter: detail['retry_after'] == true,
         providerRequestId: detail['provider_request_id'] as String?,
+        cause: detail['cause'] as String?,
+        finishReason: detail['finish_reason'] as String?,
       );
     }
     return CounselingRespondFailure(

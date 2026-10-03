@@ -731,6 +731,7 @@ class CounselingHarness {
       'request_ms': latency,
       'model_ms': (res['latency_ms'] as num?)?.toInt(),
       'prompt_tokens': (res['prompt_tokens'] as num?)?.toInt(),
+      'completion_tokens': (res['completion_tokens'] as num?)?.toInt(),
     };
     final out = LlmLedOutput.tryParse(res['output']);
     if (out == null) return LlmLedTurn(status: 'schema_reject', latencyMs: latency, timing: timing);

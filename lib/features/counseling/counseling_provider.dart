@@ -541,6 +541,8 @@ class CounselingProvider extends ChangeNotifier {
       'http_status': b.failure?.httpStatus,
       'retry_after': b.failure?.retryAfter,
       'provider_request_id': b.failure?.providerRequestId,
+      'reject_cause': b.failure?.cause,
+      'finish_reason': b.failure?.finishReason,
       'fallback': b.result == null,
       'latency_ms': b.latencyMs,
       'domain': o?.domain,

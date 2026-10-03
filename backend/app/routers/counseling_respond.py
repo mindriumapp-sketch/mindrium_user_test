@@ -180,7 +180,7 @@ async def respond(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="not configured")
     started = time.monotonic()
 
-    def fail(code: int, reason: str, upstream=None) -> HTTPException:
+    def fail(code: int, reason: str, upstream=None, cause=None, finish_reason=None) -> HTTPException:
         """Classified failure (no prompt, no key): reason is one of http_429 |
         http_4xx_other | http_5xx | network_error | timeout | schema_reject."""
         detail = {
@@ -188,11 +188,15 @@ async def respond(
             "upstream_status": upstream.status_code if upstream is not None else None,
             "retry_after": bool(upstream is not None and upstream.headers.get("retry-after")),
             "provider_request_id": upstream.headers.get("x-request-id") if upstream is not None else None,
+            # schema_reject only: empty | malformed_json | schema_reject; and
+            # the model's finish_reason ("length" = cut off at max_tokens)
+            "cause": cause,
+            "finish_reason": finish_reason,
         }
         logger.warning(
-            "counseling_respond: fail reason=%s upstream_status=%s retry_after=%s provider_request_id=%s "
-            "request_id=%s latency_ms=%d",
-            reason, detail["upstream_status"], detail["retry_after"], detail["provider_request_id"],
+            "counseling_respond: fail reason=%s cause=%s finish_reason=%s upstream_status=%s retry_after=%s "
+            "provider_request_id=%s request_id=%s latency_ms=%d",
+            reason, cause, finish_reason, detail["upstream_status"], detail["retry_after"], detail["provider_request_id"],
             payload.request_id, int((time.monotonic() - started) * 1000),
         )
         return HTTPException(status_code=code, detail=detail)
@@ -221,15 +225,17 @@ async def respond(
     if res.status_code >= 400:
         reason = upstream_reason(res.status_code)
         raise fail(status.HTTP_502_BAD_GATEWAY, reason, res)
+    finish_reason = None
     try:
         body = res.json()
-        output = parse_output(body["choices"][0]["message"]["content"])
+        choice = body["choices"][0]
+        finish_reason = choice.get("finish_reason")
+        output = parse_output(choice["message"]["content"])
         usage = body.get("usage") or {}
     except RespondRejected as e:
-        logger.warning("counseling_respond: rejected reason=%s request_id=%s", e.reason, payload.request_id)
-        raise fail(status.HTTP_502_BAD_GATEWAY, "schema_reject")
+        raise fail(status.HTTP_502_BAD_GATEWAY, "schema_reject", res, cause=e.reason, finish_reason=finish_reason)
     except (KeyError, IndexError, TypeError, ValueError):
-        raise fail(status.HTTP_502_BAD_GATEWAY, "schema_reject")
+        raise fail(status.HTTP_502_BAD_GATEWAY, "schema_reject", res, cause="malformed", finish_reason=finish_reason)
     logger.info("counseling_respond: ok request_id=%s latency_ms=%d", payload.request_id, latency_ms)
     return CounselingRespondResponse(
         request_id=payload.request_id,

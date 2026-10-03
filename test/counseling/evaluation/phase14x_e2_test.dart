@@ -77,6 +77,7 @@ void main() {
           requestStatus = t.requestStatus;
           group = t.group;
           httpStatus = t.failure?.httpStatus;
+          detail = t.failure == null ? detail : '${t.failure!.cause ?? ''} ${t.failure!.finishReason ?? ''}'.trim();
           if (t.result != null) {
             r = t.result!;
           } else {

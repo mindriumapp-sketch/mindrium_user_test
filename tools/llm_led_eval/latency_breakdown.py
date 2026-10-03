@@ -12,7 +12,7 @@ import json
 import sys
 from collections import Counter, defaultdict
 
-FIELDS = ("request_ms", "model_ms", "validate_ms", "fallback_ms", "end_to_end_ms")
+FIELDS = ("request_ms", "model_ms", "validate_ms", "fallback_ms", "end_to_end_ms", "prompt_tokens", "completion_tokens")
 GROUPS = ("direct", "content_fallback", "transport_fallback", "safety")
 
 
