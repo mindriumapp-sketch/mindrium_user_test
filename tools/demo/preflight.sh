@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 시연 직전 환경 점검 (docs/demo_checklist.md).
+# 시연 직전 환경 점검 (docs/HANDOVER.md 7절).
 #
 #   DEMO_PASSWORD='<데모 계정 비밀번호>' tools/demo/preflight.sh            # 점검만
 #   DEMO_PASSWORD='<데모 계정 비밀번호>' tools/demo/preflight.sh --install  # + 데모 빌드 설치
@@ -21,7 +21,7 @@ echo "[코드]"
 info "HEAD $(git rev-parse --short HEAD) $(git describe --tags --exact-match 2>/dev/null || echo '(태그 없음)')"
 
 echo "[백엔드]"
-if curl -s -m 5 -o /dev/null -w '%{http_code}' "$BASE/health" | grep -q 200; then ok "/health 응답"; else bad "백엔드가 응답하지 않음 — 서버를 띄우세요 (docs/demo_checklist.md 1단계)"; fi
+if curl -s -m 5 -o /dev/null -w '%{http_code}' "$BASE/health" | grep -q 200; then ok "/health 응답"; else bad "백엔드가 응답하지 않음 — 서버를 띄우세요 (docs/HANDOVER.md 2.2절)"; fi
 
 echo "[데모 계정]"
 if [ -z "${DEMO_PASSWORD:-}" ]; then
@@ -70,4 +70,4 @@ if [ "${1:-}" = "--install" ] && [ -n "$DEV" ]; then
 fi
 
 echo
-if [ $FAIL -eq 0 ]; then echo "사전 점검 통과. 체크리스트의 앱 내 확인(4단계)으로 넘어가세요."; else echo "실패 항목을 해결한 뒤 다시 실행하세요."; exit 1; fi
+if [ $FAIL -eq 0 ]; then echo "사전 점검 통과. 앱에서 데모 계정으로 로그인하고 앱 내 확인(HANDOVER.md 7.2절 4번)으로 넘어가세요."; else echo "실패 항목을 해결한 뒤 다시 실행하세요."; exit 1; fi

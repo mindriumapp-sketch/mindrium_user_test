@@ -1,7 +1,7 @@
 # Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
 
 기준: 2026-10-04, 태그 `chatbot-handover-2026-10-04`. 실행 방법과 인수인계 요약은 [`../HANDOVER.md`](../HANDOVER.md),
-시연 절차는 [`../demo_checklist.md`](../demo_checklist.md), 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md)에 있습니다.
+시연 절차는 [`../HANDOVER.md`](../HANDOVER.md) 7절, 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md)에 있습니다.
 
 이 기능은 의료 진단이나 전문 치료를 대체하지 않습니다. 안전 관문은 키워드 기반이고, 상담 문장과 위기 응답은
 아직 임상 전문가의 검수를 받지 않았습니다. 외부 사용자에게 공개하기 전에 검수가 필요합니다.
@@ -474,7 +474,7 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 
 **실기기 dogfood:** 개발 Mac의 IP가 자주 바뀌므로, adb 포트 포워딩을 걸고 로컬 주소로 빌드합니다. 포워딩은 무선 디버깅이 다시 연결되면 새로 걸어야 합니다.
 
-데모 빌드와 사전 점검은 `tools/demo/preflight.sh --install` 한 번으로 합니다([`../demo_checklist.md`](../demo_checklist.md)). 수동으로 할 때:
+데모 빌드와 사전 점검은 `tools/demo/preflight.sh --install` 한 번으로 합니다([`../HANDOVER.md`](../HANDOVER.md) 7절). 수동으로 할 때:
 
 ```bash
 adb -s <device> reverse tcp:8090 tcp:8090
