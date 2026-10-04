@@ -34,7 +34,7 @@ else
     ok "데모 계정 로그인 ($EMAIL)"
     WEEK=$(curl -s -m 10 "$BASE/users/me/progress" -H "Authorization: Bearer $TOKEN" \
       | python3 -c 'import sys,json; print(json.load(sys.stdin).get("current_week"))' 2>/dev/null)
-    [ "$WEEK" = "5" ] && ok "현재 주차 5" || bad "현재 주차가 5가 아님($WEEK) — seed_demo_account.py 를 다시 실행"
+    [ "$WEEK" = "6" ] && ok "현재 주차 6" || bad "현재 주차가 6이 아님($WEEK) — seed_demo_account.py 를 다시 실행"
     N=$(curl -s -m 10 "$BASE/counseling-sessions?limit=10" -H "Authorization: Bearer $TOKEN" \
       | python3 -c 'import sys,json; d=json.load(sys.stdin); print(len(d if isinstance(d,list) else d.get("items",d.get("sessions",[]))))' 2>/dev/null)
     [ "${N:-0}" -ge 1 ] && ok "과거 상담 기록 ${N}개" || bad "과거 상담 기록 없음 — seed_demo_account.py 를 다시 실행"
