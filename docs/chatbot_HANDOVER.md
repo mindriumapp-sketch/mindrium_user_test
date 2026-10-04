@@ -61,6 +61,7 @@ B는 허용 목록 계정에서만 켜집니다(사용자 원문이 OpenAI로 �
 | `JWT_SECRET`, `JWT_REFRESH_SECRET` | 예 | 토큰 서명 키 |
 | `OPENAI_API_KEY` | 예 | 없으면 B와 A의 문장 표현이 모두 실패하고 결정론 응답만 나감 |
 | `OPENAI_MODEL` | 아니오 | 기본 `gpt-4o-mini` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | 비밀번호 찾기 사용 시 | 인증번호 메일 발송. 처음 한 번 `python3 ../scripts/migrate_password_reset_otp_fields.py`로 `users` 필드를 초기화 |
 
 가상환경은 git에 없는 로컬 환경입니다. 의존성의 기준은 `backend/app/requirements.txt`입니다(Python 3.12에서 확인).
 
