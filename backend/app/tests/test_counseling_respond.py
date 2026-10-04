@@ -73,3 +73,15 @@ def test_upstream_failures_are_classified():
     assert upstream_reason(429) == "http_429"
     assert upstream_reason(503) == "http_5xx"
     assert upstream_reason(400) == "http_4xx_other"
+
+
+def test_diary_summary_carries_alternative_thoughts():
+    from routers.diaries import _serialize_diary_summary
+    from schemas.diary import DiarySummaryResponse
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    doc = {"diary_id": "d1", "activation": {"label": "발표"}, "created_at": now, "updated_at": now,
+           "alternative_thoughts": ["준비한 건 설명할 수 있다"]}
+    out = DiarySummaryResponse(**_serialize_diary_summary(doc))
+    assert out.alternative_thoughts == ["준비한 건 설명할 수 있다"]
+    assert DiarySummaryResponse(**_serialize_diary_summary({**doc, "alternative_thoughts": None})).alternative_thoughts == []

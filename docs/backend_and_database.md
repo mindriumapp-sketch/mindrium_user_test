@@ -153,7 +153,7 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 - `/auth`: signup, login, refresh, password change/reset
 - `/users`: 내 정보 조회·수정·soft delete, 주간 사용자 통계
 - `/users/me`: value goal, embedded surveys, 전체 진행도, today task
-- `/diaries`: 생성·목록·요약·최신·today-task·draft·단건·loc_time
+- `/diaries`: 생성·목록·요약·최신·today-task·draft·단건·loc_time. 요약(`GET /diaries/summaries`)은 상담 챗봇이 쓰며 `alternative_thoughts`(사용자가 적은 도움이 되는 생각)를 포함한다
 - `/sud-scores`: diary embedded SUD CRUD, 일/주 통계
 - `/worry-groups`: 목록·아카이브 목록·CRUD·archive
 - `/custom-tags`: 태그 CRUD, real-oddness/category embedded log

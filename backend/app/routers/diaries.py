@@ -361,6 +361,7 @@ def _serialize_diary_summary(doc: dict) -> dict:
         "consequence_emotion": _serialize_chip_list(doc.get("consequence_emotion")),
         "consequence_action": _serialize_chip_list(doc.get("consequence_action")),
         "latest_sud": parse_sud_value(doc.get("latest_sud")),
+        "alternative_thoughts": doc.get("alternative_thoughts") or [],
         "created_at": parse_datetime_value(doc.get("created_at")),
         "updated_at": parse_datetime_value(doc.get("updated_at")),
     }
@@ -507,6 +508,7 @@ async def list_diary_summaries(
         "created_at": 1,
         "updated_at": 1,
         "latest_sud": 1,
+        "alternative_thoughts": 1,
     }
 
     cursor = collection.find(query, projection=projection).sort("created_at", -1)

@@ -103,3 +103,5 @@ class DiarySummaryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     latest_sud: Optional[int] = None
+    # 4주차·불안 완화 흐름에서 사용자가 적은 도움이 되는 생각 (상담 챗봇이 회상 근거로 씀)
+    alternative_thoughts: List[str] = Field(default_factory=list)
