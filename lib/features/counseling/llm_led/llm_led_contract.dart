@@ -301,17 +301,22 @@ class RecallRequest {
         if (m.isUser) ...EpisodeHistory.topicKeys(m.text),
     };
     if (topics.isEmpty) return null;
+    // The episode sharing the most topic words wins; a credited alternative
+    // breaks ties (device check: a stray shared word must not beat the
+    // episode that is actually about the same thing).
     PreviousSession? best;
+    var bestScore = 0;
     for (final e in episodes.episodes) {
       if (!e.isCompleted) continue;
       final past = {...EpisodeHistory.topicKeys(e.coreThought ?? ''), ...EpisodeHistory.topicKeys(e.mainConcern ?? '')};
-      if (past.intersection(topics).isEmpty) continue;
+      final overlap = past.intersection(topics).length;
+      if (overlap == 0) continue;
       final hasAlt = e.interventionOutcome == 'credited' && (e.alternativeThought?.trim().isNotEmpty ?? false);
-      if (hasAlt) {
+      final score = overlap * 2 + (hasAlt ? 1 : 0);
+      if (score > bestScore) {
         best = e;
-        break;
+        bestScore = score;
       }
-      best ??= e;
     }
     final worry = best?.coreThought ?? best?.mainConcern;
     if (best == null || worry == null) return null;

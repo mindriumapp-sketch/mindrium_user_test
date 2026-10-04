@@ -349,6 +349,20 @@ void main() {
           contains('repeated_reply'));
       expect(v(_out(moves: ['acknowledge'], text: '네, 안녕하세요. 아까 이야기로 돌아가 볼까요?'), s: s), isEmpty);
     });
+    test('device check: recall picks the episode on the same topic, not one sharing a filler word', () {
+      final s = _session(messages: [
+        _u('요즘 팀 프로젝트 때문에 불안해'), _a('어떤 부분이 가장 걱정되나요?'),
+        _u('내가 실수해서 팀에 피해를 줄 것 같아'), _a('그런 생각이 드시는군요.'),
+      ]);
+      s.userContext = const MindriumCounselingContext(currentWeek: 6).withEpisodes(EpisodeHistory([
+        PreviousSession(sessionId: 'team', week: 6, completionStatus: 'completed', interventionOutcome: 'acknowledged',
+            mainConcern: '팀 프로젝트 회의 때마다 긴장돼요', coreThought: '팀 프로젝트에서 모두 나를 평가할 것 같다'),
+        PreviousSession(sessionId: 'talk', week: 5, completionStatus: 'completed', interventionOutcome: 'credited',
+            mainConcern: '다음 주 발표 준비 때문에 걱정돼요', coreThought: '발표 준비하다가 내가 분위기를 망칠 것 같다',
+            alternativeThought: '지금 불안하지만 이것이 곧 위험이라는 뜻은 아니다'),
+      ]));
+      expect(ctx(s, '나 예전에도 이런 걱정 한적 있던 것 같아').recall?.factId, 'session:team');
+    });
     test('respond_v11: a past reference recalls the episode, and the reply must state it', () {
       final s = _session(messages: [_u('다음 주 발표 때문에 걱정돼요'), _a('어떤 부분이 가장 걱정되나요?')]);
       s.userContext = const MindriumCounselingContext(currentWeek: 4).withEpisodes(EpisodeHistory([
