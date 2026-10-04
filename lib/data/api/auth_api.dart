@@ -77,13 +77,18 @@ class AuthApi {
     await logout();
   }
 
-  Future<void> resetPasswordWithToken({
-    required String token,
+  Future<void> verifyPasswordReset({
+    required String email,
+    required String code,
     required String newPassword,
   }) async {
     await _client.dio.post(
-      '/auth/password/reset/finish',
-      data: {'token': token, 'new_password': newPassword},
+      '/auth/password/reset/verify',
+      data: {
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+      },
     );
   }
 

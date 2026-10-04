@@ -22,6 +22,8 @@ import 'package:gad_app_team/features/2nd_treatment/abc_group_add_screen.dart';
 import 'package:gad_app_team/features/auth/login_screen.dart';
 import 'package:gad_app_team/features/auth/signup_screen.dart';
 import 'package:gad_app_team/features/auth/terms_screen.dart';
+import 'package:gad_app_team/features/auth/forgot_password_screen.dart';
+import 'package:gad_app_team/features/auth/reset_password_screen.dart';
 import 'package:gad_app_team/features/other/before_survey.dart';
 import 'package:gad_app_team/features/other/splash_screen.dart';
 import 'package:gad_app_team/features/other/tutorial_screen.dart';
@@ -133,6 +135,13 @@ class MyApp extends StatelessWidget {
       // 🧭 라우트 정의 (기존 그대로)
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/forgot_password': (context) => const ForgotPasswordScreen(),
+        '/reset_password': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final email =
+              args is Map ? args['email']?.toString() ?? '' : '';
+          return ResetPasswordScreen(email: email);
+        },
         '/terms': (context) => const TermsScreen(),
         '/signup': (context) => const SignupScreen(),
         '/tutorial': (context) => const TutorialScreen(),

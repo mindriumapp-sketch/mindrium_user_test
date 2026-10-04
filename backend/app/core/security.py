@@ -71,12 +71,10 @@ def create_email_verification_token(sub: str) -> str:
     )
 
 
-def create_password_reset_token(sub: str) -> str:
-    return _create_token(
-        {"sub": sub, "type": "reset"},
-        timedelta(minutes=settings.reset_token_expire_minutes),
-        settings.jwt_secret,
-    )
+def generate_password_reset_code() -> str:
+    import secrets
+
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def decode_token(token: str, refresh: bool = False) -> dict | None:

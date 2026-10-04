@@ -70,6 +70,10 @@ async def delete_me(
             "$unset": {
                 "refresh_hash": "",
                 "refresh_issued_at": "",
+                "password_reset_code_hash": "",
+                "password_reset_code_expires_at": "",
+                "password_reset_code_attempts": "",
+                "password_reset_code_sent_at": "",
                 "password_reset_hash": "",
                 "password_reset_requested_at": "",
             },

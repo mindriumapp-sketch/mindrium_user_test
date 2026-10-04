@@ -20,8 +20,12 @@ class Settings(BaseModel):
     email_verification_expire_minutes: int = int(
         os.getenv("EMAIL_VERIFICATION_EXPIRE_MINUTES", "30")
     )
-    reset_token_expire_minutes: int = int(
-        os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "30")
+    reset_code_expire_minutes: int = int(
+        os.getenv("RESET_CODE_EXPIRE_MINUTES", "10")
+    )
+    reset_code_max_attempts: int = int(os.getenv("RESET_CODE_MAX_ATTEMPTS", "5"))
+    reset_code_resend_cooldown_seconds: int = int(
+        os.getenv("RESET_CODE_RESEND_COOLDOWN_SECONDS", "60")
     )
     api_port: int = int(os.getenv("API_PORT", "8050"))
     cors_origins: list[str] = os.getenv(

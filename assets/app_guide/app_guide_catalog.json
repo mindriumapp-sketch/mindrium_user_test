@@ -431,13 +431,16 @@
         "비밀번호 분실",
         "비밀번호 재설정",
         "비밀번호를 잊어버림",
-        "비번 찾기"
+        "비번 찾기",
+        "인증번호"
       ],
-      "description": "로그인 화면에 '비밀번호 찾기'가 있지만 아직 준비 중이라 사용할 수 없다. 로그인한 상태라면 마이페이지 → 설정 → 계정 관리에서 비밀번호를 바꿀 수 있다.",
-      "available": false,
+      "description": "로그인 화면의 '비밀번호 찾기'에서 가입한 이메일을 입력하고 '인증번호 받기'를 누르면 6자리 인증번호가 메일로 온다(10분 유효). '비밀번호 재설정' 화면에서 인증번호와 새 비밀번호를 입력하고 '비밀번호 변경'을 누른 뒤 다시 로그인한다. 메일이 안 오면 '인증번호 다시 받기'. 로그인한 상태라면 마이페이지 → 설정 → 계정 관리에서도 비밀번호를 바꿀 수 있다.",
+      "available": true,
       "related_screens": [],
       "source_refs": [
-        "flutter:lib/features/auth/login_screen.dart"
+        "flutter:lib/features/auth/login_screen.dart",
+        "flutter:lib/features/auth/forgot_password_screen.dart",
+        "flutter:lib/features/auth/reset_password_screen.dart"
       ]
     },
     {
@@ -990,6 +993,19 @@
       ],
       "source_refs": [
         "flutter:lib/features/settings/app_info_screen.dart"
+      ]
+    },
+    {
+      "from": "login",
+      "to": "password_find",
+      "steps": [
+        "로그인 화면",
+        "비밀번호 찾기",
+        "인증번호 받기",
+        "비밀번호 재설정"
+      ],
+      "source_refs": [
+        "flutter:lib/features/auth/forgot_password_screen.dart"
       ]
     }
   ],

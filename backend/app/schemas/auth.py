@@ -61,8 +61,9 @@ class PasswordResetStartRequest(BaseModel):
     email: EmailStr
 
 
-class PasswordResetFinishRequest(BaseModel):
-    token: str
+class PasswordResetVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
     new_password: str = Field(min_length=8, max_length=20)
 
     @field_validator("new_password")
