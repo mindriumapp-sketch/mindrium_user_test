@@ -22,9 +22,9 @@ enum TransitionIntent {
   /// No question follows this turn's reflection (e.g. `Closing`).
   none,
 
-  /// CheckIn: move from acknowledging the check-in text to asking for a
-  /// 0-10 severity rating.
-  assessSeverity,
+  /// CheckIn: move from acknowledging the first message to inviting the
+  /// user to say more about the worry (the counselor does not rate anxiety).
+  openConcern,
 
   /// Explore (default branch): move from reflection to asking for a
   /// concrete worrying moment within the situation.

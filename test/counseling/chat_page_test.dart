@@ -171,7 +171,8 @@ void main() {
     await send(tester, '내일 발표인데 너무 불안해요.');
 
     expect(deps.llm.calls, 0);
-    expect(findText('0에서 10 사이'), findsOneWidget);
+    expect(findText('조금 더 이야기해 주실 수 있을까요'), findsOneWidget);
+    expect(findText('0에서 10'), findsNothing);
   });
 
   testWidgets('T28 사용자 입력과 상담자 응답이 모두 말풍선으로 보인다', (tester) async {

@@ -87,13 +87,14 @@ class TurnPlanMaterializer {
     final target = _requireText(decision.reflectionTarget, 'checkIn');
     final clean = target.replaceFirst(RegExp(r'[.!?]+$'), '');
 
+    final hasContent = UserThoughtExtractor.hasContent(clean);
     return CounselingTurnPlan(
       reflectionTarget: target,
-      questionGoal: '현재 사용자가 느끼는 불안의 주관적 정도를 0에서 10 사이로 확인한다.',
-      reflectionSentence: UserThoughtExtractor.hasContent(clean)
-          ? '“$clean”라고 말씀해 주셨군요.'
-          : '말씀해 주셔서 고마워요.',
-      questionSentence: '지금 느끼는 불안을 0에서 10 사이로 표현하면 어느 정도인가요?',
+      questionGoal: '사용자가 꺼낸 걱정을 조금 더 이야기하도록 부드럽게 청한다. 불안 점수는 묻지 않는다.',
+      reflectionSentence: hasContent ? '“$clean”라고 말씀해 주셨군요.' : '말씀해 주셔서 고마워요.',
+      questionSentence: hasContent
+          ? '그 일에 대해 조금 더 이야기해 주실 수 있을까요?'
+          : '요즘 마음에 걸리는 일이 있다면 편하게 이야기해 주실 수 있을까요?',
       forbidden: checkInForbidden,
       constraints: const [
         TurnConstraint.requireReflection,

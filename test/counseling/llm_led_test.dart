@@ -486,7 +486,7 @@ void main() {
       final p = await make(_Api([_out(text: '분명 잘될 거예요.')]));
       await p.sendMessage('내일 발표가 걱정돼');
       expect(p.messages.last.text, isNot(contains('잘될 거')));
-      expect(p.messages.last.text, contains('0에서 10')); // the deterministic check-in
+      expect(p.messages.last.text, contains('조금 더 이야기해')); // the deterministic check-in
     });
 
   });

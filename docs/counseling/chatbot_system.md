@@ -1,6 +1,6 @@
 # Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
 
-기준: 2026-10-04 (인수인계 기준점 태그 `counseling-handover-v1` 이후 앱 가이드 개선, 프롬프트 `respond_v13`). 실행 방법과 인수인계 요약은 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md),
+기준: 2026-10-04 (인수인계 기준점 태그 `counseling-handover-v1` 이후 앱 가이드 개선, 프롬프트 `respond_v14`). 실행 방법과 인수인계 요약은 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md),
 시연 절차는 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md) 7절, 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md)에 있습니다.
 
 이 기능은 의료 진단이나 전문 치료를 대체하지 않습니다. 안전 관문은 키워드 기반이고, 상담 문장과 위기 응답은
@@ -50,7 +50,7 @@ LLM 호출 전에 코드가 정하는 경계:
 
 응답 뒤 검증기가 거절하는 것 (주요 항목): 승인되지 않은 기법, 주지 않은 사용자·앱 사실, 진단·결과 보장, 상담 지시·조언(`directive`, `advice`), 사용자가 시도하기 전의 예시 문장(`premature_example`), 질문 2개 이상, 반복 질문·반복 응답, 반말, 제안 없는 종료, 탐색 종료 후 같은 걱정 재탐색, 용어 정의 불일치. 거절 사유는 `LLM_LED` 로그에 남는다(텍스트 없음).
 
-### 2.2 B 경로 계약 (`POST /counseling/respond`, 프롬프트 `respond_v13`)
+### 2.2 B 경로 계약 (`POST /counseling/respond`, 프롬프트 `respond_v14`)
 
 **켜는 조건:** 빌드 플래그 `COUNSELING_LLM_LED_PATH=true` + 허용 목록 계정(`internal_account_allowlist.dart`). 비위기 턴마다 B를 먼저 부르고, 시간 제한은 8초, 재시도는 하지 않는다. 실패한 턴만 A가 답한다.
 
@@ -184,7 +184,7 @@ flowchart TD
 
 | 엔드포인트 | 역할 |
 |---|---|
-| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v13`, `gpt-4o-mini`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
+| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v14`, `gpt-4o-mini`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
 | `POST /counseling/realize` | 결정론 초안과 계획을 받아 GPT로 다시 표현한다(`counseling_realize.py`, 시스템 프롬프트 포함). 모델은 서버 설정 `openai_model`을 따른다 |
 | `PUT /counseling-sessions/{session_id}` | 세션 요약 upsert |
 | `GET /counseling-sessions` | 최근 세션 조회(이전 세션 맥락용) |
@@ -210,7 +210,7 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 
 | 상태 | 하는 일 | 최대 턴 | 최소 턴 | 다음 상태로 가는 조건 |
 |---|---|---|---|---|
-| checkIn | 첫 걱정을 받아 주고 불안 정도(0~10)를 묻는다 | 1 | 1 | 1턴 후 |
+| checkIn | 첫 걱정을 받아 주고 조금 더 이야기하도록 청한다. 챗봇은 불안 점수(SUD)를 묻지 않는다(B·A 모두) | 1 | 1 | 1턴 후 |
 | explore | 걱정되는 순간을 구체화한다 | 1 | 1 | 1턴 후 |
 | reflect | 생각을 되짚는다(근거 → 다른 관점 → 가능성) | 4 | 2 | 완료 보고 + 최소 턴, 또는 최대 턴 |
 | intervention | 기법 질문 → 답 → 통합 | 3 | 1 | 통합(또는 적용 가능 기법 없음) 완료 시 |

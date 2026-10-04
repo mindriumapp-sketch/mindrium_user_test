@@ -1046,7 +1046,7 @@ class DeterministicProcessSignalTurnPlanner implements CounselingTurnPlanner {
   }
 }
 
-/// Step 3B-P6: 첫 사용자 발화 확인과 현재 SUD 질문을 담당한다.
+/// 첫 사용자 발화를 받아 주고 걱정을 더 이야기하도록 청한다(불안 점수는 묻지 않음).
 class DeterministicCheckInTurnPlanner implements CounselingTurnPlanner {
   static const List<String> defaultForbidden = [
     '진단하거나 원인을 단정하지 않는다.',

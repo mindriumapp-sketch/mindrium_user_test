@@ -15,8 +15,8 @@ class RealizationSpecBuilder {
   static CounselingRealizationSpec checkIn(CounselorDecision decision) {
     return CounselingRealizationSpec(
       reflectionTarget: decision.reflectionTarget,
-      transitionIntent: TransitionIntent.assessSeverity,
-      questionGoal: '현재 사용자가 느끼는 불안의 주관적 정도를 0에서 10 사이로 확인한다.',
+      transitionIntent: TransitionIntent.openConcern,
+      questionGoal: '사용자가 꺼낸 걱정을 조금 더 이야기하도록 부드럽게 청한다. 불안 점수는 묻지 않는다.',
     );
   }
 

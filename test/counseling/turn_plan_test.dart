@@ -401,7 +401,7 @@ void main() {
   group('Step 3B-P6-D check-in / closing planner', () {
     const combined = DeterministicCounselingTurnPlanner();
 
-    test('check-in은 현재 발화를 반영하고 SUD 질문을 정확히 하나 한다', () {
+    test('check-in은 현재 발화를 반영하고 걱정을 더 듣는 질문을 정확히 하나 한다(불안 점수는 묻지 않음)', () {
       final plan =
           combined.plan(
             const TurnPlanningContext(
@@ -413,7 +413,9 @@ void main() {
 
       expect(plan.requiredAct, DialogueAct.explore);
       expect(plan.deterministicReply, contains('내일 발표가 있어서 불안해요'));
-      expect(plan.questionSentence, contains('0에서 10'));
+      // the counselor does not ask for an anxiety score
+      expect(plan.questionSentence, contains('조금 더 이야기해'));
+      expect(plan.deterministicReply.contains('0에서 10'), isFalse);
       expect('?'.allMatches(plan.deterministicReply).length, 1);
       expect(plan.userContextIds, isEmpty);
       expect(plan.cbtContextIds, isEmpty);

@@ -11,7 +11,7 @@ cd "$(dirname "$0")/../.."
 
 BASE=http://127.0.0.1:8090
 EMAIL=mindrium.demo@example.com
-EXPECTED_PROMPT=respond_v13
+EXPECTED_PROMPT=respond_v14
 FAIL=0
 ok()   { printf '  \033[32mOK\033[0m   %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m %s\n' "$1"; FAIL=1; }
