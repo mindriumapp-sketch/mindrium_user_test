@@ -1,4 +1,4 @@
-# Mindrium 디지털 CBT 상담 챗봇: 구조와 기능
+# Mindrium 상담 NPC 챗봇: 구조와 기능
 
 기준: 2026-10-04, 태그 `counseling-handover-v2`, 프롬프트 `respond_v14`. 실행 방법과 인수인계 요약은 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md),
 시연 절차는 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md) 7절, 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md)에 있습니다.

@@ -651,7 +651,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 ),
           ),
         ),
-        title: const Text('디지털 CBT 상담'),
+        title: const Text('상담 NPC 챗봇'),
         actions: [
           IconButton(
             icon: const Icon(Icons.restart_alt),
