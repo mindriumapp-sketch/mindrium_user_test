@@ -184,7 +184,7 @@ flowchart TD
 
 | 엔드포인트 | 역할 |
 |---|---|
-| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v14`, `gpt-4o-mini`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
+| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v14`, `gpt-6-luna`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
 | `POST /counseling/realize` | 결정론 초안과 계획을 받아 GPT로 다시 표현한다(`counseling_realize.py`, 시스템 프롬프트 포함). 모델은 서버 설정 `openai_model`을 따른다 |
 | `PUT /counseling-sessions/{session_id}` | 세션 요약 upsert |
 | `GET /counseling-sessions` | 최근 세션 조회(이전 세션 맥락용) |
@@ -384,7 +384,7 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 ## 9. 표현 계층 (원격 GPT)
 
 - **실행 조건:**
-  - 빌드 플래그 `COUNSELING_REMOTE_REALIZER=true`가 켜져 있어야 합니다(기본은 꺼짐). 긴급 차단은 `COUNSELING_REMOTE_REALIZER_KILL_SWITCH`로 합니다.
+  - 빌드 플래그 `COUNSELING_REMOTE_REALIZER=true`가 켜져 있어야 합니다(기본은 켜짐). 긴급 차단은 `COUNSELING_REMOTE_REALIZER_KILL_SWITCH`로 합니다.
   - 공개 단계(`RolloutStage`)를 통과해야 합니다. 단계는 `off` → `internalOnly`(내부 계정 허용 목록) → `pilot`(비율 공개)이며, 현재는 `internalOnly`입니다.
   - 라우터가 일반 상담 턴으로 판단해야 합니다(4절).
 - **요청:** 결정론 초안, 반영 대상, 질문 목표, 필수 행위, 금지 사항, 최근 대화(현재 사용자 발화 포함), 허용 CBT 근거를 백엔드 `/counseling/realize`로 보냅니다.
@@ -400,7 +400,7 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
   백엔드 `.env`에만 둡니다.
 - 요청: `deterministic_draft`, `reflection_target`, `question_goal`, `required_act`, 최근 대화, 허용 CBT 근거,
   금지 행동. 응답: `reply`, `model`, `prompt_version`, `latency_ms`.
-- 백엔드 설정: 모델 `OPENAI_MODEL`(기본 `gpt-4o-mini`), temperature 0.2, 출력 150토큰, 타임아웃 연결 3초·읽기 6초.
+- 백엔드 설정: 모델 `OPENAI_MODEL`(기본 `gpt-6-luna`), temperature 0.2, 출력 150토큰, 타임아웃 연결 3초·읽기 6초.
   앱 쪽 타임아웃은 8초입니다.
 - 네트워크 오류, 401/429/5xx, 빈 응답, 검증 실패는 모두 사용자에게 오류를 보이지 않고 결정론 문장으로 대체합니다.
   원격 실패가 상태 전이를 바꾸지 않습니다.
@@ -468,9 +468,9 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 | 플래그 (`--dart-define`) | 기본값 | 뜻 |
 |---|---|---|
 | `API_BASE_URL` | 빌드 설정값 | 백엔드 주소 |
-| `COUNSELING_REMOTE_REALIZER` | `false` | 원격 GPT 표현 사용 |
+| `COUNSELING_REMOTE_REALIZER` | `true` | 내부 허용 계정에서 원격 GPT 표현 사용 |
 | `COUNSELING_REMOTE_REALIZER_KILL_SWITCH` | `false` | 원격 표현 즉시 차단 |
-| `COUNSELING_LLM_LED_PATH` | `false` | **B 경로 사용. 데모에서는 반드시 `true`** (허용 목록 계정만 해당) |
+| `COUNSELING_LLM_LED_PATH` | `true` | **B 경로 기본 사용** (허용 목록 계정만 해당) |
 
 **실기기 dogfood:** 개발 Mac의 IP가 자주 바뀌므로, adb 포트 포워딩을 걸고 로컬 주소로 빌드합니다. 포워딩은 무선 디버깅이 다시 연결되면 새로 걸어야 합니다.
 

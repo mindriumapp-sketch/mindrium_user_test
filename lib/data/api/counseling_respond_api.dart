@@ -53,6 +53,28 @@ abstract interface class CounselingRespondApi {
   Future<Map<String, dynamic>> respond(Map<String, dynamic> body, {Duration timeout});
 }
 
+abstract interface class CounselingPatternIntentApi {
+  Future<bool> isPatternRequest(String message);
+}
+
+class DioCounselingPatternIntentApi implements CounselingPatternIntentApi {
+  final ApiClient _client;
+  DioCounselingPatternIntentApi(this._client);
+
+  @override
+  Future<bool> isPatternRequest(String message) async {
+    final response = await _client.dio.post(
+      '/counseling/pattern-intent',
+      data: {'message': message},
+      options: Options(
+        sendTimeout: const Duration(seconds: 3),
+        receiveTimeout: const Duration(seconds: 4),
+      ),
+    );
+    return response.data is Map && response.data['pattern_request'] == true;
+  }
+}
+
 class DioCounselingRespondApi implements CounselingRespondApi {
   final ApiClient _client;
 

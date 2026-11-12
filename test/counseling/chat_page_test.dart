@@ -159,11 +159,12 @@ void main() {
   testWidgets('T26 ChatPage 가 상담 엔진으로 첫 인사를 띄운다', (tester) async {
     await pumpChatPage(tester);
 
-    expect(findText('어떤 이야기를 나누고 싶으신가요'), findsOneWidget);
+    expect(findText('앱 사용법을 안내해 드릴 수 있어요'), findsOneWidget);
+    expect(findText('어떤 도움이 필요하신가요'), findsOneWidget);
     expect(find.byType(ChatPage), findsOneWidget);
   });
 
-  testWidgets('T27 기본 제품 경로는 deterministic planner로 LLM을 호출하지 않는다', (
+  testWidgets('T27 테스트 LLM 주입 시 원격 호출 없이 deterministic planner를 사용한다', (
     tester,
   ) async {
     final deps = await pumpChatPage(tester);

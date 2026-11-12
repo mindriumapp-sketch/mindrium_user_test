@@ -36,7 +36,7 @@ Map<String, dynamic> _out({
   // split like respond_v2: everything up to the last question is the statement
   final m = RegExp(r'^(.*?)([^.!?]*\?)\s*$').firstMatch(text);
   final statement = m == null ? text : m.group(1)!.trim();
-  final question = m == null ? null : m.group(2)!.trim();
+  final question = m?.group(2)!.trim();
   return {
   'output': {
     'domain': domain, 'dialogue_moves': moves,

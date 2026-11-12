@@ -7,6 +7,7 @@
 // deterministic path for that turn.
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/counseling_patterns.dart';
 import 'package:gad_app_team/data/counseling/user_thought_extractor.dart';
 import 'package:gad_app_team/features/assistant/app_guide/app_guide_repository.dart';
 
@@ -52,6 +53,7 @@ class LlmLedContext {
 
   /// This turn's user message (for affirmation / example-request checks).
   final String userMessage;
+  final bool patternAnalysisRequested;
 
   /// The last two assistant replies (for repeated-reply checks).
   final List<String> recentReplies;
@@ -76,6 +78,7 @@ class LlmLedContext {
     this.userEndRequest = false,
     this.newTopic = false,
     this.userMessage = '',
+    this.patternAnalysisRequested = false,
     this.recentReplies = const [],
   });
 
@@ -83,6 +86,7 @@ class LlmLedContext {
     required String requestId,
     required CounselingSessionState session,
     required String userMessage,
+    bool? patternAnalysisRequested,
     required CbtKnowledgeRepository knowledge,
     required AppGuideRepository appGuide,
     TermGlossary glossary = TermGlossary.empty,
@@ -105,6 +109,23 @@ class LlmLedContext {
     // user facts
     final ctx = session.userContext;
     final facts = <Map<String, String>>[];
+    // Only offer patterns related to the current turn, never after an opt-out.
+    final optedOut = [...messages.where((m) => m.isUser).map((m) => m.text), userMessage]
+        .any(CounselingPatterns.optedOut);
+    if (!optedOut && !CounselingPatterns.rejectsAnalysis(userMessage)) {
+      final explicitPattern = patternAnalysisRequested ?? CounselingPatterns.explicitlyRequested(userMessage);
+      final selectedPatterns = ctx?.patterns?.relevant(userMessage, explicit: explicitPattern) ?? const <CounselingPattern>[];
+      if (explicitPattern && selectedPatterns.isNotEmpty) {
+        facts.add({'id': 'pattern:scope', 'kind': 'record_pattern',
+          'text': '최근 ${ctx!.patterns!.windowDays}일 일기 ${ctx.patterns!.diaryCount}건'});
+      }
+      for (final p in selectedPatterns) {
+        facts.add({'id': 'pattern:${p.id}', 'kind': 'record_pattern',
+          'text': _clip(explicitPattern ? (p.aiText ?? p.text) : p.text, 300)});
+      }
+    }
+
+
     for (final e in (ctx?.episodes.episodes ?? const []).where((e) => e.isCompleted).take(5)) {
       final alt = e.interventionOutcome == 'credited' ? e.alternativeThought : null;
       final core = e.coreThought ?? e.mainConcern;
@@ -269,6 +290,7 @@ class LlmLedContext {
       exploreClosed: exploreClosed,
       userEndRequest: ClosingDecisionSelector.isExplicitEnd(userMessage),
       userMessage: userMessage,
+      patternAnalysisRequested: patternAnalysisRequested ?? CounselingPatterns.explicitlyRequested(userMessage),
       recentReplies: [
         for (final m in session.messages.reversed.where((m) => !m.isUser).take(2)) m.text,
       ],
@@ -592,6 +614,32 @@ class LlmLedValidator {
       v.add('integration_without_prompt');
     }
     if (!o.usedUserFactIds.every(c.userFactIds.contains)) v.add('unsupported_user_fact');
+    if (c.patternAnalysisRequested) {
+      final offered = (c.body['user_facts'] as List).whereType<Map>()
+          .where((f) => f['kind'] == 'record_pattern')
+          .map((f) => f['id']).whereType<String>();
+      if (!offered.every(o.usedUserFactIds.contains)) v.add('pattern_facts_omitted');
+    }
+    // Numeric pattern facts must be quoted exactly; an ID alone does not
+    // prove that the generated count or time is faithful to the record.
+    final facts = c.body['user_facts'] as List;
+    String normalizePattern(String value) => value.replaceAll(
+      RegExp(r'평균(?:은|는|이|으로)'), '평균');
+    for (final id in o.usedUserFactIds.where((id) => id.startsWith('pattern:'))) {
+      final matches = facts.whereType<Map>().where((f) => f['id'] == id);
+      if (matches.isEmpty || !normalizePattern(o.text).contains(normalizePattern(matches.first['text'] as String))) {
+        v.add('pattern_fact_mismatch');
+      }
+    }
+    if (c.patternAnalysisRequested) {
+      final numeric = RegExp(r'\d+(?:\.\d+)?');
+      final allowedNumbers = facts.whereType<Map>().where((f) => f['kind'] == 'record_pattern')
+          .expand((f) => numeric.allMatches(f['text'] as String).map((m) => m.group(0)!)).toSet();
+      if (numeric.allMatches(o.text).any((m) => !allowedNumbers.contains(m.group(0)))) {
+        v.add('pattern_number_unsupported');
+      }
+    }
+
     if (!o.usedAppFactIds.every(c.appFactIds.contains)) v.add('unsupported_app_fact');
     // "점심 메뉴" is food, not an app menu.
     final appText = o.text.replaceAll(RegExp(r'(점심|저녁|아침|식사|음식|식당)\s*메뉴'), ' ');

@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/api/counseling_realize_api.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
-import 'package:gad_app_team/data/counseling/retrieval_summary.dart';
 import 'package:gad_app_team/features/counseling/policy/counselor_decision.dart';
 import 'package:gad_app_team/features/counseling/remote_llm_realizer.dart';
 import 'package:gad_app_team/features/counseling/response_realizer.dart';

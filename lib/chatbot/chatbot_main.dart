@@ -1,3 +1,4 @@
+import 'package:gad_app_team/data/api/counseling_patterns_api.dart';
 // lib/chatbot/chatbot_main.dart
 //
 // NPC 상담 화면. UI / STT / TTS / 스크롤 / 아바타만 담당하고,
@@ -91,11 +92,10 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   /// TurnPlan 초안을 GPT(backend `/counseling/realize`)로 다듬는 경로.
-  /// 기본값 false — 온/오프 스위치는 이 define과 backend kill switch 둘 다에
-  /// 있어야 한다(docs/counseling/chatbot_system.md 9절).
+  /// 기본으로 켠다. 내부 허용 계정에서만 사용하며, 빌드 플래그로 끌 수 있다.
   static const bool _remoteRealizerEnabled = bool.fromEnvironment(
     'COUNSELING_REMOTE_REALIZER',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   /// Phase 10.6C — Stage 1 (internalOnly) canary rollout.
@@ -111,11 +111,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     defaultValue: false,
   );
 
-  /// Phase 14.X: Bounded LLM-led 경로(시제품). 내부 계정에서만, 기본값 false.
+  /// Phase 14.X: Bounded LLM-led 경로(시제품). 내부 계정에서만, 기본값 true.
   /// docs/counseling/phase14x_bounded_llm_led.md.
   static const bool _llmLedEnabled = bool.fromEnvironment(
     'COUNSELING_LLM_LED_PATH',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   // ===== Affect =====
@@ -217,6 +217,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         final client = ApiClient(tokens: TokenStorage());
         sessionsApi = CounselingSessionsApi(client);
         contextBuilder = MindriumContextBuilder(
+          loadPatterns: CounselingPatternsApi(client).fetch,
           dataSource: ApiMindriumDataSource(
             diariesApi: DiariesApi(client),
             worryGroupsApi: WorryGroupsApi(client),
@@ -271,13 +272,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
               knowledgeRepository: repository,
             );
 
+    final llmLedApi = _llmLedApi();
     return CounselingProvider(
       knowledgeRepository: repository,
       appGuideRepository: appGuideRepository,
       currentWeek: week,
       contextBuilder: contextBuilder,
       sessionsApi: sessionsApi,
-      llmLedApi: _llmLedApi(),
+      llmLedApi: llmLedApi,
+      patternIntentApi: llmLedApi == null ? null : DioCounselingPatternIntentApi(ApiClient(tokens: TokenStorage())),
       harness: harness,
     );
   }

@@ -4,6 +4,7 @@ import '../api/diaries_api.dart';
 import '../api/relaxation_api.dart';
 import '../api/worry_groups_api.dart';
 import 'counseling_models.dart';
+import 'counseling_patterns.dart';
 
 /// 서버 API 를 감싸 컨텍스트 빌더가 필요한 것만 노출한다.
 ///
@@ -50,6 +51,10 @@ class ApiMindriumDataSource implements MindriumDataSource {
 ///   3. 위생 — 좌표·주소처럼 상담에 필요 없는 값은 프롬프트로 내보내지 않는다
 class MindriumContextBuilder {
   final MindriumDataSource dataSource;
+  final Future<CounselingPatterns> Function()? loadPatterns;
+  CounselingPatterns? _patternsSnapshot;
+  bool _patternsLoaded = false;
+  bool _patternsFailed = false;
 
   // 서버 원본은 화면 수명 동안 한 번만 읽는다. build()를 현재 발화마다 다시
   // 호출하더라도 아래 snapshot에서 관련 항목만 재선별하므로 네트워크 요청은
@@ -76,13 +81,16 @@ class MindriumContextBuilder {
   /// 높은 불안으로 보는 SUD 하한.
   static const int highSudThreshold = 7;
 
-  MindriumContextBuilder({required this.dataSource});
+  MindriumContextBuilder({required this.dataSource, this.loadPatterns});
 
   /// 서버에 새 일기/훈련 기록이 생긴 뒤 다음 build에서 다시 조회하게 한다.
   void invalidateSnapshot() {
     _diarySnapshot = null;
     _groupSnapshot = null;
     _relaxationSnapshot = null;
+    _patternsSnapshot = null;
+    _patternsLoaded = false;
+    _patternsFailed = false;
   }
 
   /// 세션 시작 시 한 번 호출한다. 턴마다 다시 부르지 않는다.
@@ -128,6 +136,17 @@ class MindriumContextBuilder {
           'relaxation',
         );
 
+    if (!_patternsLoaded && loadPatterns != null) {
+      try {
+        _patternsSnapshot = await loadPatterns!();
+      } on Object {
+        _patternsFailed = true;
+      }
+      _patternsLoaded = true;
+    }
+
+    degraded = degraded || _patternsFailed;
+
     final groupTitles = {
       for (final group in groups)
         if (group['group_id'] != null)
@@ -146,6 +165,7 @@ class MindriumContextBuilder {
     return MindriumCounselingContext(
       currentWeek: currentWeek,
       relevantItems: selected,
+      patterns: _patternsSnapshot,
       recentSud: _sudContext(candidates),
       recurringThemes: _recurringThemes(candidates),
       effectiveInterventions: _interventions(relaxations),

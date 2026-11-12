@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
+import 'package:gad_app_team/data/counseling/counseling_patterns.dart';
 import 'package:gad_app_team/data/counseling/mindrium_context_builder.dart';
 import 'package:gad_app_team/data/api/counseling_sessions_api.dart';
 import 'package:gad_app_team/data/counseling/counseling_session_summary.dart';
@@ -21,6 +22,7 @@ import 'package:gad_app_team/features/assistant/mindrium_assistant_harness.dart'
 import 'counseling_harness.dart';
 import 'counseling_state.dart';
 import 'llm_led/term_glossary.dart';
+import 'policy/selectors/closing_decision_selector.dart';
 import 'llm_led/pseudonym.dart';
 import 'safety_gate.dart';
 import 'turn_plan.dart';
@@ -63,6 +65,7 @@ class CounselingProvider extends ChangeNotifier {
   /// goes to it first; a timeout, error or validator rejection falls back to
   /// the deterministic path for that turn. Null = off (default).
   final CounselingRespondApi? llmLedApi;
+  final CounselingPatternIntentApi? patternIntentApi;
 
   TermGlossary _glossary = TermGlossary.empty;
   bool get _llmLedThisSession => llmLedApi != null;
@@ -129,6 +132,7 @@ class CounselingProvider extends ChangeNotifier {
     this.contextBuilder,
     this.sessionsApi,
     this.llmLedApi,
+    this.patternIntentApi,
     this.previousSessionSelector = const PreviousSessionSelector(),
     String? sessionId,
   }) : appGuideRepository = appGuideRepository ?? LocalAppGuideRepository(),
@@ -217,8 +221,8 @@ class CounselingProvider extends ChangeNotifier {
         role: 'assistant',
         // 첫 인사는 모델이 아니라 앱이 정한다.
         text:
-            '안녕하세요. 오늘 어떤 이야기를 나누고 싶으신가요?\n'
-            '지금 마음에 걸리는 일이 있다면 편하게 적어 주세요.',
+            '안녕하세요.\n마음에 걸리는 걱정을 함께 살펴보거나 앱 사용법을 안내해 드릴 수 있어요.\n'
+            '어떤 도움이 필요하신가요?',
         createdAt: DateTime.now(),
       ),
     );
@@ -336,12 +340,35 @@ class CounselingProvider extends ChangeNotifier {
   /// Phase 14.X: the LLM-led path first, the deterministic path when it
   /// does not produce an accepted turn. Logs one line per turn (no text).
   Future<CounselingTurnResult> _handleTurnLlmLedFirst(String userText) async {
+    var isPatternRequest = CounselingPatterns.explicitlyRequested(userText);
     final api = llmLedApi;
-    if (api == null || !_llmLedThisSession) return _committedA(await _turn(userText));
+    final optedOut = _messages.where((m) => m.isUser).any((m) => CounselingPatterns.optedOut(m.text));
+    if (!isPatternRequest && api != null && patternIntentApi != null &&
+        !optedOut && !CounselingPatterns.rejectsAnalysis(userText) &&
+        !ClosingDecisionSelector.isExplicitEnd(userText)) {
+      final safety = await harness.safetyGate.evaluate(userText);
+      if (safety.isNormal) {
+        try {
+          isPatternRequest = await patternIntentApi!.isPatternRequest(userText)
+              .timeout(const Duration(seconds: 4));
+        } on Object {
+          // 네트워크 오류나 시간 초과 시 기존 상담 경로를 사용한다.
+        }
+      }
+    }
+    if (isPatternRequest && (api == null || _session.userContext?.patterns == null ||
+        _session.userContext!.patterns!.relevant(userText, explicit: true).isEmpty)) {
+      final patternReply = await _patternReply(userText, explicit: true);
+      if (patternReply != null) return patternReply;
+    }
+    if (api == null || !_llmLedThisSession) {
+      return await _patternReply(userText) ?? _committedA(await _turn(userText));
+    }
     final endToEnd = Stopwatch()..start();
     final b = await harness.handleLlmLedTurn(
       session: _session,
       userMessage: userText,
+      patternAnalysisRequested: isPatternRequest,
       api: api,
       appGuide: appGuideRepository,
       glossary: _glossary,
@@ -356,10 +383,45 @@ class CounselingProvider extends ChangeNotifier {
       return b.result!;
     }
     final fallbackWatch = Stopwatch()..start();
-    final a = await _turn(userText);
+    final a = await _patternReply(userText, explicit: isPatternRequest) ?? await _turn(userText);
     _logLlmLed(b, fallbackWatch.elapsedMilliseconds, endToEnd.elapsedMilliseconds);
     // the discarded B output never reaches the avatar
     return _committedA(a);
+  }
+
+  Future<CounselingTurnResult?> _patternReply(String userText, {bool explicit = false}) async {
+    final patterns = _session.userContext?.patterns;
+    final optedOut = _messages.where((m) => m.isUser).any((m) => CounselingPatterns.optedOut(m.text));
+    if (optedOut || CounselingPatterns.rejectsAnalysis(userText) || ClosingDecisionSelector.isExplicitEnd(userText)) return null;
+    if (patterns == null && !explicit) return null;
+    if (!explicit && RegExp(r'질문.{0,5}(그만|말|마)|묻지|그냥\s*들어').hasMatch(userText)) return null;
+    final selected = patterns?.relevant(userText, explicit: explicit) ?? const <CounselingPattern>[];
+    if (!explicit && (selected.isEmpty || _messages.any((m) => !m.isUser && m.referencedUserContextIds.any((id) => id.startsWith('pattern:'))))) return null;
+    final safety = await harness.safetyGate.evaluate(userText);
+    if (!safety.isNormal) return null;
+    if (patterns == null) {
+      final before = _session.state;
+      final id = '${_session.sessionId}_${_session.totalTurns}_pattern';
+      _session.totalTurns += 1;
+      return _committedA(CounselingTurnResult(
+        assistantMessage: CounselingMessage(id: id, role: 'assistant', text: '지금은 기록을 불러오지 못해 패턴을 확인할 수 없어요. 잠시 후 다시 확인해 주세요.', createdAt: DateTime.now(), dialogueAct: DialogueAct.reflect),
+        state: before, stateBefore: before, safety: safety, handledBySafety: false, promptVersion: 'pattern_unavailable_v1'));
+    }
+    final missing = RegExp(r'알림|알람').hasMatch(userText)
+        ? (patterns.activeAlarmCount == 0 ? '현재 켜진 알림이 없어요.' : '설정된 알림과 가까운 일기 기록이 반복됐다고 설명하기에는 자료가 충분하지 않아요.')
+        : '반복된 시간이나 장소를 설명하기에는 기록이 아직 충분하지 않아요.';
+    final text = selected.isEmpty
+        ? '최근 ${patterns.windowDays}일의 일기 ${patterns.diaryCount}건을 확인했어요. $missing'
+        : '${selected.map((p) => p.text).join(' ')} 이 기록이 지금 이야기와 관련이 있을까요?';
+    final before = _session.state;
+    final id = '${_session.sessionId}_${_session.totalTurns}_pattern';
+    _session.totalTurns += 1;
+    return _committedA(CounselingTurnResult(
+      assistantMessage: CounselingMessage(id: id, role: 'assistant', text: text,
+          createdAt: DateTime.now(), dialogueAct: DialogueAct.reflect,
+          referencedUserContextIds: selected.map((p) => 'pattern:${p.id}').toList()),
+      state: before, stateBefore: before, safety: safety,
+      handledBySafety: false, promptVersion: 'pattern_summary_v1'));
   }
 
   CounselingTurnResult _committedA(CounselingTurnResult a) {

@@ -60,7 +60,7 @@ B는 허용 목록 계정에서만 켜집니다(사용자 원문이 OpenAI로 �
 | `DB_NAME` | 예 | 로컬 개발 DB `mindrium_dogfood`. 기본값 `flutter_test`는 공용 서버 DB 이름이니 꼭 지정 |
 | `JWT_SECRET`, `JWT_REFRESH_SECRET` | 예 | 토큰 서명 키 |
 | `OPENAI_API_KEY` | 예 | 없으면 B와 A의 문장 표현이 모두 실패하고 결정론 응답만 나감 |
-| `OPENAI_MODEL` | 아니오 | 기본 `gpt-4o-mini` |
+| `OPENAI_MODEL` | 아니오 | 기본 `gpt-6-luna` |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | 비밀번호 찾기 사용 시 | 인증번호 메일 발송. 처음 한 번 `python3 ../scripts/migrate_password_reset_otp_fields.py`로 `users` 필드를 초기화 |
 
 가상환경은 git에 없는 로컬 환경입니다. 의존성의 기준은 `backend/app/requirements.txt`입니다(Python 3.12에서 확인).
@@ -99,8 +99,8 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 | 빌드 플래그 | 기본 | 뜻 |
 |---|---|---|
 | `API_BASE_URL` | 디버그는 `http://115.145.134.180:8070` | 백엔드 주소. 로컬은 포트 포워딩 후 `http://127.0.0.1:8090` |
-| `COUNSELING_LLM_LED_PATH` | `false` | **B 경로(주 경로) 사용.** 끄면 A만 동작 |
-| `COUNSELING_REMOTE_REALIZER` | `false` | A의 일반 탐색·되짚기 문장을 GPT로 다듬기 |
+| `COUNSELING_LLM_LED_PATH` | `true` | **B 경로(주 경로) 사용.** 내부 허용 계정에서 기본 활성화. 끄면 A만 동작 |
+| `COUNSELING_REMOTE_REALIZER` | `true` | 내부 허용 계정에서 A의 일반 탐색·되짚기 문장을 GPT로 다듬기 |
 | `COUNSELING_REMOTE_REALIZER_KILL_SWITCH` | `false` | A의 GPT 문장 표현 즉시 차단 |
 
 **허용 목록:** `lib/features/counseling/policy/rollout/internal_account_allowlist.dart`. B와 A의 GPT 표현은 여기 있는

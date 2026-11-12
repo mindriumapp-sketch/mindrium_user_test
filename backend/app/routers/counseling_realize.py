@@ -124,7 +124,9 @@ async def realize_turn(
                         {"role": "system", "content": _SYSTEM_PROMPT},
                         {"role": "user", "content": _build_user_prompt(payload)},
                     ],
-                    "max_tokens": _MAX_OUTPUT_TOKENS,
+                    "max_completion_tokens": _MAX_OUTPUT_TOKENS,
+                    **({"reasoning_effort": "none"}
+                       if settings.openai_model.startswith("gpt-6-luna") else {}),
                     "temperature": 0.2,
                     "response_format": {"type": "json_object"},
                 },

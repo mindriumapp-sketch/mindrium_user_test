@@ -4,6 +4,8 @@
 /// Step 3 에서 실제 온디바이스 모델로 교체할 때 이 파일은 그대로 남아야 한다.
 library;
 
+import 'counseling_patterns.dart';
+
 import 'episode_history.dart';
 
 /// 라벨이 붙은 임상 예시. 문단으로 펴면 라벨이 사라지므로 별도 타입으로 둔다.
@@ -482,6 +484,7 @@ class EffectiveIntervention {
 class MindriumCounselingContext {
   final int currentWeek;
   final List<UserContextItem> relevantItems;
+  final CounselingPatterns? patterns;
   final SudContext? recentSud;
 
   /// 여러 기록에서 반복되는 표현.
@@ -497,6 +500,7 @@ class MindriumCounselingContext {
   const MindriumCounselingContext({
     required this.currentWeek,
     this.relevantItems = const [],
+    this.patterns,
     this.recentSud,
     this.recurringThemes = const [],
     this.effectiveInterventions = const [],
@@ -508,6 +512,7 @@ class MindriumCounselingContext {
       MindriumCounselingContext(
         currentWeek: currentWeek,
         relevantItems: relevantItems,
+        patterns: patterns,
         recentSud: recentSud,
         recurringThemes: recurringThemes,
         effectiveInterventions: effectiveInterventions,

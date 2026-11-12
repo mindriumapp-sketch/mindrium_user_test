@@ -31,7 +31,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
-        value: gpt-4o-mini
+        value: gpt-6-luna
       - key: OPENAI_EMBEDDING_MODEL
         value: text-embedding-3-large
       - key: OPENAI_API_BASE

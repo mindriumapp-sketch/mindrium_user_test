@@ -682,6 +682,7 @@ class CounselingHarness {
   Future<LlmLedTurn> handleLlmLedTurn({
     required CounselingSessionState session,
     required String userMessage,
+    bool? patternAnalysisRequested,
     required CounselingRespondApi api,
     required AppGuideRepository appGuide,
     TermGlossary glossary = TermGlossary.empty,
@@ -697,6 +698,7 @@ class CounselingHarness {
       requestId: requestId,
       session: session,
       userMessage: userMessage,
+      patternAnalysisRequested: patternAnalysisRequested,
       knowledge: knowledgeRepository,
       appGuide: appGuide,
       glossary: glossary,

@@ -10,7 +10,6 @@
 // so this exercises the actual production wiring path end to end.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/counseling/counseling_models.dart';
-import 'package:gad_app_team/data/counseling/retrieval_summary.dart';
 import 'package:gad_app_team/features/counseling/intervention_registry.dart';
 import 'package:gad_app_team/features/counseling/policy/counselor_decision.dart';
 import 'package:gad_app_team/features/counseling/policy/materializers/turn_plan_materializer.dart';
