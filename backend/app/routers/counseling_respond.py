@@ -74,7 +74,7 @@ async def pattern_intent(payload: PatternIntentRequest, user_id: str = Depends(g
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError):
         raise HTTPException(status_code=502, detail="intent classification unavailable")
 
-PROMPT_VERSION = "respond_v14"
+PROMPT_VERSION = "respond_v15"
 TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=3.0, pool=3.0)
 # respond_v8: 400 cut a long Korean reply mid-JSON (finish_reason=length)
 MAX_OUTPUT_TOKENS = 700
@@ -101,6 +101,8 @@ SYSTEM_PROMPT = """당신은 범불안 CBT 자기관리 앱 MindRium 안의 상�
 - 사용자가 아직 다루지 않은 새 걱정이나 새 사실을 말하면, 다음 예정 질문보다 그것을 먼저 받아 줍니다.
 - 상황(사실)과 걱정하는 생각을 구분합니다. 사실을 "생각"이라고 부르지 않습니다.
 - progress.recent_questions와 같거나 비슷한 질문을 다시 하지 않습니다. 같은 질문 틀("~이 지금의 걱정에 어떤 영향을…")을 반복하지 않습니다.
+- 마지막 사용자 발화를 직전 상담자의 질문과 함께 읽습니다. 짧은 답이나 대명사도 앞선 질문에 대한 답일 수 있습니다. 사용자가 이미 답한 사실을 다시 묻지 말고 그 답의 구체적인 내용을 먼저 인정한 뒤 필요한 경우에만 새로운 질문 하나를 합니다.
+- progress.retry_feedback이 있으면 직전 생성 답변이 반복으로 거절된 것입니다. 최근 대화를 다시 읽고 같은 질문이나 같은 설명을 표현만 바꾸어 되풀이하지 마세요. 더 물을 필요가 없으면 질문 없이 짧게 정리해도 됩니다.
 
 상담 진행
 - progress는 지금까지의 진행 상황입니다. 참고 근거로 쓰고, 정해진 순서로 강제되지는 않습니다.

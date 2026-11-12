@@ -401,6 +401,35 @@ void main() {
   });
 
   group('harness turn', () {
+    test('repeated question gets one validated retry with feedback', () async {
+      final s = _session(messages: [
+        _u('발표가 걱정돼요'),
+        _a('그 생각을 사실이라고 느끼게 하는 경험이 있을까요?'),
+      ]);
+      final api = _Api([
+        _out(),
+        _out(moves: ['acknowledge'], text: '예전에 말이 막혔던 기억이 떠오르셨군요.'),
+      ]);
+      final turn = await _harness().handleLlmLedTurn(
+        session: s, userMessage: '지난번에도 발표 중 말이 막혔어요', api: api, appGuide: _guide,
+      );
+      expect(turn.status, 'success');
+      expect(api.bodies.length, 2);
+      expect((api.bodies.last['progress'] as Map)['retry_feedback'], 'repeated_question');
+      expect(turn.result!.assistantMessage.text, contains('말이 막혔던 기억'));
+    });
+
+    test('retry cannot bypass safety and grounding validation', () async {
+      final s = _session(messages: [_a('그 생각을 사실이라고 느끼게 하는 경험이 있을까요?')]);
+      final api = _Api([_out(), _out(text: '분명 잘될 거예요.')]);
+      final turn = await _harness().handleLlmLedTurn(
+        session: s, userMessage: '지난번에 그랬어요', api: api, appGuide: _guide,
+      );
+      expect(api.bodies.length, 2);
+      expect(turn.status, 'rejected');
+      expect(turn.result, isNull);
+    });
+
     test('accepted: metadata and stage follow the answer', () async {
       final s = _session(messages: [_a('안녕하세요'), _u('발표가 걱정돼'), _a('0~10?'), _u('7')]);
       s.state = CounselingState.explore;

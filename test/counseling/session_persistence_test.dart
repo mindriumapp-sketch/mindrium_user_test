@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/api/counseling_sessions_api.dart';
+import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/local_cbt_knowledge_repository.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
@@ -16,6 +18,7 @@ Future<String> _load(String path) => File(path).readAsString();
 class _FakeSessionsApi implements CounselingSessionsApi {
   final List<Map<String, dynamic>> saved = [];
   bool fail = false;
+  Completer<void>? saveGate;
 
   @override
   Future<Map<String, dynamic>> upsertSession({
@@ -41,6 +44,7 @@ class _FakeSessionsApi implements CounselingSessionsApi {
     int turnCount = 0,
   }) async {
     if (fail) throw StateError('network');
+    if (saveGate != null) await saveGate!.future;
     saved.add({
       'session_id': sessionId,
       'completion_status': completionStatus,
@@ -50,6 +54,10 @@ class _FakeSessionsApi implements CounselingSessionsApi {
       'core_thought': coreThought,
       'core_thought_source': coreThoughtSource,
       'alternative_thought': alternativeThought,
+      'affect': affect,
+      'sud_start': sudStart,
+      'sud_end': sudEnd,
+      'intervention_used': interventionUsed,
       'unfinished_issue': unfinishedIssue,
       'intervention_outcome': interventionOutcome,
       'provenance_ids': provenanceIds,
@@ -65,7 +73,25 @@ class _FakeSessionsApi implements CounselingSessionsApi {
   }) async => saved;
 }
 
+class _AiTechniqueApi implements CounselingRespondApi {
+  @override
+  Future<Map<String, dynamic>> respond(Map<String, dynamic> body, {Duration timeout = const Duration(seconds: 8)}) async => {
+    'output': {
+      'domain': 'counseling',
+      'dialogue_moves': ['acknowledge', 'intervention_question'],
+      'intervention': {'id': 'week4_alternative_thought_01', 'step': 'prompt'},
+      'used_user_fact_ids': ['session:past'],
+      'used_app_fact_ids': [],
+      'definition_id': null,
+      'session_action': 'continue',
+      'statement': '발표를 앞두고 걱정이 크시군요.',
+      'question': '다르게 바라본다면 어떤 생각이 드시나요?',
+    },
+  };
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late LocalCbtKnowledgeRepository repository;
 
   setUpAll(() async {
@@ -183,6 +209,57 @@ void main() {
   });
 
   group('이탈 저장', () {
+    test('새 상담을 시작하기 전에 이전 상담을 중단 상태로 저장한다', () async {
+      final api = _FakeSessionsApi();
+      final provider = build(api);
+      await provider.initialize();
+      await provider.sendMessage('사람들이 저를 무능하게 볼 것 같아요.');
+      final oldSession = provider.debugSession.sessionId;
+      await provider.reset();
+      expect(api.saved.single['session_id'], oldSession);
+      expect(api.saved.single['completion_status'], 'interrupted');
+      expect(provider.debugSession.sessionId, isNot(oldSession));
+    });
+    test('이전 저장이 끝나기 전에는 새 세션으로 바뀌지 않는다', () async {
+      final api = _FakeSessionsApi();
+      final provider = build(api);
+      await provider.initialize();
+      await provider.sendMessage('사람들이 저를 무능하게 볼 것 같아요.');
+      final oldSession = provider.debugSession.sessionId;
+      api.saveGate = Completer<void>();
+      final reset = provider.reset();
+      await Future<void>.delayed(Duration.zero);
+      expect(provider.debugSession.sessionId, oldSession);
+      expect(provider.isGenerating, isTrue);
+      api.saveGate!.complete();
+      await reset;
+      expect(api.saved.single['session_id'], oldSession);
+      expect(provider.debugSession.sessionId, isNot(oldSession));
+    });
+    test('AI 기법과 인용 기록, 발화의 불안 점수와 감정 단서를 저장한다', () async {
+      final api = _FakeSessionsApi()..saved.add({
+        'session_id': 'past', 'week': 4, 'completion_status': 'completed',
+        'main_concern': '이전 발표가 걱정돼요', 'ended_at': '2026-09-29T10:00:00Z',
+      });
+      final p = CounselingProvider(
+        knowledgeRepository: repository,
+        currentWeek: 4,
+        sessionsApi: api,
+        llmLedApi: _AiTechniqueApi(),
+        harness: CounselingHarness.deterministic(
+          llm: MockLlmService(), safetyGate: const KeywordSafetyGate(), knowledgeRepository: repository,
+        ),
+      );
+      await p.initialize();
+      await p.sendMessage('사람들이 저를 무능하게 볼 것 같아 걱정돼요. 불안이 7점이에요.');
+      await p.finalizeIfIncomplete();
+      final saved = api.saved.last;
+      expect(saved['intervention_used'], 'week4_alternative_thought_01');
+      expect(saved['provenance_ids'], contains('session:past'));
+      expect(saved['sud_start'], 7);
+      expect(saved['sud_end'], isNull);
+      expect(saved['affect'], 'anxious');
+    });
     test('중간에 나가면 interrupted 로 저장한다', () async {
       final api = _FakeSessionsApi();
       final provider = build(api);

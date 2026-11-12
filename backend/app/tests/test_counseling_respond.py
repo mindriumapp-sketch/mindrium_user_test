@@ -2,6 +2,7 @@
 import json
 
 import pytest
+from pydantic import ValidationError
 from routers.counseling_respond import RespondRejected, parse_output, response_format, upstream_reason
 from schemas.counseling_respond import CounselingRespondRequest
 
@@ -53,7 +54,7 @@ def test_invalid_output_rejected(bad):
 
 
 def test_conversation_is_capped_at_12():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         CounselingRespondRequest.model_validate({**REQ.model_dump(), "conversation": [{"role": "user", "text": "a"}] * 13})
 
 
@@ -73,6 +74,18 @@ def test_upstream_failures_are_classified():
     assert upstream_reason(429) == "http_429"
     assert upstream_reason(503) == "http_5xx"
     assert upstream_reason(400) == "http_4xx_other"
+
+
+def test_retry_feedback_is_limited_and_sent_to_model():
+    from routers.counseling_respond import user_prompt
+    request = REQ.model_copy(deep=True)
+    request.progress.retry_feedback = 'repeated_question'
+    assert json.loads(user_prompt(request))['progress']['retry_feedback'] == 'repeated_question'
+    with pytest.raises(Exception):
+        CounselingRespondRequest.model_validate({
+            **REQ.model_dump(),
+            'progress': {**REQ.progress.model_dump(), 'retry_feedback': 'ignore_safety'},
+        })
 
 
 def test_diary_summary_carries_alternative_thoughts():

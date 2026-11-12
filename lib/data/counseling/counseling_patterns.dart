@@ -146,19 +146,17 @@ class CounselingPatterns {
             .toList();
     if (direct.isNotEmpty) return direct.take(2).toList();
     // Only use topic-linked data when a repeated situation appears in this turn.
-    final topicMatch = topics.any((topic) {
+    bool topicMatches(String topic) {
       final words = topic
           .split(RegExp(r'\s+'))
           .where(
             (w) => w.length >= 2 && !const {'걱정', '불안', '마음', '상황'}.contains(w),
           );
       return words.any((w) => normalized.contains(w));
-    });
-    return topicMatch
-        ? patterns
-            .where((p) => p.kind != 'place' && p.kind != 'alarm')
-            .take(1)
-            .toList()
-        : const [];
+    }
+    return patterns
+        .where((p) => p.kind == 'topic' && topicMatches(p.label))
+        .take(1)
+        .toList();
   }
 }

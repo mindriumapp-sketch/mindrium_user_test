@@ -142,7 +142,7 @@ void main() {
     });
     await p.initialize();
     await p.sendMessage('학교에 가면 걱정돼요');
-    expect(p.messages.last.text, contains('장소 학교'));
+    expect(p.messages.last.text, isNot(contains('일기 4건 중 3건')));
     expect(p.messages.last.text, isNot(contains('실제 알림이 울')));
     await p.sendMessage('다른 이야기를 하고 싶어요');
     expect(p.messages.last.text, isNot(contains('장소 학교')));
@@ -272,8 +272,24 @@ void main() {
     await p.sendMessage('학교에 가면 걱정돼요');
     final facts = api.bodies.single['user_facts'] as List;
     expect(facts.any((f) => f['id'] == 'pattern:place:1'), isTrue);
-    expect(p.messages.last.text, contains('4건 중 3건'));
+    expect(p.messages.last.text, isNot(contains('4건 중 3건')));
     expect(p.messages.last.text, isNot(contains('4건 모두')));
+  });
+  test('발표 고민과 관련된 주제라도 무관한 시간 통계를 답변으로 꺼내지 않는다', () async {
+    const data = CounselingPatterns(
+      windowDays: 28, diaryCount: 39, topics: ['발표 걱정'],
+      patterns: [
+        CounselingPattern(id: 'time:1', kind: 'time', label: '오후', text: '오후 20건'),
+        CounselingPattern(id: 'topic:1', kind: 'topic', label: '발표 걱정', text: '발표 걱정 3건'),
+      ],
+    );
+    const message = '다음 주에 발표를 해야하는데, 말을 더듬으면 사람들이 저를 무능하다고 생각할까봐 걱정돼요.';
+    expect(data.relevant(message).map((p) => p.kind), ['topic']);
+    final p = create(() async => data);
+    await p.initialize();
+    await p.sendMessage(message);
+    expect(p.messages.last.text, isNot(contains('오후 20건')));
+    expect(p.messages.last.text, isNot(contains('이 기록이 지금 이야기와 관련이 있을까요')));
   });
   test('무관한 발화에는 집계를 모델에 전달하지 않는다', () async {
     final api = ForgedApi();

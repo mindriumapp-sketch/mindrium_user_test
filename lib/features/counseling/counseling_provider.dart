@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:gad_app_team/chatbot/affective/response_move.dart';
+import 'package:gad_app_team/chatbot/affective/affect_signal.dart';
+import 'package:gad_app_team/chatbot/affective/affect_signal_detector.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:gad_app_team/data/api/counseling_respond_api.dart';
 import 'package:gad_app_team/data/counseling/cbt_knowledge_repository.dart';
@@ -11,6 +13,7 @@ import 'package:gad_app_team/data/counseling/counseling_patterns.dart';
 import 'package:gad_app_team/data/counseling/mindrium_context_builder.dart';
 import 'package:gad_app_team/data/api/counseling_sessions_api.dart';
 import 'package:gad_app_team/data/counseling/counseling_session_summary.dart';
+import 'package:gad_app_team/data/counseling/counseling_session_record.dart';
 import 'package:gad_app_team/data/counseling/episode_history.dart';
 import 'package:gad_app_team/data/counseling/previous_session.dart';
 import 'package:gad_app_team/data/counseling/retrieval_summary.dart';
@@ -27,23 +30,15 @@ import 'llm_led/pseudonym.dart';
 import 'safety_gate.dart';
 import 'turn_plan.dart';
 
-/// 채팅 화면의 상태를 들고 있는다.
-///
-/// Step 1 은 메모리에만 저장한다. MongoDB 로 남기는 것은 Step 4 다.
+/// 채팅 화면, 상담 세션과 저장 상태를 관리한다.
 class CounselingProvider extends ChangeNotifier {
   final CounselingHarness harness;
   final CbtKnowledgeRepository knowledgeRepository;
 
-  /// MindRium 앱 사용법 지식(Phase 6). `knowledgeRepository`와 같은 패턴 —
-  /// [initialize]에서 한 번만 로드한다. 상담 응답에는 아직 반영되지 않는다
-  /// ([AssistantIntent]가 항상 `counselingOnly`이기 때문).
+  /// 앱 안내 질문에 사용할 지식. [initialize]에서 로드한다.
   final AppGuideRepository appGuideRepository;
 
-  /// `harness` 위에 놓인 최상위 진입점. Phase 7A 현재: intent는 실제로
-  /// 계산되어 [AssistantContext]에 실리지만(shadow routing), 모든 턴은
-  /// 여전히 그대로 [CounselingHarness]로 넘어가 동작을 바꾸지 않는다 —
-  /// appGuide/mixed 전용 응답 경로는 Phase 7B 이후의 일이다.
-  /// docs/counseling/chatbot_system.md 참고.
+  /// 규칙 상담과 앱 안내를 사용자 의도에 따라 연결한다.
   late final MindRiumAssistantHarness _assistantHarness =
       MindRiumAssistantHarness(
         counselingHarness: harness,
@@ -83,7 +78,6 @@ class CounselingProvider extends ChangeNotifier {
   String? _pendingUiActionMessageId;
   SafetyLevel _lastSafetyLevel = SafetyLevel.normal;
 
-
   /// 직전 턴에 만든 검색 요약. 세션 기억을 채우는 데 쓴다.
   RetrievalSummary? _lastRetrievalSummary;
 
@@ -96,9 +90,6 @@ class CounselingProvider extends ChangeNotifier {
 
   /// 정상 종료로 이미 저장했는지. 화면 이탈 스냅샷이 덮어쓰지 않게 한다.
   bool _savedAsCompleted = false;
-
-  /// 세션 시작 시점의 SUD.
-  int? _sudStart;
 
   /// core thought 가 어디서 나왔는지. 다음 세션에서 근거를 추적하는 데 쓴다.
   String? _coreThoughtSource;
@@ -151,9 +142,8 @@ class CounselingProvider extends ChangeNotifier {
   /// finalized (the user agreed, or the session had to end), not merely
   /// when the state reaches closing. The UI end-notice and `completed`
   /// persistence key off this.
-  bool get isSessionFinalized => _messages.any(
-    (m) => !m.isUser && m.closingStep == ClosingStep.finalized,
-  );
+  bool get isSessionFinalized =>
+      _messages.any((m) => !m.isUser && m.closingStep == ClosingStep.finalized);
   CounselingUiAction? get pendingUiAction => _pendingUiAction;
 
   /// [messageId] 말풍선 아래에 보여줄 추천 활동. 없으면 null.
@@ -191,11 +181,7 @@ class CounselingProvider extends ChangeNotifier {
     if (_isReady) return;
 
     await knowledgeRepository.initialize();
-    // App Guide 지식은 아직 상담 응답에 쓰이지 않는다(Phase 6). 그래서
-    // 로드에 실패해도(자산 누락, 테스트 환경 등) 상담 자체를 막아서는 안
-    // 된다 — knowledgeRepository와 달리 실패를 삼키고 그냥 빈 상태로
-    // 둔다. 이후 App Guide 응답 생성이 실제로 붙을 때는 그 경로에서
-    // degraded를 봐야 한다.
+    // 앱 안내 자료가 없어도 상담 자체는 계속한다.
     try {
       await appGuideRepository.initialize();
     } on Object catch (e) {
@@ -212,7 +198,9 @@ class CounselingProvider extends ChangeNotifier {
       }
     }
     if (llmLedApi != null) {
-      debugPrint('LLM_LED_SESSION ${jsonEncode({'session': pseudonymize(_session.sessionId)})}');
+      debugPrint(
+        'LLM_LED_SESSION ${jsonEncode({'session': pseudonymize(_session.sessionId)})}',
+      );
     }
 
     _messages.add(
@@ -246,10 +234,12 @@ class CounselingProvider extends ChangeNotifier {
     if (builder == null) return null;
 
     try {
-      return _withEpisodes(await builder.build(
-        currentWeek: _session.currentWeek,
-        userMessage: userMessage,
-      ));
+      return _withEpisodes(
+        await builder.build(
+          currentWeek: _session.currentWeek,
+          userMessage: userMessage,
+        ),
+      );
     } on Object catch (e) {
       debugPrint('[CounselingProvider] 사용자 컨텍스트 생성 실패: $e');
       return null;
@@ -260,81 +250,83 @@ class CounselingProvider extends ChangeNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isGenerating) return;
 
-    _messages.add(
-      CounselingMessage(
-        id: '${_session.sessionId}_${_messages.length}_user',
-        role: 'user',
-        text: trimmed,
-        createdAt: DateTime.now(),
-      ),
-    );
-
-    // 세션 진입 시점 컨텍스트는 아직 이번 발화의 주제를 모른다. 즉시 공감이
-    // 그 상태 그대로 지난 세션을 참조하면(RetrievalSummary의 provenance 겹침
-    // 판정), 오늘과 무관한 과거 세션이 잘못 끌려온다 — 두 시나리오를 실기기로
-    // 테스트하다 발견한 문제. 요약을 만들기 전에 먼저 이번 발화로 컨텍스트를
-    // 다시 선택한다. 내부 데이터는 캐시되어 있어(T24) 네트워크 재조회가
-    // 생기지 않는다.
-    if (contextBuilder != null) {
-      _session.userContext = await _buildContext(userMessage: trimmed);
-    }
-
-    // 요약은 즉시 공감과 세션 기억이 함께 쓴다. harness 도 같은 요약을 만들지만
-    // 그건 모델 응답 경로라 더 늦게 도착하고, 공감은 기다릴 수 없다.
-    final summary = harness.retrievalSummaryBuilder.build(
-      userMessage: trimmed,
-      context: _session.userContext,
-      recentMessages: _messages,
-      previousSession: _previousSession,
-      carriedUnfinishedIssue: _carriedUnfinishedIssue,
-    );
-    _lastRetrievalSummary = summary;
-    _sudStart ??= summary.recentSud;
-    if (summary.currentThought != null) {
-      _coreThoughtSource ??=
-          UserThoughtExtractor.evaluativeThought(trimmed) != null
-              ? 'current_utterance'
-              : 'recent_message';
-    }
-
     _isGenerating = true;
     _pendingUiAction = null;
     _pendingUiActionMessageId = null;
-    notifyListeners();
 
     try {
+      _messages.add(
+        CounselingMessage(
+          id: '${_session.sessionId}_${_messages.length}_user',
+          role: 'user',
+          text: trimmed,
+          createdAt: DateTime.now(),
+        ),
+      );
+      notifyListeners();
+
+      // 세션 진입 시점 컨텍스트는 아직 이번 발화의 주제를 모른다. 즉시 공감이
+      // 그 상태 그대로 지난 세션을 참조하면(RetrievalSummary의 provenance 겹침
+      // 판정), 오늘과 무관한 과거 세션이 잘못 끌려온다 — 두 시나리오를 실기기로
+      // 테스트하다 발견한 문제. 요약을 만들기 전에 먼저 이번 발화로 컨텍스트를
+      // 다시 선택한다. 내부 데이터는 캐시되어 있어(T24) 네트워크 재조회가
+      // 생기지 않는다.
+      if (contextBuilder != null) {
+        _session.userContext = await _buildContext(userMessage: trimmed);
+      }
+
+      // 요약은 즉시 공감과 세션 기억이 함께 쓴다. harness 도 같은 요약을 만들지만
+      // 그건 모델 응답 경로라 더 늦게 도착하고, 공감은 기다릴 수 없다.
+      final summary = harness.retrievalSummaryBuilder.build(
+        userMessage: trimmed,
+        context: _session.userContext,
+        recentMessages: _messages,
+        previousSession: _previousSession,
+        carriedUnfinishedIssue: _carriedUnfinishedIssue,
+      );
+      _lastRetrievalSummary = summary;
+      if (summary.currentThought != null) {
+        _coreThoughtSource ??=
+            UserThoughtExtractor.evaluativeThought(trimmed) != null
+                ? 'current_utterance'
+                : 'recent_message';
+      }
+
       // 컨텍스트는 위에서 이미 이번 발화 기준으로 다시 선택했다.
       final result = await _handleTurnLlmLedFirst(trimmed);
 
-      // 정상 종료 판정은 **closing 으로 처음 넘어가는 순간**이다.
-      // closing 상태는 여러 턴 유지될 수 있어 "closing 인 매 턴"으로 잡으면
-      // 같은 세션을 반복 저장하게 된다.
-      // Phase 13.5: "completed" means the closing handshake was finalized
-      // on this turn (the first time), not the first entry into closing,
-      // which used to happen right after the intervention question.
-      final finalizedNow =
-          result.assistantMessage.closingStep == ClosingStep.finalized &&
-          !isSessionFinalized;
-
-      _messages.add(result.assistantMessage);
-      // CTA 는 이 메시지에 붙는다. 한 턴에 하나이며, 다음 턴에 새 제안이 오면
-      // 이전 것은 사라진다.
-      _pendingUiAction = result.uiAction;
-      _pendingUiActionMessageId =
-          result.uiAction == null ? null : result.assistantMessage.id;
-      _lastSafetyLevel = result.safety.level;
-      _recordTurn(trimmed, result);
-
-      // harness 가 프롬프트에 넣을 최근 대화를 세션에서 읽으므로 함께 갱신한다.
-      _session.messages
-        ..clear()
-        ..addAll(_messages);
-
-      if (finalizedNow) await _persistSession('completed');
+      await _applyTurnResult(trimmed, result);
     } finally {
       _isGenerating = false;
       notifyListeners();
     }
+  }
+
+  /// 상담 경로와 관계없이 화면·기억·저장에 같은 결과를 반영한다.
+  Future<void> _applyTurnResult(
+    String userText,
+    CounselingTurnResult result,
+  ) async {
+    final finalizedNow =
+        result.assistantMessage.closingStep == ClosingStep.finalized &&
+        !isSessionFinalized;
+    _messages.add(result.assistantMessage);
+    _pendingUiAction = result.uiAction;
+    _pendingUiActionMessageId =
+        result.uiAction == null ? null : result.assistantMessage.id;
+    _lastSafetyLevel = result.safety.level;
+    if (!result.handledBySafety) {
+      final cue = const AffectSignalDetector().detect(userMessage: userText);
+      if (cue.label != AffectLabel.neutral &&
+          cue.label != AffectLabel.uncertain) {
+        _lastSignalLabel = cue.label.name;
+      }
+    }
+    _recordTurn(userText, result);
+    _session.messages
+      ..clear()
+      ..addAll(_messages);
+    if (finalizedNow) await _persistSession('completed');
   }
 
   /// Phase 14.X: the LLM-led path first, the deterministic path when it
@@ -342,27 +334,37 @@ class CounselingProvider extends ChangeNotifier {
   Future<CounselingTurnResult> _handleTurnLlmLedFirst(String userText) async {
     var isPatternRequest = CounselingPatterns.explicitlyRequested(userText);
     final api = llmLedApi;
-    final optedOut = _messages.where((m) => m.isUser).any((m) => CounselingPatterns.optedOut(m.text));
-    if (!isPatternRequest && api != null && patternIntentApi != null &&
-        !optedOut && !CounselingPatterns.rejectsAnalysis(userText) &&
+    final optedOut = _messages
+        .where((m) => m.isUser)
+        .any((m) => CounselingPatterns.optedOut(m.text));
+    if (!isPatternRequest &&
+        api != null &&
+        patternIntentApi != null &&
+        !optedOut &&
+        !CounselingPatterns.rejectsAnalysis(userText) &&
         !ClosingDecisionSelector.isExplicitEnd(userText)) {
       final safety = await harness.safetyGate.evaluate(userText);
       if (safety.isNormal) {
         try {
-          isPatternRequest = await patternIntentApi!.isPatternRequest(userText)
+          isPatternRequest = await patternIntentApi!
+              .isPatternRequest(userText)
               .timeout(const Duration(seconds: 4));
         } on Object {
           // 네트워크 오류나 시간 초과 시 기존 상담 경로를 사용한다.
         }
       }
     }
-    if (isPatternRequest && (api == null || _session.userContext?.patterns == null ||
-        _session.userContext!.patterns!.relevant(userText, explicit: true).isEmpty)) {
-      final patternReply = await _patternReply(userText, explicit: true);
+    if (isPatternRequest &&
+        (api == null ||
+            _session.userContext?.patterns == null ||
+            _session.userContext!.patterns!
+                .relevant(userText, explicit: true)
+                .isEmpty)) {
+      final patternReply = await _explicitPatternReply(userText);
       if (patternReply != null) return patternReply;
     }
     if (api == null || !_llmLedThisSession) {
-      return await _patternReply(userText) ?? _committedA(await _turn(userText));
+      return _committedA(await _turn(userText));
     }
     final endToEnd = Stopwatch()..start();
     final b = await harness.handleLlmLedTurn(
@@ -376,52 +378,99 @@ class CounselingProvider extends ChangeNotifier {
     if (b.result != null) {
       _logLlmLed(b, null, endToEnd.elapsedMilliseconds);
       final o = b.output;
-      _lastResponseMove = o == null
-          ? ResponseMove.fromMessage(b.result!.assistantMessage)
-          : ResponseMove.fromLlmLed(
-              domain: o.domain, moves: o.moves, interventionStep: o.interventionStep, sessionAction: o.sessionAction);
+      _lastResponseMove =
+          o == null
+              ? ResponseMove.fromMessage(b.result!.assistantMessage)
+              : ResponseMove.fromLlmLed(
+                domain: o.domain,
+                moves: o.moves,
+                interventionStep: o.interventionStep,
+                sessionAction: o.sessionAction,
+              );
       return b.result!;
     }
     final fallbackWatch = Stopwatch()..start();
-    final a = await _patternReply(userText, explicit: isPatternRequest) ?? await _turn(userText);
-    _logLlmLed(b, fallbackWatch.elapsedMilliseconds, endToEnd.elapsedMilliseconds);
+    final a =
+        (isPatternRequest
+            ? await _explicitPatternReply(userText)
+            : null) ??
+        await _turn(userText);
+    _logLlmLed(
+      b,
+      fallbackWatch.elapsedMilliseconds,
+      endToEnd.elapsedMilliseconds,
+    );
     // the discarded B output never reaches the avatar
     return _committedA(a);
   }
 
-  Future<CounselingTurnResult?> _patternReply(String userText, {bool explicit = false}) async {
+  Future<CounselingTurnResult?> _explicitPatternReply(String userText) async {
     final patterns = _session.userContext?.patterns;
-    final optedOut = _messages.where((m) => m.isUser).any((m) => CounselingPatterns.optedOut(m.text));
-    if (optedOut || CounselingPatterns.rejectsAnalysis(userText) || ClosingDecisionSelector.isExplicitEnd(userText)) return null;
-    if (patterns == null && !explicit) return null;
-    if (!explicit && RegExp(r'질문.{0,5}(그만|말|마)|묻지|그냥\s*들어').hasMatch(userText)) return null;
-    final selected = patterns?.relevant(userText, explicit: explicit) ?? const <CounselingPattern>[];
-    if (!explicit && (selected.isEmpty || _messages.any((m) => !m.isUser && m.referencedUserContextIds.any((id) => id.startsWith('pattern:'))))) return null;
+    final optedOut = _messages
+        .where((m) => m.isUser)
+        .any((m) => CounselingPatterns.optedOut(m.text));
+    if (optedOut ||
+        CounselingPatterns.rejectsAnalysis(userText) ||
+        ClosingDecisionSelector.isExplicitEnd(userText)) {
+      return null;
+    }
+    final selected =
+        patterns?.relevant(userText, explicit: true) ??
+        const <CounselingPattern>[];
     final safety = await harness.safetyGate.evaluate(userText);
     if (!safety.isNormal) return null;
     if (patterns == null) {
       final before = _session.state;
       final id = '${_session.sessionId}_${_session.totalTurns}_pattern';
       _session.totalTurns += 1;
-      return _committedA(CounselingTurnResult(
-        assistantMessage: CounselingMessage(id: id, role: 'assistant', text: '지금은 기록을 불러오지 못해 패턴을 확인할 수 없어요. 잠시 후 다시 확인해 주세요.', createdAt: DateTime.now(), dialogueAct: DialogueAct.reflect),
-        state: before, stateBefore: before, safety: safety, handledBySafety: false, promptVersion: 'pattern_unavailable_v1'));
+      return _committedA(
+        CounselingTurnResult(
+          assistantMessage: CounselingMessage(
+            id: id,
+            role: 'assistant',
+            text: '지금은 기록을 불러오지 못해 패턴을 확인할 수 없어요. 잠시 후 다시 확인해 주세요.',
+            createdAt: DateTime.now(),
+            dialogueAct: DialogueAct.reflect,
+          ),
+          state: before,
+          stateBefore: before,
+          safety: safety,
+          handledBySafety: false,
+          promptVersion: 'pattern_unavailable_v1',
+        ),
+      );
     }
-    final missing = RegExp(r'알림|알람').hasMatch(userText)
-        ? (patterns.activeAlarmCount == 0 ? '현재 켜진 알림이 없어요.' : '설정된 알림과 가까운 일기 기록이 반복됐다고 설명하기에는 자료가 충분하지 않아요.')
-        : '반복된 시간이나 장소를 설명하기에는 기록이 아직 충분하지 않아요.';
-    final text = selected.isEmpty
-        ? '최근 ${patterns.windowDays}일의 일기 ${patterns.diaryCount}건을 확인했어요. $missing'
-        : '${selected.map((p) => p.text).join(' ')} 이 기록이 지금 이야기와 관련이 있을까요?';
+    final missing =
+        RegExp(r'알림|알람').hasMatch(userText)
+            ? (patterns.activeAlarmCount == 0
+                ? '현재 켜진 알림이 없어요.'
+                : '설정된 알림과 가까운 일기 기록이 반복됐다고 설명하기에는 자료가 충분하지 않아요.')
+            : '반복된 시간이나 장소를 설명하기에는 기록이 아직 충분하지 않아요.';
+    final text =
+        selected.isEmpty
+            ? '최근 ${patterns.windowDays}일의 일기 ${patterns.diaryCount}건을 확인했어요. $missing'
+            : '${selected.map((p) => p.text).join(' ')} 이 기록이 지금 이야기와 관련이 있을까요?';
     final before = _session.state;
     final id = '${_session.sessionId}_${_session.totalTurns}_pattern';
     _session.totalTurns += 1;
-    return _committedA(CounselingTurnResult(
-      assistantMessage: CounselingMessage(id: id, role: 'assistant', text: text,
-          createdAt: DateTime.now(), dialogueAct: DialogueAct.reflect,
-          referencedUserContextIds: selected.map((p) => 'pattern:${p.id}').toList()),
-      state: before, stateBefore: before, safety: safety,
-      handledBySafety: false, promptVersion: 'pattern_summary_v1'));
+    return _committedA(
+      CounselingTurnResult(
+        assistantMessage: CounselingMessage(
+          id: id,
+          role: 'assistant',
+          text: text,
+          createdAt: DateTime.now(),
+          dialogueAct: DialogueAct.reflect,
+          referencedUserContextIds:
+              selected.map((p) => 'pattern:${p.id}').toList(),
+        ),
+        state: before,
+        stateBefore: before,
+        safety: safety,
+        handledBySafety: false,
+        promptVersion: 'pattern_summary_v1',
+      ),
+    );
   }
 
   CounselingTurnResult _committedA(CounselingTurnResult a) {
@@ -436,29 +485,9 @@ class CounselingProvider extends ChangeNotifier {
   /// latency breakdown, plus the fallback (path A) time when it was used.
   void _logLlmLed(LlmLedTurn b, int? fallbackMs, int endToEndMs) {
     final o = b.output;
-    debugPrint('LLM_LED ${jsonEncode({
-      'session': pseudonymize(_session.sessionId),
-      'turn': _messages.where((m) => m.isUser).length,
-      'status': b.status,
-      'group': b.group,
-      'request_status': b.requestStatus,
-      'http_status': b.failure?.httpStatus,
-      'retry_after': b.failure?.retryAfter,
-      'provider_request_id': b.failure?.providerRequestId,
-      'reject_cause': b.failure?.cause,
-      'finish_reason': b.failure?.finishReason,
-      'fallback': b.result == null,
-      'latency_ms': b.latencyMs,
-      'domain': o?.domain,
-      'moves': o?.moves,
-      'session_action': o?.sessionAction,
-      'intervention_step': o?.interventionStep,
-      'primary_rejection': b.primaryRejection,
-      'violations': b.violations,
-      ...b.timing,
-      'fallback_ms': fallbackMs,
-      'end_to_end_ms': endToEndMs,
-    })}');
+    debugPrint(
+      'LLM_LED ${jsonEncode({'session': pseudonymize(_session.sessionId), 'turn': _messages.where((m) => m.isUser).length, 'status': b.status, 'group': b.group, 'request_status': b.requestStatus, 'http_status': b.failure?.httpStatus, 'retry_after': b.failure?.retryAfter, 'provider_request_id': b.failure?.providerRequestId, 'reject_cause': b.failure?.cause, 'finish_reason': b.failure?.finishReason, 'fallback': b.result == null, 'latency_ms': b.latencyMs, 'domain': o?.domain, 'moves': o?.moves, 'session_action': o?.sessionAction, 'intervention_step': o?.interventionStep, 'primary_rejection': b.primaryRejection, 'violations': b.violations, ...b.timing, 'fallback_ms': fallbackMs, 'end_to_end_ms': endToEndMs})}',
+    );
   }
 
   Future<CounselingTurnResult> _turn(String userText) =>
@@ -525,9 +554,13 @@ class CounselingProvider extends ChangeNotifier {
     }
     final summary = _memory.summary;
     if (!summary.hasContent) return;
-    // Episode facts come from turn metadata, not from the turn-order
-    // recorder (which stored meta replies as alternative thoughts).
-    final facts = EpisodeFacts.fromMessages(_session.messages);
+    final record = CounselingSessionRecord.build(
+      summary: summary,
+      messages: _session.messages,
+      coreThoughtSource: _coreThoughtSource,
+      affect: _lastSignalLabel,
+    );
+    final facts = record.facts;
     if (_lastPersistedTurnCount == summary.turnCount &&
         _lastPersistedStatus == status) {
       return;
@@ -542,17 +575,17 @@ class CounselingProvider extends ChangeNotifier {
         endedAt: DateTime.now(),
         finalState: _session.state.wireName,
         safetyLevel: _lastSafetyLevel.name,
-        mainConcern: summary.concern ?? facts.mainConcern,
+        mainConcern: record.mainConcern,
         coreThought: facts.coreThought,
-        coreThoughtSource: facts.coreThought == null ? null : _coreThoughtSource,
+        coreThoughtSource: record.coreThoughtSource,
         alternativeThought: facts.alternativeThought,
-        affect: _lastSignalLabel,
-        sudStart: _sudStart ?? facts.sudStart,
-        sudEnd: summary.endingSud,
+        affect: record.affect,
+        sudStart: facts.sudStart,
+        sudEnd: facts.sudEnd,
         interventionUsed: summary.interventionUsed,
         activityRecommended: summary.activityRecommended,
         unfinishedIssue: facts.unfinishedIssue,
-        interventionOutcome: _interventionOutcome,
+        interventionOutcome: record.interventionOutcome,
         provenanceIds: summary.provenanceIds,
         turnCount: summary.turnCount,
       );
@@ -562,16 +595,6 @@ class CounselingProvider extends ChangeNotifier {
     } on Object catch (e) {
       debugPrint('[CounselingProvider] 세션 요약 저장 실패: $e');
     }
-  }
-
-  /// 이번 세션 기법 답의 결과: 한 번이라도 성과로 인정됐으면 'credited',
-  /// 받아 주기만 했으면 'acknowledged', 통합 턴이 없으면 null.
-  String? get _interventionOutcome {
-    final integrations = _session.messages.where(
-      (m) => !m.isUser && m.interventionCredited != null,
-    );
-    if (integrations.isEmpty) return null;
-    return integrations.any((m) => m.interventionCredited!) ? 'credited' : 'acknowledged';
   }
 
   /// 사용자가 화면을 벗어날 때 호출한다.
@@ -601,36 +624,52 @@ class CounselingProvider extends ChangeNotifier {
         askedEvidence:
             result.stateBefore == CounselingState.reflect &&
             (plan?.questionSentence.contains('근거나 경험') ?? false),
-        interventionCbtId: plan?.interventionPlan?.selectedCbtId,
+        interventionCbtId:
+            plan?.interventionPlan?.selectedCbtId ??
+            (result.assistantMessage.interventionStep == InterventionStep.prompt
+                ? result.assistantMessage.referencedCbtIds.firstOrNull
+                : null),
         activity: plan?.interventionPlan?.recommendation.activity?.name,
-        provenanceIds: result.retrievalProvenanceIds,
+        provenanceIds:
+            {
+              ...result.retrievalProvenanceIds,
+              ...result.assistantMessage.referencedUserContextIds,
+            }.toList(),
       ),
     );
   }
 
   /// 대화를 처음부터 다시 시작한다.
   Future<void> reset() async {
-    _session = CounselingSessionState(
-      sessionId: 'session_${DateTime.now().millisecondsSinceEpoch}',
-      currentWeek: _session.currentWeek,
-    );
-    _messages.clear();
-    _pendingUiAction = null;
-    _pendingUiActionMessageId = null;
-    _savedAsCompleted = false;
-    _startedAt = DateTime.now();
-    _persistQueue = Future<void>.value();
-    _lastPersistedTurnCount = -1;
-    _lastPersistedStatus = null;
-    _sudStart = null;
-    _coreThoughtSource = null;
-    _lastSignalLabel = null;
-    _previousSession = null;
-    _carriedUnfinishedIssue = null;
-    _lastRetrievalSummary = null;
-    _memory = CounselingSessionMemory(sessionId: _session.sessionId);
-    _lastSafetyLevel = SafetyLevel.normal;
-    _isReady = false;
-    await initialize();
+    if (_isGenerating) return;
+    _isGenerating = true;
+    notifyListeners();
+    try {
+      await finalizeIfIncomplete();
+      _session = CounselingSessionState(
+        sessionId: 'session_${DateTime.now().millisecondsSinceEpoch}',
+        currentWeek: _session.currentWeek,
+      );
+      _messages.clear();
+      _pendingUiAction = null;
+      _pendingUiActionMessageId = null;
+      _savedAsCompleted = false;
+      _startedAt = DateTime.now();
+      _persistQueue = Future<void>.value();
+      _lastPersistedTurnCount = -1;
+      _lastPersistedStatus = null;
+      _coreThoughtSource = null;
+      _lastSignalLabel = null;
+      _previousSession = null;
+      _carriedUnfinishedIssue = null;
+      _lastRetrievalSummary = null;
+      _memory = CounselingSessionMemory(sessionId: _session.sessionId);
+      _lastSafetyLevel = SafetyLevel.normal;
+      _isReady = false;
+      await initialize();
+    } finally {
+      _isGenerating = false;
+      notifyListeners();
+    }
   }
 }

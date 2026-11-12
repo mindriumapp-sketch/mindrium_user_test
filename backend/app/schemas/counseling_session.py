@@ -33,7 +33,10 @@ class CounselingSessionSummaryBase(BaseModel):
     core_thought_source: Optional[ThoughtSource] = None
     alternative_thought: Optional[str] = None
 
+    # 상담 발화의 어휘에서 감지한 마지막 비중립 단서. 진단이나 확정된 감정이 아니다.
     affect: Optional[str] = None
+    # 일기 점수가 아닌 상담 발화에서 명시한 첫 점수와 두 번 이상일 때 마지막 점수.
+    # 실제 상담 전후 상태를 보장하지 않는다.
     sud_start: Optional[int] = Field(None, ge=0, le=10)
     sud_end: Optional[int] = Field(None, ge=0, le=10)
 

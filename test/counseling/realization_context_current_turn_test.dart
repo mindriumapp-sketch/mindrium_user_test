@@ -37,7 +37,11 @@ class _CaptureApi implements CounselingRealizeApi {
     int? sudRatingValue,
   }) async {
     recent = recentConversation;
-    return {'request_id': requestId, 'reply': deterministicDraft, 'chosen_act': requiredAct};
+    return {
+      'request_id': requestId,
+      'reply': deterministicDraft,
+      'chosen_act': requiredAct,
+    };
   }
 }
 
@@ -51,7 +55,9 @@ CounselingMessage _m(String role, String text, int i) => CounselingMessage(
 void main() {
   late LocalCbtKnowledgeRepository repo;
   setUpAll(() async {
-    repo = LocalCbtKnowledgeRepository(loadAsset: (p) => File(p).readAsString());
+    repo = LocalCbtKnowledgeRepository(
+      loadAsset: (p) => File(p).readAsString(),
+    );
     await repo.initialize();
   });
 
@@ -60,42 +66,52 @@ void main() {
     safetyGate: const KeywordSafetyGate(),
     knowledgeRepository: repo,
     responseRealizer: RemoteLlmRealizer(api: api),
-    rolloutConfig: const RolloutConfig(enabled: true, stage: RolloutStage.internalOnly),
+    rolloutConfig: const RolloutConfig(
+      enabled: true,
+      stage: RolloutStage.internalOnly,
+    ),
     isInternalAccount: true,
   );
 
   const current = '내일 시험인데 공부를 많이 못했어. 준비한 것보다 못볼까봐 걱정이야';
-  const previousQuestion = '내일 시험이 있다는 사실이 불안하게 느껴지시는군요. 그 감정을 느끼게 된 구체적인 계기는 무엇인가요?';
+  const previousQuestion =
+      '내일 시험이 있다는 사실이 불안하게 느껴지시는군요. 그 감정을 느끼게 된 구체적인 계기는 무엇인가요?';
 
-  test('production sync (history appended after the turn): the current message reaches the realizer', () async {
-    final api = _CaptureApi();
-    final session = CounselingSessionState(
-      sessionId: 's5',
-      currentWeek: 4,
-      state: CounselingState.reflect,
-      totalTurns: 2,
-      messages: [_m('user', '9', 0), _m('assistant', previousQuestion, 0)],
-    );
-    await harness(api).handleTurn(session: session, userMessage: current);
-    expect(api.recent.last, {'role': 'user', 'text': current});
-    expect(api.recent.first, {'role': 'assistant', 'text': previousQuestion});
-  });
+  test(
+    'production sync (history appended after the turn): the current message reaches the realizer',
+    () async {
+      final api = _CaptureApi();
+      final session = CounselingSessionState(
+        sessionId: 's5',
+        currentWeek: 4,
+        state: CounselingState.reflect,
+        totalTurns: 2,
+        messages: [_m('user', '9', 0), _m('assistant', previousQuestion, 0)],
+      );
+      await harness(api).handleTurn(session: session, userMessage: current);
+      expect(api.recent.last, {'role': 'user', 'text': current});
+      expect(api.recent.first, {'role': 'assistant', 'text': previousQuestion});
+    },
+  );
 
-  test('instant-empathy sync (history already has the current message): not duplicated', () async {
-    final api = _CaptureApi();
-    final session = CounselingSessionState(
-      sessionId: 's5b',
-      currentWeek: 4,
-      state: CounselingState.reflect,
-      totalTurns: 2,
-      messages: [
-        _m('assistant', previousQuestion, 0),
-        _m('user', current, 1),
-      ],
-    );
-    await harness(api).handleTurn(session: session, userMessage: current);
-    expect(api.recent.where((m) => m['text'] == current), hasLength(1));
-  });
+  test(
+    'instant-empathy sync (history already has the current message): not duplicated',
+    () async {
+      final api = _CaptureApi();
+      final session = CounselingSessionState(
+        sessionId: 's5b',
+        currentWeek: 4,
+        state: CounselingState.reflect,
+        totalTurns: 2,
+        messages: [
+          _m('assistant', previousQuestion, 0),
+          _m('user', current, 1),
+        ],
+      );
+      await harness(api).handleTurn(session: session, userMessage: current);
+      expect(api.recent.where((m) => m['text'] == current), hasLength(1));
+    },
+  );
 
   test('selector view is unchanged: session history is not mutated', () async {
     final api = _CaptureApi();
@@ -110,4 +126,24 @@ void main() {
     expect(session.messages, hasLength(2));
     expect(session.messages.last.text, previousQuestion);
   });
+
+  test(
+    'the same answer in a new turn is appended after the assistant question',
+    () async {
+      final api = _CaptureApi();
+      final session = CounselingSessionState(
+        sessionId: 'repeat',
+        currentWeek: 4,
+        state: CounselingState.reflect,
+        totalTurns: 2,
+        messages: [
+          _m('user', current, 0),
+          _m('assistant', previousQuestion, 1),
+        ],
+      );
+      await harness(api).handleTurn(session: session, userMessage: current);
+      expect(api.recent.last, {'role': 'user', 'text': current});
+      expect(api.recent.first, {'role': 'assistant', 'text': previousQuestion});
+    },
+  );
 }

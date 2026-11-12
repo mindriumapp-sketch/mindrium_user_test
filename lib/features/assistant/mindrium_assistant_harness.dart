@@ -24,19 +24,7 @@ export 'response/mixed_response_composer.dart';
 
 /// `ChatPage`/`CounselingProvider` 위에 놓이는 최상위 진입점.
 ///
-/// Phase 5 현재: 세 retrieval 경계(user/counseling/appGuide)로
-/// [AssistantContext]를 만들고, 그중 상담에 쓰는 두 결과
-/// (`RetrievalSummary`/CBT knowledge)를 [PrecomputedTurnContext]로
-/// [CounselingHarness.handleTurn]에 그대로 넘긴다 — harness가 같은
-/// 조회를 다시 하지 않는다. `PersonalContextSummary`/App Guide 결과는
-/// 아직 상담 응답에 반영되지 않는다(그 결과는 [AssistantIntent]가 여전히
-/// `counselingOnly`뿐이라서 소비할 곳이 없다) — 그래서 사용자에게 보이는
-/// 동작은 기존과 100% 동일하다.
-///
-/// `CounselingHarness` 내부 로직(`retrievalSummaryBuilder`,
-/// `knowledgeRepository.search`) 자체는 건드리지 않았다 — `handleTurn`을
-/// 직접 생성해 쓰는 기존 호출부·테스트는 `precomputedContext`를 넘기지
-/// 않으므로 이전과 완전히 동일하게 동작한다.
+/// 사용자·상담 지식·앱 안내를 조회한 뒤 상담, 앱 안내 또는 혼합 응답으로 분기한다.
 class MindRiumAssistantHarness {
   final CounselingHarness counselingHarness;
   final UserContextRetriever userContextRetriever;
@@ -66,10 +54,7 @@ class MindRiumAssistantHarness {
 
   /// 이번 턴에 필요한 도메인을 판단한다.
   ///
-  /// Phase 7A: 판정 결과는 [AssistantContext.intent]에 실려 로그/검증
-  /// 목적으로만 쓰인다(shadow routing) — 아직 이 결과로 최종 응답 경로를
-  /// 바꾸지 않는다. `hasMatch`(knowledge 존재 여부)와는 무관하게, "무엇을
-  /// 원하는가"만 판정한다 — [AssistantIntentRouter] 문서 참고.
+  /// 검색 결과의 존재 여부와 별도로 사용자가 원하는 도메인을 판정한다.
   AssistantIntent detectIntent(
     String userMessage, {
     bool counselingInProgress = false,

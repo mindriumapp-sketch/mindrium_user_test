@@ -65,6 +65,7 @@ class Progress(BaseModel):
     # respond_v3: exploration has run its course for this worry
     explore_closed: bool = False
     exploratory_questions: int = 0
+    retry_feedback: Optional[Literal['repeated_question', 'repeated_reply']] = None
 
 
 class TermRequest(BaseModel):

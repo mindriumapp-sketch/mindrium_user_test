@@ -10,6 +10,9 @@ import 'compact_prompt_builder.dart';
 import 'llm_led/llm_led_contract.dart';
 import 'llm_led/term_glossary.dart';
 import 'counseling_state.dart';
+import 'counseling_session_state.dart';
+
+export 'counseling_session_state.dart';
 import 'hybrid_turn_router.dart';
 import 'intervention_registry.dart';
 import 'llm_service.dart';
@@ -24,125 +27,8 @@ import 'safety_gate.dart';
 import 'turn_plan.dart';
 import 'turn_plan_prompt_builder.dart';
 
-/// `handleTurn()`이 CBT 검색과 `RetrievalSummary` 계산을 다시 하지 않도록
-/// 미리 계산해 넘기는 값. `MindRiumAssistantHarness`가 이미 같은 조회를
-/// 끝냈을 때만 채운다 — Phase 5(Personal Context v2 + Precomputed Context
-/// Bridge)에서 두 경로(assistant 계층/harness 내부)가 같은 retrieval을
-/// 중복 계산하던 문제를 없애기 위한 다리다.
-///
-/// `null`이면(기존 `CounselingHarness`를 직접 생성해 쓰는 모든 호출부·
-/// 테스트) 이전과 완전히 동일하게 harness가 직접 조회한다 — 이 필드가
-/// 생기기 전의 동작을 그대로 보존한다.
-class PrecomputedTurnContext {
-  final List<CbtKnowledgeItem> knowledge;
-  final RetrievalSummary retrievalSummary;
-
-  const PrecomputedTurnContext({
-    required this.knowledge,
-    required this.retrievalSummary,
-  });
-}
-
-/// 한 세션의 진행 상태. Step 1 은 메모리에만 둔다(DB 저장은 Step 4).
-class CounselingSessionState {
-  final String sessionId;
-
-  /// 사용자가 현재 진행 중인 프로그램 주차. Step 2 에서 실제 값으로 채운다.
-  final int currentWeek;
-
-  /// 세션 시작 시 한 번 만들어 두는 사용자 컨텍스트.
-  /// 턴마다 다시 조회하지 않고, 새 기록이 생긴 경우에만 명시적으로 갈아끼운다.
-  MindriumCounselingContext? userContext;
-
-  CounselingState state;
-  int turnsInCurrentState;
-  int totalTurns;
-  final List<CounselingMessage> messages;
-  String? summary;
-
-  CounselingSessionState({
-    required this.sessionId,
-    required this.currentWeek,
-    this.userContext,
-    this.state = CounselingState.checkIn,
-    this.turnsInCurrentState = 0,
-    this.totalTurns = 0,
-    List<CounselingMessage>? messages,
-    this.summary,
-  }) : messages = messages ?? [];
-}
-
-/// 한 턴을 처리한 결과.
-class CounselingTurnResult {
-  final CounselingMessage assistantMessage;
-
-  /// 이번 턴에 planner가 확정한 행동 계획. planning 미적용/안전 턴이면 null이다.
-  final CounselingTurnPlan? turnPlan;
-
-  /// 이번 턴을 어떻게 실현하기로 했는지.
-  final TurnRoutingDecision? routing;
-
-  /// 최종 사용자 문장을 만든 구현. 향후 D/local/remote 비교의 기준이다.
-  final RealizationSource realizationSource;
-
-  /// 이번 턴의 응답을 구성하는 데 실제로 사용한 사용자 기록 id.
-  ///
-  /// 모델이 "인용했다고 신고한" id(`referencedUserContextIds`)와 다르다.
-  /// 이쪽은 harness 가 무엇을 근거로 문장을 만들었는지의 기록이다.
-  final List<String> retrievalProvenanceIds;
-
-  /// 턴이 끝난 뒤의 상태.
-  final CounselingState state;
-  final SafetyResult safety;
-
-  /// 안전 관문에 걸려 모델을 호출하지 않았는지.
-  final bool handledBySafety;
-
-  /// harness 가 사용자에게 제안하는 앱 동작. 모델이 정하지 않는다.
-  final CounselingUiAction? uiAction;
-
-  final String promptVersion;
-
-  /// 턴 시작 시점의 상태. 전이가 일어났는지 보려면 [state] 와 비교한다.
-  final CounselingState stateBefore;
-
-  /// 이번 턴에 프롬프트로 제공한 근거 id 수.
-  ///
-  /// 모델이 실제로 인용한 수(assistantMessage.referenced*)와 함께 보면
-  /// 문제가 retrieval 인지, 프롬프트인지, 모델이 근거를 무시한 것인지 구분된다.
-  final int offeredCbtIdCount;
-  final int offeredUserContextIdCount;
-
-  /// GPT가 [turnPlan]의 requiredAct 대신 allowedActsForTurn 안의 다른 행위를
-  /// 선택했고, 그 선택이 실제로 채택됐는지. Adaptive Dialogue Policy Phase 1
-  /// 선택 분포를 벤치마크로 확인하기 위한 필드다.
-  final bool actChosenByModel;
-
-  const CounselingTurnResult({
-    required this.assistantMessage,
-    required this.state,
-    required this.stateBefore,
-    required this.safety,
-    required this.handledBySafety,
-    required this.promptVersion,
-    this.turnPlan,
-    this.uiAction,
-    this.offeredCbtIdCount = 0,
-    this.offeredUserContextIdCount = 0,
-    this.retrievalProvenanceIds = const [],
-    this.routing,
-    this.realizationSource = RealizationSource.deterministic,
-    this.actChosenByModel = false,
-  });
-}
-
-/// 앱 동작 제안. LLM 출력이 아니라 harness 정책에서 나온다.
-/// 이번 턴에 **추천**하는 앱 활동.
-///
-/// 화면 이동 명령이 아니다. 상담은 활동을 알려줄 뿐이고, 수행 여부와 시점은
-/// 사용자가 앱에서 스스로 정한다. **추천했다는 사실이 수행했다는 뜻은 아니다.**
-/// 수행 여부는 서버 기록에 실제로 남았을 때만 인정한다.
-typedef CounselingUiAction = CounselingActivity;
+part 'counseling_turn_result.dart';
+part 'llm_led_turn.dart';
 
 /// 상담 한 턴의 파이프라인을 소유한다.
 ///
@@ -651,10 +537,8 @@ class CounselingHarness {
     String sessionId,
   ) {
     final current = userMessage.trim();
-    final alreadyThere = history.reversed
-        .where((m) => m.isUser)
-        .take(1)
-        .any((m) => m.text.trim() == current);
+    final alreadyThere = history.isNotEmpty && history.last.isUser &&
+        history.last.text.trim() == current;
     if (current.isEmpty || alreadyThere) return history;
     return [
       ...history,
@@ -731,7 +615,7 @@ class CounselingHarness {
         detail: detail.length > 160 ? detail.substring(0, 160) : detail,
       );
     }
-    final latency = sw.elapsedMilliseconds;
+    var latency = sw.elapsedMilliseconds;
     final timing = {
       'context_ms': contextMs,
       'request_ms': latency,
@@ -739,13 +623,45 @@ class CounselingHarness {
       'prompt_tokens': (res['prompt_tokens'] as num?)?.toInt(),
       'completion_tokens': (res['completion_tokens'] as num?)?.toInt(),
     };
-    final parsed = LlmLedOutput.tryParse(res['output']);
+    var parsed = LlmLedOutput.tryParse(res['output']);
     if (parsed == null) return LlmLedTurn(status: 'schema_reject', latencyMs: latency, timing: timing);
     // A recall code resolved is always stated (from the stored record).
-    final out = ctx.recall?.ensureStated(parsed, userMessage) ?? parsed;
+    var out = ctx.recall?.ensureStated(parsed, userMessage) ?? parsed;
     if (!identical(out, parsed)) timing['recall_composed'] = 1;
     final validateWatch = Stopwatch()..start();
-    final violations = LlmLedValidator.validate(out, ctx);
+    var violations = LlmLedValidator.validate(out, ctx);
+    // Retry only a repetition failure, within the original time budget. All
+    // safety and factual checks still run on the replacement response.
+    const retryable = {'repeated_question', 'repeated_reply'};
+    final remaining = timeout - sw.elapsed;
+    if (violations.isNotEmpty && violations.every(retryable.contains) &&
+        remaining > const Duration(milliseconds: 500)) {
+      timing['retry_attempted'] = 1;
+      final retryBody = Map<String, dynamic>.from(ctx.body);
+      retryBody['progress'] = {
+        ...Map<String, dynamic>.from(ctx.body['progress'] as Map),
+        'retry_feedback': violations.first,
+      };
+      try {
+        final retry = await api.respond(retryBody, timeout: remaining).timeout(remaining);
+        final candidate = LlmLedOutput.tryParse(retry['output']);
+        if (candidate != null) {
+          final revised = ctx.recall?.ensureStated(candidate, userMessage) ?? candidate;
+          final revisedViolations = LlmLedValidator.validate(revised, ctx);
+          if (revisedViolations.isEmpty) {
+            res = retry;
+            parsed = candidate;
+            out = revised;
+            violations = revisedViolations;
+            timing['retry_accepted'] = 1;
+          }
+        }
+      } on Object {
+        // Keep the original rejection and let the existing fallback handle it.
+      }
+      latency = sw.elapsedMilliseconds;
+      timing['request_ms'] = latency;
+    }
     timing['validate_ms'] = validateWatch.elapsedMilliseconds;
     if (violations.isNotEmpty) {
       return LlmLedTurn(
@@ -875,66 +791,4 @@ class CounselingHarness {
 
     return plan?.interventionPlan?.recommendation.activity;
   }
-}
-
-/// Phase 14.X: outcome of one LLM-led attempt. [status]: success | safety |
-/// timeout | http_error | schema_reject | rejected (validator).
-class LlmLedTurn {
-  final CounselingTurnResult? result;
-  final String status;
-  final int? latencyMs;
-  final LlmLedOutput? output;
-  final List<String> violations;
-
-  /// Error detail for http_error (status code / backend reason; no user text).
-  final String? detail;
-
-  /// The classified transport/API failure, when the call did not answer.
-  final CounselingRespondFailure? failure;
-
-  /// success | the failure's request status | 'success' also for a reply the
-  /// validator rejected (the request itself succeeded).
-  String get requestStatus => failure?.requestStatus ?? 'success';
-
-  /// direct (B shown) | content_fallback (B answered, rejected) |
-  /// transport_fallback (no usable answer) | safety.
-  String get group => switch (status) {
-        'success' => 'direct',
-        'safety' => 'safety',
-        'rejected' || 'schema_reject' => 'content_fallback',
-        _ => 'transport_fallback',
-      };
-
-  /// The most serious validator reason (grounding and safety first).
-  String? get primaryRejection {
-    if (violations.isEmpty) return null;
-    for (final r in _rejectionPriority) {
-      if (violations.contains(r)) return r;
-    }
-    return violations.first;
-  }
-
-  static const _rejectionPriority = [
-    'definition_mismatch', 'unknown_term_defined', 'definition_without_request', 'recall_not_stated',
-    'unauthorized_intervention', 'prompt_without_intervention', 'integration_without_prompt',
-    'unsupported_user_fact', 'unsupported_app_fact', 'app_claim_without_fact',
-    'diagnosis', 'outcome_guarantee', 'directive', 'advice', 'premature_example', 'finalize_without_proposal',
-    'question_after_no_question_promise', 'too_many_questions', 'question_shape',
-    'repeated_question', 'repeated_reply', 'exploring_after_closed', 'banmal_reply', 'second_person', 'too_long',
-  ];
-
-  const LlmLedTurn({
-    this.result,
-    required this.status,
-    this.latencyMs,
-    this.output,
-    this.violations = const [],
-    this.detail,
-    this.failure,
-    this.timing = const {},
-  });
-
-  /// Latency breakdown (ms): context build, request (network + model), model
-  /// alone (backend-reported), validation; plus prompt tokens.
-  final Map<String, int?> timing;
 }

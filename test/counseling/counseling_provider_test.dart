@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gad_app_team/data/counseling/local_cbt_knowledge_repository.dart';
 import 'package:gad_app_team/data/counseling/mindrium_context_builder.dart';
+import 'package:gad_app_team/data/counseling/counseling_models.dart';
 import 'package:gad_app_team/features/counseling/counseling_harness.dart';
 import 'package:gad_app_team/features/counseling/counseling_provider.dart';
 import 'package:gad_app_team/features/counseling/mock_llm_service.dart';
@@ -41,7 +43,27 @@ class CountingDataSource implements MindriumDataSource {
   Future<List<Map<String, dynamic>>> listRelaxationTasks() async => const [];
 }
 
+class DelayedContextBuilder extends MindriumContextBuilder {
+  final release = Completer<void>();
+  DelayedContextBuilder() : super(dataSource: CountingDataSource());
+
+  @override
+  Future<MindriumCounselingContext> build({
+    required int currentWeek,
+    String? userMessage,
+    String? focusGroupId,
+  }) async {
+    if (userMessage != null) await release.future;
+    return super.build(
+      currentWeek: currentWeek,
+      userMessage: userMessage,
+      focusGroupId: focusGroupId,
+    );
+  }
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late LocalCbtKnowledgeRepository repository;
 
   setUpAll(() async {
@@ -53,9 +75,8 @@ void main() {
     return CounselingProvider(
       knowledgeRepository: repository,
       currentWeek: 4,
-      contextBuilder: source == null
-          ? null
-          : MindriumContextBuilder(dataSource: source),
+      contextBuilder:
+          source == null ? null : MindriumContextBuilder(dataSource: source),
       harness: CounselingHarness(
         llm: MockLlmService(),
         safetyGate: const KeywordSafetyGate(),
@@ -80,6 +101,29 @@ void main() {
     await provider.sendMessage('발표가 걱정돼요.');
     await provider.sendMessage('계속 생각이 나요.');
     expect(source.diaryCalls, 1);
+  });
+
+  test('컨텍스트를 기다리는 동안 두 번째 발화를 시작하지 않는다', () async {
+    final builder = DelayedContextBuilder();
+    final provider = CounselingProvider(
+      knowledgeRepository: repository,
+      currentWeek: 4,
+      contextBuilder: builder,
+      harness: CounselingHarness.deterministic(
+        llm: MockLlmService(),
+        safetyGate: const KeywordSafetyGate(),
+        knowledgeRepository: repository,
+      ),
+    );
+    await provider.initialize();
+    final first = provider.sendMessage('발표가 걱정돼요');
+    expect(provider.isGenerating, isTrue);
+    await provider.sendMessage('다른 입력');
+    expect(provider.messages.where((m) => m.isUser).length, 1);
+    builder.release.complete();
+    await first;
+    expect(provider.isGenerating, isFalse);
+    expect(provider.messages.last.isUser, isFalse);
   });
 
   test('T24 refreshContext 를 부르면 다시 읽는다', () async {
@@ -116,5 +160,4 @@ void main() {
     expect(provider.messages.last.isUser, isFalse);
     expect(provider.messages.last.text, isNotEmpty);
   });
-
 }

@@ -52,7 +52,7 @@ LLM 호출 전에 코드가 정하는 경계:
 
 ### 2.2 B 경로 계약 (`POST /counseling/respond`, 프롬프트 `respond_v14`)
 
-**켜는 조건:** 빌드 플래그 `COUNSELING_LLM_LED_PATH=true` + 허용 목록 계정(`internal_account_allowlist.dart`). 비위기 턴마다 B를 먼저 부르고, 시간 제한은 8초, 재시도는 하지 않는다. 실패한 턴만 A가 답한다.
+**켜는 조건:** 빌드 플래그 `COUNSELING_LLM_LED_PATH=true` + 허용 목록 계정(`internal_account_allowlist.dart`). 비위기 턴마다 B를 먼저 부르고, 시간 제한은 8초다. 반복 질문이나 반복 답변만으로 검증에 실패한 경우 남은 시간 안에서 한 번 다시 생성하고 다시 검증한다. 그 외 실패나 재생성 실패 시 A가 답한다.
 
 **입력 (`LlmLedContext.build`)**
 
@@ -123,10 +123,11 @@ flowchart TD
 
 | 파일 | 역할 |
 |---|---|
-| `counseling_harness.dart` | 한 턴 처리의 진입점(`handleTurn`). 안전 관문 → 검색 → 계획 → 라우팅 → 실현 → 상태 전이. `deterministic()` / `remoteGpt()` 두 팩토리 |
+| `counseling_harness.dart` | 한 턴 처리의 진입점. 안전 확인, 계획, 응답, 상태 전이를 연결한다. 턴 결과 모델은 `counseling_turn_result.dart`와 `llm_led_turn.dart`에 둔다. |
 | `counseling_provider.dart` | 화면과 harness를 잇는 상태 관리. 메시지 목록, 세션 저장(`completed`/`interrupted`), 종료 여부(`isSessionFinalized`) |
+| `counseling_session_state.dart`, `data/counseling/counseling_session_record.dart` | 상담 진행 상태와 저장할 요약을 각각 관리한다. |
 | `counseling_state.dart` | 상태 enum과 `CounselingStatePolicy`(단계별 예산, 최소 턴, 완료 기반 전이, 조기 마무리, 마무리 재개) |
-| `turn_plan.dart` | `CounselingTurnPlan` 모델, Hard Guard 계층(`DeterministicInputGuardTurnPlanner`, `DeterministicProcessSignalTurnPlanner`), 상태별 결정론 planner |
+| `turn_plan.dart` 및 같은 디렉터리의 `part` 파일 | 상담 계획 모델, 입력·대화 반응 검사, 기존 단계별 planner, 응답 검증을 파일별로 나눈다. 운영 규칙 경로는 `policy/production_turn_planner.dart`를 사용한다. |
 | `intervention_registry.dart` | 승인 기법 목록(4~8주차)과 `policiesUpTo(week)` 누적 조회 |
 | `hybrid_turn_router.dart` | 이번 턴에 원격 GPT를 써도 되는지 판단 |
 | `remote_llm_realizer.dart`, `response_realizer.dart` | 원격 실현 요청·검증·결과 모델 |
@@ -154,7 +155,7 @@ flowchart TD
 
 | 파일 | 역할 |
 |---|---|
-| `llm_led_contract.dart` | `LlmLedContext`(경계 구성), `LlmLedOutput`(응답 파싱), `LlmLedValidator`(검증), `LlmLedMapping`(응답 → 다음 상태와 턴 메타데이터, 기법 인정은 코드 규칙) |
+| `llm_led_contract.dart` 및 같은 디렉터리의 `part` 파일 | AI 입력 구성, 출력 파싱, 응답 검증, 상태·메타데이터 변환을 파일별로 나눈다. |
 | `pseudonym.dart` | 로그용 세션 가명 |
 | `term_glossary.dart` | 용어 질문 판정. `assets/counseling/glossary.json`은 이름·별칭만 갖고, 정의는 승인 코퍼스에서 읽는다 |
 | `../counseling_harness.dart` `handleLlmLedTurn` | 안전 → 경계 → 호출 → 검증. 실패하면 세션을 바꾸지 않고 null을 돌려 A가 그 턴을 처리한다 |
@@ -349,6 +350,8 @@ A는 짧은 종료 요청("종료", "오늘은 이쯤 할게요", "그만")을 �
 ## 8A. 에피소드 기억과 개인화된 결정 (2026-10-02)
 
 지난 상담은 서버의 세션 요약으로 저장됩니다(`/counseling-sessions`). 원문 대화가 아니라 구조화된 사실입니다.
+
+상담 요약의 `sud_start`는 상담 발화에서 명시적으로 확인한 첫 점수이고, `sud_end`는 점수를 두 번 이상 확인했을 때의 마지막 점수입니다. 일기 점수를 상담 점수로 복사하지 않으며, 이 값이 정확한 상담 직전·직후 측정임을 보장하지 않습니다. `affect`는 사용자 발화에 나타난 마지막 비중립 어휘 단서로, 감정이나 진단을 확정하는 값이 아닙니다. AI 상담에서 참조한 기록 ID와 기법 ID도 저장합니다. 균형 잡힌 생각 기법의 답으로 인정된 내용만 `alternative_thought`에 저장합니다. 기존에 저장된 요약은 자동으로 변경하지 않습니다.
 - 주 걱정, 핵심 생각, 대안 생각
 - 불안 점수 시작·끝(챗봇이 묻지 않고 일기 기록에서 가져옴)
 - 사용 기법과 그 결과

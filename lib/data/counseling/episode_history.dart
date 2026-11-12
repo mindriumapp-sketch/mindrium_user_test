@@ -119,6 +119,7 @@ class EpisodeFacts {
 
   /// 불안 점수 질문에 대한 숫자 답.
   final int? sudStart;
+  final int? sudEnd;
 
   /// 이번 세션이 다루다 남긴 걱정: 대안 생각에 이르지 못했을 때의 걱정 생각.
   /// 이전 세션의 미해결 주제를 이어받지 않는다.
@@ -129,6 +130,7 @@ class EpisodeFacts {
     this.coreThought,
     this.alternativeThought,
     this.sudStart,
+    this.sudEnd,
     this.unfinishedIssue,
   });
 
@@ -143,22 +145,31 @@ class EpisodeFacts {
     );
 
     String? alternative;
-    int? sud;
+    final sudValues = <int>[];
     for (var i = 0; i < messages.length; i++) {
       final m = messages[i];
-      if (m.isUser) continue;
-      if (m.interventionCredited == true && alternative == null) {
+      if (m.isUser) {
+        // Only accept an explicitly described anxiety score, or a numeric
+        // response to an actual anxiety-scale question. Ordinary numbers in
+        // a worry (dates, age, grades) are not scores.
+        final text = m.text.trim();
+        final explicit = RegExp(r'불안(?:\s*(?:정도|점수))?[^\d\n]{0,12}(10|[0-9])\s*점').firstMatch(text);
+        final previous = i > 0 ? messages[i - 1] : null;
+        final askedScale = previous != null && !previous.isUser &&
+            previous.text.contains('불안') && previous.text.contains('0에서 10');
+        final answer = askedScale ? RegExp(r'^\s*(?:한\s*)?(10|[0-9])(?:\s*점)?(?:\s*(?:정도|이에요|이요|요))?[.!]?\s*$').firstMatch(text) : null;
+        final score = explicit?.group(1) ?? answer?.group(1);
+        if (score != null) sudValues.add(int.parse(score));
+        continue;
+      }
+      if (m.interventionCredited == true && alternative == null &&
+          m.referencedCbtIds.contains('week4_alternative_thought_01')) {
         for (var j = i - 1; j >= 0; j--) {
           if (messages[j].isUser) {
             alternative = messages[j].text.trim();
             break;
           }
         }
-      }
-      if (sud == null && m.text.contains('0에서 10') && i + 1 < messages.length) {
-        final next = messages[i + 1];
-        final match = RegExp(r'^\s*(10|[0-9])(?![0-9])').firstMatch(next.text);
-        if (next.isUser && match != null) sud = int.parse(match.group(1)!);
       }
     }
     final concern = firstRound
@@ -169,7 +180,8 @@ class EpisodeFacts {
       mainConcern: concern,
       coreThought: core,
       alternativeThought: alternative,
-      sudStart: sud,
+      sudStart: sudValues.firstOrNull,
+      sudEnd: sudValues.length >= 2 ? sudValues.last : null,
       unfinishedIssue: alternative == null ? core : null,
     );
   }

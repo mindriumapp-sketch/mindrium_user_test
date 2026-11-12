@@ -196,7 +196,7 @@ void main() {
   // unfinished issue. Episode facts now come from turn metadata.
   group('EpisodeFacts from turn metadata', () {
     CounselingMessage u(String t) => CounselingMessage(id: t, role: 'user', text: t, createdAt: DateTime(2026));
-    CounselingMessage a(String t, {String? goal, InterventionStep? step, bool? credited, InteractionRepairReason? repair}) =>
+    CounselingMessage a(String t, {String? goal, InterventionStep? step, bool? credited, InteractionRepairReason? repair, List<String> cbt = const []}) =>
         CounselingMessage(
           id: 'a$t',
           role: 'assistant',
@@ -205,6 +205,7 @@ void main() {
           dialogueGoalId: goal,
           interventionStep: step,
           interventionCredited: credited,
+          referencedCbtIds: cbt,
           interactionRepairReason: repair,
         );
 
@@ -229,10 +230,29 @@ void main() {
         u('발표하다가 말이 막힐까 봐 걱정돼'), a('…근거?', goal: 'evidence'),
         u('예전에 막혔어'), a('…균형 있게?', step: InterventionStep.prompt),
         u('막혀도 잠깐 쉬고 다시 이어가면 돼'),
-        a('그렇게 보면 … 정리해 볼까요?', step: InterventionStep.integration, credited: true),
+        a('그렇게 보면 … 정리해 볼까요?', step: InterventionStep.integration, credited: true, cbt: ['week4_alternative_thought_01']),
       ]);
       expect(f.alternativeThought, '막혀도 잠깐 쉬고 다시 이어가면 돼');
       expect(f.unfinishedIssue, isNull);
+    });
+
+    test('other credited techniques are not saved as alternative thoughts', () {
+      final f = EpisodeFacts.fromMessages([
+        u('발표가 걱정돼요'),
+        u('잠깐 피하면 마음이 편하지만 다음에는 더 어렵겠어요'),
+        a('살펴보셨군요.', step: InterventionStep.integration, credited: true, cbt: ['week6_short_long_term_01']),
+      ]);
+      expect(f.alternativeThought, isNull);
+    });
+
+    test('only explicit session scores are stored and end needs another score', () {
+      final one = EpisodeFacts.fromMessages([u('불안이 7점이에요'), u('내일 회의는 3시에 해요')]);
+      expect(one.sudStart, 7);
+      expect(one.sudEnd, isNull);
+      final two = EpisodeFacts.fromMessages([u('불안이 7점이에요'), u('이제 불안 정도는 4점이에요')]);
+      expect(two.sudStart, 7);
+      expect(two.sudEnd, 4);
+      expect(EpisodeFacts.fromMessages([u('회의 3시에 가요')]).sudStart, isNull);
     });
 
     test('an episode is recalled only if its alternative was credited', () {
