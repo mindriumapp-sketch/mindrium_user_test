@@ -106,9 +106,9 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 - DB client: `AsyncIOMotorClient`, 프로세스 내 `lru_cache`로 재사용
 - 기본 DB 이름: `flutter_test`
 
-포트 기본값은 파일별로 차이가 있다. Dockerfile은 8070, `Settings.api_port`는
-8050, backend README의 로컬 예시는 8080을 사용한다. 실행 환경에서는 `PORT` 또는
-명시적인 uvicorn 인자로 하나를 선택해야 한다.
+포트 기본값은 8070이다(Dockerfile의 `PORT`, `Settings.api_port`). 로컬 챗봇 개발은
+8090을 쓴다(VS Code 실행 설정, `tools/demo/preflight.sh`). 환경 변수 전체 목록은
+[`backend/app/.env.example`](../backend/app/.env.example)에 있다.
 
 주요 환경 변수:
 
@@ -165,6 +165,8 @@ storage에 저장하며 과거 SharedPreferences key는 읽는 즉시 이동한�
 - `/counseling-sessions`: 상담 세션 요약 upsert(`PUT /{session_id}`)·최근 목록(`GET`)
 - `/counseling/respond`: 상담 주 경로(`POST`). 실패는 `detail.reason`으로 분류해 502/504로 돌려준다(`http_429`, `http_4xx_other`, `http_5xx`, `network_error`, `timeout`, `schema_reject`)
 - `/counseling/realize`: 대체 경로의 상담 문장 GPT 표현(`POST`)
+- `/counseling/patterns`: 최근 28일 완료 일기·활성 알림 집계(`GET`). 결과는 저장하지 않는다([`counseling/pattern_analysis.md`](counseling/pattern_analysis.md))
+- `/counseling/pattern-intent`: 마지막 발화가 기록 분석 요청인지 분류(`POST`). 발화만 OpenAI로 보내고 기록은 보내지 않는다
 
 대부분 인증이 필요하다. `/auth/*`, `/`, `/health`가 대표적인 공개 경로다.
 

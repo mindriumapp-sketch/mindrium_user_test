@@ -6,6 +6,20 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 
 이 저장소에는 Flutter 앱과 FastAPI 백엔드가 함께 들어 있습니다. 앱은 Android와 iOS 대상으로 관리되며, Android/iOS 홈 위젯 코드도 포함되어 있습니다.
 
+## 문서 안내
+
+처음 맡았다면 아래 순서로 읽습니다.
+
+| 순서 | 문서 | 언제 읽나 |
+| --- | --- | --- |
+| 1 | 이 README | 앱 전체 기능, 폴더 구조, 로컬 실행 |
+| 2 | [`docs/chatbot_HANDOVER.md`](docs/chatbot_HANDOVER.md) | 상담 챗봇을 실행·수정·시연할 때. 코드 지도와 "고칠 곳" 표 |
+| 3 | [`docs/counseling/chatbot_system.md`](docs/counseling/chatbot_system.md) | 챗봇 내부 규칙(B 계약·검증, A 파이프라인, 상태 전이, 개인화, 표정)을 자세히 볼 때 |
+| 4 | [`docs/counseling/pattern_analysis.md`](docs/counseling/pattern_analysis.md) | 상담 중 기록 패턴 분석을 고칠 때 |
+| 5 | [`docs/backend_and_database.md`](docs/backend_and_database.md) | API, 인증, MongoDB 컬렉션과 필드 |
+| 6 | [`backend/app/README.md`](backend/app/README.md) | 환경 변수, Docker 빌드, 외부 서버 배포 |
+| 참고 | [`docs/counseling/asis_tobe.md`](docs/counseling/asis_tobe.md), [`tools/cbt_corpus/README.md`](tools/cbt_corpus/README.md) | 예전 챗봇과의 비교, CBT 코퍼스 생성 |
+
 ## 앱의 목적
 
 - 사용자가 불안의 원리와 자신의 걱정 패턴을 이해하도록 돕습니다.
@@ -38,7 +52,7 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 | 마인드리움 보관함 | 걱정 그룹을 캐릭터/수족관 형태로 시각화하고, 보관된 걱정 그룹을 조회 |
 | 리포트 | 일기, 교육, 이완 활동을 날짜/주 단위로 모아 보고 완료율과 SUD 추이를 확인 |
 | 스크린타임 기록 | 앱 포그라운드 사용 세션을 자동 기록하고 서버에 전송하는 기반 기능 |
-| AI 마음상담 | 걱정 하나를 짧은 CBT 상담 세션으로 다룸. GPT가 코드가 정한 경계(안전, 사용자 기록, 앱 사실, 승인 기법) 안에서 대화를 이끌고 검증기가 확인하며, 실패하면 결정론 경로로 대체. 지난 상담 기억과 앱 사용법 안내 포함. 구조와 실행은 [`docs/chatbot_HANDOVER.md`](docs/chatbot_HANDOVER.md) |
+| 상담 NPC 챗봇 | 걱정 하나를 짧은 CBT 상담 세션으로 다룸. GPT가 코드가 정한 경계(안전, 사용자 기록, 앱 사실, 승인 기법) 안에서 대화를 이끌고 검증기가 확인하며, 실패하면 결정론 경로로 대체. 지난 상담 기억, 기록 패턴 분석, 앱 사용법 안내 포함. 구조와 실행은 [`docs/chatbot_HANDOVER.md`](docs/chatbot_HANDOVER.md) |
 
 ## 8주 프로그램 구성
 
@@ -78,7 +92,7 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 | 위치/지도 | `flutter_map`, `latlong2`, `geolocator`, `geocoding`, `webview_flutter`, Kakao Local API |
 | 알림/권한 | `flutter_local_notifications`, `timezone`, `permission_handler`, `geofence_service` |
 | 음성/사용 추적 | `speech_to_text`, `wakelock_plus`, 앱 라이프사이클 기반 스크린타임 기록 |
-| 백엔드 | FastAPI, MongoDB/Motor, JWT 인증, Render 배포 설정 |
+| 백엔드 | FastAPI, MongoDB/Motor, JWT 인증, Docker 배포 |
 
 ## 백엔드와 데이터
 
@@ -95,7 +109,7 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 - 걱정 그룹/아카이브: `worry_groups`
 - 알림 설정: `alarm_settings`
 - 스크린타임: `screen_time`
-- 상담: `counseling_respond`(주 경로 응답), `counseling_realize`(대체 경로 문장 표현), `counseling_sessions`(세션 요약)
+- 상담: `counseling_respond`(주 경로 응답, 분석 요청 분류), `counseling_realize`(대체 경로 문장 표현), `counseling_sessions`(세션 요약), `counseling_patterns`(기록 패턴 집계)
 
 Flutter 앱의 API 기본 주소는 `lib/data/api/api_client.dart`에서 결정됩니다. `API_BASE_URL` dart define이 있으면 그 값을 우선 사용하고, 없으면 Android/iOS 디버그 빌드에서 `http://115.145.134.180:8070`을 사용합니다. 릴리즈 빌드에서는 `API_BASE_URL`을 명시해야 합니다.
 
@@ -106,22 +120,34 @@ Flutter 앱의 API 기본 주소는 `lib/data/api/api_client.dart`에서 결정�
 ├── lib/
 │   ├── app.dart                  # 앱 셸, 테마, 라우트
 │   ├── main.dart                 # Provider와 ScreenTimeAutoTracker 초기화
+│   ├── chatbot/                  # 상담 NPC 챗봇 화면, 상담사 표정, 음성 출력
 │   ├── common/                   # 앱 환경값, 상수, Kakao 런타임 설정
 │   ├── contents/                 # SUD, 이완/대안생각 선택 등 공통 플로우
 │   ├── data/                     # API 클라이언트, 모델, Provider, 로컬 저장소
+│   │   └── counseling/           #   상담 모델, 발화 해석, 지난 상담 이력, 패턴 집계 모델
 │   ├── features/                 # 인증, 알림, 1~8주 치료, 메뉴/보관함/설정
+│   │   ├── counseling/           #   상담 엔진(B: llm_led/, A: turn_plan·policy/)
+│   │   └── assistant/            #   상담/앱 안내/혼합 분기, 사용자 맥락 검색
 │   ├── navigation/               # 하단 네비게이션, 홈/교육/리포트/마이페이지
 │   ├── utils/                    # 날짜, 텍스트 라인 처리 등 유틸
 │   └── widgets/                  # 공통 UI 컴포넌트와 지도/일기/교육 UI
 ├── assets/
+│   ├── app_guide/                # 챗봇의 앱 사용 안내 지식
+│   ├── counseling/               # 승인 CBT 코퍼스, 용어 사전
 │   ├── education_data/           # 교육 콘텐츠 JSON
 │   ├── image/                    # 앱 이미지, 캐릭터, 위젯 튜토리얼, 보관함 배경
+│   ├── npc_images/               # 상담사 표정 그림
 │   └── relaxation/               # 이완 훈련 MP3/Rive/cue sheet 리소스
 ├── android/                      # Android 앱, 권한, 네이티브 홈 위젯
 ├── ios/                          # iOS 앱과 MindriumWidgetExtension
-├── backend/app/                  # FastAPI 백엔드
+├── backend/
+│   ├── app/                      # FastAPI 백엔드 (Docker 이미지 대상)
+│   └── scripts/                  # DB 마이그레이션, 데모 계정 생성(이미지에 포함되지 않음)
+├── docs/                         # 백엔드·DB, 상담 챗봇 문서 (위 "문서 안내")
+├── test/                         # Flutter 테스트 (test/counseling/ 이 챗봇)
 ├── dart_defines/                 # API/Kakao 키 예시 및 로컬 define 파일
-└── tool/                         # 로컬 설정 보조 스크립트
+├── tool/                         # 로컬 설정 보조 스크립트(iOS xcconfig)
+└── tools/                        # CBT 코퍼스 생성(cbt_corpus/), 시연 점검(demo/)
 ```
 
 ## 로컬 실행
@@ -156,14 +182,14 @@ Android 릴리즈 빌드는 `android/key.properties`의 release keystore 설정�
 ```bash
 python3 -m venv backend/.venv
 backend/.venv/bin/python -m pip install -r backend/app/requirements.txt
+cp backend/app/.env.example backend/app/.env   # 값 채우기
 cd backend/app
-# .env를 만들고 MONGO_URI, DB_NAME, JWT_SECRET, JWT_REFRESH_SECRET, OPENAI_API_KEY를 넣는다
-PYTHONPATH=. ../.venv/bin/python -m uvicorn main:app --reload --host 0.0.0.0 --port 8080
+PYTHONPATH=. ../.venv/bin/python -m uvicorn main:app --reload --host 0.0.0.0 --port 8090
 ```
 
-상담 챗봇 개발·시연용 로컬 실행(포트 8090, 로컬 DB)은 [`docs/chatbot_HANDOVER.md`](docs/chatbot_HANDOVER.md) 2절을 따릅니다.
+포트는 서버·Docker 기본값이 8070, 로컬 챗봇 개발(VS Code `Flutter 로컬 백엔드` 실행 설정)이 8090입니다. 환경 변수, Docker 빌드·배포는 [`backend/app/README.md`](backend/app/README.md), 상담 챗봇 개발·시연용 로컬 실행은 [`docs/chatbot_HANDOVER.md`](docs/chatbot_HANDOVER.md) 2절을 따릅니다.
 
-필수 환경 변수는 `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`입니다. 백엔드 실행 후 Swagger 문서는 `http://localhost:8080/docs`, 상태 확인은 `http://localhost:8080/health`에서 확인할 수 있습니다.
+백엔드 실행 후 Swagger 문서는 `http://localhost:8090/docs`, 상태 확인은 `http://localhost:8090/health`입니다. `/health`는 프로세스만 확인하고 DB·OpenAI 연결은 확인하지 않습니다.
 
 ## 개발 상태 메모
 

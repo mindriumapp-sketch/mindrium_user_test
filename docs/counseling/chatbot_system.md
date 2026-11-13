@@ -1,7 +1,8 @@
 # Mindrium 상담 NPC 챗봇: 구조와 기능
 
-기준: 2026-10-04, 태그 `counseling-handover-v2`, 프롬프트 `respond_v14`. 실행 방법과 인수인계 요약은 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md),
-시연 절차는 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md) 7절, 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md)에 있습니다.
+기준: 2026-11-13, 태그 `counseling-handover-v3`, 프롬프트 `respond_v15`. 실행 방법과 인수인계 요약은 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md),
+시연 절차는 [`../chatbot_HANDOVER.md`](../chatbot_HANDOVER.md) 7절, 예전 챗봇과의 비교는 [`asis_tobe.md`](asis_tobe.md),
+기록 패턴 분석은 [`pattern_analysis.md`](pattern_analysis.md)에 있습니다.
 
 이 기능은 의료 진단이나 전문 치료를 대체하지 않습니다. 안전 관문은 키워드 기반이고, 상담 문장과 위기 응답은
 아직 임상 전문가의 검수를 받지 않았습니다. 외부 사용자에게 공개하기 전에 검수가 필요합니다.
@@ -50,9 +51,11 @@ LLM 호출 전에 코드가 정하는 경계:
 
 응답 뒤 검증기가 거절하는 것 (주요 항목): 승인되지 않은 기법, 주지 않은 사용자·앱 사실, 진단·결과 보장, 상담 지시·조언(`directive`, `advice`), 사용자가 시도하기 전의 예시 문장(`premature_example`), 질문 2개 이상, 반복 질문·반복 응답, 반말, 제안 없는 종료, 탐색 종료 후 같은 걱정 재탐색, 용어 정의 불일치. 거절 사유는 `LLM_LED` 로그에 남는다(텍스트 없음).
 
-### 2.2 B 경로 계약 (`POST /counseling/respond`, 프롬프트 `respond_v14`)
+### 2.2 B 경로 계약 (`POST /counseling/respond`, 프롬프트 `respond_v15`)
 
-**켜는 조건:** 빌드 플래그 `COUNSELING_LLM_LED_PATH=true` + 허용 목록 계정(`internal_account_allowlist.dart`). 비위기 턴마다 B를 먼저 부르고, 시간 제한은 8초다. 반복 질문이나 반복 답변만으로 검증에 실패한 경우 남은 시간 안에서 한 번 다시 생성하고 다시 검증한다. 그 외 실패나 재생성 실패 시 A가 답한다.
+**켜는 조건:** 빌드 플래그 `COUNSELING_LLM_LED_PATH=true` + 허용 목록 계정(`internal_account_allowlist.dart`). 비위기 턴마다 B를 먼저 부르고, 시간 제한은 8초다. 반복 질문이나 반복 답변만으로 검증에 실패한 경우 남은 시간 안에서 한 번 다시 생성하고 다시 검증한다(이때 `progress.retry_feedback`에 `repeated_question`/`repeated_reply`를 실어 보낸다). 그 외 실패나 재생성 실패 시 A가 답한다.
+
+**`respond_v15`에서 바뀐 것 (v14 대비):** 짧은 답·대명사를 직전 질문의 답으로 읽고 이미 답한 것을 다시 묻지 않기, `retry_feedback` 처리, 기록 패턴 사실(`record_pattern`, `pattern:scope`) 사용 규칙, `gpt-6-luna` 호출 시 `reasoning_effort: none`.
 
 **입력 (`LlmLedContext.build`)**
 
@@ -60,7 +63,7 @@ LLM 호출 전에 코드가 정하는 경계:
 |---|---|
 | `conversation` | 최근 대화 최대 12개(마지막은 이번 사용자 발화) |
 | `progress` | 참고용 진행 근거: 걱정·생각 파악 여부, 근거·관점 탐색 여부, `explore_closed`, 최근 질문 3개, 진전 없는 턴 수, 기법 대기·완료, 마무리 제안 여부 등. 특정 질문을 강제하지 않는다 |
-| `user_facts` | `{id, kind, text}`: 지난 완료 상담(`session:<id>`, 걱정과 그때 정리한 생각), 일기(`diary:<id>`), 일기에 적은 대안 생각(`alt:<id>`), 효과 있었던 기법(지난 상담에서 성과가 인정된 기법) |
+| `user_facts` | `{id, kind, text}`: 지난 완료 상담(`session:<id>`, 걱정과 그때 정리한 생각), 일기(`diary:<id>`), 일기에 적은 대안 생각(`alt:<id>`), 효과 있었던 기법(지난 상담에서 성과가 인정된 기법), 기록 패턴 집계(`record_pattern`. 사용자가 기록 분석을 요청하면 `pattern:scope`와 대표 집계, 아니면 발화와 관련된 집계만. [`pattern_analysis.md`](pattern_analysis.md)) |
 | `techniques` | 현재 주차까지의 승인 기법만 |
 | `app_facts` | 앱 안내: 기능 24개(이동 경로 포함, 사용 불가 기능 표시)와 사용법 안내 10개. 없는 기능 질문은 `manual:app_overview`를 근거로 "없다"고 답함 |
 | `term_request` | 코드가 판정한 용어 질문(`TermGlossary`). 승인 용어면 승인 코퍼스의 정의 하나, 아니면 `unknown` |
@@ -124,17 +127,22 @@ flowchart TD
 | 파일 | 역할 |
 |---|---|
 | `counseling_harness.dart` | 한 턴 처리의 진입점. 안전 확인, 계획, 응답, 상태 전이를 연결한다. 턴 결과 모델은 `counseling_turn_result.dart`와 `llm_led_turn.dart`에 둔다. |
-| `counseling_provider.dart` | 화면과 harness를 잇는 상태 관리. 메시지 목록, 세션 저장(`completed`/`interrupted`), 종료 여부(`isSessionFinalized`) |
+| `counseling_provider.dart` | 화면과 harness를 잇는 상태 관리. 메시지 목록, 기록 패턴 분석 요청 판단, 세션 저장(`completed`/`interrupted`), 종료 여부(`isSessionFinalized`) |
 | `counseling_session_state.dart`, `data/counseling/counseling_session_record.dart` | 상담 진행 상태와 저장할 요약을 각각 관리한다. |
 | `counseling_state.dart` | 상태 enum과 `CounselingStatePolicy`(단계별 예산, 최소 턴, 완료 기반 전이, 조기 마무리, 마무리 재개) |
-| `turn_plan.dart` 및 같은 디렉터리의 `part` 파일 | 상담 계획 모델, 입력·대화 반응 검사, 기존 단계별 planner, 응답 검증을 파일별로 나눈다. 운영 규칙 경로는 `policy/production_turn_planner.dart`를 사용한다. |
+| `turn_plan.dart` | A의 계획 계층 라이브러리. 아래 `part` 파일을 묶는다. 운영 경로의 조립은 `policy/production_turn_planner.dart`가 한다. |
+| ├ `turn_plan_models.dart` | `CounselingTurnPlan`, `TurnPlanningContext`, `TurnConstraint`, `CounselingTurnPlanner` |
+| ├ `input_guard_planner.dart` | Hard Guard 입력 검사(`DeterministicInputGuardTurnPlanner`, 6.1절) |
+| ├ `process_signal_planner.dart` | Hard Guard 대화 반응 처리(`DeterministicProcessSignalTurnPlanner`, 6.1절) |
+| ├ `legacy_turn_planner.dart`, `legacy_stage_planners.dart` | 상태별 planner와 `ReflectQuestionGoal`. 이름은 legacy지만 `policy/`의 selector·materializer·경계가 질문 목표와 문장을 여기서 가져다 쓴다. **삭제하면 A 경로가 깨진다** |
+| └ `turn_plan_adherence_validator.dart` | 원격 표현 결과가 계획의 질문 수·금지 표현을 지켰는지 검사 |
 | `intervention_registry.dart` | 승인 기법 목록(4~8주차)과 `policiesUpTo(week)` 누적 조회 |
 | `hybrid_turn_router.dart` | 이번 턴에 원격 GPT를 써도 되는지 판단 |
 | `remote_llm_realizer.dart`, `response_realizer.dart` | 원격 실현 요청·검증·결과 모델 |
 | `safety_gate.dart` | `KeywordSafetyGate`(normal / elevated / crisis) |
 | `surface_variation.dart` | 같은 문장이 연달아 나오지 않게 후보 문장을 고르는 장치 |
 | `prompt_builder.dart`, `turn_plan_prompt_builder.dart`, `compact_prompt_builder.dart`, `output_parser.dart`, `llm_service.dart`, `mock_llm_service.dart` | 모델 입출력 계층. 현재 제품 경로에서는 결정론 초안과 원격 실현기가 주로 쓰고, 이 계층은 프롬프트 번들과 파싱을 맡는다 |
-| `empathy_planner.dart`, `activity_recommendation.dart`, `counseling_benchmark.dart` | 즉시 공감 문장(현재 비활성), 기법별 앱 활동 추천, 개발용 지연 계측 |
+| `activity_recommendation.dart` | 기법별 앱 활동 추천 |
 
 ### 3.2 정책 계층 `lib/features/counseling/policy/`
 
@@ -155,12 +163,16 @@ flowchart TD
 
 | 파일 | 역할 |
 |---|---|
-| `llm_led_contract.dart` 및 같은 디렉터리의 `part` 파일 | AI 입력 구성, 출력 파싱, 응답 검증, 상태·메타데이터 변환을 파일별로 나눈다. |
+| `llm_led_contract.dart` | B 경로 라이브러리. 아래 `part` 파일을 묶는다 |
+| ├ `llm_led_context.dart` | AI 입력(경계) 구성 `LlmLedContext.build`, 회상 `RecallRequest` |
+| ├ `llm_led_output.dart` | 모델 출력 파싱 `LlmLedOutput` |
+| ├ `llm_led_validator.dart` | 응답 검증 `LlmLedValidator`(2.2절의 거절 사유) |
+| └ `llm_led_mapping.dart` | 출력을 A와 같은 턴 메타데이터로 변환 `LlmLedMapping` |
 | `pseudonym.dart` | 로그용 세션 가명 |
 | `term_glossary.dart` | 용어 질문 판정. `assets/counseling/glossary.json`은 이름·별칭만 갖고, 정의는 승인 코퍼스에서 읽는다 |
 | `../counseling_harness.dart` `handleLlmLedTurn` | 안전 → 경계 → 호출 → 검증. 실패하면 세션을 바꾸지 않고 null을 돌려 A가 그 턴을 처리한다 |
 | `../counseling_provider.dart` `_handleTurnLlmLedFirst` | B 먼저, 실패 시 A. 턴마다 `LLM_LED` 로그(상태, 그룹, 거절 사유, 지연 분해) |
-| `lib/data/api/counseling_respond_api.dart` | `/counseling/respond` 클라이언트와 실패 분류(`CounselingRespondFailure`) |
+| `lib/data/api/counseling_respond_api.dart` | `/counseling/respond` 클라이언트와 실패 분류(`CounselingRespondFailure`), `/counseling/pattern-intent` 클라이언트 |
 
 ### 3.3 데이터 `lib/data/counseling/`, `lib/data/api/`
 
@@ -170,7 +182,10 @@ flowchart TD
 | `user_thought_extractor.dart` | 사용자 발화 해석 규칙: 생각 형태, 저정보 답, 대상 자격(`TargetEligibility`), 라운드, 인용 가능 여부, 기법 답 판정 |
 | `local_cbt_knowledge_repository.dart`, `cbt_knowledge_repository.dart` | `assets/counseling/knowledge/week0~8.json` CBT 코퍼스 검색 |
 | `mindrium_context_builder.dart`, `previous_session.dart`, `retrieval_summary.dart`, `counseling_session_summary.dart` | 사용자 기록(일기, 효과 있었던 기법)과 이전 세션 맥락, 세션 요약 |
-| `api/counseling_realize_api.dart`, `api/counseling_sessions_api.dart` | 백엔드 실현 API, 세션 저장 API |
+| `episode_history.dart` | 지난 세션 요약 → 개인화용 에피소드 이력(8A절) |
+| `counseling_session_record.dart` | 서버에 저장할 세션 요약. 메모리와 턴 메타데이터를 한 번만 합친다 |
+| `counseling_patterns.dart` | 기록 패턴 집계 모델, 명시적 분석 요청 판정(`explicitlyRequested`), B에 넘길 `record_pattern` 사실 변환 |
+| `api/counseling_realize_api.dart`, `api/counseling_sessions_api.dart`, `api/counseling_patterns_api.dart` | 백엔드 실현 API, 세션 저장 API, 패턴 집계 API |
 
 ### 3.4 어시스턴트와 화면
 
@@ -179,13 +194,15 @@ flowchart TD
 | `lib/features/assistant/` | `MindRiumAssistantHarness`: 발화를 상담 / 앱 사용 안내 / 혼합으로 분기한다. 앱 안내 검색과 응답, 혼합 응답 조합, 사용자 맥락 검색 |
 | `lib/chatbot/chatbot_main.dart` | 상담 화면(`ChatPage`). harness 구성, 종료 안내 표시, 새로고침(새 세션) |
 | `lib/chatbot/affective/` | 발화의 정서 단서로 아바타 표정을 고름 (11.1절) |
-| `lib/chatbot/services/speech_output_service.dart`, `ui/chat_bubble.dart` | 음성 출력, 말풍선 |
+| `lib/chatbot/services/speech_output_service.dart`, `services/chat_transcript_log.dart`, `ui/chat_bubble.dart` | 음성 출력, 기기 내 대화 원문 로그(개발용, 외부 전송 없음), 말풍선 |
 
 ### 3.5 백엔드 `backend/app/routers/`
 
 | 엔드포인트 | 역할 |
 |---|---|
-| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v14`, `gpt-6-luna`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
+| `POST /counseling/respond` | B 경로. 경계(사실·기법·앱 사실·용어·진행 근거)를 받아 다음 응답 하나를 JSON으로 정한다(`counseling_respond.py`, 프롬프트 `respond_v15`, `gpt-6-luna`, strict json_schema). 실패는 `http_429` / `http_4xx_other` / `http_5xx` / `network_error` / `timeout` / `schema_reject`로 분류해 돌려준다 |
+| `POST /counseling/pattern-intent` | 마지막 발화 하나만 받아 "내 기록을 살펴봐 달라는 요청인지" true/false로 분류한다(`counseling_respond.py`). 일기·집계는 보내지 않는다. 실패하면 앱은 규칙 판정만 쓴다 |
+| `GET /counseling/patterns` | 최근 28일 완료 일기와 활성 알림을 집계한다(`counseling_patterns.py`, 계산은 `core/counseling_patterns.py`). 결과는 저장하지 않는다 |
 | `POST /counseling/realize` | 결정론 초안과 계획을 받아 GPT로 다시 표현한다(`counseling_realize.py`, 시스템 프롬프트 포함). 모델은 서버 설정 `openai_model`을 따른다 |
 | `PUT /counseling-sessions/{session_id}` | 세션 요약 upsert |
 | `GET /counseling-sessions` | 최근 세션 조회(이전 세션 맥락용) |
@@ -501,7 +518,7 @@ adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk
 |---|---|---|
 | 단위 | `test/counseling/*_test.dart` | B 계약·검증기(`llm_led_test`), 표정(`avatar_*`), A의 planner·selector·materializer·라우터·발화 해석, 저장·개인화 |
 | A 경로 회귀 | `test/counseling/regression/` | 동결 발화 세트(holdout v1~v5)로 세션 흐름 채점, 멀티턴·주차별 진행·비협조 사용자·감지 게이트. 채점은 `support/session_flow_metrics.dart` |
-| 데모 스모크 | `test/counseling/regression/demo_smoke_test.dart` | 실제 백엔드로 데모 시나리오(`fixtures/demo_smoke_v1.json`)를 A·B 모두 실행. 환경 변수가 없으면 건너뜀. 기준 결과 `baseline/demo_smoke_respond_v11.json` |
+| 데모 스모크 | `test/counseling/regression/demo_smoke_test.dart` | 실제 백엔드로 데모 시나리오(`fixtures/demo_smoke_v1.json`)를 A·B 모두 실행. 환경 변수가 없으면 건너뜀. 기준 결과 `baseline/demo_smoke_respond_v11.json`(v11 시점 기록. `respond_v15` 기준 결과는 아직 없음) |
 
 **A 경로 회귀 기준.** 구조 지표(교착, 조기 종료, 기법 답 누락, 미래 주차 기법, 승인 외 CBT, 계속 요청 무시, 상태 반복 등 12종)는 반드시 0, 검출 의존 지표(비답변 인정, 메타 발화 인용, 확인 질문 반복)는 사용자 턴의 1% 이하. 홀드아웃 v4는 기록된 실패 수(반복 확인 4, 비답변 인정 1, 메타 인용 1)를 고정해 두었다. 지표가 바뀌면 테스트가 알려 주며, 기록은 의도적으로만 갱신한다.
 
@@ -535,8 +552,9 @@ LLM_LED_BASE_URL=http://127.0.0.1:8090 LLM_LED_TOKEN=<로그인 토큰> \
 
 | 태그 | 내용 |
 |---|---|
+| `counseling-handover-v3` | 인수인계 기준점(현재): v2 + 기록 패턴 분석(`/counseling/patterns`, `/counseling/pattern-intent`), 세션 요약 저장 정리(`CounselingSessionRecord`), `turn_plan.dart`·`llm_led_contract.dart`를 part 파일로 분할, 비밀번호 찾기(이메일 인증번호), 백엔드 `.env.example`·Docker 배포 문서. 프롬프트 `respond_v15` |
 | `respond-v11-demo-freeze` | 데모 동결: B 주 경로 + A 대체, 코드가 보장하는 과거 기록 회상. 데모 스모크 19턴 대체 0 |
-| `counseling-handover-v2` | 인수인계 기준점(현재): v1 + 실제 앱 기준 앱 가이드(기능 24개·사용법 10개, 없는 기능 "없다"), 일기 대안 생각 전달, 챗봇의 불안 점수 질문 제거. 프롬프트 `respond_v14` |
+| `counseling-handover-v2` | 두 번째 인수인계 기준점: v1 + 실제 앱 기준 앱 가이드(기능 24개·사용법 10개, 없는 기능 "없다"), 일기 대안 생각 전달, 챗봇의 불안 점수 질문 제거. 프롬프트 `respond_v14` |
 | `counseling-handover-v1` | 첫 인수인계 기준점: 꺼진 기능(의도 분류기, A/B 평가지, 벤치마크, 즉시 공감)과 과거 산출물 제거, 문서 정리, 두 박자 표정. 이 커밋에서 데모·인수인계 대상 챗봇이 재현됨 |
 
 이전 개발 기록(단계별 설계, 평가 결과)은 저장소에서 지웠고 git 기록에만 있습니다(`git log -- docs/counseling test/counseling`).

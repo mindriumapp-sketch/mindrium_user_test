@@ -100,6 +100,8 @@ lib/firebase_options.dart
 **/env/
 **/.env
 **/.env.local
+# 값이 비어 있는 환경 변수 예시 파일은 추적한다.
+!**/.env.example
 **/test_db.py
 **/pip-log.txt
 **/pip-delete-this-directory.txt

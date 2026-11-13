@@ -1,11 +1,14 @@
 # Mindrium 상담 챗봇 인수인계
 
-기준: 2026-10-04, 브랜치 `2027_demo`, 태그 `counseling-handover-v2`(이 커밋에서 데모·인수인계 대상 챗봇이 재현됨, 프롬프트 `respond_v14`). 상담 챗봇을 처음 맡는 개발자가
+기준: 2026-11-13, 브랜치 `2027_demo`, 태그 `counseling-handover-v3`(프롬프트 `respond_v15`). 이전 기준점은
+`counseling-handover-v2`(2026-10-04, `respond_v14`)입니다. 상담 챗봇을 처음 맡는 개발자가
 실행하고, 구조를 파악하고, 고칠 곳을 찾는 데 필요한 내용만 담았습니다.
 
 | 더 볼 문서 | 내용 |
 |---|---|
 | [`counseling/chatbot_system.md`](counseling/chatbot_system.md) | 챗봇 구조 전체: 두 경로, B 계약과 검증 규칙, A 파이프라인, 개인화, 표정 규칙, 테스트 |
+| [`counseling/pattern_analysis.md`](counseling/pattern_analysis.md) | 상담 중 기록 패턴 분석(시간·장소·점수·상황·알림 집계)의 규칙과 한계 |
+| [`../backend/app/README.md`](../backend/app/README.md) | 백엔드 환경 변수, Docker 빌드·배포, 외부 서버 준비 |
 | [`counseling/asis_tobe.md`](counseling/asis_tobe.md) | 예전 챗봇과 지금 챗봇 비교(AS-IS / TO-BE) |
 | [`backend_and_database.md`](backend_and_database.md) | 백엔드 API, 인증, MongoDB 컬렉션 |
 | [`../README.md`](../README.md) | 앱 전체(8주 프로그램, 화면, 기술 스택) |
@@ -17,8 +20,9 @@
 
 ## 1. 무엇을 만든 것인가
 
-범불안 CBT 앱(8주 프로그램) 안의 "AI 마음상담" 화면입니다. 사용자가 걱정을 말하면 짧은 세션 동안 걱정을 살펴보고,
-그 주차까지 배운 CBT 기법을 적용하도록 돕습니다. 상담 중에 앱 사용법을 물어도 답하고, 지난 상담 기록을 기억합니다.
+범불안 CBT 앱(8주 프로그램) 안의 "상담 NPC 챗봇" 화면입니다. 사용자가 걱정을 말하면 짧은 세션 동안 걱정을 살펴보고,
+그 주차까지 배운 CBT 기법을 적용하도록 돕습니다. 상담 중에 앱 사용법을 물어도 답하고, 지난 상담 기록을 기억하며,
+"요즘 내가 주로 언제 불안해?"처럼 물으면 최근 28일 일기·알림 기록의 패턴을 집계해 알려 줍니다.
 
 **설계의 핵심: 경계는 코드가, 대화는 LLM이.**
 
@@ -52,7 +56,7 @@ B는 허용 목록 계정에서만 켜집니다(사용자 원문이 OpenAI로 �
 
 ### 2.2 백엔드
 
-`backend/app/.env`는 git에 없습니다. 값은 관리자에게 받습니다.
+`backend/app/.env`는 git에 없습니다. [`backend/app/.env.example`](../backend/app/.env.example)을 복사해 만들고, 비밀 값은 관리자에게 받습니다.
 
 | 변수 | 필수 | 설명 |
 |---|---|---|
@@ -127,25 +131,46 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 lib/chatbot/
   chatbot_main.dart                       상담 화면(ChatPage). 엔진 조립, 두 박자 표정, 음성, 새 세션(↻)
   affective/                              정서 단서 + 응답 행동 → 상담사 표정 (chatbot_system.md 11.1절)
+  services/                               음성 출력(TTS), 기기 내 대화 원문 로그(chat_session_*.json)
 lib/features/counseling/
-  llm_led/llm_led_contract.dart           B: 경계 구성(LlmLedContext), 출력 파싱, 검증기, 메타데이터 매핑, 회상(RecallRequest)
-  llm_led/term_glossary.dart              B: 용어 질문 판정
+  counseling_provider.dart                화면 ↔ 엔진. B 먼저 → 실패 시 A, LLM_LED 로그, 패턴 분석 요청, 세션 저장
   counseling_harness.dart                 handleLlmLedTurn()(B), handleTurn()(A)
-  counseling_provider.dart                화면 ↔ 엔진. B 먼저 → 실패 시 A, LLM_LED 로그, 세션 저장, 지난 세션 로드
-  counseling_state.dart                   상태 전이
-  turn_plan.dart                          A의 Hard Guard(입력 검사, 대화 반응, 조기 마무리, 마무리 핸드셰이크)
+  counseling_session_state.dart           현재 상담의 대화와 진행 상태
+  counseling_turn_result.dart, llm_led_turn.dart   A·B 턴 결과 모델
+  counseling_state.dart                   상태 enum과 전이 규칙(CounselingStatePolicy)
+  llm_led/                                B 경로. llm_led_contract.dart가 아래 part 파일을 묶음
+    llm_led_context.dart                    경계 구성(LlmLedContext.build), 회상(RecallRequest)
+    llm_led_output.dart                     모델 출력 파싱
+    llm_led_validator.dart                  응답 검증(거절 사유)
+    llm_led_mapping.dart                    출력 → A와 같은 턴 메타데이터
+    term_glossary.dart, pseudonym.dart      용어 질문 판정, 로그용 세션 가명
+  turn_plan.dart                          A의 계획 모델과 planner. 아래 part 파일을 묶음
+    turn_plan_models.dart                   CounselingTurnPlan, TurnPlanningContext 등 모델
+    input_guard_planner.dart                Hard Guard: 잡음·욕설·우회 시도
+    process_signal_planner.dart             Hard Guard: "질문 그만", 불만, 반복 지적, 이해 못함
+    legacy_turn_planner.dart, legacy_stage_planners.dart
+                                            상태별 planner. 이름은 legacy지만 policy/의 selector·materializer가
+                                            질문 목표(ReflectQuestionGoal)와 문장을 여기서 가져다 씀 — 지우면 안 됨
+    turn_plan_adherence_validator.dart      원격 표현 결과가 계획(질문 수·행위)을 지켰는지 검사
   policy/                                 A의 결정 계층(경계 → selector → 검증 → materializer), 공개 단계와 허용 목록
   safety_gate.dart                        위기 키워드 판정
   intervention_registry.dart              승인 기법 목록(4~8주차, 현재 주차까지 누적)
   hybrid_turn_router.dart, remote_llm_realizer.dart   A의 GPT 문장 표현 여부와 요청
-lib/features/assistant/                   상담 / 앱 사용 안내 / 혼합 분기(A 경로)
+lib/features/assistant/                   상담 / 앱 사용 안내 / 혼합 분기(A 경로), 사용자 맥락·지난 상담 검색
 lib/data/counseling/                      메시지·메타데이터 모델, 발화 해석, 지난 세션 이력, 사용자 맥락, 코퍼스 검색
-lib/data/api/counseling_respond_api.dart  /counseling/respond 클라이언트와 실패 분류
+  counseling_session_record.dart          서버에 저장할 세션 요약(메모리 + 턴 메타데이터를 한 번에 합침)
+  counseling_patterns.dart                기록 패턴 집계 결과 모델과 B에 넘길 사실(record_pattern) 변환
+lib/data/api/
+  counseling_respond_api.dart             /counseling/respond, /counseling/pattern-intent 클라이언트와 실패 분류
+  counseling_patterns_api.dart            GET /counseling/patterns
+  counseling_sessions_api.dart            세션 요약 저장·조회
 assets/counseling/knowledge/              승인 CBT 코퍼스(week0~8.json). 생성: tools/cbt_corpus/
 assets/counseling/glossary.json           용어 이름·별칭(정의는 코퍼스에서 읽음)
 assets/app_guide/app_guide_catalog.json   앱 사용 안내 지식
 assets/npc_images/                        상담사 표정 그림
-backend/app/routers/counseling_respond.py POST /counseling/respond: 시스템 프롬프트(respond_v14), 요청별 JSON 스키마
+backend/app/routers/counseling_respond.py POST /counseling/respond: 시스템 프롬프트(respond_v15), 요청별 JSON 스키마
+                                          POST /counseling/pattern-intent: 마지막 발화가 기록 분석 요청인지 분류
+backend/app/routers/counseling_patterns.py GET /counseling/patterns: 최근 28일 일기·알림 집계(계산은 core/counseling_patterns.py)
 backend/app/routers/counseling_realize.py POST /counseling/realize: A의 문장 표현
 backend/app/routers/counseling_sessions.py PUT/GET /counseling-sessions: 세션 요약
 backend/scripts/seed_demo_account.py      데모 계정과 합성 기록
@@ -159,8 +184,8 @@ tools/demo/                               preflight.sh(시연 전 점검), laten
 | 하고 싶은 것 | 고칠 곳 |
 |---|---|
 | B의 말투·대화 원칙 | `backend/app/routers/counseling_respond.py`의 `SYSTEM_PROMPT`(바꾸면 `PROMPT_VERSION`을 올리고 서버 재시작) |
-| B가 받는 근거(사실·기법·진행 근거) | `llm_led_contract.dart`의 `LlmLedContext.build` |
-| B 응답을 막는 규칙 추가·수정 | `llm_led_contract.dart`의 `LlmLedValidator`. **검증을 느슨하게 해서 대체율을 낮추지 않습니다.** 오탐만 고치고, 모델이 처음부터 맞게 쓰도록 프롬프트·근거를 바꿉니다 |
+| B가 받는 근거(사실·기법·진행 근거) | `llm_led/llm_led_context.dart`의 `LlmLedContext.build` |
+| B 응답을 막는 규칙 추가·수정 | `llm_led/llm_led_validator.dart`의 `LlmLedValidator`. **검증을 느슨하게 해서 대체율을 낮추지 않습니다.** 오탐만 고치고, 모델이 처음부터 맞게 쓰도록 프롬프트·근거를 바꿉니다 |
 | 용어 추가 | `assets/counseling/glossary.json`(이름·별칭만, 정의는 코퍼스 항목 id로 연결) |
 | 기법 추가·승인 | `intervention_registry.dart` + 코퍼스(`tools/cbt_corpus/curated/weekN.json` 수정 후 생성). 1~3주차 승인은 임상 검수 사항 |
 | 종료 요청 인식 | `policy/selectors/closing_decision_selector.dart`(`isExplicitEnd`, `isEndOnly`) |
@@ -168,6 +193,8 @@ tools/demo/                               preflight.sh(시연 전 점검), laten
 | 위기 키워드 | `safety_gate.dart` |
 | A의 상담 문장 | `policy/materializers/turn_plan_materializer.dart` |
 | B/A를 쓸 계정 | `policy/rollout/internal_account_allowlist.dart` |
+| 기록 패턴 분석의 집계 기준(기간, 3건 기준, 알림 비교) | `backend/app/core/counseling_patterns.py`. 규칙과 한계는 `counseling/pattern_analysis.md` |
+| 패턴 분석 요청 인식 | 명시적 요청 규칙은 `lib/data/counseling/counseling_patterns.dart`, AI 분류는 `counseling_respond.py`의 `pattern_intent` |
 | 세션 요약 필드 추가 | 아래 다섯 곳 |
 
 **세션 요약 필드를 추가할 때 고칠 다섯 곳.** 하나라도 빠지면 오류 없이 값이 사라집니다.
@@ -234,7 +261,11 @@ cd backend/app && PYTHONPATH=. ../.venv/bin/python -m pytest -q tests  # 백엔�
 
 ## 7. 시연하기
 
-시연 전에는 상담 로직과 프롬프트를 바꾸지 않습니다(기준은 태그 `counseling-handover-v2`).
+시연 전에는 상담 로직과 프롬프트를 바꾸지 않습니다(기준은 태그 `counseling-handover-v3`).
+
+외부 서버로 시연할 때는 `BASE=http://<서버>:8070 DEMO_PASSWORD='…' tools/demo/preflight.sh`로 서버를 점검하고,
+앱은 `--dart-define=API_BASE_URL=<서버 주소>`로 빌드합니다(포트 포워딩 불필요). 서버 준비는
+[`../backend/app/README.md`](../backend/app/README.md)를 따릅니다.
 
 ### 7.1 준비 (하루 전)
 
@@ -253,7 +284,7 @@ cd backend/app && PYTHONPATH=. ../.venv/bin/python -m pytest -q tests  # 백엔�
 
 1. 백엔드 실행(2.2절 명령). 코드를 바꿨다면 반드시 재시작
 2. 사전 점검과 설치: `DEMO_PASSWORD='<데모 비밀번호>' tools/demo/preflight.sh --install`
-   - 점검 항목: 백엔드 응답, 데모 계정 로그인, 6주차, 과거 상담 기록, 상담 모델 응답(`respond_v14`, OpenAI 키), 기기 연결, 포트 포워딩, B 경로 빌드 설치
+   - 점검 항목: 백엔드 응답, 데모 계정 로그인, 6주차, 과거 상담 기록, 상담 모델 응답(`respond_v15`, OpenAI 키), 기기 연결, 포트 포워딩, B 경로 빌드 설치
    - 모두 `OK`여야 합니다. 무선 디버깅이 다시 붙으면 다시 실행합니다(포워딩을 다시 건다).
 3. 앱에서 데모 계정으로 로그인 → 홈에 "데모 사용자님", 6주차 이완인지 확인
 4. 앱 내 확인(각 1턴). 확인 뒤에는 데모 계정을 다시 초기화하고 앱을 재시작합니다.

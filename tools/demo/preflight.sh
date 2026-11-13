@@ -9,9 +9,10 @@
 set -u
 cd "$(dirname "$0")/../.."
 
-BASE=http://127.0.0.1:8090
+BASE=${BASE:-http://127.0.0.1:8090}   # 외부 서버 점검: BASE=http://<서버>:8070 tools/demo/preflight.sh
 EMAIL=mindrium.demo@example.com
-EXPECTED_PROMPT=respond_v14
+# backend/app/routers/counseling_respond.py 의 PROMPT_VERSION 과 같아야 한다.
+EXPECTED_PROMPT=respond_v15
 FAIL=0
 ok()   { printf '  \033[32mOK\033[0m   %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m %s\n' "$1"; FAIL=1; }

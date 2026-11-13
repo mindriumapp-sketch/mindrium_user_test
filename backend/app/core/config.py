@@ -27,7 +27,7 @@ class Settings(BaseModel):
     reset_code_resend_cooldown_seconds: int = int(
         os.getenv("RESET_CODE_RESEND_COOLDOWN_SECONDS", "60")
     )
-    api_port: int = int(os.getenv("API_PORT", "8050"))
+    api_port: int = int(os.getenv("API_PORT", "8070"))
     cors_origins: list[str] = os.getenv(
         "CORS_ORIGINS",
         "http://localhost:56000,http://127.0.0.1:56000,http://localhost:*",
