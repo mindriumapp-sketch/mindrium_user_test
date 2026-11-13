@@ -17,7 +17,8 @@ Mindrium은 불안과 걱정을 다루는 사용자가 자신의 패턴을 관�
 | 3 | [`docs/counseling/chatbot_system.md`](docs/counseling/chatbot_system.md) | 챗봇 내부 규칙(B 계약·검증, A 파이프라인, 상태 전이, 개인화, 표정)을 자세히 볼 때 |
 | 4 | [`docs/counseling/pattern_analysis.md`](docs/counseling/pattern_analysis.md) | 상담 중 기록 패턴 분석을 고칠 때 |
 | 5 | [`docs/backend_and_database.md`](docs/backend_and_database.md) | API, 인증, MongoDB 컬렉션과 필드 |
-| 6 | [`backend/app/README.md`](backend/app/README.md) | 환경 변수, Docker 빌드, 외부 서버 배포 |
+| 6 | [`backend/app/README.md`](backend/app/README.md) | 환경 변수, Docker 빌드 |
+| 7 | [`docs/deployment.md`](docs/deployment.md) | 데모 서버 배포 순서, 배포용 OpenAI 키 분리·교체, 배포 후 확인 기준 |
 | 참고 | [`docs/counseling/asis_tobe.md`](docs/counseling/asis_tobe.md), [`tools/cbt_corpus/README.md`](tools/cbt_corpus/README.md) | 예전 챗봇과의 비교, CBT 코퍼스 생성 |
 
 ## 앱의 목적

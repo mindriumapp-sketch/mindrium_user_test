@@ -36,6 +36,8 @@ PYTHONPATH=backend/app backend/.venv/bin/python -m pytest backend/app/tests -q -
 ## Docker 배포
 
 이미지에는 코드만 들어간다. `.env`, DB 데이터, 데모 계정은 포함되지 않는다.
+**배포용 OpenAI 키는 개발용과 다른 키를 쓴다.** env 파일 만들기, 키·모델 권한 점검, 키 교체 절차는
+[`docs/deployment.md`](../../docs/deployment.md)를 따른다(`tools/deploy/init_env.sh`, `check_openai_key.sh`).
 
 ### 1. 이미지 빌드
 

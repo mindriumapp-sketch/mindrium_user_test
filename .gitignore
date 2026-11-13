@@ -66,6 +66,7 @@ coverage/
 ##### 비밀/인증서/환경변수(민감) #####
 .env
 .env.*
+*.env
 .envrc
 dart_defines/*.json
 !dart_defines/kakao.example.json
